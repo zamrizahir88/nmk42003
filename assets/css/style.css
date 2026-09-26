@@ -119,10 +119,16 @@ p { margin: 0 0 1em; }
   line-height: 1.02;
   margin-bottom: 20px;
 }
-/* "Instrumentation" must fit a 360px phone (common on Android/Huawei) */
-@media (max-width: 420px) { .hero h1 { font-size: 2.15rem; } .hero-code { font-size: .45em; } }
-.hero h1, .chapter-hero h1 { overflow-wrap: break-word; }
-.hero-code { display: block; font-family: var(--sans); font-weight: 500; font-size: .32em; letter-spacing: 0; color: var(--teal); margin-bottom: .35em; }
+/* The course name is one long word ("Instrumentation" is about 7.75em wide in IBM Plex Serif).
+   Size it to fit its column so it never breaks mid-word; 8.4 leaves room for fallback fonts. */
+#heroName { white-space: nowrap; }
+@media (max-width: 900px) { .hero h1 { font-size: min(5rem, calc((100vw - 48px) / 8.4)); } }
+@media (min-width: 901px) { .hero h1 { font-size: min(5rem, calc((min(100vw, 1120px) - 96px) * 0.5745 / 8.4)); } } /* 0.5745 = 1.35 / 2.35 hero column */
+.chapter-hero h1 { overflow-wrap: break-word; }
+.hero-code { display: block; font-family: var(--sans); font-weight: 500; font-size: max(.32em, 1rem); letter-spacing: 0; color: var(--teal); margin-bottom: .35em; }
+.hero-logo { display: inline-block; background: #fff; border-radius: var(--r-sm); padding: 6px 10px; margin-bottom: 18px; line-height: 0; }
+.hero-logo img { height: 56px; width: auto; }
+:root[data-theme="dark"] .hero-logo { box-shadow: 0 0 0 1px var(--rule); }
 .synopsis { max-width: var(--measure); color: var(--ink-2); font-size: 1.05rem; }
 
 .facts { display: grid; grid-template-columns: minmax(0,.7fr) minmax(0,.9fr) minmax(0,1.8fr); column-gap: 20px; margin: 28px 0 0; border-top: 1px solid var(--rule); }
@@ -319,10 +325,11 @@ ol.refs li { padding: 8px 0 8px 4px; font-family: var(--serif); }
 .person-links a { overflow-wrap: anywhere; }
 .person { display: flex; gap: 18px; align-items: center; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 20px; }
 .avatar {
-  flex: none; width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center;
+  flex: none; width: 112px; height: 112px; border-radius: 50%; display: grid; place-items: center;
   background: var(--teal-soft); color: var(--teal); font-family: var(--serif); font-weight: 600; font-size: 1.4rem; overflow: hidden;
 }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
+@media (max-width: 480px) { .avatar { width: 84px; height: 84px; } .person { gap: 14px; padding: 16px; } }
 .person-role { font-size: .85rem; color: var(--teal); font-weight: 500; }
 .person-name { font-family: var(--serif); font-weight: 600; font-size: 1.1rem; line-height: 1.3; margin: 2px 0 6px; }
 .person-links { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .9rem; }
@@ -331,6 +338,12 @@ ol.refs li { padding: 8px 0 8px 4px; font-family: var(--serif); }
 .site-footer { border-top: 1px solid var(--rule); padding: 36px 0 48px; margin-top: 24px; font-size: .9rem; color: var(--ink-2); }
 .foot-grid { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px 40px; }
 .foot-dev strong { color: var(--ink); font-weight: 500; }
+.foot-dev { flex: 1 1 320px; }
+.foot-logo { flex: none; background: #fff; border-radius: var(--r-sm); padding: 5px 8px; line-height: 0; align-self: flex-start; }
+.foot-logo img { height: 36px; width: auto; }
+:root[data-theme="dark"] .foot-logo { box-shadow: 0 0 0 1px var(--rule); }
+.live-dot.waiting { background: var(--amber); box-shadow: 0 0 0 4px var(--amber-soft); }
+.readout-first { font-size: .95rem; color: var(--ink-2); margin: 0 0 12px; }
 .foot-meta { color: var(--ink-3); }
 
 /* ---------- Chapter placeholder page ---------- */

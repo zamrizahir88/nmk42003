@@ -33,11 +33,11 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
       <nav class="nav" id="nav" aria-label="Main">
+        <a href="#team">Teaching team</a>
         <a href="#semester">Semester</a>
         <a href="#topics">Topics</a>
         <a href="#schedule">Schedule</a>
         <a href="#assessment">Assessment</a>
-        <a href="#team">Teaching team</a>
       </nav>
       <button class="icon-btn" id="themeBtn" aria-label="Switch to dark mode">
         <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -50,12 +50,26 @@
     <section class="hero">
       <div class="wrap hero-grid">
         <div>
+          <a class="hero-logo" href="https://www.unimap.edu.my" target="_blank" rel="noopener"><img src="assets/img/unimap-logo.png" alt="Universiti Malaysia Perlis (UniMAP)" width="640" height="299"></a>
           <p class="hero-kicker" id="heroKicker"></p>
           <h1><span class="hero-code" id="heroCode"></span><span id="heroName"></span></h1>
           <p class="synopsis" id="synopsis"></p>
           <dl class="facts" id="facts"></dl>
         </div>
         <aside class="readout" id="readout" aria-live="polite"></aside>
+      </div>
+    </section>
+
+    <!-- Team -->
+    <section class="block" id="team">
+      <div class="wrap">
+        <div class="block-head">
+          <div>
+            <h2>Teaching team</h2>
+            <p>For questions about the course, contact your lecturer by email. Course announcements are posted on urlearn and the course Telegram group.</p>
+          </div>
+        </div>
+        <div class="team" id="teamList"></div>
       </div>
     </section>
 
@@ -151,19 +165,6 @@
           <h2>References</h2>
           <ol class="refs" id="refList"></ol>
         </div>
-      </div>
-    </section>
-
-    <!-- Team -->
-    <section class="block" id="team">
-      <div class="wrap">
-        <div class="block-head">
-          <div>
-            <h2>Teaching team</h2>
-            <p>For questions about the course, contact your lecturer by email. Course announcements are posted on urlearn and the course Telegram group.</p>
-          </div>
-        </div>
-        <div class="team" id="teamList"></div>
       </div>
     </section>
   </main>

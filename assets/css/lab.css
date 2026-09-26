@@ -1,13 +1,13 @@
-/* NMK42003 Chapter 5: calculators, circuit diagrams, Bode plots, exercises.
+/* NMK42003 interactive chapters (shared): calculators, diagrams, Bode plots, exercises.
    Builds on the tokens in style.css. */
 
 html { scroll-padding-top: 124px; }
 
-.c5-lead { font-size: 1.08rem; color: var(--ink-2); max-width: var(--measure); margin-top: 14px; }
-.c5-how { color: var(--ink-2); max-width: var(--measure); font-size: .95rem; }
+.lab-lead { font-size: 1.08rem; color: var(--ink-2); max-width: var(--measure); margin-top: 14px; }
+.lab-how { color: var(--ink-2); max-width: var(--measure); font-size: .95rem; }
 
 /* ---------- Sticky section nav ---------- */
-.c5-nav {
+.lab-nav {
   position: -webkit-sticky; position: sticky; top: 60px; z-index: 40;
   background: var(--paper); /* fallback for browsers without color-mix (older Huawei/Android WebViews) */
   background: color-mix(in srgb, var(--paper) 90%, transparent);
@@ -15,14 +15,14 @@ html { scroll-padding-top: 124px; }
   backdrop-filter: saturate(1.2) blur(8px);
   border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
 }
-.c5-nav .wrap { display: flex; align-items: center; gap: 4px; height: 48px; overflow-x: auto; }
-.c5-nav a { color: var(--ink-2); text-decoration: none; font-size: .93rem; padding: 6px 14px; border-radius: 999px; white-space: nowrap; }
-.c5-nav a:hover { color: var(--ink); background: var(--grid); }
-.c5-nav a[aria-current="true"] { background: var(--ink); color: var(--paper); }
+.lab-nav .wrap { display: flex; align-items: center; gap: 4px; height: 48px; overflow-x: auto; }
+.lab-nav a { color: var(--ink-2); text-decoration: none; font-size: .93rem; padding: 6px 14px; border-radius: 999px; white-space: nowrap; }
+.lab-nav a:hover { color: var(--ink); background: var(--grid); }
+.lab-nav a[aria-current="true"] { background: var(--ink); color: var(--paper); }
 
 /* ---------- Groups and circuit sections ---------- */
-.c5-group { padding: 48px 0 24px; }
-.c5-group + .c5-group { border-top: 1px solid var(--rule); }
+.lab-group { padding: 48px 0 24px; }
+.lab-group + .lab-group { border-top: 1px solid var(--rule); }
 .group-head > p { color: var(--ink-2); max-width: var(--measure); margin: 10px 0 0; }
 .toc-chips { list-style: none; padding: 0; margin: 18px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .toc-chips a {
@@ -35,8 +35,8 @@ html { scroll-padding-top: 124px; }
 .circuit h3 { font-size: 1.45rem; margin-bottom: 12px; }
 .circuit h3:focus { outline: none; }
 .circuit h3:focus-visible { outline: 2px solid var(--focus); }
-.circuit.flash .c-grid { animation: c5flash 1.6s ease-out; }
-@keyframes c5flash { from { box-shadow: 0 0 0 6px var(--amber-soft); border-radius: var(--r-md); } }
+.circuit.flash .c-grid { animation: labflash 1.6s ease-out; }
+@keyframes labflash { from { box-shadow: 0 0 0 6px var(--amber-soft); border-radius: var(--r-md); } }
 @media (prefers-reduced-motion: reduce) { .circuit.flash .c-grid { animation: none; } }
 .explain { max-width: var(--measure); color: var(--ink-2); }
 .explain p:last-child { margin-bottom: 0; }
@@ -169,7 +169,31 @@ table.cmp { width: 100%; border-collapse: collapse; font-size: .93rem; min-width
 .btn.ghost:hover { background: var(--teal-soft); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn:disabled:hover { background: var(--surface); }
-.ex-hint { font-size: .85rem; color: var(--ink-3); margin: 6px 0 0; }
+.ex-status { font-size: .88rem; color: var(--ink-2); margin: 8px 0 0; }
+.ex-status strong { color: var(--teal); }
+.ex-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin-bottom: 8px; }
+.ex-head h3 { margin: 0; }
+.ex-badge { font-size: .8rem; font-weight: 600; color: var(--teal); background: var(--teal-soft); border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+.ex.solved { border-color: color-mix(in srgb, var(--teal) 45%, var(--rule)); }
+.ex-hints { display: grid; gap: 8px; margin-top: 12px; }
+.ex-hints:empty { display: none; }
+.callout.hint { background: var(--amber-soft); border-left-color: var(--amber); }
+.callout.hint strong:first-child { color: var(--amber); }
+.ex .q table { border-collapse: collapse; margin: 10px 0; font-variant-numeric: tabular-nums; }
+.ex .q th, .ex .q td { padding: 4px 14px; border-bottom: 1px solid var(--grid); text-align: right; }
+.ex .q th { color: var(--ink-3); font-weight: 500; font-size: .85rem; }
+
+/* ---------- Chapter byline ---------- */
+.authors { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 14px; font-size: .9rem; color: var(--ink-2); }
+.by-label { color: var(--ink-3); font-size: .85rem; }
+.by-person { display: inline-flex; align-items: center; gap: 8px; }
+.by-person img, .by-init { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex: none; }
+.by-init { display: inline-grid; place-items: center; background: var(--teal-soft); color: var(--teal); font-family: var(--serif); font-weight: 600; font-size: .8rem; }
+
+/* ---------- Layout variants ---------- */
+.c-grid.single { grid-template-columns: minmax(0, 1fr); }
+.c-grid.single .inputs { grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); }
+.widget { margin: 20px 0 18px; }
 .ex-working { display: grid; gap: 12px; margin-top: 16px; }
 .ex-working[hidden] { display: none; }
 .ex-working .working { background: var(--paper); }

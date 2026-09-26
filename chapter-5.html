@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/style.css">
-  <link rel="stylesheet" href="assets/css/chapter5.css">
+  <link rel="stylesheet" href="assets/css/lab.css">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b6e6e'/%3E%3Cpath d='M4 20h6l3-10 4 14 3-8h8' fill='none' stroke='white' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
   <script>
     (function () {
@@ -34,11 +34,11 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
       <nav class="nav" id="nav" aria-label="Main">
+        <a href="index.html#team">Teaching team</a>
         <a href="index.html#semester">Semester</a>
         <a href="index.html#topics">Topics</a>
         <a href="index.html#schedule">Schedule</a>
         <a href="index.html#assessment">Assessment</a>
-        <a href="index.html#team">Teaching team</a>
       </nav>
       <button class="icon-btn" id="themeBtn" aria-label="Switch to dark mode">
         <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -50,14 +50,15 @@
     <div class="wrap chapter-hero">
       <a class="crumb" href="index.html#topics">Back to all topics</a>
       <div class="chapter-no">Chapter 5</div>
-      <h1 id="c5Title">Signal Conditioning (Amplifiers &amp; Filters)</h1>
-      <div class="topic-meta" id="c5Meta"></div>
-      <p class="c5-lead" id="c5Summary"></p>
-      <p class="c5-how">Every circuit below is a live calculator. Change a value and the diagram labels, the step-by-step working and the graph update straight away. All op-amps are ideal, and supply rails default to ±15 V.</p>
+      <h1 id="chTitle">Signal Conditioning (Amplifiers &amp; Filters)</h1>
+      <div class="topic-meta" id="chMeta"></div>
+      <div class="authors" id="chAuthors"></div>
+      <p class="lab-lead" id="chSummary"></p>
+      <p class="lab-how">Every circuit below is a live calculator. Change a value and the diagram labels, the step-by-step working and the graph update straight away. All op-amps are ideal, and supply rails default to ±15 V.</p>
       <noscript><div class="callout warn"><strong>JavaScript is off</strong>The calculators on this page need JavaScript. Turn it on, or use the lecture slides on urlearn.</div></noscript>
     </div>
 
-    <nav class="c5-nav" aria-label="Chapter sections">
+    <nav class="lab-nav" aria-label="Chapter sections">
       <div class="wrap">
         <a href="#amplifiers">Amplifiers</a>
         <a href="#filters">Filters</a>
@@ -65,7 +66,7 @@
       </div>
     </nav>
 
-    <section class="c5-group" id="amplifiers" aria-labelledby="amplifiers-h">
+    <section class="lab-group" id="amplifiers" aria-labelledby="amplifiers-h">
       <div class="wrap">
         <div class="group-head">
           <h2 id="amplifiers-h">Amplifiers</h2>
@@ -77,7 +78,7 @@
       </div>
     </section>
 
-    <section class="c5-group" id="filters" aria-labelledby="filters-h">
+    <section class="lab-group" id="filters" aria-labelledby="filters-h">
       <div class="wrap">
         <div class="group-head">
           <h2 id="filters-h">Filters</h2>
@@ -107,14 +108,14 @@
       </div>
     </section>
 
-    <section class="c5-group" id="exercises" aria-labelledby="exercises-h">
+    <section class="lab-group" id="exercises" aria-labelledby="exercises-h">
       <div class="wrap">
         <div class="group-head">
           <h2 id="exercises-h">Exercises</h2>
-          <p>These are the exercises from the lecture slides. Try each one yourself first: type your answers and press <strong>Check answers</strong>. Anything within 2% of the correct value counts. After your first attempt you can reveal the full working, or load the values into the matching calculator above.</p>
+          <p>These are the exercises from the lecture slides. Try each one yourself first: type your answers and press <strong>Check answers</strong>. Anything within 2% of the correct value counts. Each wrong try unlocks a hint, and when all your answers are correct the full working appears so you can check your method. Solved exercises also unlock <strong>Load into calculator</strong>, so you can explore what happens when the values change.</p>
         </div>
         <div id="exList"></div>
-        <nav class="pager" aria-label="Chapters" id="c5Pager"></nav>
+        <nav class="pager" aria-label="Chapters" id="chPager"></nav>
       </div>
     </section>
   </main>
@@ -123,6 +124,7 @@
 
   <script src="assets/js/data.js"></script>
   <script src="assets/js/main.js"></script>
+  <script src="assets/js/lab.js"></script>
   <script src="assets/js/chapter5.js"></script>
 </body>
 </html>

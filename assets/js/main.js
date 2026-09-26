@@ -11,11 +11,24 @@
   function parseYMD(s) { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); }
   const START = parseYMD(COURSE.semesterStart);
 
+  // Today's date in Malaysia (UniMAP time), whatever time zone the student's device is set to.
+  function malaysiaYMD() {
+    try {
+      return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    } catch (e) {
+      const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+  }
   // Add ?today=2026-11-03 to the URL to preview the site as if it were that date.
-  function today() {
-    const q = new URLSearchParams(location.search).get("today");
-    const t = q && /^\d{4}-\d{2}-\d{2}$/.test(q) ? parseYMD(q) : new Date();
-    return new Date(t.getFullYear(), t.getMonth(), t.getDate());
+  const previewDate = (() => { const q = new URLSearchParams(location.search).get("today"); return q && /^\d{4}-\d{2}-\d{2}$/.test(q) ? q : null; })();
+  function today() { return parseYMD(previewDate || malaysiaYMD()); }
+
+  // Roll over to the new day at Malaysian midnight: reload when the date changes (or when the student returns to the tab).
+  if (!previewDate) {
+    const loadedOn = malaysiaYMD();
+    const check = () => { if (malaysiaYMD() !== loadedOn && !document.hidden) location.reload(); };
+    setInterval(check, 60000);
+    document.addEventListener("visibilitychange", check);
   }
   const weekStart = (w) => new Date(START.getTime() + (w - 1) * 7 * DAY);
   const weekEnd = (w) => new Date(weekStart(w).getTime() + 6 * DAY);
@@ -24,7 +37,7 @@
   const range = (w) => `${fmt(weekStart(w))} to ${fmt(weekEnd(w), true)}`;
 
   const T = today();
-  const daysIn = Math.floor((T - START) / DAY);
+  const daysIn = Math.round((T - START) / DAY); // round, not floor: a daylight-saving device clock can shift the difference by an hour
   const curWeek = daysIn < 0 ? 0 : Math.floor(daysIn / 7) + 1; // 0 = before, >TOTAL = after
   let selectedWeek = curWeek >= 1 && curWeek <= TOTAL_WEEKS ? curWeek : 1;
 
@@ -65,6 +78,7 @@
     const d = COURSE.developer;
     footer.innerHTML = `
       <div class="wrap foot-grid">
+        <a class="foot-logo" href="https://www.unimap.edu.my" target="_blank" rel="noopener"><img src="assets/img/unimap-logo.png" alt="Universiti Malaysia Perlis (UniMAP)" width="640" height="299" loading="lazy"></a>
         <div class="foot-dev">
           Developed by <strong>${d.link ? `<a href="${esc(d.link)}" target="_blank" rel="noopener">${esc(d.name)}</a>` : esc(d.name)}</strong>,
           ${esc(d.affiliation)}.
@@ -121,10 +135,11 @@
       const n = -daysIn;
       const w1 = COURSE.weeks[0];
       html = `
-        <div class="readout-label"><span class="live-dot"></span>Semester starts in ${n} day${n === 1 ? "" : "s"}</div>
-        <div class="readout-week">Week 1<small>begins ${esc(fmtLong(START))}</small></div>
-        <div class="readout-topic">${esc(w1.topic)}</div>
-        <ul>${w1.activities.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>
+        <div class="readout-label"><span class="live-dot waiting"></span>Before the semester, today is ${esc(fmt(T, true))}</div>
+        <div class="readout-week">${n} day${n === 1 ? "" : "s"}<small>until Week 1</small></div>
+        <div class="readout-topic">Week 1 begins ${esc(fmtLong(START))}</div>
+        <p class="readout-first">First up: <strong>${esc(w1.topic)}</strong> (${esc(w1.activities.join(", "))})</p>
+        ${chapterLinks(1, "Get ready: ")}
         ${nextBlock(0)}`;
     } else if (curWeek > TOTAL_WEEKS) {
       html = `
@@ -153,9 +168,9 @@
     el.innerHTML = html;
   }
 
-  function chapterLinks(w) {
+  function chapterLinks(w, prefix = "") {
     const ts = COURSE.topics.filter((t) => weekNumbers(t.weeks).includes(w));
-    return ts.length ? `<div class="readout-links">${ts.map((t) => `<a href="${esc(pageOf(t))}">Chapter ${t.no}: ${esc(t.title)}</a>`).join("")}</div>` : "";
+    return ts.length ? `<div class="readout-links">${ts.map((t) => `<a href="${esc(pageOf(t))}">${prefix}Chapter ${t.no}: ${esc(t.title)}</a>`).join("")}</div>` : "";
   }
 
   function nextBlock(fromWeek) {
@@ -211,6 +226,9 @@
       const tx = x0 + ((daysIn + 0.5) / 7) * cw;
       s += `<line class="now" x1="${tx}" x2="${tx}" y1="${yT - 6}" y2="${yB}"/>`;
       s += `<text class="now-label" x="${tx + 5}" y="${yT + 6}">Today</text>`;
+    } else if (daysIn < 0) {
+      s += `<line class="now" x1="${x0}" x2="${x0}" y1="${yT - 6}" y2="${yB}"/>`;
+      s += `<text class="now-label" x="${x0 + 6}" y="${yT + 6}">Today: ${-daysIn} day${daysIn === -1 ? "" : "s"} before Week 1</text>`;
     }
 
     // week labels + click targets
@@ -393,7 +411,7 @@
   function renderTeam() {
     $("#teamList").innerHTML = COURSE.team.map((p) => `
       <div class="person">
-        <div class="avatar">${p.photo ? `<img src="${esc(p.photo)}" alt="">` : esc(p.initials)}</div>
+        <div class="avatar">${p.photo ? `<img src="${esc(p.photo)}" alt="Photo of ${esc(p.name)}" width="112" height="112" loading="lazy">` : esc(p.initials)}</div>
         <div>
           <div class="person-role">${esc(p.role)}</div>
           <div class="person-name">${esc(p.name)}</div>
