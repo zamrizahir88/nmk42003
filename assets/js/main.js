@@ -1,0 +1,443 @@
+/* NMK42003 Instrumentation — site script. Content comes from data.js. */
+(function () {
+  "use strict";
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const DAY = 86400000;
+  const TOTAL_WEEKS = COURSE.weeks.length;
+
+  /* ---------- Dates ---------- */
+  function parseYMD(s) { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); }
+  const START = parseYMD(COURSE.semesterStart);
+
+  // Add ?today=2026-11-03 to the URL to preview the site as if it were that date.
+  function today() {
+    const q = new URLSearchParams(location.search).get("today");
+    const t = q && /^\d{4}-\d{2}-\d{2}$/.test(q) ? parseYMD(q) : new Date();
+    return new Date(t.getFullYear(), t.getMonth(), t.getDate());
+  }
+  const weekStart = (w) => new Date(START.getTime() + (w - 1) * 7 * DAY);
+  const weekEnd = (w) => new Date(weekStart(w).getTime() + 6 * DAY);
+  const fmt = (d, year) => d.toLocaleDateString("en-GB", year ? { day: "numeric", month: "short", year: "numeric" } : { day: "numeric", month: "short" });
+  const fmtLong = (d) => d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const range = (w) => `${fmt(weekStart(w))} to ${fmt(weekEnd(w), true)}`;
+
+  const T = today();
+  const daysIn = Math.floor((T - START) / DAY);
+  const curWeek = daysIn < 0 ? 0 : Math.floor(daysIn / 7) + 1; // 0 = before, >TOTAL = after
+  let selectedWeek = curWeek >= 1 && curWeek <= TOTAL_WEEKS ? curWeek : 1;
+
+  /* ---------- Theme ---------- */
+  const themeBtn = $("#themeBtn");
+  function paintThemeBtn() {
+    const dark = document.documentElement.getAttribute("data-theme") === "dark";
+    if (!themeBtn) return;
+    themeBtn.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
+    $("#themeIcon").innerHTML = dark
+      ? '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'
+      : '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
+  }
+  if (themeBtn) {
+    paintThemeBtn();
+    themeBtn.addEventListener("click", () => {
+      const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      try { localStorage.setItem("nmk-theme", next); } catch (e) {}
+      paintThemeBtn();
+    });
+  }
+
+  /* ---------- Mobile menu ---------- */
+  const menuBtn = $("#menuBtn"), nav = $("#nav");
+  if (menuBtn && nav) {
+    menuBtn.addEventListener("click", () => {
+      const open = nav.classList.toggle("open");
+      menuBtn.setAttribute("aria-expanded", open);
+      menuBtn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+    });
+    nav.addEventListener("click", (e) => { if (e.target.tagName === "A") { nav.classList.remove("open"); menuBtn.setAttribute("aria-expanded", false); } });
+  }
+
+  /* ---------- Footer ---------- */
+  const footer = $("#footer");
+  if (footer) {
+    const d = COURSE.developer;
+    footer.innerHTML = `
+      <div class="wrap foot-grid">
+        <div class="foot-dev">
+          Developed by <strong>${d.link ? `<a href="${esc(d.link)}" target="_blank" rel="noopener">${esc(d.name)}</a>` : esc(d.name)}</strong>,
+          ${esc(d.affiliation)}.
+          <div class="foot-meta">&copy; ${new Date().getFullYear()} ${esc(COURSE.code)} ${esc(COURSE.name)}, ${esc(COURSE.university)}. For teaching and learning use.</div>
+        </div>
+        <div class="foot-meta">${esc(COURSE.session)}<br>Last updated ${esc(COURSE.lastUpdated)}</div>
+      </div>`;
+  }
+
+  /* ---------- Study progress (saved on this device) ---------- */
+  const store = {
+    get() { try { return JSON.parse(localStorage.getItem("nmk-studied") || "[]"); } catch (e) { return []; } },
+    set(v) { try { localStorage.setItem("nmk-studied", JSON.stringify(v)); } catch (e) {} }
+  };
+
+  const statusLabel = { soon: "Coming soon", notes: "Notes available", interactive: "Interactive", building: "Interactive, in progress" };
+
+  /* =====================================================================
+     HOMEPAGE
+     ===================================================================== */
+  if ($("#readout")) {
+    // Hero
+    $("#heroKicker").textContent = `${COURSE.session}, ${COURSE.faculty}, UniMAP`;
+    $("#heroCode").textContent = COURSE.code;
+    $("#heroName").textContent = COURSE.name;
+    $("#synopsis").textContent = COURSE.synopsis;
+    $("#facts").innerHTML = [
+      ["Programme", COURSE.programme],
+      ["Credits", COURSE.credits],
+      ["Mode of delivery", COURSE.mode],
+      ["Prerequisites", COURSE.prerequisites.join(", ")]
+    ].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("");
+
+    renderReadout();
+    renderScope();
+    renderTopics();
+    renderSchedule();
+    renderAssessment();
+    renderLabs();
+    renderTeam();
+  }
+
+  function nextAssessment(fromWeek) {
+    return COURSE.weeks.find((w) => w.w > fromWeek && w.assessments.length);
+  }
+
+  function renderReadout() {
+    const el = $("#readout");
+    const totalDays = TOTAL_WEEKS * 7;
+    let html;
+    if (curWeek === 0) {
+      const n = -daysIn;
+      const w1 = COURSE.weeks[0];
+      html = `
+        <div class="readout-label"><span class="live-dot"></span>Semester starts in ${n} day${n === 1 ? "" : "s"}</div>
+        <div class="readout-week">Week 1<small>begins ${esc(fmtLong(START))}</small></div>
+        <div class="readout-topic">${esc(w1.topic)}</div>
+        <ul>${w1.activities.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>
+        ${nextBlock(0)}`;
+    } else if (curWeek > TOTAL_WEEKS) {
+      html = `
+        <div class="readout-label"><span class="live-dot"></span>Semester complete</div>
+        <div class="readout-week">Finished<small>${esc(COURSE.session)}</small></div>
+        <div class="readout-topic">All teaching and exam weeks have ended.</div>
+        <div class="progress"><span style="width:100%"></span></div>`;
+    } else {
+      const w = COURSE.weeks[curWeek - 1];
+      const items = [
+        ...w.activities.map((a) => `<li>${esc(a)}</li>`),
+        ...w.assessments.map((a) => `<li class="due">${esc(a)} this week</li>`),
+        ...w.notes.map((a) => `<li>${esc(a)}</li>`)
+      ];
+      const pct = Math.min(100, Math.round(((daysIn + 1) / totalDays) * 100));
+      html = `
+        <div class="readout-label"><span class="live-dot"></span>This week, ${esc(fmt(T, true))}</div>
+        <div class="readout-week">Week ${w.w}<small>${esc(range(w.w))}</small></div>
+        <div class="readout-topic">${esc(w.topic)}</div>
+        ${items.length ? `<ul>${items.join("")}</ul>` : ""}
+        ${chapterLinks(w.w)}
+        <div class="progress" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Semester progress"><span style="width:${pct}%"></span></div>
+        <div class="progress-caption">Day ${daysIn + 1} of ${totalDays} in the semester</div>
+        ${nextBlock(curWeek)}`;
+    }
+    el.innerHTML = html;
+  }
+
+  function chapterLinks(w) {
+    const ts = COURSE.topics.filter((t) => weekNumbers(t.weeks).includes(w));
+    return ts.length ? `<div class="readout-links">${ts.map((t) => `<a href="topic.html?ch=${t.no}">Chapter ${t.no}: ${esc(t.title)}</a>`).join("")}</div>` : "";
+  }
+
+  function nextBlock(fromWeek) {
+    const n = nextAssessment(fromWeek);
+    if (!n) return "";
+    return `<div class="readout-next" style="margin-top:14px">Next assessment: <strong>${esc(n.assessments.join(", "))}</strong>, week ${n.w} (${esc(range(n.w))})</div>`;
+  }
+
+  /* ---------- Semester trace (SVG) ---------- */
+
+  function renderScope() {
+    const W = 1000, H = 250, x0 = 52, x1 = 988, yT = 20, yB = 196;
+    const cw = (x1 - x0) / TOTAL_WEEKS;
+    const y = (v) => yB - (v / 100) * (yB - yT);
+    const cx = (w) => x0 + (w - 0.5) * cw;
+
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="scopeTitle scopeDesc">
+      <title id="scopeTitle">Semester trace</title>
+      <desc id="scopeDesc">Cumulative assessment weight across ${TOTAL_WEEKS} weeks, reaching 100 percent after the final examination.</desc>`;
+
+    // shaded non-teaching weeks
+    COURSE.weeks.forEach((wk) => {
+      if (wk.tags.some((t) => ["break", "study", "exam"].includes(t))) {
+        s += `<rect class="shade" x="${x0 + (wk.w - 1) * cw}" y="${yT}" width="${cw}" height="${yB - yT}"/>`;
+      }
+    });
+
+    // graticule
+    for (let v = 0; v <= 100; v += 25) {
+      s += `<line class="gl" x1="${x0}" x2="${x1}" y1="${y(v)}" y2="${y(v)}"/>`;
+      s += `<text class="axis" x="${x0 - 8}" y="${y(v) + 4}" text-anchor="end">${v}%</text>`;
+    }
+    for (let i = 0; i <= TOTAL_WEEKS; i++) s += `<line class="gl" x1="${x0 + i * cw}" x2="${x0 + i * cw}" y1="${yT}" y2="${yB}"/>`;
+
+    // selected column highlight (under trace)
+    s += `<rect class="col sel" id="selCol" x="${x0 + (selectedWeek - 1) * cw}" y="${yT}" width="${cw}" height="${yB - yT}" style="pointer-events:none"/>`;
+
+    // trace
+    let cum = 0, d = `M${x0},${y(0)}`;
+    const pts = [];
+    COURSE.weeks.forEach((wk) => {
+      const prev = cum; cum += wk.weight;
+      d += ` L${cx(wk.w)},${y(prev)} L${cx(wk.w)},${y(cum)}`;
+      if (wk.assessments.length) pts.push({ x: cx(wk.w), y: y(cum), big: wk.weight > 0 });
+    });
+    d += ` L${x1},${y(cum)}`;
+    s += `<path class="trace-fill" d="${d} L${x1},${yB} L${x0},${yB} Z"/>`;
+    s += `<path class="trace" d="${d}"/>`;
+    pts.forEach((p) => { s += p.big ? `<circle class="mk" cx="${p.x}" cy="${p.y}" r="4.5"/>` : `<circle class="mk-ring" cx="${p.x}" cy="${p.y}" r="3.5"/>`; });
+
+    // today cursor
+    if (daysIn >= 0 && curWeek <= TOTAL_WEEKS) {
+      const tx = x0 + ((daysIn + 0.5) / 7) * cw;
+      s += `<line class="now" x1="${tx}" x2="${tx}" y1="${yT - 6}" y2="${yB}"/>`;
+      s += `<text class="now-label" x="${tx + 5}" y="${yT + 6}">Today</text>`;
+    }
+
+    // week labels + click targets
+    s += `<text class="axis" x="${x0 - 8}" y="${yB + 22}" text-anchor="end">Week</text>`;
+    COURSE.weeks.forEach((wk) => {
+      s += `<text class="wk${wk.w === selectedWeek ? " sel" : ""}" data-wk="${wk.w}" x="${cx(wk.w)}" y="${yB + 22}" text-anchor="middle">${wk.w}</text>`;
+    });
+    s += `<text class="axis" x="${cx(9)}" y="${yB + 42}" text-anchor="middle">Mid-term break</text>`;
+    s += `<text class="axis" x="${cx(18)}" y="${yB + 42}" text-anchor="middle">Final exam</text>`;
+    COURSE.weeks.forEach((wk) => {
+      s += `<rect class="col" tabindex="0" role="button" aria-label="Week ${wk.w}: ${esc(wk.topic)}" data-wk="${wk.w}" x="${x0 + (wk.w - 1) * cw}" y="${yT}" width="${cw}" height="${yB - yT + 30}"/>`;
+    });
+    s += `</svg>`;
+
+    const scope = $("#scope");
+    scope.innerHTML = s;
+    const pick = (e) => { const w = e.target.getAttribute("data-wk"); if (w) selectWeek(+w, cw, x0); };
+    scope.addEventListener("click", pick);
+    scope.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(e); } });
+    renderWeekDetail();
+
+    // on narrow screens, scroll the current week into view
+    if (scope.scrollWidth > scope.clientWidth && selectedWeek > 6) {
+      scope.scrollLeft = (selectedWeek / TOTAL_WEEKS) * scope.scrollWidth - scope.clientWidth / 2;
+    }
+  }
+
+  function selectWeek(w, cw, x0) {
+    selectedWeek = w;
+    $("#selCol").setAttribute("x", x0 + (w - 1) * cw);
+    document.querySelectorAll("#scope .wk").forEach((t) => t.classList.toggle("sel", +t.dataset.wk === w));
+    renderWeekDetail();
+  }
+
+  function renderWeekDetail() {
+    const wk = COURSE.weeks[selectedWeek - 1];
+    const chips = [
+      ...wk.activities.map((a) => `<span class="chip">${esc(a)}</span>`),
+      ...wk.assessments.map((a) => `<span class="chip due">${esc(a)}</span>`),
+      ...wk.notes.map((a) => `<span class="chip note">${esc(a)}</span>`)
+    ].join("");
+    const topics = COURSE.topics.filter((t) => weekNumbers(t.weeks).includes(wk.w));
+    $("#weekDetail").innerHTML = `
+      <div>
+        <div class="wd-num">Week ${wk.w}</div>
+        <div class="wd-dates">${esc(range(wk.w))}</div>
+      </div>
+      <div>
+        <div class="wd-topic">${esc(wk.topic)}</div>
+        ${wk.sub ? `<div class="wd-sub">${esc(wk.sub)}</div>` : ""}
+        ${chips ? `<div class="chips">${chips}</div>` : ""}
+        <div class="readout-links" style="margin:12px 0 0">
+          ${topics.map((t) => `<a href="topic.html?ch=${t.no}">Open Chapter ${t.no}</a>`).join("")}
+          <a href="#wk-${wk.w}" data-flash="${wk.w}">View in schedule</a>
+        </div>
+      </div>`;
+    const link = $("#weekDetail [data-flash]");
+    link.addEventListener("click", () => {
+      const row = document.getElementById("wk-" + wk.w);
+      if (row) { row.classList.remove("flash"); void row.offsetWidth; row.classList.add("flash"); }
+    });
+  }
+
+  function weekNumbers(str) {
+    const n = (str.match(/\d+/g) || []).map(Number);
+    if (n.length === 2) { const out = []; for (let i = n[0]; i <= n[1]; i++) out.push(i); return out; }
+    return n;
+  }
+
+  /* ---------- Topics ---------- */
+  function renderTopics() {
+    const list = $("#topicList"), search = $("#topicSearch");
+    const draw = () => {
+      const q = search.value.trim().toLowerCase();
+      const done = store.get();
+      const items = COURSE.topics.filter((t) => !q || (t.title + " " + t.summary).toLowerCase().includes(q));
+      list.innerHTML = items.length ? items.map((t) => {
+        const on = done.includes(t.no);
+        const featured = t.status === "building" || t.status === "interactive";
+        return `
+          <li class="topic${featured ? " featured" : ""}">
+            <div class="topic-no" aria-hidden="true">${t.no}</div>
+            <div>
+              <h3><a href="topic.html?ch=${t.no}"><span class="sr-only">Chapter ${t.no}: </span>${esc(t.title)}</a></h3>
+              <p class="topic-summary">${esc(t.summary)}</p>
+              <div class="topic-meta"><span>${esc(t.weeks)}</span><span class="badge ${t.status}">${statusLabel[t.status]}</span></div>
+            </div>
+            <button class="study-toggle" data-no="${t.no}" aria-pressed="${on}">
+              <span class="box" aria-hidden="true"></span>${on ? "Studied" : "Mark as studied"}
+            </button>
+          </li>`;
+      }).join("") : `<li class="topic-empty">No topics match "${esc(search.value)}". Try a broader word, such as "signal".</li>`;
+      const n = done.length;
+      $("#studySummary").textContent = n
+        ? `You've marked ${n} of ${COURSE.topics.length} topics as studied. This is saved in this browser only.`
+        : "Mark topics as studied to track your revision. This is saved in this browser only.";
+    };
+    search.addEventListener("input", draw);
+    list.addEventListener("click", (e) => {
+      const b = e.target.closest(".study-toggle");
+      if (!b) return;
+      const no = +b.dataset.no; let done = store.get();
+      done = done.includes(no) ? done.filter((x) => x !== no) : [...done, no];
+      store.set(done); draw();
+      const again = list.querySelector(`.study-toggle[data-no="${no}"]`); if (again) again.focus();
+    });
+    draw();
+  }
+
+  /* ---------- Schedule ---------- */
+  function renderSchedule() {
+    const filters = [
+      ["all", "All weeks"], ["lab", "Labs"], ["assess", "Quizzes and test"], ["project", "Mini project"], ["online", "Online lectures"]
+    ];
+    let active = "all";
+    const fEl = $("#filters");
+    const drawFilters = () => {
+      fEl.innerHTML = filters.map(([k, l]) => `<button class="filter" data-f="${k}" aria-pressed="${k === active}">${l}</button>`).join("");
+    };
+    const match = (wk) => active === "all" ? true
+      : active === "assess" ? wk.tags.includes("quiz") || wk.tags.includes("test")
+      : wk.tags.includes(active);
+    const draw = () => {
+      $("#schedBody").innerHTML = COURSE.weeks.filter(match).map((wk) => {
+        const muted = wk.tags.some((t) => ["break", "study", "exam"].includes(t));
+        const cls = [muted ? "muted" : "", wk.w === curWeek ? "current" : ""].join(" ").trim();
+        const right = [
+          ...wk.assessments.map((a) => `<span class="chip due">${esc(a)}</span>`),
+          ...wk.notes.map((a) => `<span class="chip note">${esc(a)}</span>`)
+        ].join(" ");
+        return `<tr id="wk-${wk.w}" class="${cls}">
+          <td><span class="wnum">${wk.w}</span><span class="wdate">${esc(fmt(weekStart(wk.w)))} to ${esc(fmt(weekEnd(wk.w)))}</span></td>
+          <td><span class="t-topic">${esc(wk.topic)}</span>${wk.sub ? `<span class="t-sub">${esc(wk.sub)}</span>` : ""}</td>
+          <td>${esc(wk.activities.join(", "))}</td>
+          <td><div class="chips">${right}</div></td>
+        </tr>`;
+      }).join("") || `<tr><td colspan="4">No weeks match this filter.</td></tr>`;
+    };
+    fEl.addEventListener("click", (e) => {
+      const b = e.target.closest(".filter"); if (!b) return;
+      active = b.dataset.f; drawFilters(); draw();
+    });
+    drawFilters(); draw();
+  }
+
+  /* ---------- Assessment ---------- */
+  function renderAssessment() {
+    const bar = $("#assessBar");
+    const short = { final: "Final exam", lab: "Lab", quiz: "Quiz", project: "Project", test: "Test" };
+    // order: continuous parts first, final last, to match the 60 / 40 caption
+    const parts = [...COURSE.assessment.filter((a) => a.kind !== "final"), ...COURSE.assessment.filter((a) => a.kind === "final")];
+    let sel = parts[parts.length - 1].kind;
+    const draw = () => {
+      bar.innerHTML = parts.map((a) =>
+        `<button class="seg ${a.kind}" style="flex:${a.pct}" data-k="${a.kind}" aria-pressed="${a.kind === sel}" aria-label="${esc(a.name)}, ${a.pct} percent">${a.pct >= 20 ? `${short[a.kind]} ` : ""}${a.pct}%</button>`
+      ).join("");
+      const a = parts.find((p) => p.kind === sel);
+      $("#assessDetail").innerHTML = `<strong>${esc(a.name)}, ${a.pct}%</strong><p>${esc(a.detail)}</p>`;
+    };
+    bar.addEventListener("click", (e) => { const b = e.target.closest(".seg"); if (b) { sel = b.dataset.k; draw(); bar.querySelector(`[data-k="${sel}"]`).focus(); } });
+    draw();
+    const list = document.createElement("ul");
+    list.className = "assess-list";
+    list.innerHTML = parts.map((a) => `<li><span><i class="key seg ${a.kind}" aria-hidden="true"></i>${esc(a.name)}</span><span>${a.pct}%</span></li>`).join("");
+    $("#assessDetail").after(list);
+
+    $("#coList").innerHTML = COURSE.outcomes.map((c) =>
+      `<li class="co"><div class="co-id">${c.id}</div><div><p>${esc(c.text)}</p><div class="co-meta">${esc(c.level)}, mapped to ${esc(c.po)}</div></div></li>`
+    ).join("");
+  }
+
+  /* ---------- Labs, references, team ---------- */
+  function renderLabs() {
+    $("#labList").innerHTML = COURSE.labs.map((l) =>
+      `<li><span>${esc(l.title)}${l.openEnded ? '<span class="oe">Open-ended</span>' : ""}</span><span class="muted">${esc(l.weeks)}</span></li>`
+    ).join("");
+    $("#refList").innerHTML = COURSE.references.map((r) => `<li>${esc(r)}</li>`).join("");
+  }
+
+  function renderTeam() {
+    $("#teamList").innerHTML = COURSE.team.map((p) => `
+      <div class="person">
+        <div class="avatar">${p.photo ? `<img src="${esc(p.photo)}" alt="">` : esc(p.initials)}</div>
+        <div>
+          <div class="person-role">${esc(p.role)}</div>
+          <div class="person-name">${esc(p.name)}</div>
+          <div class="person-links">
+            <a href="mailto:${esc(p.email)}">${esc(p.email)}</a>
+            ${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener">Profile</a>` : ""}
+          </div>
+        </div>
+      </div>`).join("");
+  }
+
+  /* =====================================================================
+     CHAPTER PAGE (topic.html?ch=N)
+     ===================================================================== */
+  const chapterEl = $("#chapter");
+  if (chapterEl) {
+    const no = parseInt(new URLSearchParams(location.search).get("ch"), 10);
+    const t = COURSE.topics.find((x) => x.no === no);
+    if (!t) {
+      document.title = `Chapter not found | ${COURSE.code}`;
+      chapterEl.innerHTML = `<div class="wrap chapter-hero"><a class="crumb" href="index.html#topics">Back to all topics</a>
+        <h1>Chapter not found</h1><p>This link doesn't match a chapter. Choose one from the topic list.</p></div>`;
+      return;
+    }
+    document.title = `Chapter ${t.no}: ${t.title} | ${COURSE.code}`;
+    const wks = weekNumbers(t.weeks).map((n) => COURSE.weeks[n - 1]).filter(Boolean);
+    const prev = COURSE.topics.find((x) => x.no === t.no - 1), next = COURSE.topics.find((x) => x.no === t.no + 1);
+    const notice = t.status === "building"
+      ? `<div class="notice"><h2>Interactive chapter in progress</h2><p>This chapter is being built with live circuit calculators. You'll be able to change component values and see each step of the working.</p>${t.planned ? `<ul>${t.planned.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : ""}</div>`
+      : `<div class="notice"><h2>Notes coming soon</h2><p>This chapter's online notes haven't been published yet. Use the lecture slides on urlearn in the meantime.</p></div>`;
+    chapterEl.innerHTML = `
+      <div class="wrap chapter-hero">
+        <a class="crumb" href="index.html#topics">Back to all topics</a>
+        <div class="chapter-no">Chapter ${t.no}</div>
+        <h1>${esc(t.title)}</h1>
+        <div class="topic-meta"><span>${esc(t.weeks)}${wks[0] ? `, ${esc(fmt(weekStart(wks[0].w)))} to ${esc(fmt(weekEnd(wks[wks.length - 1].w), true))}` : ""}</span><span class="badge ${t.status}">${statusLabel[t.status]}</span></div>
+      </div>
+      <div class="wrap chapter-body">
+        <p style="font-size:1.08rem;color:var(--ink-2)">${esc(t.summary)}</p>
+        ${notice}
+        ${wks.length ? `<h2 style="font-size:1.3rem;margin:32px 0 10px">In the teaching plan</h2>
+          <ul>${wks.map((w) => `<li><strong>Week ${w.w}, ${esc(w.topic)}.</strong> ${esc(w.sub)}${w.activities.length ? ` Activities: ${esc(w.activities.join(", "))}.` : ""}</li>`).join("")}</ul>` : ""}
+        <nav class="pager" aria-label="Chapters">
+          <span>${prev ? `<a href="topic.html?ch=${prev.no}"><small>Previous</small>Chapter ${prev.no}: ${esc(prev.title)}</a>` : ""}</span>
+          <span style="text-align:right">${next ? `<a href="topic.html?ch=${next.no}"><small>Next</small>Chapter ${next.no}: ${esc(next.title)}</a>` : ""}</span>
+        </nav>
+      </div>`;
+  }
+})();
