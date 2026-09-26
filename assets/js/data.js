@@ -93,7 +93,8 @@ const COURSE = {
 
   /* ---------------- Topics (chapters) ----------------
      status: "soon" | "notes" | "interactive" | "building"
-     page:   link to the chapter page (placeholder until built)            */
+     page:   optional link to a built chapter page, e.g. "chapter-5.html".
+             Leave it out to use the placeholder page topic.html?ch=N.      */
   topics: [
     { no: 1, title: "Introduction to Electronic Instrumentation", weeks: "Week 1", status: "soon",
       summary: "Characteristics and types of instruments and indicators, standard units, measurement error, precision, and error limits." },
@@ -103,13 +104,8 @@ const COURSE = {
       summary: "Types and classes of transducers, electrical transducers, and how to select the right one." },
     { no: 4, title: "Transduction Techniques", weeks: "Week 5", status: "soon",
       summary: "Generating electrical signals as voltage, current and PWM, and the signal conditioning techniques that follow." },
-    { no: 5, title: "Signal Conditioning (Amplifiers & Filters)", weeks: "Week 5", status: "building",
-      summary: "Op-amp amplifiers (voltage follower, inverting, non-inverting, differential) and passive and active low-pass, high-pass, band-pass and band-stop filters.",
-      planned: [
-        "Amplifiers: voltage follower, inverting, non-inverting and differential, with step-by-step gain and output calculations",
-        "Passive and active filters: low-pass, high-pass, band-pass and band-stop, with live frequency-response graphs",
-        "Worked exercises from the lecture slides, with a try-first mode before the solution is shown"
-      ] },
+    { no: 5, title: "Signal Conditioning (Amplifiers & Filters)", weeks: "Week 5", status: "interactive", page: "chapter-5.html",
+      summary: "Op-amp amplifiers (voltage follower, inverting, non-inverting, differential) and passive and active low-pass, high-pass, band-pass and band-stop filters." },
     { no: 6, title: "Data Acquisition System", weeks: "Week 6", status: "soon",
       summary: "Converting between analog and digital: binary-weighted and R-2R DACs, ADC resolution, and calculating the digital output." },
     { no: 7, title: "Transducer Calibration", weeks: "Week 7", status: "soon",

@@ -1,0 +1,5 @@
+# Lecturer source slides: never publish
+_source/
+
+# Local tooling
+.claude/

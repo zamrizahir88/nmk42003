@@ -81,6 +81,8 @@
   };
 
   const statusLabel = { soon: "Coming soon", notes: "Notes available", interactive: "Interactive", building: "Interactive, in progress" };
+  // A topic links to its own page once built, otherwise to the placeholder.
+  const pageOf = (t) => t.page || `topic.html?ch=${t.no}`;
 
   /* =====================================================================
      HOMEPAGE
@@ -153,7 +155,7 @@
 
   function chapterLinks(w) {
     const ts = COURSE.topics.filter((t) => weekNumbers(t.weeks).includes(w));
-    return ts.length ? `<div class="readout-links">${ts.map((t) => `<a href="topic.html?ch=${t.no}">Chapter ${t.no}: ${esc(t.title)}</a>`).join("")}</div>` : "";
+    return ts.length ? `<div class="readout-links">${ts.map((t) => `<a href="${esc(pageOf(t))}">Chapter ${t.no}: ${esc(t.title)}</a>`).join("")}</div>` : "";
   }
 
   function nextBlock(fromWeek) {
@@ -261,7 +263,7 @@
         ${wk.sub ? `<div class="wd-sub">${esc(wk.sub)}</div>` : ""}
         ${chips ? `<div class="chips">${chips}</div>` : ""}
         <div class="readout-links" style="margin:12px 0 0">
-          ${topics.map((t) => `<a href="topic.html?ch=${t.no}">Open Chapter ${t.no}</a>`).join("")}
+          ${topics.map((t) => `<a href="${esc(pageOf(t))}">Open Chapter ${t.no}</a>`).join("")}
           <a href="#wk-${wk.w}" data-flash="${wk.w}">View in schedule</a>
         </div>
       </div>`;
@@ -292,7 +294,7 @@
           <li class="topic${featured ? " featured" : ""}">
             <div class="topic-no" aria-hidden="true">${t.no}</div>
             <div>
-              <h3><a href="topic.html?ch=${t.no}"><span class="sr-only">Chapter ${t.no}: </span>${esc(t.title)}</a></h3>
+              <h3><a href="${esc(pageOf(t))}"><span class="sr-only">Chapter ${t.no}: </span>${esc(t.title)}</a></h3>
               <p class="topic-summary">${esc(t.summary)}</p>
               <div class="topic-meta"><span>${esc(t.weeks)}</span><span class="badge ${t.status}">${statusLabel[t.status]}</span></div>
             </div>
@@ -416,6 +418,7 @@
         <h1>Chapter not found</h1><p>This link doesn't match a chapter. Choose one from the topic list.</p></div>`;
       return;
     }
+    if (t.page) { location.replace(t.page); return; } // old topic.html?ch=N links go to the built page
     document.title = `Chapter ${t.no}: ${t.title} | ${COURSE.code}`;
     const wks = weekNumbers(t.weeks).map((n) => COURSE.weeks[n - 1]).filter(Boolean);
     const prev = COURSE.topics.find((x) => x.no === t.no - 1), next = COURSE.topics.find((x) => x.no === t.no + 1);
@@ -435,8 +438,8 @@
         ${wks.length ? `<h2 style="font-size:1.3rem;margin:32px 0 10px">In the teaching plan</h2>
           <ul>${wks.map((w) => `<li><strong>Week ${w.w}, ${esc(w.topic)}.</strong> ${esc(w.sub)}${w.activities.length ? ` Activities: ${esc(w.activities.join(", "))}.` : ""}</li>`).join("")}</ul>` : ""}
         <nav class="pager" aria-label="Chapters">
-          <span>${prev ? `<a href="topic.html?ch=${prev.no}"><small>Previous</small>Chapter ${prev.no}: ${esc(prev.title)}</a>` : ""}</span>
-          <span style="text-align:right">${next ? `<a href="topic.html?ch=${next.no}"><small>Next</small>Chapter ${next.no}: ${esc(next.title)}</a>` : ""}</span>
+          <span>${prev ? `<a href="${esc(pageOf(prev))}"><small>Previous</small>Chapter ${prev.no}: ${esc(prev.title)}</a>` : ""}</span>
+          <span style="text-align:right">${next ? `<a href="${esc(pageOf(next))}"><small>Next</small>Chapter ${next.no}: ${esc(next.title)}</a>` : ""}</span>
         </nav>
       </div>`;
   }

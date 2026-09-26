@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 5: Signal Conditioning (Amplifiers & Filters) | NMK42003 Instrumentation</title>
+  <meta name="description" content="Interactive notes for NMK42003 Instrumentation Chapter 5: op-amp amplifiers and passive and active filters, with live calculators, step-by-step working, Bode plots and exercises.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/chapter5.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b6e6e'/%3E%3Cpath d='M4 20h6l3-10 4 14 3-8h8' fill='none' stroke='white' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("nmk-theme");
+        if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="index.html">
+        <span class="brand-code">NMK42003</span>
+        <span class="brand-name">Instrumentation</span>
+      </a>
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="nav">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <nav class="nav" id="nav" aria-label="Main">
+        <a href="index.html#semester">Semester</a>
+        <a href="index.html#topics">Topics</a>
+        <a href="index.html#schedule">Schedule</a>
+        <a href="index.html#assessment">Assessment</a>
+        <a href="index.html#team">Teaching team</a>
+      </nav>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark mode">
+        <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap chapter-hero">
+      <a class="crumb" href="index.html#topics">Back to all topics</a>
+      <div class="chapter-no">Chapter 5</div>
+      <h1 id="c5Title">Signal Conditioning (Amplifiers &amp; Filters)</h1>
+      <div class="topic-meta" id="c5Meta"></div>
+      <p class="c5-lead" id="c5Summary"></p>
+      <p class="c5-how">Every circuit below is a live calculator. Change a value and the diagram labels, the step-by-step working and the graph update straight away. All op-amps are ideal, and supply rails default to ±15 V.</p>
+      <noscript><div class="callout warn"><strong>JavaScript is off</strong>The calculators on this page need JavaScript. Turn it on, or use the lecture slides on urlearn.</div></noscript>
+    </div>
+
+    <nav class="c5-nav" aria-label="Chapter sections">
+      <div class="wrap">
+        <a href="#amplifiers">Amplifiers</a>
+        <a href="#filters">Filters</a>
+        <a href="#exercises">Exercises</a>
+      </div>
+    </nav>
+
+    <section class="c5-group" id="amplifiers" aria-labelledby="amplifiers-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="amplifiers-h">Amplifiers</h2>
+          <p>An operational amplifier (op-amp) is a differential voltage amplifier with two inputs and one output. It has very high gain, very high input impedance and very low output impedance. Negative feedback through resistors sets a precise gain, so the same chip can buffer, invert, amplify or subtract signals.</p>
+          <p>For every configuration, V<sub>out</sub> = G × V<sub>in</sub>. Only the formula for the gain G changes. A real op-amp can't drive its output past its supply rails. These calculators assume it saturates at ±(V<sub>CC</sub> − 1.5 V) and warn you when the ideal answer goes beyond that.</p>
+          <ul class="toc-chips" id="ampToc"></ul>
+        </div>
+        <div id="ampList"></div>
+      </div>
+    </section>
+
+    <section class="c5-group" id="filters" aria-labelledby="filters-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="filters-h">Filters</h2>
+          <p>A filter passes the frequencies you want and attenuates the rest. In instrumentation, filters remove noise such as mains hum or switching interference before a signal is measured or digitised.</p>
+          <p>The cut-off frequency f<sub>c</sub> is where the output has fallen to 0.707 of the pass-band value, which is −3 dB. <strong>Passive</strong> filters use only R, L and C, so RC and RL passive filters can never make the signal bigger than the input. <strong>Active</strong> filters add an op-amp to provide gain and to stop the load from shifting the response. In these calculators V<sub>in</sub> and V<sub>out</sub> are sine-wave amplitudes. Use peak values for both, or RMS for both.</p>
+          <ul class="toc-chips" id="filtToc"></ul>
+        </div>
+        <div id="filtList"></div>
+
+        <div class="circuit" id="compare">
+          <h3 id="compare-h">Passive vs active filters</h3>
+          <div class="table-wrap">
+            <table class="cmp">
+              <thead><tr><th scope="col"></th><th scope="col">Passive</th><th scope="col">Active</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Components</th><td>Resistors, capacitors and inductors only</td><td>Op-amps, transistors or FETs, plus resistors and capacitors. Usually no inductors.</td></tr>
+                <tr><th scope="row">Power supply</th><td>None needed</td><td>Needs a DC supply</td></tr>
+                <tr><th scope="row">Gain</th><td>At most 1 for RC and RL filters: the output is never larger than the input</td><td>Can be greater than 1, set accurately by the feedback resistors</td></tr>
+                <tr><th scope="row">Effect of the load</th><td>The load changes the filter's characteristics</td><td>The op-amp buffers the output, so the load has little effect</td></tr>
+                <tr><th scope="row">Frequency range</th><td>Works to very high frequencies, around 500 MHz</td><td>Limited by the op-amp, often to about 500 kHz</td></tr>
+                <tr><th scope="row">Size and practicality</th><td>Inductors are bulky, dissipate power and create stray magnetic fields</td><td>Small, light and easy to integrate. Used for Butterworth, Chebyshev and Cauer designs.</td></tr>
+                <tr><th scope="row">Drawbacks</th><td>No gain, and sensitive to loading</td><td>More sensitive to component and environmental changes</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="c5-group" id="exercises" aria-labelledby="exercises-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="exercises-h">Exercises</h2>
+          <p>These are the exercises from the lecture slides. Try each one yourself first: type your answers and press <strong>Check answers</strong>. Anything within 2% of the correct value counts. After your first attempt you can reveal the full working, or load the values into the matching calculator above.</p>
+        </div>
+        <div id="exList"></div>
+        <nav class="pager" aria-label="Chapters" id="c5Pager"></nav>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="footer"></footer>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/chapter5.js"></script>
+</body>
+</html>
