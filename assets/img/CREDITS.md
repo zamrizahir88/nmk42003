@@ -38,3 +38,16 @@ Photos were resized and compressed for the web. Images under CC BY-SA remain und
 | `chapter-2/tuniot-menu.png`, `tuniot-workspace.png`, `tuniot-blink-blocks.png`, `tuniot-blink-code.png`, `blocks-ota.png`, `blocks-led.png`, `blocks-switch.png`, `blocks-pot.png`, `blocks-dac.png`, `blocks-pwm.png` | Lecture material (TUNIOT FOR ESP32 screenshots, easycoding.tn) | NMK42003 teaching team, used with permission. Adverts were removed from the workspace screenshots. |
 
 All Chapter 2 diagrams (DAQ evolution, pinout, circuits, protocol and Wi-Fi diagrams) are original to this site.
+
+## Chapter 3
+
+| File | Source | Credit and licence |
+| --- | --- | --- |
+| `chapter-3/potentiometer.jpg` | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Potentiometer.jpg) | Iainf, [CC BY 2.5](https://creativecommons.org/licenses/by/2.5) |
+| `chapter-3/ntc-thermistor-ice.jpg` | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:MFrey_NTC_Resistor_cold.JPG) | Michael Frey, [CC BY-SA 2.0 DE](https://creativecommons.org/licenses/by-sa/2.0/de/deed.en) |
+| `chapter-3/piezo-discs.jpg` | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Piezo.jpg) | Stefan Riepl, [CC BY-SA 2.0 DE](https://creativecommons.org/licenses/by-sa/2.0/de/deed.en) |
+| `chapter-3/inductive-proximity-switch.jpg` | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Pepperl%2BFuchs_inductive_proximity_switch_3RG4113-3AG33-PF.jpg) | Lucasbosch, [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
+| `chapter-3/relay-module.jpg` | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:SRD-05VDC-SL-C_5V_one-channel_relay_module.jpg) | Suyash Dwivedi, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
+| `chapter-3/sg90-servo.jpg` | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Tower_Pro_SG90_micro_servo_motor.jpg) | Suyash Dwivedi, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
+
+All Chapter 3 animations and diagrams are original SVGs. The microphone system and car parking sensor animations are redrawn in the style of the lecture figures.

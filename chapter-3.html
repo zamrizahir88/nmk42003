@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 3: Transducers, Sensors and Actuators | NMK42003 Instrumentation</title>
+  <meta name="description" content="Animated notes for NMK42003 Instrumentation Chapter 3: transducers, sensor parameters shown in real situations, passive (resistive, capacitive, inductive) and active (piezoelectric, photodiode, Hall effect) sensors, and actuators (LED, DC motor, servo, relay), with calculators and exercises.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/lab.css">
+  <link rel="stylesheet" href="assets/css/chapter3.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b6e6e'/%3E%3Cpath d='M4 20h6l3-10 4 14 3-8h8' fill='none' stroke='white' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("nmk-theme");
+        if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="index.html">
+        <span class="brand-code">NMK42003</span>
+        <span class="brand-name">Instrumentation</span>
+      </a>
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="nav">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <nav class="nav" id="nav" aria-label="Main">
+        <a href="index.html#team">Teaching team</a>
+        <a href="index.html#semester">Semester</a>
+        <a href="index.html#topics">Topics</a>
+        <a href="index.html#schedule">Schedule</a>
+        <a href="index.html#assessment">Assessment</a>
+      </nav>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark mode">
+        <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap chapter-hero">
+      <a class="crumb" href="index.html#topics">Back to all topics</a>
+      <div class="chapter-no">Chapter 3</div>
+      <h1 id="chTitle">Transducers, Sensors and Actuators</h1>
+      <div class="topic-meta" id="chMeta"></div>
+      <div class="authors" id="chAuthors"></div>
+      <p class="lab-lead" id="chSummary"></p>
+      <div class="goals">
+        <h2>By the end of this chapter you can</h2>
+        <ul>
+          <li>explain what transducers, sensors and actuators are, with everyday examples</li>
+          <li>describe the eight electrical sensor parameters and recognise each one in a real situation</li>
+          <li>calculate the output of resistive, capacitive and inductive sensors</li>
+          <li>tell passive sensors from active ones, and explain how common actuators are driven</li>
+        </ul>
+      </div>
+      <p class="lab-how">The pictures on this page move. Press <strong>play</strong> on any animation, change the settings and watch the graph. Tap <strong>Show</strong> on any panel to see the step-by-step working. The exercises at the end check what you have learnt.</p>
+      <noscript><div class="callout warn"><strong>JavaScript is off</strong>The animations on this page need JavaScript. Turn it on, or use the lecture slides on URLearn.</div></noscript>
+    </div>
+
+    <nav class="lab-nav" aria-label="Chapter sections">
+      <div class="wrap">
+        <a href="#intro">Introduction</a>
+        <a href="#params">Sensor parameters</a>
+        <a href="#passive">Passive sensors</a>
+        <a href="#active">Active sensors</a>
+        <a href="#actuators">Actuators</a>
+        <a href="#exercises">Exercises</a>
+      </div>
+    </nav>
+
+    <section class="lab-group" id="intro" aria-labelledby="intro-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="intro-h">Introduction</h2>
+          <p>Transducers convert one form of energy into another. Sensors bring the physical world into a system; actuators act on it.</p>
+          <ul class="toc-chips" id="introToc"></ul>
+        </div>
+        <div id="introList"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="params" aria-labelledby="params-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="params-h">Electrical sensor parameters</h2>
+          <p>Eight things a good sensor must do, each shown in a real situation. Press play, change the settings and watch the graph.</p>
+          <ul class="toc-chips" id="paramsToc"></ul>
+        </div>
+        <div id="paramsList"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="passive" aria-labelledby="passive-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="passive-h">Passive sensors</h2>
+          <p>Resistive, capacitive and inductive sensors change a property of a circuit, so they need an external supply to give an output.</p>
+          <ul class="toc-chips" id="passiveToc"></ul>
+        </div>
+        <div id="passiveList"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="active" aria-labelledby="active-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="active-h">Active sensors</h2>
+          <p>Piezoelectric sensors, photodiodes and Hall effect sensors, and how passive and active sensors compare.</p>
+          <ul class="toc-chips" id="activeToc"></ul>
+        </div>
+        <div id="activeList"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="actuators" aria-labelledby="actuators-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="actuators-h">Actuators</h2>
+          <p>Devices that turn electrical signals into light, motion and switching: LEDs, DC motors, servos and relays.</p>
+          <ul class="toc-chips" id="actToc"></ul>
+        </div>
+        <div id="actList"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="exercises" aria-labelledby="exercises-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="exercises-h">Exercises</h2>
+          <p>Practise with these questions. Choose or type your answers and press <strong>Check answers</strong>. Each wrong try unlocks a hint, and when all your answers are correct the full working appears. Swipe left or right, or use the arrows, to move between exercises.</p>
+        </div>
+        <div id="exList"></div>
+
+        <div class="home-ex" id="home-exercise">
+          <h3>Home exercise: submit on URLearn</h3>
+          <p>Work these out on paper using the methods on this page, then submit your answers on URLearn. The answers are not given here.</p>
+          <ol>
+            <li>A potentiometer has a total resistance of 10 kΩ. The wiper can move between the V<sub>in</sub> terminal and the GND terminal. Assume V<sub>in</sub> = 5 V.
+              <ul><li>If the wiper is exactly at the midpoint, what is the resistance between V<sub>in</sub> and the wiper (R<sub>1</sub>), and between the wiper and GND (R<sub>2</sub>)? What is V<sub>out</sub> at this midpoint?</li>
+              <li>If the wiper is closer to GND, so that R<sub>2</sub> = 1 kΩ, what are R<sub>1</sub> and V<sub>out</sub>?</li></ul></li>
+            <li>A thermistor used as a temperature sensor has a length of 2 m and a cross-sectional area of 0.0005 m². The resistivity of the material is 0.01 Ω·m.
+              <ul><li>Calculate its resistance.</li><li>If the length is doubled with the same cross-sectional area, what is the new resistance?</li></ul></li>
+            <li>A capacitive sensor has two parallel plates of area A = 0.02 m², separated by d = 0.001 m, with a dielectric of relative permittivity ε<sub>r</sub> = 4. Calculate its capacitance.</li>
+            <li>A capacitor has plates of total length L = 10 cm and width w = 5 cm, separated by d = 1 mm (ε<sub>0</sub> = 8.854 × 10<sup>−12</sup> F/m, ε<sub>water</sub> = 80, ε<sub>air</sub> = 1). If the plates are submerged 3 cm in water (x = 3 cm) and the rest is in air, calculate the net capacitance.</li>
+            <li>A simple inductor coil has N = 100 turns, cross-sectional area A = 0.005 m², length l = 0.2 m and a core of relative permeability μ<sub>r</sub> = 200 (μ<sub>0</sub> = 4π × 10<sup>−7</sup> H/m). Calculate its inductance.</li>
+          </ol>
+          <h4 class="sub-h">Think: design task</h4>
+          <p>As a newly hired engineer, you are asked to design an IoT system for fire detection with a fire extinguisher. Suggest sensors that could be included in the system, and actuators that could alert people nearby and put out the fire. Justify which parameters and criteria must be considered when selecting the sensors. Do your research and submit on URLearn.</p>
+        </div>
+
+        <nav class="pager" aria-label="Chapters" id="chPager"></nav>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="footer"></footer>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/lab.js"></script>
+  <script src="assets/js/chapter3.js"></script>
+</body>
+</html>

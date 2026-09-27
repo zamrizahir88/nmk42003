@@ -1,0 +1,309 @@
+/* NMK42003 Chapter 3: animated sensor and actuator scenes. Builds on style.css and lab.css tokens. */
+
+:root {
+  --mag: #d81b7a; --pur: #7a2e8e; --yel: #f5e24a;
+  --water: #5aaee8; --metal: #9aa6b1; --metal-d: #66737f; --sky: #dfe9f1; --grass: #cfe3c4; --road: #7c858d;
+  --lcd: #17261d; --lcd-t: #86f09a; --glass: #8fa3b3; --red: #e2553a; --steel: #8e99a3;
+}
+:root[data-theme="dark"] {
+  --mag: #ec4b9b; --pur: #c58ad8; --yel: #e8d43c;
+  --water: #3d8fc9; --metal: #7f8b96; --metal-d: #a9b5c0; --sky: #1b2a36; --grass: #1f3324; --road: #3a444d;
+  --lcd: #0b140e; --glass: #6f8596; --steel: #6f7a84;
+}
+
+/* ---------- Scene, graph and player layout ---------- */
+.pv { margin: 8px 0 0; }
+.pv-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 14px; align-items: start; margin: 12px 0 8px; }
+.pv-grid.park { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 760px) { .pv-grid, .pv-grid.park { grid-template-columns: minmax(0, 1fr); } }
+.pv-scene, .pv-graph, .scene-box, .extra .plot-box, .lv-graph { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 8px; margin: 0; }
+.pv-graph .plot, .lv-graph .plot, .extra .plot { max-width: none; }
+.scene-box { margin: 12px 0 8px; }
+.scene-box figcaption { font-size: .82rem; color: var(--ink-3); padding: 4px 4px 0; }
+.scene-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.scene { display: block; width: 100%; height: auto; }
+.scene.mic, .scene.tree, .scene.relay { min-width: 420px; max-width: 700px; margin: 0 auto; }
+.pv-read { color: var(--ink-2); max-width: var(--measure); margin: 8px 0 10px; min-height: 3.2em; }
+.legend { font-size: .82rem; color: var(--ink-3); margin: 4px 4px 0; }
+.legend .key { margin-left: 8px; }
+.legend .key:first-child { margin-left: 0; }
+.small-note { font-size: .82rem; color: var(--ink-3); margin: 4px 0 0; }
+.lv-graph { margin-bottom: 8px; }
+.extra { margin: 14px 0; }
+.extra .plot-box { max-width: 560px; }
+.pv-graph .plot, .lv-graph .plot { max-width: 560px; margin: 0 auto; }
+.cmp-grid { margin: 12px 0; }
+
+/* player controls */
+.pl { display: flex; align-items: center; gap: 8px; max-width: 560px; }
+.pl-b { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--rule); background: var(--surface); color: var(--teal); cursor: pointer; display: grid; place-items: center; }
+.pl-b:first-child { background: var(--teal); border-color: var(--teal); color: var(--surface); }
+.pl-b svg { width: 20px; height: 20px; fill: currentColor; }
+.pl-b:hover { border-color: var(--teal); }
+.pl-s { flex: 1; min-width: 0; accent-color: var(--teal); height: 28px; touch-action: pan-y; }
+.pl-t { flex: none; min-width: 5.5em; font-size: .85rem; color: var(--ink-2); font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ---------- Plot additions ---------- */
+.plot .ax { fill: none; stroke: var(--ink-3); stroke-width: 1.2; }
+.plot .axl { fill: var(--ink-2); font: 500 12px var(--sans); }
+.plot .ghost { fill: none; stroke: var(--ink-3); stroke-width: 1.4; opacity: .35; }
+.plot .slope { fill: none; stroke: var(--amber); stroke-width: 1.8; stroke-dasharray: 4 3; }
+.plot .band { opacity: .8; }
+
+/* ---------- Scene parts ---------- */
+.scene text { fill: var(--ink-2); font: 13px var(--sans); }
+.scene .tt { fill: var(--ink); font-weight: 600; font-size: 14px; }
+.scene .small { font-size: 12px; fill: var(--ink-3); }
+.scene .inv { fill: #fff; }
+.scene .lt { fill: #fff; font-weight: 600; }
+.scene .w { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.scene .w.thin { stroke-width: 1.2; }
+.scene .dot { fill: var(--ink); }
+.scene .term { fill: var(--surface); stroke: var(--ink); stroke-width: 1.6; }
+.scene .bx, .scene .meter { fill: var(--surface); stroke: var(--ink); stroke-width: 1.6; }
+.scene .lcd { fill: var(--lcd); }
+.scene .lcdt { fill: var(--lcd-t); font: 600 15px ui-monospace, "Cascadia Code", Consolas, monospace; }
+.scene .lcdt.dim { opacity: .7; font-size: 13px; }
+.scene .glass { fill: none; stroke: var(--glass); stroke-width: 3; stroke-linejoin: round; }
+.scene .water { opacity: .75; }
+.scene .plate { stroke: var(--ink-3); stroke-width: 1; }
+.scene .ice { fill: #e9f6ff; stroke: #9cc7e6; }
+.scene .bubble { fill: none; stroke: #fff; stroke-width: 1.2; opacity: .8; }
+.scene .tube { fill: var(--surface); stroke: var(--ink-3); stroke-width: 1.4; }
+.scene .merc { fill: var(--red); }
+.scene .probe { fill: var(--ink-2); }
+.scene .probe-tip { fill: var(--amber); }
+.scene .cable { fill: none; stroke: var(--ink-3); stroke-width: 2.5; }
+.scene .floor { stroke: var(--ink-3); stroke-width: 2; }
+.scene .sky { fill: var(--sky); }
+.scene .ground { fill: var(--road); }
+.scene .ground.grass, .scene .grass { fill: var(--grass); }
+.scene .dist-box { fill: var(--surface); stroke: var(--rule); }
+.scene .dist-t { fill: var(--ink); font-weight: 600; font-size: 13px; }
+.scene .dist-t.on { fill: var(--amber); }
+
+/* microphone system (colours follow the lecture figure) */
+.mic .mw { fill: none; stroke: var(--mag); stroke-width: 2.4; }
+.mic .ma { fill: none; stroke: var(--pur); stroke-width: 2; stroke-linecap: round; }
+.mic .mic-y { fill: var(--yel); stroke: var(--pur); stroke-width: 2; }
+.mic .mline { stroke: var(--pur); stroke-width: 2; }
+.mic .mfill { fill: var(--pur); }
+.mic .mpulse { fill: var(--mag); }
+.mic .mamp { fill: var(--mag); }
+.mic .mspk { fill: var(--pur); }
+.mic .msep { stroke: var(--ink-3); stroke-width: 1.4; stroke-dasharray: 3 4; }
+.mic .mlab { fill: var(--pur); font-weight: 600; font-size: 15px; }
+.mic .msub { fill: var(--pur); font-size: 13px; }
+.mic .mcap { fill: var(--ink); font-size: 13px; }
+.mic .mred { stroke: var(--danger); stroke-width: 2; fill: none; }
+.mic .mredf { fill: var(--danger); }
+
+/* parking sensors */
+.scene .wall { fill: #4f5962; }
+.scene .car-body { fill: #c9ced3; stroke: #6f7a84; stroke-width: 1.5; }
+.scene .car2-body { fill: #e5692e; stroke: #9c3f14; stroke-width: 1.5; }
+.scene .car-win { fill: #3c4a57; }
+.scene .tail { fill: #d7263d; }
+.scene .car-sens { fill: #222; }
+.scene .tyre { fill: #2b2f33; }
+.scene .hub { fill: #c3c9ce; }
+.scene .ping { fill: none; stroke: #1f7fe0; stroke-width: 3; }
+.scene .echo { fill: none; stroke: #7cc0ff; stroke-width: 2; stroke-dasharray: 5 4; }
+.scene .beep .beep-burst { fill: #f25aa8; stroke: #9c1f63; opacity: .35; }
+.scene .beep.on .beep-burst { opacity: 1; }
+.scene .beep-t { fill: #fff; font-weight: 700; font-size: 11px; }
+.scene .road { stroke: var(--ink-3); stroke-width: 2; }
+.scene .obst rect { fill: #9ba5ad; stroke: #5f6a73; }
+.scene .gap-arrow { fill: none; stroke: #1f96e0; stroke-width: 5; stroke-linejoin: round; }
+.scene .brk { stroke: #d7263d; stroke-width: 2.5; stroke-linecap: round; }
+.scene .warn-snd path { fill: #ffbf1f; stroke: #b07b00; }
+.scene .stage-t { fill: var(--ink); font-weight: 600; font-size: 13px; }
+.stages { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.stages li { font-size: .82rem; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink-3); }
+.stages li.on { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); font-weight: 600; }
+
+/* parameters */
+.param-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 10px; }
+.param-card { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 12px 14px; text-decoration: none; color: var(--ink); }
+.param-card:hover { border-color: var(--teal); }
+.pc-n { grid-row: span 2; width: 28px; height: 28px; border-radius: 50%; background: var(--teal); color: var(--surface); display: grid; place-items: center; font-weight: 600; font-size: .9rem; }
+.param-card span:last-child { color: var(--ink-2); font-size: .9rem; }
+.scene .furnace { fill: #59626a; }
+.scene .flame { fill: #ffcf4a; }
+.scene .tc-a { fill: none; stroke: #e0b400; stroke-width: 3; }
+.scene .tc-b { fill: none; stroke: #d7263d; stroke-width: 3; }
+.scene .tc-j { fill: #fff; stroke: #333; }
+.scene .scale { fill: var(--metal); stroke: var(--metal-d); }
+.scene .person circle { fill: var(--ink-2); }
+.scene .person path { fill: none; stroke: var(--ink-2); stroke-width: 5; stroke-linecap: round; }
+.scene .ampt { fill: var(--teal-soft); stroke: var(--teal); stroke-width: 2; }
+.scene .cablew { fill: none; stroke: var(--ink); stroke-width: 2.5; }
+.scene .shield { fill: var(--teal-soft); stroke: var(--teal); stroke-width: 2; stroke-dasharray: 4 3; }
+.scene .motor { fill: var(--metal); stroke: var(--ink); stroke-width: 1.6; }
+.scene .spark { fill: none; stroke: var(--amber); stroke-width: 2.5; stroke-linejoin: round; }
+.scene .pole { fill: var(--metal-d); }
+.scene .screen { fill: #f6f8f9; stroke: var(--ink-3); }
+.scene .louvre { stroke: var(--ink-3); stroke-width: 1; }
+.scene .cloud { fill: #9aa7b2; }
+.scene .rain { stroke: #4b9be0; stroke-width: 2; stroke-linecap: round; }
+.scene .sun, .scene .sunray { fill: #ffc93d; stroke: #ffc93d; stroke-width: 3; stroke-linecap: round; }
+.scene .hatch { fill: var(--grid); stroke: var(--ink-3); }
+.scene .beam { fill: none; stroke: var(--metal-d); stroke-width: 10; stroke-linecap: round; }
+.scene .beam.hurt { stroke: var(--amber); }
+.scene .gauge { fill: var(--teal); }
+.scene .hook { stroke: var(--ink-3); stroke-width: 2; }
+.scene .weight { fill: #6b7680; }
+.scene .weight.heavy { fill: #3f474f; }
+.scene .wt { fill: #fff; font-weight: 600; }
+
+/* passive sensors */
+.tree .tnode { fill: var(--surface); stroke: var(--teal); stroke-width: 1.8; }
+.tree .tnode.root { fill: var(--ink); stroke: var(--ink); }
+.tree .tnode.root + text { fill: var(--paper); }
+.tree .tnode.pas, .tree .tnode.act { fill: var(--teal-soft); }
+.tree .tnt { fill: var(--ink); font-weight: 600; font-size: 13px; }
+.tree a:hover .tnode, .tree a:focus .tnode { stroke-width: 3; }
+.tree a:focus { outline: none; }
+.tree a:focus-visible .tnode { stroke: var(--focus); }
+.tree .tln { fill: none; stroke: var(--ink-3); stroke-width: 1.5; }
+.ckt .wire3d { fill: #c7864a; stroke: #7a4b20; stroke-width: 1.2; }
+.ckt .wire-end { fill: #e7b27c; stroke: #7a4b20; stroke-width: 1.2; }
+.ckt .strip { fill: none; stroke: var(--grid); stroke-width: 12; stroke-linecap: round; }
+.ckt .strip.r2 { stroke: var(--teal); }
+.ckt .strip.r1 { stroke: var(--amber); }
+.ckt .r1t { fill: var(--amber); }
+.ckt .r2t { fill: var(--teal); }
+.ckt .knob { fill: var(--metal); stroke: var(--ink); stroke-width: 1.6; }
+.ckt .wiper { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; }
+.ckt .small { font-size: 12px; fill: var(--ink-3); }
+.ckt .diel { fill: var(--teal); }
+.ckt .plate-m { fill: var(--metal-d); }
+.ckt .chg { font-weight: 700; font-size: 16px; }
+.scene .chg { font-weight: 700; font-size: 16px; }
+.ckt .chg.p, .scene .chg.p { fill: var(--red); }
+.ckt .chg.m, .scene .chg.m { fill: #1f7fe0; }
+.ckt .tank { fill: none; stroke: var(--glass); stroke-width: 3; }
+.ckt .water2 { fill: var(--water); opacity: .6; }
+.ckt .elec { fill: var(--ink); }
+.ckt .core-iron, .scene .core-iron { fill: var(--steel); stroke: var(--metal-d); }
+.ckt .core-air { fill: none; stroke: var(--ink-3); stroke-dasharray: 4 3; }
+.ckt .coil, .scene .coil { fill: none; stroke: #c7864a; stroke-width: 3; }
+.ckt .coil-back { fill: none; stroke: #c7864a; stroke-width: 1.5; opacity: .45; }
+.scene .coil.pri { stroke: #c7864a; }
+.scene .coil.s1 { stroke: var(--teal); }
+.scene .coil.s2 { stroke: var(--amber); }
+.scene .s1t { fill: var(--teal); font-weight: 600; }
+.scene .s2t { fill: var(--amber); font-weight: 600; }
+.scene .tube { fill: var(--surface); stroke: var(--ink-3); }
+.scene .ac { fill: var(--surface); stroke: var(--ink); stroke-width: 1.6; }
+.scene .osc1 { fill: none; stroke: var(--teal); stroke-width: 1.6; }
+.scene .osc2 { fill: none; stroke: var(--amber); stroke-width: 1.6; }
+.scene .osco { fill: none; stroke: var(--ink); stroke-width: 2.4; }
+.scene .gl { stroke: var(--grid); }
+.scene .sens-body { fill: #c9ced3; stroke: #6f7a84; }
+.scene .thread { stroke: #8a959f; stroke-width: 1; }
+.scene .sens-face { fill: #2aa37a; }
+.scene .led { fill: #5a4a2a; }
+.scene .led.on { fill: #ffb21f; filter: drop-shadow(0 0 6px #ffb21f); }
+.scene .field { fill: none; stroke: var(--teal); stroke-width: 2; }
+.scene .belt { fill: #3a434b; }
+.scene .roller { fill: #9aa6b1; stroke: #3a434b; }
+.scene .target.steel { fill: #7d8892; }
+.scene .target.alu { fill: #cfd6dc; }
+.scene .target.plast { fill: #8cc8ef; }
+.scene .tgt { fill: #1c2a36; }
+.chain { list-style: none; padding: 0; margin: 4px 0 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chain li { font-size: .85rem; padding: 4px 12px; border: 1px solid var(--rule); border-radius: 999px; color: var(--ink-3); }
+.chain li + li::before { content: "→ "; color: var(--ink-3); }
+.chain li.on { border-color: var(--teal); background: var(--teal-soft); color: var(--teal); font-weight: 600; }
+.scene .road2 { fill: var(--road); }
+.scene .lane { stroke: #f1f1f1; stroke-width: 2; stroke-dasharray: 14 10; }
+.scene .stopl { stroke: #f1f1f1; stroke-width: 5; }
+.scene .loopcut { fill: none; stroke: #1c1c1c; stroke-width: 2.5; stroke-dasharray: 5 3; }
+.scene .loopcut.hit { stroke: var(--amber); stroke-width: 3.5; }
+.scene .lead { fill: none; stroke: #1c1c1c; stroke-width: 2; stroke-dasharray: 5 3; }
+.scene .cab { fill: var(--surface); stroke: var(--ink); }
+.scene .car-top rect:first-child { fill: #2f6fb7; stroke: #1a3e66; }
+.scene .car-glass { fill: #a7c4dc; }
+.scene .tl-pole { fill: #4f5962; }
+.scene .tl-box { fill: #22282d; }
+.scene .lamp { fill: #3a3f44; }
+.scene .lamp.r.on { fill: #ff3b30; filter: drop-shadow(0 0 5px #ff3b30); }
+.scene .lamp.g.on { fill: #34d058; filter: drop-shadow(0 0 5px #34d058); }
+
+/* active sensors */
+.scene .pz-plate { fill: #d9a8b4; stroke: #8c5463; }
+.scene .pz-crystal { fill: #3a92d6; }
+.scene .push { fill: none; stroke: #2e9e4a; stroke-width: 5; stroke-linejoin: round; stroke-linecap: round; }
+.scene .bz-case { fill: #25292d; }
+.scene .bz-disc { fill: none; stroke: #c9a34a; stroke-width: 5; stroke-linecap: round; }
+.scene .bz-cer { fill: #f0f0f0; }
+.scene .snd { fill: none; stroke: var(--teal); stroke-width: 2.5; stroke-linecap: round; }
+.ckt .sun { fill: #ffc93d; }
+.ckt .ray { stroke: #ffc93d; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 8 6; }
+.ckt .ray.live { animation: rayflow .9s linear infinite; }
+@keyframes rayflow { to { stroke-dashoffset: -28; } }
+.ckt .iarrow, .scene .iarrow { fill: none; stroke: var(--teal); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.scene .hall { fill: #f2c45a; stroke: #a87a14; }
+.scene .mag-n { fill: #d7263d; }
+.scene .mag-s { fill: #2f6fb7; }
+.scene .carrier { fill: #1f5fbf; }
+
+/* actuators */
+.scene .led-body { stroke: var(--ink); stroke-width: 1.4; }
+.scene .led-glow { filter: blur(6px); }
+.scene .drv { fill: var(--teal-soft); stroke: var(--teal); stroke-width: 1.6; }
+.scene .mot-can { fill: var(--metal); stroke: var(--ink); stroke-width: 1.4; }
+.scene .gearbox { fill: #f2c230; stroke: #8a6a00; }
+.scene .rim { fill: #e8ecef; stroke: #9aa6b1; }
+.scene .spoke { stroke: #8a959f; stroke-width: 4; }
+.scene .wheel { transform-box: view-box; transform-origin: 232px 164px; }
+.scene .wheel.spin { animation: wheelspin 1s linear infinite; }
+@keyframes wheelspin { to { transform: rotate(360deg); } }
+.scene .prot { fill: none; stroke: var(--rule); stroke-width: 14; }
+.scene .tick { stroke: var(--ink-3); stroke-width: 2; }
+.scene .servo { fill: #2f6fb7; }
+.scene .horn { transform-box: view-box; transition: transform .45s cubic-bezier(.3, .8, .4, 1); }
+.scene .horn-p { fill: #f4f6f8; stroke: #8a959f; stroke-width: 1.4; }
+.scene .q { fill: none; stroke: var(--ink); stroke-width: 1.4; }
+.scene .coil-box { fill: var(--surface); stroke: var(--ink); stroke-width: 1.6; transition: fill .2s; }
+.scene .coil-box.on { fill: var(--teal-soft); stroke: var(--teal); }
+.scene .arm { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; transition: all .25s; }
+.scene .arm.on { stroke: var(--teal); }
+.scene .link { fill: none; stroke: var(--ink-3); stroke-width: 1.2; stroke-dasharray: 3 3; }
+.scene .lamp2 { fill: var(--surface); stroke: var(--ink); stroke-width: 1.6; transition: fill .2s; }
+.scene .lamp2.on { fill: #ffd43d; filter: drop-shadow(0 0 8px #ffd43d); }
+.scene .flyloop { fill: none; stroke: var(--amber); stroke-width: 3; stroke-dasharray: 6 4; animation: rayflow .6s linear infinite; }
+.relay-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 8px 0; }
+.relay-state { font-weight: 600; color: var(--ink-2); }
+
+/* criteria cards (same look as Chapter 2) */
+.spec-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); gap: 10px; margin: 12px 0; }
+.spec { background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--teal); border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: 12px 14px; }
+.spec h4 { font-family: var(--serif); font-size: 1rem; margin: 0 0 4px; }
+.spec p { font-size: .93rem; color: var(--ink-2); margin: 0; }
+.home-ex { background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--amber); border-radius: 0 var(--r-md) var(--r-md) 0; padding: 18px 22px; margin-top: 28px; }
+.home-ex h3 { font-size: 1.2rem; margin-bottom: 6px; }
+.home-ex ol { padding-left: 1.3em; color: var(--ink-2); }
+.home-ex li { margin-bottom: 10px; }
+.home-ex ul { margin: 4px 0 0; padding-left: 1.2em; }
+.quiz-host { margin-top: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ckt .ray.live, .scene .flyloop, .scene .wheel.spin { animation: none; }
+  .scene .horn, .scene .arm, .scene .coil-box, .scene .lamp2 { transition: none; }
+}
+.plot .mk { fill: none; }
+.scene .on-road { fill: #eef2f5; font-weight: 600; }
+.scene .lcdt.sm { font-size: 13px; }
+.cmp-grid .photo2.small { max-width: 280px; }
+.lv-graph { max-width: 600px; }
+.pv .slider-field { max-width: 560px; }
+@media (min-width: 561px) { #exercises .ans { grid-template-columns: minmax(0, 22em) minmax(0, 17em) minmax(0, 1fr); } }
+.scene .ac { fill: var(--surface); }
+@media (max-width: 560px) {
+  .pv .plot .axis, .lv-graph .plot .axis, .extra .plot .axis { font-size: 12.5px; }
+  .pv .plot .axl, .lv-graph .plot .axl, .extra .plot .axl { font-size: 13.5px; }
+  .pv .plot .ptlab, .pv .plot .mklab, .pv .plot .reflab { font-size: 13px; }
+  .scene .small { font-size: 13px; }
+}
