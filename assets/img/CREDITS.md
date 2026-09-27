@@ -63,3 +63,6 @@ All Chapter 3 animations and diagrams are original SVGs. The microphone system a
 
 Chapter 4 also reuses `chapter-1/wheatstone-bridge.jpg` and `chapter-1/galvanometer-mechanism.jpg` (credits above). All Chapter 4 animations and circuit diagrams are original SVGs.
 
+## Chapter 6
+
+Chapter 6 reuses `chapter-2/esp-wroom-32.jpg` (credit above). All Chapter 6 animations and circuit diagrams are original SVGs.

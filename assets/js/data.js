@@ -106,8 +106,8 @@ const COURSE = {
       summary: "Transduction circuits for passive sensors (voltage divider, Wheatstone bridge, 555 timing circuit, LC tuned circuit) and for active sensors (the piezo and its resistor)." },
     { no: 5, title: "Signal Conditioning (Amplifiers & Filters)", weeks: "Week 5", status: "interactive", page: "chapter-5.html",
       summary: "Op-amp amplifiers (voltage follower, inverting, non-inverting, differential) and passive and active low-pass, high-pass, band-pass and band-stop filters." },
-    { no: 6, title: "Data Acquisition System", weeks: "Week 6", status: "soon",
-      summary: "Converting between analog and digital: binary-weighted and R-2R DACs, ADC resolution, and calculating the digital output." },
+    { no: 6, title: "Data Conversion and Acquisition", weeks: "Week 6", status: "interactive", page: "chapter-6.html",
+      summary: "Digital codes, binary-weighted and R-2R DACs, counter and successive-approximation ADCs, ADC resolution and output code, and the ESP32's own DAC and ADC." },
     { no: 7, title: "Transducer Calibration", weeks: "Week 7", status: "soon",
       summary: "Calibration setup, calibration techniques, and measurement standards." }
   ],
