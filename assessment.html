@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chapter | NMK42003 Instrumentation</title>
-  <meta name="description" content="Course website for NMK42003 Instrumentation, Semester 1 2026/2027, Faculty of Electronic Engineering & Technology, Universiti Malaysia Perlis.">
+  <title>Assessment and outcomes | NMK42003 Instrumentation</title>
+  <meta name="description" content="Assessment breakdown and course outcomes of NMK42003 Instrumentation.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
@@ -46,7 +46,26 @@
   </header>
 
   <main id="main">
-    <article id="chapter"></article>
+    <div class="wrap page-hero">
+      <a class="crumb" href="index.html">← Home</a>
+      <h1>Assessment and course outcomes</h1>
+      <p class="page-lead">Continuous assessment makes up 60% of your grade and the final examination 40%. Select a part of the bar for details.</p>
+    </div>
+    <section class="page-body">
+      <div class="wrap">
+        <div class="assess-grid">
+          <div>
+            <div class="split"><span>Continuous assessment 60%</span><span>Final examination 40%</span></div>
+            <div class="bar" id="assessBar" role="group" aria-label="Assessment breakdown"></div>
+            <div class="assess-detail" id="assessDetail" aria-live="polite"></div>
+          </div>
+          <div>
+            <h2 class="h3">Course outcomes</h2>
+            <ul class="co-list" id="coList"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer class="site-footer" id="footer"></footer>

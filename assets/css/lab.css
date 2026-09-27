@@ -441,3 +441,6 @@ details.fold[open] .fold-h::after { content: "Hide ▴"; }
   .pv .plot .ptlab, .pv .plot .mklab, .pv .plot .reflab { font-size: 13px; }
   .scene .small { font-size: 13px; }
 }
+.tone-btn { margin: 4px 0 6px; }
+.tone-btn[aria-pressed="true"] { background: var(--teal); color: var(--surface); }
+.tone-i { font-size: 1.1em; }

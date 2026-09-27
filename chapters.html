@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chapter | NMK42003 Instrumentation</title>
-  <meta name="description" content="Course website for NMK42003 Instrumentation, Semester 1 2026/2027, Faculty of Electronic Engineering & Technology, Universiti Malaysia Perlis.">
+  <title>Chapters | NMK42003 Instrumentation</title>
+  <meta name="description" content="All chapters of NMK42003 Instrumentation, with interactive lecture notes.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
@@ -46,7 +46,24 @@
   </header>
 
   <main id="main">
-    <article id="chapter"></article>
+    <div class="wrap page-hero">
+      <a class="crumb" href="index.html">← Home</a>
+      <h1>Chapters</h1>
+      <p class="page-lead">Lecture notes by chapter. Interactive chapters have animations, calculators with step-by-step working, and exercises.</p>
+    </div>
+    <section class="page-body">
+      <div class="wrap">
+        <div class="page-tools">
+          <label class="search">
+            <span class="sr-only">Search chapters</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="search" id="topicSearch" placeholder="Search chapters, e.g. ADC">
+          </label>
+        </div>
+        <ul class="topic-list cards" id="topicList"></ul>
+        <p class="study-summary" id="studySummary"></p>
+      </div>
+    </section>
   </main>
 
   <footer class="site-footer" id="footer"></footer>

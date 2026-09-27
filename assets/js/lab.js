@@ -696,6 +696,37 @@
   const pick = (el, cb) => el.querySelectorAll(".chips-row").forEach((row) => wireChips(row, cb));
 
   /* =====================================================================
+     Sound demos (Web Audio): a looped half-second buffer, quiet by default.
+     tone(host) adds a Play/Stop button to host; call .play(make) where make(sampleRate, seconds)
+     returns a Float32Array. Stops when the host scrolls off screen or the tab is hidden.
+     ===================================================================== */
+  function tone(host, label = "Play the tone") {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    host.innerHTML = AC ? `<button type="button" class="btn ghost tone-btn" aria-pressed="false"><span class="tone-i" aria-hidden="true">♪</span> <span class="tone-l">${label}</span></button>` : `<p class="small-note">Your browser can't play sound here.</p>`;
+    let ctx = null, gain = null, src = null, make = null, want = false;
+    const btn = host.querySelector(".tone-btn");
+    const paint = () => { if (!btn) return; btn.setAttribute("aria-pressed", want); btn.querySelector(".tone-l").textContent = want ? "Stop the tone" : label; };
+    const stopSrc = () => { if (src) { try { src.stop(); } catch (e) {} src.disconnect(); src = null; } };
+    const start = () => {
+      if (!AC || !make) return;
+      if (!ctx) { ctx = new AC(); gain = ctx.createGain(); gain.gain.value = 0.12; gain.connect(ctx.destination); }
+      if (ctx.state === "suspended") ctx.resume();
+      stopSrc();
+      const secs = 0.5, data = make(ctx.sampleRate, secs), buf = ctx.createBuffer(1, data.length, ctx.sampleRate);
+      buf.getChannelData(0).set(data);
+      src = ctx.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(gain); src.start();
+    };
+    const api = {
+      set(fn) { make = fn; if (want) start(); },
+      stop() { want = false; stopSrc(); paint(); }
+    };
+    if (btn) btn.addEventListener("click", () => { want = !want; if (want) start(); else stopSrc(); paint(); });
+    if ("IntersectionObserver" in window) new IntersectionObserver((es) => { if (!es[es.length - 1].isIntersecting && want) api.stop(); }, { threshold: 0 }).observe(host.closest("section") || host);
+    document.addEventListener("visibilitychange", () => { if (document.hidden && want) api.stop(); });
+    return api;
+  }
+
+  /* =====================================================================
      Page setup
      ===================================================================== */
   const pageOf = (t) => t.page || `topic.html?ch=${t.no}`;
@@ -816,6 +847,6 @@
     KINDS, F, D, svgName, step, crossing, stepsHtml, notesHtml,
     BY_ID, update, loadValues, scrollToSection, page,
     shuffle, chips, wireChips, quiz, codeBlock, fold,
-    video, readLink, watch, player, axes, poly, svg, curve, dot, label, mixHex, pvCard, pick
+    video, readLink, watch, player, axes, poly, svg, curve, dot, label, mixHex, pvCard, pick, tone
   };
 })();

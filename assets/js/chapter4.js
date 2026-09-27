@@ -138,7 +138,7 @@
       el.querySelector(".r1-v").textContent = `${S.r1.toFixed(1)} kΩ`; el.querySelector(".r2-v").textContent = `${S.r2.toFixed(1)} kΩ`;
       s1.value = S.r1; s2.value = S.r2;
     };
-    const pl = player(c.pl, el, { dur: 10, hold: 0, still: 2.5, label: "R2 sweep position", draw: (t) => { S.r2 = Math.round((5.5 - 4.5 * Math.cos((TAU * t) / 10)) * 10) / 10; paint(); } });
+    const pl = player(c.pl, el, { dur: 10, hold: 0, still: 2.5, auto: false, label: "R2 sweep position", draw: (t) => { S.r2 = Math.round((5.5 - 4.5 * Math.cos((TAU * t) / 10)) * 10) / 10; paint(); } });
     s1.addEventListener("input", () => { pl.pause(); S.r1 = +s1.value; paint(); });
     s2.addEventListener("input", () => { pl.pause(); S.r2 = +s2.value; paint(); });
   }

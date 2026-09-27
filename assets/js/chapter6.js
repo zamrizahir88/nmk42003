@@ -6,7 +6,7 @@
   "use strict";
 
   const { esc, num, eng, F, D, step, stepsHtml, MINUS, reduceMotion, chips, wireChips, fold, codeBlock,
-    player, axes, poly, svg, curve, dot, label, pvCard, pick } = Lab;
+    player, axes, poly, svg, curve, dot, label, pvCard, pick, tone } = Lab;
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const TAU = 2 * Math.PI;
   const T = (x, y, t, a = "middle", c = "") => `<text x="${x}" y="${y}" text-anchor="${a}"${c ? ` class="${c}"` : ""}>${t}</text>`;
@@ -67,7 +67,7 @@
       read.innerHTML = `${n} bits give 2<sup>${n}</sup> = <strong>${(max + 1).toLocaleString("en")}</strong> combinations, from 0 to ${max.toLocaleString("en")}. ${S.v ? `This word is ${ones.join(" + ")} = <strong>${S.v}</strong>.` : "All bits are 0."} A 1 is sent as a HIGH voltage (3.3 V on the ESP32) and a 0 as 0 V.`;
     };
     row.addEventListener("click", (e) => { const b = e.target.closest(".bit"); if (!b) return; pl.pause(); S.v ^= 1 << +b.dataset.b; paint(); });
-    const pl = player(el.querySelector(".pv-pl"), el, { dur: 16, hold: 1, still: 4.5, label: "Counting position", clock: () => `${S.v}`, draw: (t) => { S.v = Math.round((t / 16) * (S.n <= 8 ? 2 ** S.n - 1 : 255)); paint(); } });
+    const pl = player(el.querySelector(".pv-pl"), el, { dur: 16, hold: 1, still: (16 * 45) / 255, auto: false, label: "Counting position", clock: () => `${S.v}`, draw: (t) => { S.v = Math.round((t / 16) * (S.n <= 8 ? 2 ** S.n - 1 : 255)); paint(); } });
     pick(el, (k) => { S.n = +k; pl.redraw(); });
   }
 
@@ -117,7 +117,7 @@
         step("After the ×1 inverter", "V<sub>out</sub> = +R<sub>f</sub> × ΣD<sub>n</sub>/R<sub>n</sub>", "", `V<sub>out</sub> = ${fxV(-v1)}`)]);
     };
     const fxV = (v) => eng(Math.abs(v) < 1e-12 ? 0 : v, "V");
-    const pl = player(c.pl, el, { dur: 16, hold: 1, still: 11.2, label: "Code counting position", clock: () => `code ${S.code & (2 ** S.n - 1)}`, draw: (t) => { S.code = Math.round((t / 16) * (2 ** S.n - 1)); paint(); } });
+    const pl = player(c.pl, el, { dur: 16, hold: 1, still: (16 * 178) / 255, auto: false, label: "Code counting position", clock: () => `code ${S.code & (2 ** S.n - 1)}`, draw: (t) => { S.code = Math.round((t / 16) * (2 ** S.n - 1)); paint(); } });
     pick(el, (k) => { S.n = +k; pl.redraw(); });
     el.querySelectorAll(".mini-inputs input").forEach((inp) => inp.addEventListener("input", () => { const v = +inp.value; if (v > 0) { S[inp.dataset.k] = inp.dataset.k === "VH" ? v : v * 1e3; paint(); } }));
   }
@@ -133,7 +133,7 @@
 }`;
   function mountSine(el, sec) {
     const S = { bits: 3 };
-    const c = pvCard(el, `<div class="slider-field"><label for="${sec.id}-b">DAC resolution: <strong class="b-v">3 bits (8 levels)</strong></label><input type="range" id="${sec.id}-b" min="2" max="8" step="1" value="3"></div>`, `<div class="cmp-grid">${ESP}</div>${codeBlock(SINE, "ESP32: a sine wave from the DAC")}`);
+    const c = pvCard(el, `<div class="slider-field"><label for="${sec.id}-b">DAC resolution: <strong class="b-v">3 bits (8 levels)</strong></label><input type="range" id="${sec.id}-b" min="2" max="8" step="1" value="3"></div><div class="tone-host"></div><p class="small-note">Play the tone (440 Hz), then move the slider: at 2 or 3 bits it sounds buzzy and harsh, at 8 bits it sounds clean. Keep the volume low.</p>`, `<div class="cmp-grid">${ESP}</div>${codeBlock(SINE, "ESP32: a sine wave from the DAC")}`);
     const sl = el.querySelector(`#${sec.id}-b`);
     const draw = (t) => {
       const lv = 2 ** S.bits, q = (x) => Math.round((0.5 + 0.5 * Math.sin(TAU * x)) * (lv - 1)) / (lv - 1) * 3.3;
@@ -151,7 +151,10 @@
       c.read.innerHTML = `With <strong>${S.bits} bits</strong> the DAC has only <strong>${lv}</strong> output levels, ${(3.3 / (lv - 1)).toFixed(3)} V apart, so the wave is ${S.bits < 5 ? "clearly stepped" : "nearly smooth"}. The ESP32's DAC has 8 bits: 256 levels, 12.9 mV apart. More bits → smaller steps → a closer copy of the analog signal.`;
     };
     const pl = player(c.pl, el, { dur: 8, hold: 0, draw, still: 1, label: "Waveform position" });
-    sl.addEventListener("input", () => { S.bits = +sl.value; el.querySelector(".b-v").textContent = `${S.bits} bits (${2 ** S.bits} levels)`; pl.redraw(); });
+    const snd = tone(el.querySelector(".tone-host"));
+    const wave = () => snd.set((sr, secs) => { const n = Math.round(sr * secs), d = new Float32Array(n), lv = 2 ** S.bits; for (let i = 0; i < n; i++) { const k = Math.floor(((i / sr) * 440 * 64) % 64), code = Math.round((0.5 + 0.5 * Math.sin((TAU * k) / 64)) * (lv - 1)); d[i] = (code / (lv - 1)) * 2 - 1; } return d; });
+    wave();
+    sl.addEventListener("input", () => { S.bits = +sl.value; el.querySelector(".b-v").textContent = `${S.bits} bits (${2 ** S.bits} levels)`; pl.redraw(); wave(); });
   }
 
   /* =====================================================================

@@ -98,29 +98,73 @@
   // A topic links to its own page once built, otherwise to the placeholder.
   const pageOf = (t) => t.page || `topic.html?ch=${t.no}`;
 
+  /* ---------- Active link in the main menu ---------- */
+  const here = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+  document.querySelectorAll("#nav a").forEach((a) => {
+    const target = a.getAttribute("href").toLowerCase();
+    if (target === here || (target === "chapters.html" && /^(chapter-\d+|topic)\.html$/.test(here))) a.setAttribute("aria-current", "page");
+  });
+
   /* =====================================================================
-     HOMEPAGE
+     PAGES: each part renders only where its element exists
+     index.html (hero, team, semester, menu cards), chapters.html, schedule.html,
+     assessment.html, labs.html
      ===================================================================== */
-  if ($("#readout")) {
-    // Hero
-    $("#heroKicker").textContent = `${COURSE.session}, ${COURSE.faculty}, UniMAP`;
+  if ($("#heroCode")) {
+    $("#heroKicker").textContent = `${COURSE.session} · ${COURSE.faculty}`;
     $("#heroCode").textContent = COURSE.code;
     $("#heroName").textContent = COURSE.name;
     $("#synopsis").textContent = COURSE.synopsis;
+    const built = COURSE.topics.filter((t) => t.page).length;
     $("#facts").innerHTML = [
-      ["Programme", COURSE.programme],
-      ["Credits", COURSE.credits],
-      ["Mode of delivery", COURSE.mode],
-      ["Prerequisites", COURSE.prerequisites.join(", ")]
-    ].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("");
+      [COURSE.credits, "credits"], [COURSE.topics.length, "chapters"], [TOTAL_WEEKS, "weeks"], [COURSE.mode, "delivery"]
+    ].map(([v, k]) => `<div class="stat"><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("");
+    $("#heroMeta").innerHTML = `<span>${esc(COURSE.programme)}</span><span>Prerequisites: ${esc(COURSE.prerequisites.join(", "))}</span><span>${built} of ${COURSE.topics.length} chapters interactive</span>`;
+  }
+  if ($("#readout")) renderReadout();
+  if ($("#scope")) renderScope();
+  if ($("#teamList")) renderTeam();
+  if ($("#menuCards")) renderCards();
+  if ($("#topicList")) renderTopics();
+  if ($("#schedBody")) renderSchedule();
+  if ($("#assessBar")) renderAssessment();
+  if ($("#labList")) renderLabs();
 
-    renderReadout();
-    renderScope();
-    renderTopics();
-    renderSchedule();
-    renderAssessment();
-    renderLabs();
-    renderTeam();
+  /* ---------- Menu cards on the homepage ---------- */
+  function renderCards() {
+    const I = {
+      now: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+      book: '<path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19"/><path d="M9 7h6"/>',
+      cal: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+      chart: '<path d="M5 20V11M12 20V5M19 20v-6"/><path d="M3 20h18"/>',
+      flask: '<path d="M9 3h6M10 3v6l-5 8.5A2 2 0 0 0 6.7 21h10.6a2 2 0 0 0 1.7-3.5L14 9V3"/><path d="M7.5 15h9"/>',
+      refs: '<path d="M6 3h12v18l-6-4-6 4z"/>'
+    };
+    let now;
+    if (curWeek === 0) {
+      now = { t: "Getting started", d: `Week 1 begins ${fmt(START, true)}. Get ready with Chapter 1.`, b: `${-daysIn} day${daysIn === -1 ? "" : "s"} to go`, h: pageOf(COURSE.topics[0]) };
+    } else if (curWeek > TOTAL_WEEKS) {
+      now = { t: "Semester complete", d: "All teaching and exam weeks have ended. Revise any chapter.", b: "Finished", h: "chapters.html" };
+    } else {
+      const w = COURSE.weeks[curWeek - 1], ts = COURSE.topics.filter((t) => weekNumbers(t.weeks).includes(curWeek));
+      now = { t: "This week", d: `${w.topic}${ts.length ? `: open Chapter ${ts[0].no}` : ""}.`, b: `Week ${curWeek}`, h: ts.length ? pageOf(ts[0]) : `schedule.html#wk-${curWeek}` };
+    }
+    const built = COURSE.topics.filter((t) => t.page).length;
+    const cards = [
+      { i: "now", t: now.t, d: now.d, b: now.b, h: now.h, hi: true },
+      { i: "book", t: "Chapters", d: "Interactive lecture notes with animations, calculators and exercises.", b: `${COURSE.topics.length} chapters · ${built} interactive`, h: "chapters.html" },
+      { i: "cal", t: "Weekly schedule", d: "Topics, labs and assessments for every week of the semester.", b: `${TOTAL_WEEKS} weeks`, h: "schedule.html" },
+      { i: "chart", t: "Assessment and outcomes", d: "How your grade is made up, and the course outcomes.", b: `${COURSE.assessment.length} parts · ${COURSE.outcomes.length} outcomes`, h: "assessment.html" },
+      { i: "flask", t: "Laboratory experiments", d: "The lab experiments and the weeks they run in.", b: `${COURSE.labs.length} labs`, h: "labs.html#labs" },
+      { i: "refs", t: "References", d: "Textbooks and reference books for the course.", b: `${COURSE.references.length} books`, h: "labs.html#refs" }
+    ];
+    $("#menuCards").innerHTML = cards.map((c) => `
+      <a class="mcard${c.hi ? " now" : ""}" href="${esc(c.h)}">
+        <span class="mc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${I[c.i]}</svg></span>
+        <span class="mc-title">${esc(c.t)}</span>
+        <span class="mc-desc">${esc(c.d)}</span>
+        <span class="mc-foot"><span class="mc-badge">${esc(c.b)}</span><span class="mc-go" aria-hidden="true">→</span></span>
+      </a>`).join("");
   }
 
   function nextAssessment(fromWeek) {
@@ -134,19 +178,19 @@
     if (curWeek === 0) {
       const n = -daysIn;
       const w1 = COURSE.weeks[0];
-      html = `
+      html = `<div class="ro-a">
         <div class="readout-label"><span class="live-dot waiting"></span>Before the semester, today is ${esc(fmt(T, true))}</div>
-        <div class="readout-week">${n} day${n === 1 ? "" : "s"}<small>until Week 1</small></div>
-        <div class="readout-topic">Week 1 begins ${esc(fmtLong(START))}</div>
+        <div class="readout-week">${n} day${n === 1 ? "" : "s"}<small>until Week 1</small></div></div>
+        <div class="ro-b"><div class="readout-topic">Week 1 begins ${esc(fmtLong(START))}</div>
         <p class="readout-first">First up: <strong>${esc(w1.topic)}</strong> (${esc(w1.activities.join(", "))})</p>
         ${chapterLinks(1, "Get ready: ")}
-        ${nextBlock(0)}`;
+        ${nextBlock(0)}</div>`;
     } else if (curWeek > TOTAL_WEEKS) {
-      html = `
+      html = `<div class="ro-a">
         <div class="readout-label"><span class="live-dot"></span>Semester complete</div>
         <div class="readout-week">Finished<small>${esc(COURSE.session)}</small></div>
-        <div class="readout-topic">All teaching and exam weeks have ended.</div>
-        <div class="progress"><span style="width:100%"></span></div>`;
+        <div class="progress"><span style="width:100%"></span></div></div>
+        <div class="ro-b"><div class="readout-topic">All teaching and exam weeks have ended.</div></div>`;
     } else {
       const w = COURSE.weeks[curWeek - 1];
       const items = [
@@ -155,15 +199,15 @@
         ...w.notes.map((a) => `<li>${esc(a)}</li>`)
       ];
       const pct = Math.min(100, Math.round(((daysIn + 1) / totalDays) * 100));
-      html = `
+      html = `<div class="ro-a">
         <div class="readout-label"><span class="live-dot"></span>This week, ${esc(fmt(T, true))}</div>
         <div class="readout-week">Week ${w.w}<small>${esc(range(w.w))}</small></div>
-        <div class="readout-topic">${esc(w.topic)}</div>
+        <div class="progress" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Semester progress"><span style="width:${pct}%"></span></div>
+        <div class="progress-caption">Day ${daysIn + 1} of ${totalDays} in the semester</div></div>
+        <div class="ro-b"><div class="readout-topic">${esc(w.topic)}</div>
         ${items.length ? `<ul>${items.join("")}</ul>` : ""}
         ${chapterLinks(w.w)}
-        <div class="progress" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Semester progress"><span style="width:${pct}%"></span></div>
-        <div class="progress-caption">Day ${daysIn + 1} of ${totalDays} in the semester</div>
-        ${nextBlock(curWeek)}`;
+        ${nextBlock(curWeek)}</div>`;
     }
     el.innerHTML = html;
   }
@@ -282,14 +326,9 @@
         ${chips ? `<div class="chips">${chips}</div>` : ""}
         <div class="readout-links" style="margin:12px 0 0">
           ${topics.map((t) => `<a href="${esc(pageOf(t))}">Open Chapter ${t.no}</a>`).join("")}
-          <a href="#wk-${wk.w}" data-flash="${wk.w}">View in schedule</a>
+          <a href="schedule.html#wk-${wk.w}">View in schedule</a>
         </div>
       </div>`;
-    const link = $("#weekDetail [data-flash]");
-    link.addEventListener("click", () => {
-      const row = document.getElementById("wk-" + wk.w);
-      if (row) { row.classList.remove("flash"); void row.offsetWidth; row.classList.add("flash"); }
-    });
   }
 
   function weekNumbers(str) {
@@ -372,6 +411,8 @@
       active = b.dataset.f; drawFilters(); draw();
     });
     drawFilters(); draw();
+    const m = /^#wk-(\d+)$/.exec(location.hash);
+    if (m) { const row = document.getElementById(`wk-${m[1]}`); if (row) { row.scrollIntoView({ block: "center" }); row.classList.add("flash"); } }
   }
 
   /* ---------- Assessment ---------- */
@@ -432,7 +473,7 @@
     const t = COURSE.topics.find((x) => x.no === no);
     if (!t) {
       document.title = `Chapter not found | ${COURSE.code}`;
-      chapterEl.innerHTML = `<div class="wrap chapter-hero"><a class="crumb" href="index.html#topics">Back to all topics</a>
+      chapterEl.innerHTML = `<div class="wrap chapter-hero"><a class="crumb" href="chapters.html">Back to all chapters</a>
         <h1>Chapter not found</h1><p>This link doesn't match a chapter. Choose one from the topic list.</p></div>`;
       return;
     }
@@ -442,10 +483,10 @@
     const prev = COURSE.topics.find((x) => x.no === t.no - 1), next = COURSE.topics.find((x) => x.no === t.no + 1);
     const notice = t.status === "building"
       ? `<div class="notice"><h2>Interactive chapter in progress</h2><p>This chapter is being built with live circuit calculators. You'll be able to change component values and see each step of the working.</p>${t.planned ? `<ul>${t.planned.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : ""}</div>`
-      : `<div class="notice"><h2>Notes coming soon</h2><p>This chapter's online notes haven't been published yet. Use the lecture slides on urlearn in the meantime.</p></div>`;
+      : `<div class="notice"><h2>Notes coming soon</h2><p>This chapter's online notes haven't been published yet. Use the lecture slides on URLearn in the meantime.</p></div>`;
     chapterEl.innerHTML = `
       <div class="wrap chapter-hero">
-        <a class="crumb" href="index.html#topics">Back to all topics</a>
+        <a class="crumb" href="chapters.html">Back to all chapters</a>
         <div class="chapter-no">Chapter ${t.no}</div>
         <h1>${esc(t.title)}</h1>
         <div class="topic-meta"><span>${esc(t.weeks)}${wks[0] ? `, ${esc(fmt(weekStart(wks[0].w)))} to ${esc(fmt(weekEnd(wks[wks.length - 1].w), true))}` : ""}</span><span class="badge ${t.status}">${statusLabel[t.status]}</span></div>

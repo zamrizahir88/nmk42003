@@ -123,7 +123,7 @@ p { margin: 0 0 1em; }
    Size it to fit its column so it never breaks mid-word; 8.4 leaves room for fallback fonts. */
 #heroName { white-space: nowrap; }
 @media (max-width: 900px) { .hero h1 { font-size: min(5rem, calc((100vw - 48px) / 8.4)); } }
-@media (min-width: 901px) { .hero h1 { font-size: min(5rem, calc((min(100vw, 1120px) - 96px) * 0.5745 / 8.4)); } } /* 0.5745 = 1.35 / 2.35 hero column */
+@media (min-width: 901px) { .hero h1 { font-size: 5rem; } }
 .chapter-hero h1 { overflow-wrap: break-word; }
 .hero-code { display: block; font-family: var(--sans); font-weight: 500; font-size: max(.32em, 1rem); letter-spacing: 0; color: var(--teal); margin-bottom: .35em; }
 .hero-logo { display: inline-block; background: #fff; border-radius: var(--r-sm); padding: 6px 10px; margin-bottom: 18px; line-height: 0; }
@@ -364,3 +364,66 @@ ol.refs li { padding: 8px 0 8px 4px; font-family: var(--serif); }
 .readout-links { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .92rem; margin: 0 0 14px; }
 .assess-list .key { display: inline-block; width: 12px; height: 12px; padding: 0; border-radius: 3px; margin-right: 10px; vertical-align: -1px; cursor: default; }
 @media (max-width: 560px) { .readout-week small { display: block; margin: 8px 0 0; } }
+
+/* ======== Multi-page layout (home + menu cards + section pages) ======== */
+.nav a[aria-current="page"] { color: var(--ink); background: var(--grid); font-weight: 500; }
+
+/* Home hero */
+.hero { padding: 56px 0 48px; }
+.hero .synopsis { font-size: 1.08rem; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 28px 0 0; max-width: 760px; }
+@media (max-width: 560px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 14px 16px; display: flex; flex-direction: column-reverse; }
+.stat dt { font-size: .82rem; color: var(--ink-3); }
+.stat dd { margin: 0 0 2px; font-family: var(--serif); font-size: 1.7rem; font-weight: 600; line-height: 1.1; color: var(--ink); }
+.hero-meta { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 16px 0 0; font-size: .88rem; color: var(--ink-3); max-width: 900px; }
+
+/* This-week strip inside "The semester at a glance" */
+.readout.strip { display: grid; grid-template-columns: minmax(0, 280px) minmax(0, 1fr); gap: 8px 32px; margin-bottom: 16px; padding: 20px 24px; }
+.readout.strip .ro-b { border-left: 1px solid var(--rule); padding-left: 28px; }
+.readout.strip .readout-week { font-size: 2.6rem; margin: 10px 0 2px; }
+.readout.strip .readout-topic { margin-top: 0; }
+@media (max-width: 760px) { .readout.strip { grid-template-columns: minmax(0, 1fr); } .readout.strip .ro-b { border-left: 0; padding-left: 0; border-top: 1px solid var(--rule); padding-top: 12px; } }
+
+/* Menu cards */
+.menu-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 900px) { .menu-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .menu-cards { grid-template-columns: minmax(0, 1fr); } }
+.mcard {
+  display: flex; flex-direction: column; gap: 8px; min-height: 196px; padding: 22px 22px 18px;
+  background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; color: var(--ink); text-decoration: none;
+  box-shadow: 0 1px 2px rgba(21, 36, 58, .04); transition: transform .18s ease, box-shadow .18s ease;
+}
+.mcard:hover, .mcard:focus-visible { transform: translateY(-3px); border-color: var(--teal); box-shadow: 0 10px 24px rgba(21, 36, 58, .10); color: var(--ink); }
+:root[data-theme="dark"] .mcard:hover, :root[data-theme="dark"] .mcard:focus-visible { box-shadow: 0 10px 24px rgba(0, 0, 0, .35); }
+.mc-icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--teal-soft); color: var(--teal); margin-bottom: 4px; }
+.mc-title { font-family: var(--serif); font-weight: 600; font-size: 1.2rem; line-height: 1.25; }
+.mc-desc { color: var(--ink-2); font-size: .93rem; flex: 1; }
+.mc-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.mc-badge { font-size: .8rem; font-weight: 500; color: var(--ink-2); background: var(--grid); border-radius: 999px; padding: 3px 10px; }
+.mc-go { color: var(--teal); font-size: 1.2rem; transition: transform .18s ease; }
+.mcard:hover .mc-go { transform: translateX(4px); }
+.mcard.now { background: var(--teal); border-color: var(--teal); color: #fff; }
+.mcard.now .mc-icon { background: rgba(255, 255, 255, .16); color: #fff; }
+.mcard.now .mc-desc { color: rgba(255, 255, 255, .88); }
+.mcard.now .mc-badge { background: rgba(255, 255, 255, .18); color: #fff; }
+.mcard.now .mc-go { color: #fff; }
+:root[data-theme="dark"] .mcard.now { background: #12403d; border-color: var(--teal); }
+@media (prefers-reduced-motion: reduce) { .mcard, .mc-go { transition: none; } .mcard:hover { transform: none; } .mcard:hover .mc-go { transform: none; } }
+
+/* Section pages */
+.page-hero { padding-top: 40px; padding-bottom: 8px; }
+.page-hero h1 { font-size: clamp(2rem, 1.3rem + 2.4vw, 3rem); margin: 4px 0 10px; }
+.page-lead { color: var(--ink-2); font-size: 1.05rem; max-width: var(--measure); }
+.page-body { padding: 16px 0 48px; }
+.page-tools { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+h2.h3 { font-size: 1.3rem; margin-bottom: 12px; }
+.page-body .two-col > div { scroll-margin-top: 80px; }
+
+/* Chapter cards */
+.topic-list.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 16px; border-top: 0; }
+.topic-list.cards .topic { grid-template-columns: 52px minmax(0, 1fr); background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; padding: 20px; transition: box-shadow .18s ease; }
+.topic-list.cards .topic:hover { border-color: var(--teal); box-shadow: 0 8px 20px rgba(21, 36, 58, .08); }
+.topic-list.cards .topic .study-toggle { grid-column: 2; justify-self: start; margin-top: 4px; }
+.topic-list.cards .topic-empty { grid-column: 1 / -1; }
+.readout.strip .readout-week small { display: block; margin: 6px 0 0; }

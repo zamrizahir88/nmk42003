@@ -7,7 +7,7 @@
   "use strict";
 
   const { esc, num, eng, withUnit, F, step, stepsHtml, MINUS, reduceMotion, chips, wireChips, quiz, codeBlock, fold,
-    video, readLink, watch, player, axes, poly, svg, curve, dot, label, mixHex, pvCard, pick } = Lab;
+    video, readLink, watch, player, axes, poly, svg, curve, dot, label, mixHex, pvCard, pick, tone } = Lab;
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const lerp = (a, b, k) => a + (b - a) * k;
   const smooth = (k) => { k = clamp(k, 0, 1); return k * k * (3 - 2 * k); };
@@ -718,7 +718,7 @@ void loop()
     const S = { k: "sensor", f: 2000 };
     const c = pvCard(el, chips("Use the piezo as", [["sensor", "Sensor: press it"], ["buzzer", "Actuator: buzzer"]], S.k) +
       `<div class="slider-field buzz-f" hidden><label for="${sec.id}-f">Tone frequency: <strong class="f-v">2000 Hz</strong></label><input type="range" id="${sec.id}-f" min="500" max="4000" step="100" value="2000"></div>`,
-      `<div class="buzz-code" hidden>${codeBlock(BUZZ, "ESP32 buzzer with PWM (Arduino core 2.x)")}</div>`);
+      `<div class="buzz-code" hidden><div class="tone-host"></div><p class="small-note">Play the tone and move the frequency slider. A real buzzer driven by a square wave sounds like this. Keep the volume low.</p>${codeBlock(BUZZ, "ESP32 buzzer with PWM (Arduino core 2.x)")}</div>`);
     const fsl = el.querySelector(`#${sec.id}-f`), fv = el.querySelector(".f-v");
     const draw = (t) => {
       let s = "", g;
@@ -747,8 +747,11 @@ void loop()
       c.scene.innerHTML = svg(320, 230, S.k === "sensor" ? "Piezo crystal between two metal plates being pressed" : "Piezo buzzer disc vibrating and sending out sound", s, "scene");
     };
     const pl = player(c.pl, el, { dur: 6, hold: 0, draw, still: 0.8, label: "Piezo animation position" });
-    pick(el, (k) => { S.k = k; el.querySelector(".buzz-f").hidden = k !== "buzzer"; el.querySelector(".buzz-code").hidden = k !== "buzzer"; pl.restart(); });
-    fsl.addEventListener("input", () => { S.f = +fsl.value; fv.textContent = `${S.f} Hz`; pl.redraw(); });
+    const snd = tone(el.querySelector(".tone-host"));
+    const wave = () => snd.set((sr, secs) => { const n = Math.round(sr * secs), d = new Float32Array(n); for (let i = 0; i < n; i++) d[i] = ((i / sr) * S.f) % 1 < 0.5 ? 0.5 : -0.5; return d; });
+    wave();
+    pick(el, (k) => { S.k = k; el.querySelector(".buzz-f").hidden = k !== "buzzer"; el.querySelector(".buzz-code").hidden = k !== "buzzer"; if (k !== "buzzer") snd.stop(); pl.restart(); });
+    fsl.addEventListener("input", () => { S.f = +fsl.value; fv.textContent = `${S.f} Hz`; pl.redraw(); wave(); });
   }
 
   /* =====================================================================
