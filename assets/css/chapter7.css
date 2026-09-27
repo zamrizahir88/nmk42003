@@ -1,0 +1,39 @@
+/* NMK42003 Chapter 7: calibration scenes and the virtual lab. Builds on style.css and lab.css (shared scene, graph and player styles). */
+
+/* five steps */
+.cal-steps { list-style: none; margin: 12px 0 8px; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 900px) { .cal-steps { grid-template-columns: minmax(0, 1fr); } }
+.cal-steps li { display: flex; flex-direction: column; gap: 6px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 14px; }
+.cal-steps li span:last-child { color: var(--ink-2); font-size: .9rem; }
+.cal-steps .cs-n { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--grid); color: var(--ink-2); font-weight: 600; }
+.cal-steps li.on { border-color: var(--teal); background: var(--teal-soft); }
+.cal-steps li.on .cs-n { background: var(--teal); color: var(--surface); }
+
+/* lab */
+.lab-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 8px; }
+.lab-btns .btn[hidden] { display: none; }
+.lab-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px; align-items: start; margin: 8px 0 12px; }
+@media (max-width: 760px) { .lab-row { grid-template-columns: minmax(0, 1fr); } }
+.cal-wrap { border-radius: var(--r-md); }
+table.cal-table { width: 100%; border-collapse: collapse; font-size: .92rem; font-variant-numeric: tabular-nums; }
+.cal-table th { text-align: left; font-weight: 500; color: var(--ink-3); font-size: .8rem; padding: 8px 12px; border-bottom: 1px solid var(--rule); }
+.cal-table td { padding: 7px 12px; border-bottom: 1px solid var(--grid); }
+.cal-table td.bad { color: var(--amber); font-weight: 600; }
+.cal-table td.empty { color: var(--ink-3); padding: 14px 12px; }
+.serial { background: #0f1b24; border: 1px solid var(--rule); border-radius: var(--r-md); overflow: hidden; }
+.serial-h { font-size: .78rem; color: #9fb3c1; padding: 6px 12px; border-bottom: 1px solid #22323f; }
+.serial-o { margin: 0; padding: 10px 12px; color: #86f09a; font: 14px/1.6 ui-monospace, "Cascadia Code", Consolas, monospace; min-height: 130px; }
+.lab-fold .callout { margin-top: 12px; }
+
+/* scene parts */
+.scene .prot { fill: color-mix(in srgb, var(--teal-soft) 60%, transparent); stroke: var(--ink-3); stroke-width: 1.2; }
+.scene .knob { fill: var(--metal); stroke: var(--ink); stroke-width: 1.6; }
+.scene .pointer { stroke: var(--danger); stroke-width: 3; stroke-linecap: round; }
+.scene .esp { fill: #1f3b57; }
+.scene .tt.inv, .scene .small.inv { fill: #fff; }
+.scene .chip { fill: #25292d; }
+.scene .psu { fill: #3a434b; }
+.scene .bottle { fill: none; stroke: var(--glass); stroke-width: 3; }
+.scene .water3 { fill: var(--water); opacity: .6; }
+.scene .wire-w { stroke: #f4f4f4; stroke-width: 3; filter: drop-shadow(0 0 1px #555); }
+.scene .wire-g { stroke: #2e9e4a; stroke-width: 3; }

@@ -66,3 +66,7 @@ Chapter 4 also reuses `chapter-1/wheatstone-bridge.jpg` and `chapter-1/galvanome
 ## Chapter 6
 
 Chapter 6 reuses `chapter-2/esp-wroom-32.jpg` (credit above). All Chapter 6 animations and circuit diagrams are original SVGs.
+
+## Chapter 7
+
+All Chapter 7 animations, circuit sketches and the virtual calibration lab are original SVGs. The calibration data in the lab come from the course textbook (Chapter 7).

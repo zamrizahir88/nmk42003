@@ -108,8 +108,8 @@ const COURSE = {
       summary: "Op-amp amplifiers (voltage follower, inverting, non-inverting, differential) and passive and active low-pass, high-pass, band-pass and band-stop filters." },
     { no: 6, title: "Data Conversion and Acquisition", weeks: "Week 6", status: "interactive", page: "chapter-6.html", exercises: { count: 12, prefix: "c6-" },
       summary: "Digital codes, binary-weighted and R-2R DACs, counter and successive-approximation ADCs, ADC resolution and output code, and the ESP32's own DAC and ADC." },
-    { no: 7, title: "Transducer Calibration", weeks: "Week 7", status: "soon",
-      summary: "Calibration setup, calibration techniques, and measurement standards." }
+    { no: 7, title: "Transducer Calibration", weeks: "Week 7", status: "interactive", page: "chapter-7.html", exercises: { count: 6, prefix: "c7-" },
+      summary: "What calibration is and why, the five calibration steps, and a virtual lab to calibrate a potentiometer angle sensor and a capacitive water-level sensor with the ESP32." }
   ],
 
   /* ---------------- Labs (TLP v1.2, section B4) ---------------- */

@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chapter 6: Data Conversion and Acquisition | NMK42003 Instrumentation</title>
-  <meta name="description" content="Animated notes for NMK42003 Instrumentation Chapter 6: digital codes, binary-weighted and R-2R DACs, counter and successive-approximation ADCs, ADC resolution and output code, and the ESP32 DAC and ADC, with calculators and exercises.">
+  <title>Chapter 7: Transducer Calibration | NMK42003 Instrumentation</title>
+  <meta name="description" content="Animated notes for NMK42003 Instrumentation Chapter 7: what calibration is and why, the five calibration steps, and a virtual calibration lab for a potentiometer angle sensor and a capacitive water-level sensor with the ESP32.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/style.css?v=2609273">
   <link rel="stylesheet" href="assets/css/lab.css?v=2609273">
-  <link rel="stylesheet" href="assets/css/chapter6.css?v=2609273">
+  <link rel="stylesheet" href="assets/css/chapter7.css?v=2609273">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0b6e6e">
   <link rel="apple-touch-icon" href="assets/img/icon-180.png">
@@ -54,30 +54,29 @@
   <main id="main">
     <div class="wrap chapter-hero">
       <a class="crumb" href="chapters.html">Back to all chapters</a>
-      <div class="chapter-no">Chapter 6</div>
-      <h1 id="chTitle">Data Conversion and Acquisition</h1>
+      <div class="chapter-no">Chapter 7</div>
+      <h1 id="chTitle">Transducer Calibration</h1>
       <div class="topic-meta" id="chMeta"></div>
       <div class="authors" id="chAuthors"></div>
       <p class="lab-lead" id="chSummary"></p>
       <div class="goals">
         <h2>By the end of this chapter you can</h2>
         <ul>
-          <li>explain why signals are converted between analog and digital, and write numbers in binary, hexadecimal and BCD</li>
-          <li>design a binary-weighted resistor DAC and calculate its output, and explain the R-2R ladder</li>
-          <li>explain how counter and successive-approximation ADCs work</li>
-          <li>calculate an ADC's resolution and its digital output for a given input voltage</li>
+          <li>explain what calibration is and why sensors must be calibrated</li>
+          <li>follow the five steps of a calibration: reference, table, fit, program, check</li>
+          <li>fit a straight line (or a curve) to calibration data and use it in an ESP32 sketch</li>
+          <li>explain why the whole measuring system is calibrated, not just the sensor</li>
         </ul>
       </div>
-      <p class="lab-how">The pictures on this page move. Press <strong>play</strong> on any animation, tap the bits and switches, and watch the output. Tap <strong>Show</strong> on any panel to see the step-by-step working. The exercises at the end check what you have learnt.</p>
-      <noscript><div class="callout warn"><strong>JavaScript is off</strong>The animations on this page need JavaScript. Turn it on, or use the lecture slides on URLearn.</div></noscript>
+      <p class="lab-how">Try the virtual lab: record readings, fit the line and watch the ESP32 show real units. Tap <strong>Show</strong> on any panel to see the working. The exercises at the end check what you have learnt.</p>
+      <noscript><div class="callout warn"><strong>JavaScript is off</strong>The virtual lab on this page needs JavaScript. Turn it on, or use the textbook chapter on URLearn.</div></noscript>
     </div>
 
     <nav class="lab-nav" aria-label="Chapter sections">
       <div class="wrap">
-        <a href="#intro">Introduction</a>
-        <a href="#codes">Digital codes</a>
-        <a href="#dac">DAC</a>
-        <a href="#adc">ADC</a>
+        <a href="#intro">Calibration</a>
+        <a href="#lab">Virtual lab</a>
+        <a href="#whole">Whole system</a>
         <a href="#exercises">Exercises</a>
       </div>
     </nav>
@@ -85,42 +84,31 @@
     <section class="lab-group" id="intro" aria-labelledby="intro-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="intro-h">Introduction</h2>
-          <p>Why instruments convert signals between analog and digital.</p>
+          <h2 id="intro-h">What is calibration?</h2>
+          <p>Why every sensor needs it, and the steps to do it.</p>
+          <ul class="toc-chips" id="introToc"></ul>
         </div>
         <div id="introList"></div>
       </div>
     </section>
 
-    <section class="lab-group" id="codes" aria-labelledby="codes-h">
+    <section class="lab-group" id="lab" aria-labelledby="lab-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="codes-h">Digital codes</h2>
-          <p>How numbers are written with only 0s and 1s.</p>
+          <h2 id="lab-h">Virtual calibration lab</h2>
+          <p>Calibrate a potentiometer angle sensor and a capacitive water-level sensor, step by step.</p>
         </div>
-        <div id="codesList"></div>
+        <div id="vlabList"></div>
       </div>
     </section>
 
-    <section class="lab-group" id="dac" aria-labelledby="dac-h">
+    <section class="lab-group" id="whole" aria-labelledby="whole-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="dac-h">Digital to analog converter (DAC)</h2>
-          <p>A DAC turns a binary number into an analog voltage. There are two types: the binary-weighted resistor DAC and the R-2R ladder.</p>
-          <ul class="toc-chips" id="dacToc"></ul>
+          <h2 id="whole-h">Calibrating the whole system</h2>
+          <p>Why the ESP32 shows a different voltage from the power supply.</p>
         </div>
-        <div id="dacList"></div>
-      </div>
-    </section>
-
-    <section class="lab-group" id="adc" aria-labelledby="adc-h">
-      <div class="wrap">
-        <div class="group-head">
-          <h2 id="adc-h">Analog to digital converter (ADC)</h2>
-          <p>An ADC measures a voltage and turns it into a binary number.</p>
-          <ul class="toc-chips" id="adcToc"></ul>
-        </div>
-        <div id="adcList"></div>
+        <div id="wholeList"></div>
       </div>
     </section>
 
@@ -131,22 +119,6 @@
           <p>Practise with these questions. Choose or type your answers and press <strong>Check answers</strong>. Each wrong try unlocks a hint, and when all your answers are correct the full working appears. Swipe left or right, or use the arrows, to move between exercises.</p>
         </div>
         <div id="exList"></div>
-
-        <div class="home-ex" id="home-exercise">
-          <h3>Home exercise: submit on URLearn</h3>
-          <p>We will try some of these in class. Work them all out using the methods on this page, then submit your answers on URLearn after class. The answers are not given here.</p>
-          <ol>
-            <li>DAC: the 5-bit binary-weighted DAC below has inputs D<sub>0</sub> to D<sub>4</sub>, with logic HIGH = 5 V.
-              <ul><li>(a) Determine the relationship between R<sub>0</sub>, R<sub>1</sub>, R<sub>2</sub>, R<sub>3</sub> and R<sub>4</sub>, given that R<sub>0</sub> is 640 kΩ.</li>
-              <li>(b) Given that the maximum output voltage is 8 V, calculate R<sub>f</sub>.</li>
-              <li>(c) Determine V<sub>out</sub> if inputs D<sub>0</sub>, D<sub>1</sub> and D<sub>3</sub> are connected to 5 V while the other inputs are connected to ground.</li></ul>
-              <figure class="home-fig" id="homeFigDac"></figure></li>
-            <li>ADC: a microcontroller receives an analog voltage from a sensor and uses a 15-bit ADC with a 10 V reference to convert it into digital form.
-              <ul><li>(i) How small is the voltage change that the ADC can detect?</li>
-              <li>(ii) If the sensor produces 7.94 V, what digital value will the ADC output?</li></ul></li>
-          </ol>
-        </div>
-
         <nav class="pager" aria-label="Chapters" id="chPager"></nav>
       </div>
     </section>
@@ -157,6 +129,6 @@
   <script src="assets/js/data.js?v=2609273"></script>
   <script src="assets/js/main.js?v=2609273"></script>
   <script src="assets/js/lab.js?v=2609273"></script>
-  <script src="assets/js/chapter6.js?v=2609273"></script>
+  <script src="assets/js/chapter7.js?v=2609273"></script>
 </body>
 </html>
