@@ -24,3 +24,17 @@ All diagrams on the site are original SVGs drawn for this course. Photos of equi
 | `chapter-1/pressure-gauge.jpg` | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Pressure_Gauge.jpg) | In Transit, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
 
 Photos were resized and compressed for the web. Images under CC BY-SA remain under the same licence.
+
+## Chapter 2
+
+| File | Source | Credit and licence |
+| --- | --- | --- |
+| `chapter-2/esp-wroom-32.jpg` | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Espressif_ESP-WROOM-32_Wi-Fi_%26_Bluetooth_Module.jpg) | Brian Krent, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
+| `chapter-2/esp8266-01.jpg` | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:ESP8266_E-01_(top).jpg) | Zeptomoon, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
+| `chapter-2/maxsonar.jpg` | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Maxbotix_Ultrasonic-Range-Finder_LV-MaxSonar-EZ0.jpg) | SparkFun, [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
+| `chapter-2/board-blink.jpg`, `usb-power.jpg`, `power-bank.jpg`, `bench-3v3.jpg`, `bench-5v.jpg`, `led-breadboard.jpg`, `pot-breadboard.jpg` | Lecture material | NMK42003 teaching team, used with permission |
+| `chapter-2/device-manager.png`, `ide-board-port.png`, `ide-ota-example.png`, `ide-export-binary.png`, `ota-upload-page.png` | Lecture material (screenshots) | NMK42003 teaching team, used with permission. The PC name in the Device Manager screenshot was removed. |
+
+| `chapter-2/tuniot-menu.png`, `tuniot-workspace.png`, `tuniot-blink-blocks.png`, `tuniot-blink-code.png`, `blocks-ota.png`, `blocks-led.png`, `blocks-switch.png`, `blocks-pot.png`, `blocks-dac.png`, `blocks-pwm.png` | Lecture material (TUNIOT FOR ESP32 screenshots, easycoding.tn) | NMK42003 teaching team, used with permission. Adverts were removed from the workspace screenshots. |
+
+All Chapter 2 diagrams (DAQ evolution, pinout, circuits, protocol and Wi-Fi diagrams) are original to this site.

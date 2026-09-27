@@ -137,6 +137,9 @@
     (s.f ? `<div class="st-f">${s.f}</div>` : "") + (s.s ? `<div class="st-s">${s.s}</div>` : "") +
     `<div class="st-r">${s.r}</div></li>`).join("");
 
+  // Collapsed-by-default panel for step-by-step working
+  const fold = (title, inner, open = false) => `<details class="working fold"${open ? " open" : ""}><summary><span class="fold-t">${title}</span><span class="fold-h" aria-hidden="true"></span></summary><div class="fold-body">${inner}</div></details>`;
+
   const notesHtml = (notes) => notes.map((x) => `<div class="callout ${x.type}"><strong>${x.title}</strong>${x.html}</div>`).join("");
 
   /* =====================================================================
@@ -274,11 +277,13 @@
             ${form}
           </div>`
         : `<div class="c-grid single">${form}</div>`}
-      <div class="working">
+      ${sec.collapse
+        ? `<p class="result fold-result" aria-live="polite"></p>${fold("Step-by-step working", `<ol class="steps"></ol>`)}`
+        : `<div class="working">
         <h4>Step-by-step working</h4>
         <p class="result" aria-live="polite"></p>
         <ol class="steps"></ol>
-      </div>
+      </div>`}
       <div class="warnings"></div>
       ${sec.render ? `<div class="extra"></div>` : ""}
       ${sec.bode ? `<div class="bode"><h4>Frequency response (Bode magnitude plot)</h4><div class="bode-plot"></div>
@@ -441,7 +446,9 @@
       <form class="ex-answers" novalidate>
         ${ex.ans.map((a, i) => `<div class="ans">
           <label for="${ex.id}-a${i}">${a.l}</label>
-          <span class="ans-in"><input id="${ex.id}-a${i}" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">${a.u ? `<span class="unit">${a.u}</span>` : ""}</span>
+          <span class="ans-in">${a.opts
+            ? `<select id="${ex.id}-a${i}"><option value="">Choose…</option>${a.opts.map((o, k) => `<option value="${k}">${esc(o)}</option>`).join("")}</select>`
+            : `<input id="${ex.id}-a${i}" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">`}${a.u ? `<span class="unit">${a.u}</span>` : ""}</span>
           <span class="mark" id="${ex.id}-m${i}"></span>
         </div>`).join("")}
         <div class="ex-actions">
@@ -478,9 +485,10 @@
       e.preventDefault();
       let blank = 0, right = 0;
       ex.ans.forEach((a, i) => {
-        const x = parseAnswer($(`#${ex.id}-a${i}`, el).value), mark = $(`#${ex.id}-m${i}`, el);
-        if (!isFinite(x)) { blank++; mark.className = "mark"; mark.textContent = "Enter a number"; return; }
-        const ok = isRight(a, x);
+        const raw = $(`#${ex.id}-a${i}`, el).value, mark = $(`#${ex.id}-m${i}`, el);
+        const x = a.opts ? (raw === "" ? NaN : +raw) : parseAnswer(raw);
+        if (!isFinite(x)) { blank++; mark.className = "mark"; mark.textContent = a.opts ? "Choose an answer" : "Enter a number"; return; }
+        const ok = a.opts ? x === a.v : isRight(a, x);
         if (ok) right++;
         mark.className = `mark ${ok ? "ok" : "no"}`;
         mark.textContent = ok ? "✓ Correct" : "✗ Not yet";
@@ -511,6 +519,90 @@
     }
     return el;
   }
+
+  /* =====================================================================
+     Shared widgets: chip buttons, quizzes, code blocks
+     ===================================================================== */
+  function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  const chips = (label, opts, cur) =>
+    `<div class="chips-row" role="group" aria-label="${esc(label)}">${opts.map(([v, l]) => `<button type="button" class="chip-btn" data-v="${v}" aria-pressed="${v === cur}">${l}</button>`).join("")}</div>`;
+  function wireChips(row, onPick) {
+    row.addEventListener("click", (e) => {
+      const b = e.target.closest(".chip-btn");
+      if (!b) return;
+      row.querySelectorAll(".chip-btn").forEach((x) => x.setAttribute("aria-pressed", x === b));
+      onPick(b.dataset.v);
+    });
+  }
+
+  // One-question-at-a-time quiz with instant feedback and a score.
+  function quiz(el, qs) {
+    let order, i, score;
+    const start = () => { order = shuffle(qs.map((_, k) => k)); i = 0; score = 0; draw(); };
+    const draw = (focus) => {
+      if (i >= order.length) {
+        const msg = score === qs.length ? "Perfect score!" : score >= qs.length * 0.7 ? "Good work. Try again to get them all." : "Read the section above again, then have another go.";
+        el.innerHTML = `<div class="quiz-card done"><p class="quiz-score">You scored <strong>${score} out of ${qs.length}</strong>. ${msg}</p><button type="button" class="btn" data-again>Try again</button></div>`;
+        el.querySelector("[data-again]").onclick = () => { start(); el.querySelector(".quiz-opt").focus(); };
+        if (focus) el.querySelector("[data-again]").focus();
+        return;
+      }
+      const q = qs[order[i]];
+      let answered = false;
+      el.innerHTML = `<div class="quiz-card">
+        <div class="quiz-top"><span>Question ${i + 1} of ${qs.length}</span><span>Score: ${score}</span></div>
+        <p class="quiz-q">${q.q}</p>
+        <div class="quiz-opts">${q.opts.map((o, k) => `<button type="button" class="quiz-opt" data-k="${k}">${o}</button>`).join("")}</div>
+        <p class="quiz-fb" aria-live="polite"></p>
+        <button type="button" class="btn" data-next hidden>${i + 1 < qs.length ? "Next question" : "See your score"}</button>
+      </div>`;
+      el.querySelectorAll(".quiz-opt").forEach((b) => (b.onclick = () => {
+        if (answered) return;
+        answered = true;
+        const ok = +b.dataset.k === q.a;
+        if (ok) score++;
+        el.querySelectorAll(".quiz-opt").forEach((x) => { x.disabled = true; if (+x.dataset.k === q.a) x.classList.add("right"); });
+        if (!ok) b.classList.add("wrong");
+        el.querySelector(".quiz-fb").innerHTML = `<strong>${ok ? "✓ Correct." : "✗ Not quite."}</strong> ${q.why}`;
+        const nx = el.querySelector("[data-next]");
+        nx.hidden = false; nx.focus();
+        nx.onclick = () => { i++; draw(true); if (i < order.length) el.querySelector(".quiz-opt").focus(); };
+      }));
+    };
+    start();
+  }
+
+
+  // Copyable code block with light syntax colouring (Arduino C++).
+  function codeBlock(src, title = "Arduino sketch") {
+    const KW = /\b(void|if|else|for|while|do|return|const|static|true|false|HIGH|LOW|INPUT|OUTPUT|INPUT_PULLUP)\b/;
+    const TY = /\b(int|long|float|double|char|bool|byte|String|uint8_t|uint16_t|uint32_t|WebServer|WiFiClient)\b/;
+    const html = esc(src).replace(/&#39;/g, "'").split("\n").map((line) => {
+      const ci = line.indexOf("//");
+      const body = ci >= 0 ? line.slice(0, ci) : line, com = ci >= 0 ? `<span class="com">${line.slice(ci)}</span>` : "";
+      let b = body.replace(/(&quot;.*?&quot;)/g, "\u0001$1\u0002");
+      b = b.split(/(\u0001.*?\u0002)/).map((part) => part.startsWith("\u0001") ? `<span class="str">${part.slice(1, -1)}</span>`
+        : part.replace(/^(\s*#\w+.*)$/, '<span class="pp">$1</span>')
+          .replace(new RegExp(KW.source, "g"), '<span class="kw">$1</span>')
+          .replace(new RegExp(TY.source, "g"), '<span class="ty">$1</span>')
+          .replace(/\b([A-Za-z_]\w*)(?=\()/g, (m, n) => (/^(if|for|while)$/.test(n) ? m : `<span class="fn">${n}</span>`))
+          .replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="num">$1</span>')).join("");
+      return b + com;
+    }).join("\n");
+    return `<div class="code"><div class="code-head"><span>${esc(title)}</span><button type="button" class="code-copy" data-code="${esc(src)}">Copy code</button></div><pre><code>${html}</code></pre></div>`;
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest(".code-copy");
+    if (!b) return;
+    const done = () => { b.textContent = "Copied ✓"; setTimeout(() => (b.textContent = "Copy code"), 1500); };
+    const txt = b.dataset.code;
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(done, () => fallback());
+    else fallback();
+    function fallback() {
+      const t = document.createElement("textarea"); t.value = txt; t.setAttribute("readonly", ""); t.style.position = "fixed"; t.style.opacity = "0";
+      document.body.appendChild(t); t.select(); try { document.execCommand("copy"); done(); } catch (err) { b.textContent = "Select and copy"; } t.remove();
+    }
+  });
 
   /* =====================================================================
      Page setup
@@ -564,6 +656,43 @@
     paint();
   }
 
+  // Turn a list of exercises into a swipeable carousel (one exercise at a time) with previous/next and dots.
+  function carousel(track) {
+    const items = [...track.children], nav = document.createElement("div");
+    track.classList.add("ex-track");
+    track.setAttribute("tabindex", "-1");
+    nav.className = "ex-nav";
+    nav.innerHTML = `<button type="button" class="ex-arrow" data-d="-1" aria-label="Previous exercise">‹</button>
+      <span class="ex-count" aria-live="polite"></span>
+      <button type="button" class="ex-arrow" data-d="1" aria-label="Next exercise">›</button>
+      <div class="ex-dots">${items.map((x, i) => `<button type="button" class="ex-dot" data-i="${i}" aria-label="Go to exercise ${i + 1}"></button>`).join("")}</div>`;
+    track.before(nav);
+    let cur = 0;
+    const paint = () => {
+      nav.querySelector(".ex-count").textContent = `Exercise ${cur + 1} of ${items.length}` + (items[cur].classList.contains("solved") ? " ✓" : "");
+      nav.querySelectorAll(".ex-dot").forEach((d, i) => { d.classList.toggle("on", i === cur); d.classList.toggle("done", items[i].classList.contains("solved")); d.setAttribute("aria-current", i === cur); });
+      nav.querySelector('[data-d="-1"]').disabled = cur === 0;
+      nav.querySelector('[data-d="1"]').disabled = cur === items.length - 1;
+      fit();
+    };
+    // The track takes the height of the exercise in view, so a short exercise leaves no empty gap.
+    const fit = () => { track.style.height = items[cur].offsetHeight + "px"; };
+    if (window.ResizeObserver) { const ro = new ResizeObserver(fit); items.forEach((x) => ro.observe(x)); }
+    const go = (i) => { cur = Math.max(0, Math.min(items.length - 1, i)); track.scrollLeft = items[cur].offsetLeft - track.offsetLeft; paint(); }; // CSS scroll-behavior animates this
+    const nearest = () => { let best = 0, d = Infinity; items.forEach((x, k) => { const dd = Math.abs(x.offsetLeft - track.offsetLeft - track.scrollLeft); if (dd < d) { d = dd; best = k; } }); return best; };
+    nav.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; go(b.dataset.i !== undefined ? +b.dataset.i : cur + +b.dataset.d); });
+    let t;
+    const settle = () => { const i = nearest(); if (i !== cur) { cur = i; paint(); } };
+    track.addEventListener("scroll", () => { clearTimeout(t); t = setTimeout(settle, 80); }, { passive: true });
+    track.addEventListener("scrollend", settle);
+    if (window.IntersectionObserver) { // also notice swipes through visibility, in case scroll events are throttled
+      const io = new IntersectionObserver((es) => es.forEach((en) => { if (en.isIntersecting && en.intersectionRatio > 0.6) { const i = items.indexOf(en.target); if (i !== cur) { cur = i; paint(); } } }), { root: track, threshold: [0.6] });
+      items.forEach((x) => io.observe(x));
+    }
+    track.addEventListener("submit", () => setTimeout(paint, 50));
+    paint();
+  }
+
   /* Lab.page({
        topic: 5,
        sections: [...],                       // calculators and widgets, each with a group key
@@ -573,6 +702,7 @@
   function page(cfg) {
     const topic = COURSE.topics.find((t) => t.no === cfg.topic);
     renderHero(topic);
+    if (cfg.collapseWorking) cfg.sections.forEach((s) => { s.collapse = true; });
     cfg.groups.forEach((g) => {
       const secs = cfg.sections.filter((s) => s.group === g.key);
       secs.forEach((s) => $(g.list).appendChild(buildSection(s)));
@@ -580,6 +710,7 @@
     });
     cfg.sections.forEach(update);
     (cfg.exercises || []).forEach((ex) => $(cfg.exList || "#exList").appendChild(buildExercise(ex)));
+    if (cfg.exerciseCarousel && (cfg.exercises || []).length > 1) carousel($(cfg.exList || "#exList"));
     trackNav();
     let resizeTimer;
     addEventListener("resize", () => {
@@ -592,6 +723,7 @@
     $, esc, TAU, MINUS, reduceMotion, store,
     num, eng, withUnit, P, PN, dB, fmtDb, same, n,
     KINDS, F, D, svgName, step, crossing, stepsHtml, notesHtml,
-    BY_ID, update, loadValues, scrollToSection, page
+    BY_ID, update, loadValues, scrollToSection, page,
+    shuffle, chips, wireChips, quiz, codeBlock, fold
   };
 })();

@@ -98,7 +98,7 @@ const COURSE = {
   topics: [
     { no: 1, title: "Introduction to Electronic Instrumentation", weeks: "Week 1", status: "interactive", page: "chapter-1.html",
       summary: "Characteristics and types of instruments and indicators, standard units, measurement error, precision, and error limits." },
-    { no: 2, title: "Embedded Controller", weeks: "Weeks 2 to 3", status: "soon",
+    { no: 2, title: "Embedded Controller", weeks: "Weeks 2 to 3", status: "interactive", page: "chapter-2.html",
       summary: "Types of embedded controllers, interfacing through digital I/O, analog, UART, SPI and I²C, Bluetooth and WiFi connectivity, and programming tools." },
     { no: 3, title: "Transducers", weeks: "Week 4", status: "soon",
       summary: "Types and classes of transducers, electrical transducers, and how to select the right one." },

@@ -5,11 +5,10 @@
 (function () {
   "use strict";
 
-  const { esc, num, withUnit, PN, F, step, stepsHtml, notesHtml, MINUS, reduceMotion } = Lab;
+  const { esc, num, withUnit, PN, F, step, stepsHtml, notesHtml, MINUS, reduceMotion, chips, wireChips, quiz } = Lab;
   const fx = (x, d = 2) => (x < 0 && Math.abs(x) >= 0.5 * 10 ** -d ? MINUS : "") + Math.abs(x).toFixed(d);
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const sum = (a) => a.reduce((s, x) => s + x, 0);
-  function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
   // Small seeded random generator so "take new readings" is repeatable within a session
   function rng(seed) { return () => { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
   const gauss = (r) => Math.sqrt(-2 * Math.log(r() || 1e-9)) * Math.cos(2 * Math.PI * r());
@@ -32,54 +31,6 @@
     return `<figure class="photo"><img src="assets/img/chapter-1/${key}.jpg" alt="${esc(p.alt)}" width="${p.w}" height="${p.h}" loading="lazy">
       <figcaption>${caption ? `${caption} ` : ""}<span class="credit">Photo: <a href="${p.url}" target="_blank" rel="noopener">${esc(p.by)}</a>, ${p.lic}, via Wikimedia Commons</span></figcaption></figure>`;
   };
-
-  const chips = (label, opts, cur) =>
-    `<div class="chips-row" role="group" aria-label="${esc(label)}">${opts.map(([v, l]) => `<button type="button" class="chip-btn" data-v="${v}" aria-pressed="${v === cur}">${l}</button>`).join("")}</div>`;
-  function wireChips(row, onPick) {
-    row.addEventListener("click", (e) => {
-      const b = e.target.closest(".chip-btn");
-      if (!b) return;
-      row.querySelectorAll(".chip-btn").forEach((x) => x.setAttribute("aria-pressed", x === b));
-      onPick(b.dataset.v);
-    });
-  }
-
-  // One-question-at-a-time quiz with instant feedback and a score.
-  function quiz(el, qs) {
-    let order, i, score;
-    const start = () => { order = shuffle(qs.map((_, k) => k)); i = 0; score = 0; draw(); };
-    const draw = (focus) => {
-      if (i >= order.length) {
-        const msg = score === qs.length ? "Perfect score!" : score >= qs.length * 0.7 ? "Good work. Try again to get them all." : "Read the section above again, then have another go.";
-        el.innerHTML = `<div class="quiz-card done"><p class="quiz-score">You scored <strong>${score} out of ${qs.length}</strong>. ${msg}</p><button type="button" class="btn" data-again>Try again</button></div>`;
-        el.querySelector("[data-again]").onclick = () => { start(); el.querySelector(".quiz-opt").focus(); };
-        if (focus) el.querySelector("[data-again]").focus();
-        return;
-      }
-      const q = qs[order[i]];
-      let answered = false;
-      el.innerHTML = `<div class="quiz-card">
-        <div class="quiz-top"><span>Question ${i + 1} of ${qs.length}</span><span>Score: ${score}</span></div>
-        <p class="quiz-q">${q.q}</p>
-        <div class="quiz-opts">${q.opts.map((o, k) => `<button type="button" class="quiz-opt" data-k="${k}">${o}</button>`).join("")}</div>
-        <p class="quiz-fb" aria-live="polite"></p>
-        <button type="button" class="btn" data-next hidden>${i + 1 < qs.length ? "Next question" : "See your score"}</button>
-      </div>`;
-      el.querySelectorAll(".quiz-opt").forEach((b) => (b.onclick = () => {
-        if (answered) return;
-        answered = true;
-        const ok = +b.dataset.k === q.a;
-        if (ok) score++;
-        el.querySelectorAll(".quiz-opt").forEach((x) => { x.disabled = true; if (+x.dataset.k === q.a) x.classList.add("right"); });
-        if (!ok) b.classList.add("wrong");
-        el.querySelector(".quiz-fb").innerHTML = `<strong>${ok ? "✓ Correct." : "✗ Not quite."}</strong> ${q.why}`;
-        const nx = el.querySelector("[data-next]");
-        nx.hidden = false; nx.focus();
-        nx.onclick = () => { i++; draw(true); if (i < order.length) el.querySelector(".quiz-opt").focus(); };
-      }));
-    };
-    start();
-  }
 
   const ICON = {
     sensor: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M5 5a10 10 0 0 0 0 14M19 5a10 10 0 0 1 0 14"/></svg>`,
