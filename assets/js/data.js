@@ -11,7 +11,7 @@ const COURSE = {
   session: "Semester 1 2026/2027",
   faculty: "Faculty of Electronic Engineering & Technology",
   university: "Universiti Malaysia Perlis (UniMAP)",
-  programme: "Bachelor of Electronic Engineering Technology (Electronic System) with Honours",
+  programme: "UR6523007 - Bachelor of Electronic Engineering Technology (Electronic Systems)",
   credits: 3,
   mode: "Blended",
   prerequisites: ["NMK20103 Microprocessor", "NMK21303 Analog Electronic II"],
@@ -96,17 +96,17 @@ const COURSE = {
      page:   optional link to a built chapter page, e.g. "chapter-5.html".
              Leave it out to use the placeholder page topic.html?ch=N.      */
   topics: [
-    { no: 1, title: "Introduction to Electronic Instrumentation", weeks: "Week 1", status: "interactive", page: "chapter-1.html",
+    { no: 1, title: "Introduction to Electronic Instrumentation", weeks: "Week 1", status: "interactive", page: "chapter-1.html", exercises: { count: 6, prefix: "c1-" },
       summary: "Characteristics and types of instruments and indicators, standard units, measurement error, precision, and error limits." },
-    { no: 2, title: "Embedded Controller", weeks: "Weeks 2 to 3", status: "interactive", page: "chapter-2.html",
+    { no: 2, title: "Embedded Controller", weeks: "Weeks 2 to 3", status: "interactive", page: "chapter-2.html", exercises: { count: 10, prefix: "c2-" },
       summary: "Types of embedded controllers, interfacing through digital I/O, analog, UART, SPI and I²C, Bluetooth and WiFi connectivity, and programming tools." },
-    { no: 3, title: "Transducers, Sensors and Actuators", weeks: "Week 4", status: "interactive", page: "chapter-3.html",
+    { no: 3, title: "Transducers, Sensors and Actuators", weeks: "Week 4", status: "interactive", page: "chapter-3.html", exercises: { count: 12, prefix: "c3-" },
       summary: "Sensor parameters shown in real situations, passive (resistive, capacitive, inductive) and active (piezoelectric, photodiode, Hall effect) sensors, and actuators (LED, DC motor, servo, relay)." },
-    { no: 4, title: "Transduction Techniques", weeks: "Week 5", status: "interactive", page: "chapter-4.html",
+    { no: 4, title: "Transduction Techniques", weeks: "Week 5", status: "interactive", page: "chapter-4.html", exercises: { count: 12, prefix: "c4-" },
       summary: "Transduction circuits for passive sensors (voltage divider, Wheatstone bridge, 555 timing circuit, LC tuned circuit) and for active sensors (the piezo and its resistor)." },
-    { no: 5, title: "Signal Conditioning (Amplifiers & Filters)", weeks: "Week 5", status: "interactive", page: "chapter-5.html",
+    { no: 5, title: "Signal Conditioning (Amplifiers & Filters)", weeks: "Week 5", status: "interactive", page: "chapter-5.html", exercises: { count: 7, prefix: "ex-" },
       summary: "Op-amp amplifiers (voltage follower, inverting, non-inverting, differential) and passive and active low-pass, high-pass, band-pass and band-stop filters." },
-    { no: 6, title: "Data Conversion and Acquisition", weeks: "Week 6", status: "interactive", page: "chapter-6.html",
+    { no: 6, title: "Data Conversion and Acquisition", weeks: "Week 6", status: "interactive", page: "chapter-6.html", exercises: { count: 12, prefix: "c6-" },
       summary: "Digital codes, binary-weighted and R-2R DACs, counter and successive-approximation ADCs, ADC resolution and output code, and the ESP32's own DAC and ADC." },
     { no: 7, title: "Transducer Calibration", weeks: "Week 7", status: "soon",
       summary: "Calibration setup, calibration techniques, and measurement standards." }

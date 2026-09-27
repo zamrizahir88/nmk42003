@@ -834,6 +834,7 @@
     (cfg.exercises || []).forEach((ex) => $(cfg.exList || "#exList").appendChild(buildExercise(ex)));
     if (cfg.exerciseCarousel && (cfg.exercises || []).length > 1) carousel($(cfg.exList || "#exList"));
     trackNav();
+    if (location.hash) { const target = document.getElementById(decodeURIComponent(location.hash.slice(1))); if (target) setTimeout(() => { const h = document.documentElement, b = h.style.scrollBehavior; h.style.scrollBehavior = "auto"; target.scrollIntoView(); h.style.scrollBehavior = b; }, 0); }
     let resizeTimer;
     addEventListener("resize", () => {
       clearTimeout(resizeTimer);

@@ -72,6 +72,75 @@
     nav.addEventListener("click", (e) => { if (e.target.tagName === "A") { nav.classList.remove("open"); menuBtn.setAttribute("aria-expanded", false); } });
   }
 
+  if (menuBtn && nav) {
+    const closeMenu = () => { nav.classList.remove("open"); menuBtn.setAttribute("aria-expanded", false); menuBtn.setAttribute("aria-label", "Open menu"); };
+    document.addEventListener("click", (e) => { if (nav.classList.contains("open") && !nav.contains(e.target) && !menuBtn.contains(e.target)) closeMenu(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && nav.classList.contains("open")) { closeMenu(); menuBtn.focus(); } });
+  }
+
+  /* ---------- Back to top, hide-on-scroll header (phones), reading progress (chapters) ---------- */
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const toTop = document.createElement("button");
+  toTop.type = "button"; toTop.className = "to-top"; toTop.setAttribute("aria-label", "Back to top");
+  toTop.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+  document.body.appendChild(toTop);
+  toTop.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+    const h = document.querySelector("h1");
+    if (h) { h.setAttribute("tabindex", "-1"); h.focus({ preventScroll: true }); }
+  });
+  const isChapter = !!document.querySelector(".lab-nav");
+  let bar = null;
+  if (isChapter) { bar = document.createElement("div"); bar.className = "read-progress"; bar.setAttribute("aria-hidden", "true"); document.body.appendChild(bar); }
+  const narrow = matchMedia("(max-width: 820px)"), root = document.documentElement;
+  let lastY = window.scrollY;
+  const onScroll = () => {
+    const y = window.scrollY, H = root.scrollHeight - window.innerHeight;
+    toTop.classList.toggle("show", y > window.innerHeight * 1.5);
+    if (bar) bar.style.transform = `scaleX(${H > 0 ? Math.min(1, y / H) : 0})`;
+    const menuOpen = nav && nav.classList.contains("open");
+    if (narrow.matches && !menuOpen) {
+      if (y > lastY + 6 && y > 140) root.classList.add("hdr-hide");
+      else if (y < lastY - 6 || y < 60) root.classList.remove("hdr-hide");
+    } else root.classList.remove("hdr-hide");
+    if (Math.abs(y - lastY) > 6) lastY = y;
+  };
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  // Remember the chapter and section being read, for "Continue where you left off" on the home page.
+  const curPage = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+  if (isChapter && /^chapter-\d+\.html$/.test(curPage)) {
+    window.addEventListener("load", () => setTimeout(() => {
+      const no = curPage.match(/\d+/)[0];
+      const save = (sec) => {
+        const hd = sec && sec.querySelector("h3, h2");
+        try { localStorage.setItem("nmk-last", JSON.stringify({ no, href: curPage + (sec ? `#${sec.id}` : ""), sec: hd ? hd.textContent.trim() : "", t: Date.now() })); } catch (e) {}
+      };
+      if (!location.hash) save(null);
+      const secs = [...document.querySelectorAll("section.circuit, section#exercises")];
+      if (!("IntersectionObserver" in window) || !secs.length) return;
+      let timer;
+      const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { clearTimeout(timer); timer = setTimeout(() => save(e.target), 800); } }), { rootMargin: "-35% 0px -55% 0px" });
+      secs.forEach((x) => io.observe(x));
+    }, 300));
+  }
+
+  // Printing: open every "Show working" panel and print in light colours, then put things back.
+  let printState = null;
+  window.addEventListener("beforeprint", () => {
+    const closed = [...document.querySelectorAll("details:not([open])")];
+    closed.forEach((d) => { d.open = true; });
+    printState = { closed, theme: root.getAttribute("data-theme") };
+    root.setAttribute("data-theme", "light");
+  });
+  window.addEventListener("afterprint", () => {
+    if (!printState) return;
+    printState.closed.forEach((d) => { d.open = false; });
+    root.setAttribute("data-theme", printState.theme || "light");
+    printState = null;
+  });
+
   /* ---------- Footer ---------- */
   const footer = $("#footer");
   if (footer) {
@@ -82,6 +151,7 @@
         <div class="foot-dev">
           Developed by <strong>${d.link ? `<a href="${esc(d.link)}" target="_blank" rel="noopener">${esc(d.name)}</a>` : esc(d.name)}</strong>,
           ${esc(d.affiliation)}.
+          <div class="foot-meta">${esc(COURSE.code)} ${esc(COURSE.name)} is offered under ${esc(COURSE.programme)}.</div>
           <div class="foot-meta">&copy; ${new Date().getFullYear()} ${esc(COURSE.code)} ${esc(COURSE.name)}, ${esc(COURSE.university)}. For teaching and learning use.</div>
         </div>
         <div class="foot-meta">${esc(COURSE.session)}<br>Last updated ${esc(COURSE.lastUpdated)}</div>
@@ -119,9 +189,11 @@
     $("#facts").innerHTML = [
       [COURSE.credits, "credits"], [COURSE.topics.length, "chapters"], [TOTAL_WEEKS, "weeks"], [COURSE.mode, "delivery"]
     ].map(([v, k]) => `<div class="stat"><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("");
-    $("#heroMeta").innerHTML = `<span>${esc(COURSE.programme)}</span><span>Prerequisites: ${esc(COURSE.prerequisites.join(", "))}</span><span>${built} of ${COURSE.topics.length} chapters interactive</span>`;
+    $("#heroProg").textContent = `Offered under ${COURSE.programme}`;
+    $("#heroMeta").innerHTML = `<span>Prerequisites: ${esc(COURSE.prerequisites.join(", "))}</span><span>${built} of ${COURSE.topics.length} chapters interactive</span>`;
   }
-  if ($("#readout")) renderReadout();
+  if ($("#nowNote")) renderNowNote();
+  if ($("#continueNote")) renderContinue();
   if ($("#scope")) renderScope();
   if ($("#teamList")) renderTeam();
   if ($("#menuCards")) renderCards();
@@ -133,38 +205,54 @@
   /* ---------- Menu cards on the homepage ---------- */
   function renderCards() {
     const I = {
-      now: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
       book: '<path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19"/><path d="M9 7h6"/>',
       cal: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
       chart: '<path d="M5 20V11M12 20V5M19 20v-6"/><path d="M3 20h18"/>',
       flask: '<path d="M9 3h6M10 3v6l-5 8.5A2 2 0 0 0 6.7 21h10.6a2 2 0 0 0 1.7-3.5L14 9V3"/><path d="M7.5 15h9"/>',
       refs: '<path d="M6 3h12v18l-6-4-6 4z"/>'
     };
-    let now;
-    if (curWeek === 0) {
-      now = { t: "Getting started", d: `Week 1 begins ${fmt(START, true)}. Get ready with Chapter 1.`, b: `${-daysIn} day${daysIn === -1 ? "" : "s"} to go`, h: pageOf(COURSE.topics[0]) };
-    } else if (curWeek > TOTAL_WEEKS) {
-      now = { t: "Semester complete", d: "All teaching and exam weeks have ended. Revise any chapter.", b: "Finished", h: "chapters.html" };
-    } else {
-      const w = COURSE.weeks[curWeek - 1], ts = COURSE.topics.filter((t) => weekNumbers(t.weeks).includes(curWeek));
-      now = { t: "This week", d: `${w.topic}${ts.length ? `: open Chapter ${ts[0].no}` : ""}.`, b: `Week ${curWeek}`, h: ts.length ? pageOf(ts[0]) : `schedule.html#wk-${curWeek}` };
-    }
     const built = COURSE.topics.filter((t) => t.page).length;
+    const pills = `<span class="mc-pills">${COURSE.topics.map((t) => `<span class="pill${t.page ? " on" : ""}" title="Chapter ${t.no}">${t.no}</span>`).join("")}</span>`;
     const cards = [
-      { i: "now", t: now.t, d: now.d, b: now.b, h: now.h, hi: true },
-      { i: "book", t: "Chapters", d: "Interactive lecture notes with animations, calculators and exercises.", b: `${COURSE.topics.length} chapters · ${built} interactive`, h: "chapters.html" },
+      { i: "book", t: "Chapters", d: "Interactive lecture notes with animations, calculators with step-by-step working, and exercises for every chapter.", b: `${COURSE.topics.length} chapters · ${built} interactive`, h: "chapters.html", wide: true, extra: pills },
       { i: "cal", t: "Weekly schedule", d: "Topics, labs and assessments for every week of the semester.", b: `${TOTAL_WEEKS} weeks`, h: "schedule.html" },
       { i: "chart", t: "Assessment and outcomes", d: "How your grade is made up, and the course outcomes.", b: `${COURSE.assessment.length} parts · ${COURSE.outcomes.length} outcomes`, h: "assessment.html" },
       { i: "flask", t: "Laboratory experiments", d: "The lab experiments and the weeks they run in.", b: `${COURSE.labs.length} labs`, h: "labs.html#labs" },
       { i: "refs", t: "References", d: "Textbooks and reference books for the course.", b: `${COURSE.references.length} books`, h: "labs.html#refs" }
     ];
     $("#menuCards").innerHTML = cards.map((c) => `
-      <a class="mcard${c.hi ? " now" : ""}" href="${esc(c.h)}">
+      <a class="mcard${c.wide ? " wide" : ""}" href="${esc(c.h)}">
         <span class="mc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${I[c.i]}</svg></span>
         <span class="mc-title">${esc(c.t)}</span>
-        <span class="mc-desc">${esc(c.d)}</span>
+        <span class="mc-desc">${esc(c.d)}</span>${c.extra || ""}
         <span class="mc-foot"><span class="mc-badge">${esc(c.b)}</span><span class="mc-go" aria-hidden="true">→</span></span>
       </a>`).join("");
+  }
+
+  /* ---------- One-line "now" note and "continue" link in the semester section ---------- */
+  function renderNowNote() {
+    const first = COURSE.topics[0];
+    let h;
+    if (curWeek === 0) {
+      const n = -daysIn;
+      h = `<span class="live-dot waiting"></span><span>Semester starts <strong>${esc(fmtLong(START))}</strong> (in ${n} day${n === 1 ? "" : "s"}). First up: <a href="${esc(pageOf(first))}">Chapter 1: ${esc(first.title)} →</a></span>`;
+    } else if (curWeek > TOTAL_WEEKS) {
+      h = `<span class="live-dot"></span><span>The semester has ended. <a href="chapters.html">Revise any chapter →</a></span>`;
+    } else {
+      const w = COURSE.weeks[curWeek - 1], ts = COURSE.topics.filter((t) => weekNumbers(t.weeks).includes(curWeek));
+      const due = w.assessments.length ? ` · <span class="due">${esc(w.assessments.join(", "))} this week</span>` : "";
+      const link = ts.length ? `<a href="${esc(pageOf(ts[0]))}">Open Chapter ${ts[0].no} →</a>` : `<a href="schedule.html#wk-${curWeek}">View this week →</a>`;
+      h = `<span class="live-dot"></span><span><strong>Now: Week ${curWeek}</strong> · ${esc(w.topic)}${due} · ${link}</span>`;
+    }
+    $("#nowNote").innerHTML = h;
+  }
+  function renderContinue() {
+    let c = null;
+    try { c = JSON.parse(localStorage.getItem("nmk-last") || "null"); } catch (e) {}
+    if (!c || !c.href || !/^chapter-\d+\.html(#[\w-]+)?$/.test(c.href)) return;
+    const el = $("#continueNote");
+    el.innerHTML = `Continue where you left off: <a href="${esc(c.href)}">Chapter ${esc(c.no)}${c.sec ? ` · ${esc(c.sec)}` : ""} →</a>`;
+    el.hidden = false;
   }
 
   function nextAssessment(fromWeek) {
@@ -250,7 +338,7 @@
     for (let i = 0; i <= TOTAL_WEEKS; i++) s += `<line class="gl" x1="${x0 + i * cw}" x2="${x0 + i * cw}" y1="${yT}" y2="${yB}"/>`;
 
     // selected column highlight (under trace)
-    s += `<rect class="col sel" id="selCol" x="${x0 + (selectedWeek - 1) * cw}" y="${yT}" width="${cw}" height="${yB - yT}" style="pointer-events:none"/>`;
+    s += `<rect class="col sel" id="selCol" x="${x0 + (selectedWeek - 1) * cw}" y="${yT}" width="${cw}" height="${yB - yT}" style="pointer-events:none;display:none"/>`;
 
     // trace
     let cum = 0, d = `M${x0},${y(0)}`;
@@ -278,7 +366,7 @@
     // week labels + click targets
     s += `<text class="axis" x="${x0 - 8}" y="${yB + 22}" text-anchor="end">Week</text>`;
     COURSE.weeks.forEach((wk) => {
-      s += `<text class="wk${wk.w === selectedWeek ? " sel" : ""}" data-wk="${wk.w}" x="${cx(wk.w)}" y="${yB + 22}" text-anchor="middle">${wk.w}</text>`;
+      s += `<text class="wk" data-wk="${wk.w}" x="${cx(wk.w)}" y="${yB + 22}" text-anchor="middle">${wk.w}</text>`;
     });
     s += `<text class="axis" x="${cx(9)}" y="${yB + 42}" text-anchor="middle">Mid-term break</text>`;
     s += `<text class="axis" x="${cx(18)}" y="${yB + 42}" text-anchor="middle">Final exam</text>`;
@@ -292,7 +380,7 @@
     const pick = (e) => { const w = e.target.getAttribute("data-wk"); if (w) selectWeek(+w, cw, x0); };
     scope.addEventListener("click", pick);
     scope.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(e); } });
-    renderWeekDetail();
+    $("#weekDetail").hidden = true;
 
     // on narrow screens, scroll the current week into view
     if (scope.scrollWidth > scope.clientWidth && selectedWeek > 6) {
@@ -301,8 +389,11 @@
   }
 
   function selectWeek(w, cw, x0) {
+    const col = $("#selCol"), det = $("#weekDetail");
+    if (!det.hidden && selectedWeek === w && col.style.display !== "none") { col.style.display = "none"; det.hidden = true; document.querySelectorAll("#scope .wk").forEach((t) => t.classList.remove("sel")); return; } // tap again to close
+    col.setAttribute("x", x0 + (w - 1) * cw); col.style.display = "";
+    det.hidden = false;
     selectedWeek = w;
-    $("#selCol").setAttribute("x", x0 + (w - 1) * cw);
     document.querySelectorAll("#scope .wk").forEach((t) => t.classList.toggle("sel", +t.dataset.wk === w));
     renderWeekDetail();
   }
@@ -338,6 +429,14 @@
   }
 
   /* ---------- Topics ---------- */
+  function exProgress(t) {
+    const ex = t.exercises;
+    if (!ex) return "";
+    let solved = [];
+    try { solved = JSON.parse(localStorage.getItem("nmk-solved") || "[]"); } catch (e) {}
+    const n = solved.filter((id) => String(id).startsWith(ex.prefix)).length, pct = Math.round((n / ex.count) * 100);
+    return `<div class="ex-prog"><span class="ex-bar" role="progressbar" aria-valuenow="${n}" aria-valuemin="0" aria-valuemax="${ex.count}" aria-label="Exercises solved"><i style="width:${pct}%"></i></span><span>${n} of ${ex.count} exercises solved</span></div>`;
+  }
   function renderTopics() {
     const list = $("#topicList"), search = $("#topicSearch");
     const draw = () => {
@@ -354,6 +453,7 @@
               <h3><a href="${esc(pageOf(t))}"><span class="sr-only">Chapter ${t.no}: </span>${esc(t.title)}</a></h3>
               <p class="topic-summary">${esc(t.summary)}</p>
               <div class="topic-meta"><span>${esc(t.weeks)}</span><span class="badge ${t.status}">${statusLabel[t.status]}</span></div>
+              ${exProgress(t)}
             </div>
             <button class="study-toggle" data-no="${t.no}" aria-pressed="${on}">
               <span class="box" aria-hidden="true"></span>${on ? "Studied" : "Mark as studied"}
