@@ -4,7 +4,7 @@
 (function () {
   "use strict";
 
-  const { TAU, MINUS, num, eng, P, PN, dB, fmtDb, same, n, F, D, step, crossing } = Lab;
+  const { TAU, MINUS, num, eng, P, PN, dB, fmtDb, same, n, F, D, step, crossing, player, axes, poly, svg } = Lab;
   const RAIL_DROP = 1.5; // op-amp output saturates at ±(Vcc − 1.5 V)
   const VCC = () => F("Vcc", "Vcc", 15, null, {
     label: "Supply rails ±V<sub>CC</sub>",
@@ -43,6 +43,120 @@
         : `in the stop band, so the signal is attenuated. Far from f<sub>c</sub> it drops by about ${slope} dB for every tenfold change in frequency`;
     return { type: "info", title: "Where f sits", html: `f = ${eng(f, "Hz")} is ${r < 1 ? "below" : "above"} f<sub>c</sub> = ${eng(fc, "Hz")}: ${where}.` };
   }
+
+  /* =====================================================================
+     Oscilloscope: input and output waveforms for every circuit
+     ===================================================================== */
+  const cx = (re, im) => ({ re, im });
+  const cmag = (z) => Math.hypot(z.re, z.im), carg = (z) => Math.atan2(z.im, z.re);
+  const cmul = (a, b) => cx(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re);
+  const cdiv = (a, b) => { const d = b.re * b.re + b.im * b.im; return cx((a.re * b.re + a.im * b.im) / d, (a.im * b.re - a.re * b.im) / d); };
+  const LPr = (r) => cdiv(cx(1, 0), cx(1, r)), HPr = (r) => cdiv(cx(0, r), cx(1, r)); // first-order low- and high-pass, r = f / fc
+  const clipTo = (x, L) => Math.max(-L, Math.min(L, x));
+  const railOf = (v) => v.Vcc - RAIL_DROP;
+  const KEY = { "trace-in": "key input", "trace-d": "key digital", "trace-a": "key" };
+
+  // Amplifiers: the input is shown as a 1 kHz sine whose peak is Vin
+  const ampWave = (gain) => (v) => {
+    const G = gain(v), L = railOf(v), A = v.Vin, w = TAU * 1000, clipped = Math.abs(G * A) > L;
+    return { period: 1e-3, rails: L, traces: [
+      { fn: (t) => A * Math.sin(w * t), cls: "trace-in", label: "input" },
+      { fn: (t) => clipTo(G * A * Math.sin(w * t), L), cls: "trace-a", label: "output" }],
+      note: `The input is drawn as a 1 kHz sine with a peak of ${eng(Math.abs(A), "V")}. ` +
+        (clipped ? `The ideal output peak would be ${eng(Math.abs(G * A), "V")}, but it is <strong>clipped flat at ±${eng(L, "V")}</strong>: the op-amp is saturating.` :
+          G < 0 ? `The output is ${num(Math.abs(G))} times bigger and <strong>upside down</strong> (180° out of phase).` :
+            Math.abs(G - 1) < 1e-9 ? "The output sits exactly on top of the input: gain 1, no inversion." : `The output is ${num(G)} times bigger and <strong>in phase</strong> with the input.`) };
+  };
+  // Filters: complex gain H(f) gives the output's size and phase
+  const filtWave = (H, clip) => (v) => {
+    const z = H(v, v.f), m = cmag(z), ph = carg(z), A = v.Vin, w = TAU * v.f, L = clip ? railOf(v) : null;
+    const deg = Math.abs((ph * 180) / Math.PI), dt = Math.abs(ph) / w;
+    return { period: 1 / v.f, rails: L, traces: [
+      { fn: (t) => A * Math.sin(w * t), cls: "trace-in", label: "input" },
+      { fn: (t) => { const y = A * m * Math.sin(w * t + ph); return L ? clipTo(y, L) : y; }, cls: "trace-a", label: "output" }],
+      note: `At ${eng(v.f, "Hz")} the output is <strong>${num(m, 3)} ×</strong> the input` + (deg < 0.5 ? " and in phase with it." : ` and ${ph < 0 ? "<strong>lags</strong> behind" : "<strong>leads</strong>"} it by ${num(deg, 3)}° (${eng(dt, "s", 3)}).`) +
+        (L && A * m > L ? ` It is clipped at ±${eng(L, "V")}: the op-amp saturates.` : "") };
+  };
+  const WAVES = {
+    follower: ampWave(() => 1),
+    inverting: ampWave((v) => -v.Rf / v.R1),
+    noninv: ampWave((v) => 1 + v.Rf / v.R1),
+    diff: (v) => {
+      const L = railOf(v), h = v.Vcm || 0, w = TAU * 50, hum = (t) => h * Math.sin(w * t);
+      const run = (a, b) => ((a * v.R2) / (v.R1 + v.R2)) * (1 + v.R4 / v.R3) - (b * v.R4) / v.R3;
+      const leak = Math.abs(run(v.V1 + 1, v.V2 + 1) - run(v.V1, v.V2)) > 1e-9;
+      return { period: 0.02, rails: L, traces: [
+        { fn: (t) => v.V1 + hum(t), cls: "trace-in", label: "V₁" },
+        { fn: (t) => v.V2 + hum(t), cls: "trace-d", label: "V₂" },
+        { fn: (t) => clipTo(run(v.V1 + hum(t), v.V2 + hum(t)), L), cls: "trace-a", label: "output" }],
+        note: !h ? "Enter a common-mode offset V<sub>cm</sub> above: it is shown here as 50 Hz mains hum added equally to both inputs."
+          : leak ? `Both inputs carry the same 50 Hz hum (peak ${eng(h, "V")}), and some of it <strong>leaks into the output</strong> because the resistors are not matched.`
+            : `Both inputs carry the same 50 Hz hum (peak ${eng(h, "V")}), yet the output is a <strong>flat line</strong>: only the difference V<sub>1</sub> − V<sub>2</sub> is amplified, so the hum is rejected.` };
+    },
+    rclpf: filtWave((v, f) => LPr(f * TAU * v.R * v.C)),
+    rchpf: filtWave((v, f) => HPr(f * TAU * v.R * v.C)),
+    rllpf: filtWave((v, f) => LPr((f * TAU * v.L) / v.R)),
+    rc2: filtWave((v, f) => { const a = v.R1 * v.C1 * v.R2 * v.C2, b = v.R1 * v.C1 + v.R2 * v.C2 + v.R1 * v.C2, w = TAU * f; return cdiv(cx(1, 0), cx(1 - w * w * a, w * b)); }),
+    active: filtWave((v, f) => { const r = f * TAU * v.R * v.C, G = v.mode === "noninv" ? 1 + v.Rf / v.Rg : 1, z = v.type === "hp" ? HPr(r) : LPr(r); return cx(G * z.re, G * z.im); }, true),
+    bandpass: filtWave((v, f) => cmul(HPr(f * TAU * v.R1 * v.C1), LPr(f * TAU * v.R2 * v.C2))),
+    bandstop: filtWave((v, f) => { const x = f * TAU * v.R * v.C; return cdiv(cx(1 - x * x, 0), cx(1 - x * x, 4 * x)); })
+  };
+  function scopeRender(extra, res, v) {
+    const sec = this;
+    sec.scopeData = res && WAVES[sec.id] ? WAVES[sec.id](v, res) : null;
+    if (!extra.dataset.ready) {
+      extra.dataset.ready = "1";
+      extra.innerHTML = `<h4 class="sub-h">Oscilloscope: input and output</h4><div class="scope-box"></div><div class="pv-pl"></div><p class="small-note scope-note"></p>`;
+      sec.scopePl = player(extra.querySelector(".pv-pl"), extra, { dur: 4, hold: 0, auto: false, still: 0, label: "Oscilloscope sweep", draw: (t) => drawScope(sec, extra, t) });
+    }
+    sec.scopePl.redraw();
+  }
+  function drawScope(sec, extra, t) {
+    const d = sec.scopeData, box = extra.querySelector(".scope-box"), note = extra.querySelector(".scope-note");
+    if (!d) { box.innerHTML = ""; note.innerHTML = ""; return; }
+    const T0 = d.period, span = 2 * T0, off = (t / 4) * T0, N = 240;
+    let ymax = 0;
+    d.traces.forEach((tr) => { for (let i = 0; i <= 60; i++) ymax = Math.max(ymax, Math.abs(tr.fn((i / 60) * T0))); });
+    if (d.rails && d.rails < ymax * 1.6) ymax = Math.max(ymax, d.rails); // show the rails only when the signal gets near them
+    ymax = ymax > 0 ? ymax * 1.15 : 1;
+    const A = axes({ x: [0, span], y: [-ymax, ymax], xt: [0, T0, span], fx: (q) => eng(q, "s", 3), yt: [-ymax / 1.15, 0, ymax / 1.15], fy: (q) => eng(q, "V", 3), l: 62, xl: "Time", yl: "", H: 220 });
+    let g = A.s + `<line class="gl" x1="${A.l}" x2="${A.l + A.pw}" y1="${A.Y(0)}" y2="${A.Y(0)}"/>`;
+    if (d.rails && d.rails < ymax) [d.rails, -d.rails].forEach((r) => { g += `<line class="ref" x1="${A.l}" x2="${A.l + A.pw}" y1="${A.Y(r)}" y2="${A.Y(r)}"/>`; });
+    d.traces.forEach((tr) => { const pts = []; for (let i = 0; i <= N; i++) { const x = (i / N) * span; pts.push([A.X(x), A.Y(tr.fn(x + off))]); } g += poly(pts, tr.cls); });
+    box.innerHTML = svg(A.W, A.H, "Oscilloscope: input and output against time", g) +
+      `<p class="legend">${d.traces.map((tr) => `<span><span class="${KEY[tr.cls]}"></span>${tr.label}</span>`).join(" ")}${d.rails && d.rails < ymax ? ' <span><span class="key ref-key"></span>rail limit</span>' : ""}</p>`;
+    note.innerHTML = d.note;
+  }
+
+  /* =====================================================================
+     Overview animation: why signals need conditioning
+     ===================================================================== */
+  function mountWhy(el) {
+    el.innerHTML = `<div class="pv"><figure class="scene-box"><div class="scene-scroll"><svg class="scene cond" viewBox="0 0 640 230" role="img" aria-label="A thermocouple gives a few millivolts with 50 hertz hum; an amplifier multiplies it by 500; a low-pass filter removes the hum; the ESP32 reads a clean 0 to 3 volt signal."></svg></div></figure><div class="pv-pl"></div><p class="pv-read"></p></div>`;
+    const sv = el.querySelector("svg"), read = el.querySelector(".pv-read");
+    const scopeAt = (x0, title, sub, fn, amp) => {
+      let s = `<rect class="scope" x="${x0}" y="60" width="120" height="90" rx="6"/>`;
+      const pts = []; for (let i = 0; i <= 80; i++) { const u = i / 80; pts.push([x0 + 6 + u * 108, 140 - Math.max(0, Math.min(1, fn(u) / amp)) * 70]); }
+      return s + poly(pts, "scope-t") + T(x0 + 60, 48, title, "middle", "tt sm") + T(x0 + 60, 172, sub, "middle", "small");
+    };
+    const draw = (t) => {
+      const slow = (u) => 2.5 + 1.8 * Math.sin(TAU * (u * 0.6 + t / 8)), hum = (u) => 1.2 * Math.sin(TAU * 9 * u + t * 6);
+      const mV = slow(0.5).toFixed(1);
+      let s = `<rect class="bx" x="6" y="80" width="54" height="50" rx="8"/>${T(33, 100, "thermo-", "middle", "small")}${T(33, 114, "couple", "middle", "small")}`;
+      s += `<line class="flow-l" x1="60" y1="105" x2="76" y2="105"/>`;
+      s += scopeAt(78, "Sensor", "a few mV + 50 Hz hum", (u) => slow(u) + hum(u), 6);
+      s += `<line class="flow-l" x1="198" y1="105" x2="212" y2="105"/><path class="op" d="M212,80L262,105L212,130Z"/>${T(232, 110, "×500", "middle", "small")}${T(237, 150, "amplifier", "middle", "small")}<line class="flow-l" x1="262" y1="105" x2="276" y2="105"/>`;
+      s += scopeAt(276, "Amplified", "0 to 3 V, hum too", (u) => (slow(u) + hum(u)) * 0.5, 3.3);
+      s += `<line class="flow-l" x1="396" y1="105" x2="408" y2="105"/><rect class="bx" x="408" y="84" width="54" height="42" rx="6"/>${T(435, 102, "low-", "middle", "small")}${T(435, 116, "pass", "middle", "small")}<line class="flow-l" x1="462" y1="105" x2="476" y2="105"/>`;
+      s += scopeAt(476, "Filtered", "clean, ready for the ADC", (u) => slow(u) * 0.5, 3.3);
+      s += `<rect class="espbig" x="600" y="80" width="36" height="50" rx="6"/>${T(618, 110, "ESP32", "middle", "small inv")}<line class="flow-l" x1="596" y1="105" x2="600" y2="105"/>`;
+      s += T(320, 214, `now: sensor ${mV} mV → amplified ${(mV * 0.5).toFixed(2)} V → ADC code ${Math.round((mV * 0.5 * 4095) / 3.3)}`, "middle", "small");
+      sv.innerHTML = s;
+    };
+    read.innerHTML = "A thermocouple gives only a few millivolts, with 50 Hz mains hum on top. The ESP32 needs a clean signal between 0 and 3.3 V. <strong>Signal conditioning</strong> fixes both: an <strong>amplifier</strong> makes the signal big enough, and a <strong>filter</strong> removes the noise. This chapter covers both.";
+    player(el.querySelector(".pv-pl"), el, { dur: 8, hold: 0, draw, still: 2, label: "Signal animation position" });
+  }
+  const T = (x, y, t, a = "middle", c = "") => `<text x="${x}" y="${y}" text-anchor="${a}"${c ? ` class="${c}"` : ""}>${t}</text>`;
 
   /* =====================================================================
      Circuits
@@ -131,7 +245,7 @@
       id: "diff", group: "amp", title: "Differential amplifier", view: AMP_VIEW,
       intro: `<p>A differential amplifier amplifies the <em>difference</em> between two inputs. ${n("V1")} reaches the + input through the divider ${n("R1")}, ${n("R2")}. ${n("V2")} reaches the − input through ${n("R3")}, with ${n("R4")} as the feedback resistor.</p>
         <p>Work it out by <strong>superposition</strong>. First find the output due to ${n("V1")} alone (${n("V2")} grounded), then the output due to ${n("V2")} alone (${n("V1")} grounded), and add them. When ${n("R1")} = ${n("R3")} and ${n("R2")} = ${n("R4")}, this simplifies to ${n("Vout")} = (${n("R2")} / ${n("R1")})(${n("V1")} − ${n("V2")}). Anything common to both inputs then cancels, such as interference picked up equally on two sensor wires. That's why this circuit is used with strain-gauge bridges and thermocouples. Try the common-mode offset input to see it.</p>`,
-      inputs: [F("V1", "V", 5, "to the + side"), F("V2", "V", 6, "to the − side"), F("R1", "R", 10e3), F("R2", "R", 38e3), F("R3", "R", 10e3), F("R4", "R", 38e3, "feedback"),
+      inputs: [F("V1", "V", 2.5, "to the + side"), F("V2", "V", 2, "to the − side"), F("R1", "R", 10e3), F("R2", "R", 47e3), F("R3", "R", 10e3), F("R4", "R", 47e3, "feedback"),
         F("RL", "R", null, "load resistor (optional)", { opt: true }), F("Vcm", "V", 2, "added to both V<sub>1</sub> and V<sub>2</sub>", { label: "Common-mode offset V<sub>cm</sub>" }), VCC()],
       diagram: (T, lab) => D.opamp(270, 120, false) +
         D.term(95, 100) + T(87, 104, "V2", "end") + D.wire([99, 100], [130, 100]) + D.res(130, 100, 200, 100) + T(165, 86, "R3") +
@@ -301,7 +415,7 @@
       inputs: [
         F("type", "sel", "lp", null, { label: "Filter type", options: [["lp", "Low-pass"], ["hp", "High-pass"]] }),
         F("mode", "sel", "noninv", null, { label: "Amplifier", options: [["noninv", "Non-inverting, gain 1 + Rf/Rg"], ["unity", "Unity gain (voltage follower)"]] }),
-        F("R", "R", 1e3), F("C", "C", 1e-6),
+        F("R", "R", 3.3e3), F("C", "C", 470e-9),
         F("Rg", "R", 10e3, "to ground", { show: (v) => v.mode === "noninv" }),
         F("Rf", "R", 10e3, "feedback", { show: (v) => v.mode === "noninv" }),
         F("Vin", "Vac", 1, "amplitude (peak)"), F("f", "f", 100, "signal frequency"), VCC()
@@ -424,6 +538,11 @@
     }
   ];
 
+  SECTIONS.forEach((sec) => { if (WAVES[sec.id]) sec.render = scopeRender; });
+  SECTIONS.unshift({ id: "why", group: "why", title: "Why condition a signal?", toc: "Overview",
+    intro: `<p>Sensor signals are rarely ready to measure. They are often <strong>too small</strong> (millivolts), <strong>noisy</strong> (mains hum, motor interference), or have the wrong range for the ADC. Signal conditioning means amplifying, filtering and shifting a signal so the next stage can measure it accurately.</p>`,
+    mount: mountWhy });
+
   // Shared frame for two-rail passive filters: Vin on the left, Vout on the right.
   function filterFrame(T) {
     return D.term(90, 60) + T(82, 64, "Vin", "end") + D.term(90, 160) + T(82, 164, "f", "end") +
@@ -478,8 +597,11 @@
 
   Lab.page({
     topic: 5,
+    collapseWorking: true,
+    exerciseCarousel: true,
     sections: SECTIONS,
     groups: [
+      { key: "why", list: "#whyList" },
       { key: "amp", list: "#ampList", toc: "#ampToc" },
       { key: "filt", list: "#filtList", toc: "#filtToc", extraToc: `<li><a href="#compare">Passive vs active</a></li>` }
     ],

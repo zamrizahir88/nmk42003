@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=2609273">
-  <link rel="stylesheet" href="assets/css/lab.css?v=2609273">
+  <link rel="stylesheet" href="assets/css/style.css?v=2609274">
+  <link rel="stylesheet" href="assets/css/lab.css?v=2609274">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0b6e6e">
   <link rel="apple-touch-icon" href="assets/img/icon-180.png">
@@ -58,17 +58,37 @@
       <div class="topic-meta" id="chMeta"></div>
       <div class="authors" id="chAuthors"></div>
       <p class="lab-lead" id="chSummary"></p>
-      <p class="lab-how">Every circuit below is a live calculator. Change a value and the diagram labels, the step-by-step working and the graph update straight away. All op-amps are ideal, and supply rails default to ±15 V.</p>
+      <div class="goals">
+        <h2>By the end of this chapter you can</h2>
+        <ul>
+          <li>explain why sensor signals need amplifying and filtering before they are measured</li>
+          <li>calculate the gain and output of voltage-follower, inverting, non-inverting and differential amplifiers, and spot saturation</li>
+          <li>calculate the cut-off frequency and output of passive and active low-pass, high-pass, band-pass and band-stop filters</li>
+          <li>read a Bode plot and compare passive and active filters</li>
+        </ul>
+      </div>
+      <p class="lab-how">Every circuit below is a live calculator. Change a value and the diagram labels, the oscilloscope and the Bode plot update straight away. Press <strong>play</strong> on an oscilloscope to watch the waves move, and tap <strong>Show</strong> to see the step-by-step working. All op-amps are ideal, and supply rails default to ±15 V.</p>
       <noscript><div class="callout warn"><strong>JavaScript is off</strong>The calculators on this page need JavaScript. Turn it on, or use the lecture slides on URLearn.</div></noscript>
     </div>
 
     <nav class="lab-nav" aria-label="Chapter sections">
       <div class="wrap">
+        <a href="#why-g">Overview</a>
         <a href="#amplifiers">Amplifiers</a>
         <a href="#filters">Filters</a>
         <a href="#exercises">Exercises</a>
       </div>
     </nav>
+
+    <section class="lab-group" id="why-g" aria-labelledby="why-g-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="why-g-h">Overview</h2>
+          <p>From a tiny, noisy sensor signal to a clean voltage the ESP32 can read.</p>
+        </div>
+        <div id="whyList"></div>
+      </div>
+    </section>
 
     <section class="lab-group" id="amplifiers" aria-labelledby="amplifiers-h">
       <div class="wrap">
@@ -116,7 +136,7 @@
       <div class="wrap">
         <div class="group-head">
           <h2 id="exercises-h">Exercises</h2>
-          <p>These are the exercises from the lecture slides. Try each one yourself first: type your answers and press <strong>Check answers</strong>. Anything within 2% of the correct value counts. Each wrong try unlocks a hint, and when all your answers are correct the full working appears so you can check your method. Solved exercises also unlock <strong>Load into calculator</strong>, so you can explore what happens when the values change.</p>
+          <p>These are the exercises from the lecture slides. Try each one yourself first: type your answers and press <strong>Check answers</strong>. Anything within 2% of the correct value counts. Each wrong try unlocks a hint, and when all your answers are correct the full working appears so you can check your method. Solved exercises also unlock <strong>Load into calculator</strong>, so you can explore what happens when the values change. Swipe left or right, or use the arrows, to move between exercises.</p>
         </div>
         <div id="exList"></div>
         <nav class="pager" aria-label="Chapters" id="chPager"></nav>
@@ -126,9 +146,9 @@
 
   <footer class="site-footer" id="footer"></footer>
 
-  <script src="assets/js/data.js?v=2609273"></script>
-  <script src="assets/js/main.js?v=2609273"></script>
-  <script src="assets/js/lab.js?v=2609273"></script>
-  <script src="assets/js/chapter5.js?v=2609273"></script>
+  <script src="assets/js/data.js?v=2609274"></script>
+  <script src="assets/js/main.js?v=2609274"></script>
+  <script src="assets/js/lab.js?v=2609274"></script>
+  <script src="assets/js/chapter5.js?v=2609274"></script>
 </body>
 </html>

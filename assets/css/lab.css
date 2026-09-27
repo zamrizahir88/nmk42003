@@ -444,3 +444,16 @@ details.fold[open] .fold-h::after { content: "Hide ▴"; }
 .tone-btn { margin: 4px 0 6px; }
 .tone-btn[aria-pressed="true"] { background: var(--teal); color: var(--surface); }
 .tone-i { font-size: 1.1em; }
+
+/* ---------- Chapter 5: oscilloscope and overview ---------- */
+.scope-box { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 8px; max-width: 620px; }
+.scope-note { max-width: var(--measure); }
+.key.ref-key { background: none; border-top: 2px dashed var(--amber); height: 0; }
+.scene.cond { min-width: 540px; max-width: 820px; margin: 0 auto; }
+.scene .scope { fill: #0f1b24; stroke: var(--ink-3); }
+.scene .scope-t { fill: none; stroke: #86f09a; stroke-width: 2; stroke-linejoin: round; }
+.scene .flow-l { stroke: var(--ink-3); stroke-width: 2; }
+.scene .espbig { fill: #1f3b57; }
+.scene .tt.sm { font-size: 13px; }
+.scene .op { fill: var(--surface); stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; }
+
