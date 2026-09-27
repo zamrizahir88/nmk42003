@@ -346,3 +346,98 @@ details.fold[open] .fold-h::after { content: "Hide ▴"; }
 .video-play.read { background: var(--teal); }
 .video:hover:has(.read) { border-color: var(--teal); }
 .video-play.read svg { fill: none; stroke: #fff; stroke-width: 2; stroke-linejoin: round; }
+
+/* ======== Animated notes: scenes, graphs and the animation player (Chapters 3 and 4) ======== */
+:root {
+  --mag: #d81b7a; --pur: #7a2e8e; --yel: #f5e24a;
+  --water: #5aaee8; --metal: #9aa6b1; --metal-d: #66737f; --sky: #dfe9f1; --grass: #cfe3c4; --road: #7c858d;
+  --lcd: #17261d; --lcd-t: #86f09a; --glass: #8fa3b3; --red: #e2553a; --steel: #8e99a3;
+}
+:root[data-theme="dark"] {
+  --mag: #ec4b9b; --pur: #c58ad8; --yel: #e8d43c;
+  --water: #3d8fc9; --metal: #7f8b96; --metal-d: #a9b5c0; --sky: #1b2a36; --grass: #1f3324; --road: #3a444d;
+  --lcd: #0b140e; --glass: #6f8596; --steel: #6f7a84;
+}
+
+/* ---------- Scene, graph and player layout ---------- */
+.pv { margin: 8px 0 0; }
+.pv-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 14px; align-items: start; margin: 12px 0 8px; }
+.pv-grid.park { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 760px) { .pv-grid, .pv-grid.park { grid-template-columns: minmax(0, 1fr); } }
+.pv-scene, .pv-graph, .scene-box, .extra .plot-box, .lv-graph { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 8px; margin: 0; }
+.pv-graph .plot, .lv-graph .plot, .extra .plot { max-width: none; }
+.scene-box { margin: 12px 0 8px; }
+.scene-box figcaption { font-size: .82rem; color: var(--ink-3); padding: 4px 4px 0; }
+.scene-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.scene { display: block; width: 100%; height: auto; }
+.scene.mic, .scene.tree, .scene.relay { min-width: 420px; max-width: 700px; margin: 0 auto; }
+.pv-read { color: var(--ink-2); max-width: var(--measure); margin: 8px 0 10px; min-height: 3.2em; }
+.legend { font-size: .82rem; color: var(--ink-3); margin: 4px 4px 0; }
+.legend .key { margin-left: 8px; }
+.legend .key:first-child { margin-left: 0; }
+.small-note { font-size: .82rem; color: var(--ink-3); margin: 4px 0 0; }
+.lv-graph { margin-bottom: 8px; }
+.extra { margin: 14px 0; }
+.extra .plot-box { max-width: 560px; }
+.pv-graph .plot, .lv-graph .plot { max-width: 560px; margin: 0 auto; }
+.cmp-grid { margin: 12px 0; }
+
+/* player controls */
+.pl { display: flex; align-items: center; gap: 8px; max-width: 560px; }
+.pl-b { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--rule); background: var(--surface); color: var(--teal); cursor: pointer; display: grid; place-items: center; }
+.pl-b:first-child { background: var(--teal); border-color: var(--teal); color: var(--surface); }
+.pl-b svg { width: 20px; height: 20px; fill: currentColor; }
+.pl-b:hover { border-color: var(--teal); }
+.pl-s { flex: 1; min-width: 0; accent-color: var(--teal); height: 28px; touch-action: pan-y; }
+.pl-t { flex: none; min-width: 5.5em; font-size: .85rem; color: var(--ink-2); font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ---------- Plot additions ---------- */
+.plot .ax { fill: none; stroke: var(--ink-3); stroke-width: 1.2; }
+.plot .axl { fill: var(--ink-2); font: 500 12px var(--sans); }
+.plot .ghost { fill: none; stroke: var(--ink-3); stroke-width: 1.4; opacity: .35; }
+.plot .slope { fill: none; stroke: var(--amber); stroke-width: 1.8; stroke-dasharray: 4 3; }
+.plot .band { opacity: .8; }
+
+/* ---------- Scene parts ---------- */
+.scene text { fill: var(--ink-2); font: 13px var(--sans); }
+.scene .tt { fill: var(--ink); font-weight: 600; font-size: 14px; }
+.scene .small { font-size: 12px; fill: var(--ink-3); }
+.scene .inv { fill: #fff; }
+.scene .lt { fill: #fff; font-weight: 600; }
+.scene .w { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.scene .w.thin { stroke-width: 1.2; }
+.scene .dot { fill: var(--ink); }
+.scene .term { fill: var(--surface); stroke: var(--ink); stroke-width: 1.6; }
+.scene .bx, .scene .meter { fill: var(--surface); stroke: var(--ink); stroke-width: 1.6; }
+.scene .lcd { fill: var(--lcd); }
+.scene .lcdt { fill: var(--lcd-t); font: 600 15px ui-monospace, "Cascadia Code", Consolas, monospace; }
+.scene .lcdt.dim { opacity: .7; font-size: 13px; }
+.scene .glass { fill: none; stroke: var(--glass); stroke-width: 3; stroke-linejoin: round; }
+.scene .water { opacity: .75; }
+.scene .plate { stroke: var(--ink-3); stroke-width: 1; }
+.scene .ice { fill: #e9f6ff; stroke: #9cc7e6; }
+.scene .bubble { fill: none; stroke: #fff; stroke-width: 1.2; opacity: .8; }
+.scene .tube { fill: var(--surface); stroke: var(--ink-3); stroke-width: 1.4; }
+.scene .merc { fill: var(--red); }
+.scene .probe { fill: var(--ink-2); }
+.scene .probe-tip { fill: var(--amber); }
+.scene .cable { fill: none; stroke: var(--ink-3); stroke-width: 2.5; }
+.scene .floor { stroke: var(--ink-3); stroke-width: 2; }
+.scene .sky { fill: var(--sky); }
+.scene .ground { fill: var(--road); }
+.scene .ground.grass, .scene .grass { fill: var(--grass); }
+.scene .dist-box { fill: var(--surface); stroke: var(--rule); }
+.scene .dist-t { fill: var(--ink); font-weight: 600; font-size: 13px; }
+.scene .dist-t.on { fill: var(--amber); }
+
+.plot .mk { fill: none; }
+.scene .lcdt.sm { font-size: 13px; }
+.lv-graph { max-width: 600px; }
+.pv .slider-field { max-width: 560px; }
+@media (min-width: 561px) { #exercises .ans { grid-template-columns: minmax(0, 22em) minmax(0, 17em) minmax(0, 1fr); } }
+@media (max-width: 560px) {
+  .pv .plot .axis, .lv-graph .plot .axis, .extra .plot .axis { font-size: 12.5px; }
+  .pv .plot .axl, .lv-graph .plot .axl, .extra .plot .axl { font-size: 13.5px; }
+  .pv .plot .ptlab, .pv .plot .mklab, .pv .plot .reflab { font-size: 13px; }
+  .scene .small { font-size: 13px; }
+}

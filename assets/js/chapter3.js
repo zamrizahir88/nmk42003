@@ -6,7 +6,8 @@
 (function () {
   "use strict";
 
-  const { esc, num, eng, withUnit, F, step, stepsHtml, MINUS, reduceMotion, chips, wireChips, quiz, codeBlock, fold } = Lab;
+  const { esc, num, eng, withUnit, F, step, stepsHtml, MINUS, reduceMotion, chips, wireChips, quiz, codeBlock, fold,
+    video, readLink, watch, player, axes, poly, svg, curve, dot, label, mixHex, pvCard, pick } = Lab;
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const lerp = (a, b, k) => a + (b - a) * k;
   const smooth = (k) => { k = clamp(k, 0, 1); return k * k * (3 - 2 * k); };
@@ -36,82 +37,7 @@
     return `<figure class="photo2 ${cls}"><img src="${IMG}${file}" alt="${esc(p.alt)}" width="${p.w}" height="${p.h}" loading="lazy">
       <figcaption>${caption ? `${caption} ` : ""}<span class="credit">${p.credit}</span></figcaption></figure>`;
   };
-  const video = (id, title, by) => `<a class="video" href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">
-      <span class="video-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
-      <span class="video-t"><strong>${title}</strong><small>${by} · YouTube</small></span></a>`;
-  const readLink = (url, title, by) => `<a class="video" href="${url}" target="_blank" rel="noopener">
-      <span class="video-play read" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7"/></svg></span>
-      <span class="video-t"><strong>${title}</strong><small>${by}</small></span></a>`;
-  const watch = (items, h = "Watch") => `<div class="videos"><h4 class="sub-h">${h}</h4><div class="video-list">${items.join("")}</div></div>`;
 
-  /* =====================================================================
-     Animation player: Play / Pause / Replay and a position slider.
-     Plays only while on screen (saves phone batteries). With "reduce motion"
-     it never auto-plays: the slider steps through the animation instead.
-     ===================================================================== */
-  const ICON = {
-    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
-    pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>',
-    again: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>'
-  };
-  function player(host, watchEl, o) {
-    const dur = o.dur, hold = o.hold === undefined ? 1.2 : o.hold, loop = o.loop !== false;
-    let t = reduceMotion || o.auto === false ? (o.still === undefined ? dur : o.still) : 0, want = !reduceMotion && o.auto !== false, on = false, seen = false, raf = 0, last = 0, acc = 1;
-    host.innerHTML = `<div class="pl"><button type="button" class="pl-b" data-a="p"></button>` +
-      `<button type="button" class="pl-b" data-a="r" aria-label="Replay from the start">${ICON.again}</button>` +
-      `<input type="range" class="pl-s" min="0" max="1000" step="1" aria-label="${esc(o.label || "Animation position")}"><span class="pl-t"></span></div>`;
-    const pb = host.querySelector('[data-a="p"]'), sc = host.querySelector(".pl-s"), tl = host.querySelector(".pl-t");
-    const btn = () => { pb.innerHTML = on ? ICON.pause : ICON.play; pb.setAttribute("aria-label", on ? "Pause animation" : "Play animation"); };
-    const show = () => { const k = Math.min(t, dur); o.draw(k); sc.value = Math.round((k / dur) * 1000); tl.textContent = o.clock ? o.clock(k) : ""; };
-    const tick = (now) => {
-      raf = 0;
-      if (!on) return;
-      const dt = Math.min(0.1, (now - last) / 1000);
-      last = now; t += dt; acc += dt;
-      if (t >= dur + (loop ? hold : 0)) { if (loop) t = 0; else { t = dur; show(); stop(); return; } }
-      if (acc >= 1 / 40) { acc = 0; show(); }
-      raf = requestAnimationFrame(tick);
-    };
-    const start = () => { if (on) return; if (!loop && t >= dur) t = 0; on = true; last = performance.now(); btn(); raf = requestAnimationFrame(tick); };
-    const stop = () => { on = false; if (raf) cancelAnimationFrame(raf); raf = 0; btn(); };
-    if ("IntersectionObserver" in window) {
-      new IntersectionObserver((es) => { seen = es[es.length - 1].isIntersecting; if (seen && want) start(); else if (!seen) stop(); }, { threshold: 0.2 }).observe(watchEl);
-    } else { seen = true; if (want) start(); }
-    pb.addEventListener("click", () => { want = !on; if (want) start(); else stop(); });
-    host.querySelector('[data-a="r"]').addEventListener("click", () => { t = 0; show(); if (!reduceMotion) { want = true; start(); } });
-    sc.addEventListener("input", () => { want = false; stop(); t = (sc.value / 1000) * dur; show(); });
-    btn(); show();
-    return { redraw: show, get t() { return t; }, set(v) { t = v; show(); }, restart() { t = 0; show(); if (want && seen) start(); } };
-  }
-
-  /* =====================================================================
-     Small plotting helpers (SVG)
-     ===================================================================== */
-  function axes(o) {
-    const W = o.W || 360, H = o.H || 230, l = o.l === undefined ? 50 : o.l, r = o.r === undefined ? 14 : o.r, t = o.t === undefined ? 14 : o.t, b = o.b === undefined ? 40 : o.b;
-    const [x0, x1] = o.x, [y0, y1] = o.y, pw = W - l - r, ph = H - t - b;
-    const X = (v) => l + ((v - x0) / (x1 - x0)) * pw, Y = (v) => t + (1 - (v - y0) / (y1 - y0)) * ph;
-    let s = "";
-    (o.xt || []).forEach((v) => { s += `<line class="gl" x1="${X(v)}" x2="${X(v)}" y1="${t}" y2="${t + ph}"/>${T(X(v), t + ph + 15, o.fx ? o.fx(v) : v, "middle", "axis")}`; });
-    (o.yt || []).forEach((v) => { s += `<line class="gl" x1="${l}" x2="${l + pw}" y1="${Y(v)}" y2="${Y(v)}"/>${T(l - 5, Y(v) + 4, o.fy ? o.fy(v) : v, "end", "axis")}`; });
-    s += `<path class="ax" d="M${l},${t}V${t + ph}H${l + pw}"/>`;
-    if (o.xl) s += T(l + pw / 2, H - 5, o.xl, "middle", "axl");
-    if (o.yl) s += `<text class="axl" transform="translate(13 ${t + ph / 2}) rotate(-90)" text-anchor="middle">${o.yl}</text>`;
-    return { W, H, X, Y, l, t, pw, ph, s, clipX: (v) => clamp(v, x0, x1), clipY: (v) => clamp(v, y0, y1) };
-  }
-  const poly = (pts, cls) => `<polyline class="${cls}" points="${pts.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ")}"/>`;
-  const svg = (W, H, label, inner, cls = "plot") => `<svg class="${cls}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${inner}</svg>`;
-  // Sample f over [a, b] into plot coordinates
-  const curve = (A, f, a, b, n = 80) => { const p = []; for (let i = 0; i <= n; i++) { const x = a + ((b - a) * i) / n; p.push([A.X(x), A.Y(A.clipY(f(x)))]); } return p; };
-  const dot = (x, y, cls = "pt") => `<circle class="${cls}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5"/>`;
-  const label = (x, y, t, a = "start", cls = "ptlab") => T(x.toFixed(1), y.toFixed(1), t, a, cls);
-
-  // Colour of water from cold blue to hot red
-  const mixHex = (a, b, k) => {
-    k = clamp(k, 0, 1);
-    const p = (h, i) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16);
-    return "#" + [0, 1, 2].map((i) => Math.round(lerp(p(a, i), p(b, i), k)).toString(16).padStart(2, "0")).join("");
-  };
   const waterCol = (T) => mixHex("#5aaee8", "#e8795a", (T - 10) / 60);
 
   // A beaker of water on a hot plate, with a thermometer and a sensor probe wired to a meter.
@@ -134,13 +60,6 @@
     s += T(258, 132, o.lcdLab || "", "middle", "small");
     return s;
   }
-
-  function pvCard(el, controls = "", foot = "") {
-    el.innerHTML = `<div class="pv"><div class="pv-grid"><div class="pv-scene"></div><div class="pv-graph"></div></div>${controls}<div class="pv-pl"></div><p class="pv-read"></p>${foot}</div>`;
-    const q = (s) => el.querySelector(s);
-    return { el, scene: q(".pv-scene"), graph: q(".pv-graph"), pl: q(".pv-pl"), read: q(".pv-read"), box: q(".pv") };
-  }
-  const pick = (el, cb) => el.querySelectorAll(".chips-row").forEach((row) => wireChips(row, cb));
 
   /* =====================================================================
      Introduction: microphone → amplifier → loudspeaker (redrawn from the lecture figure)

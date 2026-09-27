@@ -1,0 +1,92 @@
+/* NMK42003 Chapter 4: transduction circuit scenes. Builds on style.css and lab.css (shared scene, graph and player styles). */
+
+.cmp-grid .photo2.small { max-width: 280px; }
+.cmp-grid.two-photo { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+.cmp-grid.two-photo .photo2 { margin: 0; }
+.photo2.small.tall { max-width: 120px; }
+.home-fig { margin: 10px 0 4px; max-width: 460px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 6px; }
+.scene.homefig, .scene.flow { min-width: 420px; }
+.scene.flow { max-width: 760px; margin: 0 auto; }
+
+/* intro flow */
+.scene .espbig { fill: #1f3b57; }
+.scene .tt.inv, .scene .small.inv { fill: #fff; }
+.scene .tt.fsm { font-size: 13px; }
+.scene .fsm { font-size: 13px; fill: var(--ink); }
+.scene .flow-l { stroke: var(--ink-3); stroke-width: 2; }
+.scene .packet { fill: var(--teal); }
+.scene .scope, .ckt .scope { fill: #0f1b24; stroke: var(--ink-3); }
+.scene .scope-t { fill: none; stroke: #86f09a; stroke-width: 2; stroke-linejoin: round; }
+.scene .drv { fill: var(--teal-soft); stroke: var(--teal); stroke-width: 1.6; }
+
+/* divider explorer */
+.scene .meterbar { fill: var(--grid); stroke: var(--ink-3); }
+.scene .meterfill { fill: var(--teal); transition: y .15s, height .15s; }
+
+/* street light */
+.scene .moon { fill: #f4f1d0; }
+.scene .star { fill: #fff; }
+.scene .road3 { fill: var(--road); }
+.scene .house { fill: #d9c7a7; stroke: #8a7658; }
+.scene .roof { fill: #a0533a; }
+.scene .win { fill: #6b7b8a; }
+.scene .win.lit { fill: #ffd76a; }
+.scene .lamp-arm { stroke: var(--metal-d); stroke-width: 4; }
+.scene .lamp-head { fill: #4f5962; }
+.scene .lamp-head.on { fill: #ffe27a; filter: drop-shadow(0 0 10px #ffd43d); }
+.scene .beam { fill: #ffe27a; opacity: .35; }
+.scene .ldr-dot { fill: #e0823a; stroke: #7a4b20; }
+.scene .inv-ish { fill: #e6edf3; }
+
+/* bridge */
+.ckt .gmeter, .scene .gmeter { fill: var(--surface); stroke: var(--ink); stroke-width: 1.8; }
+.ckt .needle, .scene .needle { stroke: var(--danger); stroke-width: 2.5; stroke-linecap: round; }
+.ckt .tt, .scene .homefig .tt { fill: var(--ink); font-weight: 600; font-size: 14px; }
+.ckt .iarrow { fill: none; stroke: var(--teal); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.scene .homefig text, .homefig text { font-size: 14px; }
+.scene .gauge-arc { fill: none; stroke: var(--grid); stroke-width: 12; }
+.scene .val { fill: var(--teal); font-weight: 600; }
+.scene .hatch { fill: var(--grid); stroke: var(--ink-3); }
+.scene .beam { stroke-linecap: round; }
+.scene polyline.beam { fill: none; stroke: var(--metal-d); stroke-width: 10; }
+.scene .gauge { fill: var(--teal); }
+.scene .pan { fill: var(--metal-d); }
+.scene .weight { fill: #6b7680; }
+
+/* 555 */
+.ckt .chip, .scene .chip { fill: #25292d; stroke: #111; }
+.ckt .tt.inv, .ckt .inv { fill: #fff; font-weight: 600; }
+.scene .tank, .ckt .tank { fill: none; stroke: var(--glass); stroke-width: 3; }
+.scene .water2 { fill: var(--water); opacity: .6; }
+.scene .wire-w { stroke: #f4f4f4; stroke-width: 3; filter: drop-shadow(0 0 1px #555); }
+.scene .wire-g { stroke: #2e9e4a; stroke-width: 3; }
+
+/* LC */
+.ckt .ac { fill: var(--surface); stroke: var(--ink); stroke-width: 1.6; }
+.ckt .tt { fill: var(--ink); font-weight: 600; }
+.scene .efield { fill: var(--teal); }
+.scene .coilw { stroke: #c7864a; stroke-width: 3; }
+.scene .bfield { fill: none; stroke: var(--amber); stroke-width: 2; stroke-dasharray: 5 4; }
+.scene .ebar { fill: var(--teal); }
+.scene .ebar.l { fill: var(--amber); }
+.scene .soil { fill: #8a6a4a; }
+.scene .coin { fill: #d9b45f; stroke: #8a6a1f; }
+.scene .nail { fill: #7d8892; }
+.scene .shaft { stroke: var(--ink-2); stroke-width: 5; stroke-linecap: round; }
+.scene .searchcoil { fill: none; stroke: #2f6fb7; stroke-width: 6; }
+.scene .searchcoil.on { stroke: var(--amber); }
+
+/* piezo */
+.scene .pz-plate { fill: #d9a8b4; stroke: #8c5463; }
+.scene .pz-crystal { fill: #3a92d6; }
+.scene .push { fill: none; stroke: #2e9e4a; stroke-width: 5; stroke-linejoin: round; stroke-linecap: round; }
+.scene .chg { font-weight: 700; font-size: 16px; }
+.scene .chg.p { fill: var(--red); }
+.scene .chg.m { fill: #1f7fe0; }
+.scene .snd { fill: none; stroke: var(--teal); stroke-width: 2.5; stroke-linecap: round; }
+.scene .sun { fill: #ffc93d; }
+.scene .iarrow { fill: none; stroke: var(--teal); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.scene .tick { stroke: var(--ink-3); stroke-width: 2; }
+
+@media (prefers-reduced-motion: reduce) { .scene .meterfill { transition: none; } }
+.scene .pole { fill: var(--metal-d); }

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 4: Transduction Techniques | NMK42003 Instrumentation</title>
+  <meta name="description" content="Animated notes for NMK42003 Instrumentation Chapter 4: transduction circuits for passive sensors (voltage divider, Wheatstone bridge, 555 timing circuit, LC tuned circuit) and for active sensors (piezo), with calculators and exercises.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/lab.css">
+  <link rel="stylesheet" href="assets/css/chapter4.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b6e6e'/%3E%3Cpath d='M4 20h6l3-10 4 14 3-8h8' fill='none' stroke='white' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("nmk-theme");
+        if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="index.html">
+        <span class="brand-code">NMK42003</span>
+        <span class="brand-name">Instrumentation</span>
+      </a>
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="nav">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <nav class="nav" id="nav" aria-label="Main">
+        <a href="index.html#team">Teaching team</a>
+        <a href="index.html#semester">Semester</a>
+        <a href="index.html#topics">Topics</a>
+        <a href="index.html#schedule">Schedule</a>
+        <a href="index.html#assessment">Assessment</a>
+      </nav>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark mode">
+        <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap chapter-hero">
+      <a class="crumb" href="index.html#topics">Back to all topics</a>
+      <div class="chapter-no">Chapter 4</div>
+      <h1 id="chTitle">Transduction Techniques</h1>
+      <div class="topic-meta" id="chMeta"></div>
+      <div class="authors" id="chAuthors"></div>
+      <p class="lab-lead" id="chSummary"></p>
+      <div class="goals">
+        <h2>By the end of this chapter you can</h2>
+        <ul>
+          <li>explain why passive sensors need a transduction circuit, and name the three common techniques</li>
+          <li>calculate the output of voltage dividers and Wheatstone bridges, and the balance condition</li>
+          <li>calculate the frequency of a 555 timing circuit and the resonant frequency of an LC circuit</li>
+          <li>explain how a piezo sensor's charge is turned into a voltage, and why it can't measure a steady force</li>
+        </ul>
+      </div>
+      <p class="lab-how">The pictures on this page move. Press <strong>play</strong> on any animation, change the values and watch the graph. Tap <strong>Show</strong> on any panel to see the step-by-step working. The exercises at the end check what you have learnt.</p>
+      <noscript><div class="callout warn"><strong>JavaScript is off</strong>The animations on this page need JavaScript. Turn it on, or use the lecture slides on URLearn.</div></noscript>
+    </div>
+
+    <nav class="lab-nav" aria-label="Chapter sections">
+      <div class="wrap">
+        <a href="#intro">Introduction</a>
+        <a href="#divider-g">Divider</a>
+        <a href="#bridge-g">Bridge</a>
+        <a href="#timing">Timing circuit</a>
+        <a href="#tuned">Tuned circuit</a>
+        <a href="#active">Active sensors</a>
+        <a href="#exercises">Exercises</a>
+      </div>
+    </nav>
+
+    <section class="lab-group" id="intro" aria-labelledby="intro-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="intro-h">Introduction</h2>
+          <p>From a change in R, C or L to a signal a microcontroller can read.</p>
+        </div>
+        <div id="introList"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="divider-g" aria-labelledby="divider-g-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="divider-g-h">Voltage divider</h2>
+          <p>The simplest transduction circuit: a sensor in series with a fixed part turns a change of R, C or L into a voltage.</p>
+          <ul class="toc-chips" id="dividerToc"></ul>
+        </div>
+        <div id="dividerList"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="bridge-g" aria-labelledby="bridge-g-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="bridge-g-h">Bridge circuits</h2>
+          <p>Two dividers side by side remove the voltage offset. A galvanometer shows whether the bridge is balanced.</p>
+          <ul class="toc-chips" id="bridgeToc"></ul>
+        </div>
+        <div id="bridgeList"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="timing" aria-labelledby="timing-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="timing-h">Timing circuit</h2>
+          <p>A 555 timer turns a capacitive sensor into a frequency.</p>
+          <ul class="toc-chips" id="timingToc"></ul>
+        </div>
+        <div id="timingList"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="tuned" aria-labelledby="tuned-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="tuned-h">Tuned circuit</h2>
+          <p>An inductor and a capacitor resonate at one frequency, which moves when the sensor changes L or C.</p>
+          <ul class="toc-chips" id="tunedToc"></ul>
+        </div>
+        <div id="tunedList"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="active" aria-labelledby="active-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="active-h">Transduction circuit for active sensors</h2>
+          <p>Turning a piezo sensor's charge into a voltage.</p>
+        </div>
+        <div id="activeList"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="exercises" aria-labelledby="exercises-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="exercises-h">Exercises</h2>
+          <p>Practise with these questions. Choose or type your answers and press <strong>Check answers</strong>. Each wrong try unlocks a hint, and when all your answers are correct the full working appears. Swipe left or right, or use the arrows, to move between exercises.</p>
+        </div>
+        <div id="exList"></div>
+
+        <div class="home-ex" id="home-exercise">
+          <h3>Home exercise: submit on URLearn</h3>
+          <p>We will try some of these in class. Work them all out using the methods on this page, then submit your answers on URLearn after class. The answers are not given here.</p>
+          <ol>
+            <li>In a voltage divider circuit, V<sub>in</sub> = 12 V, R<sub>1</sub> = 4 kΩ and R<sub>2</sub> = 4 kΩ.
+              <ul><li>(a) Calculate the output voltage V<sub>out</sub>.</li>
+              <li>(b) Observe the effect of changing R<sub>2</sub> on V<sub>out</sub>: if R<sub>2</sub> is decreased to 2 kΩ, and if R<sub>2</sub> is increased to 8 kΩ.</li>
+              <li>(c) Observe the effect of changing R<sub>1</sub> on V<sub>out</sub>: if R<sub>1</sub> is decreased to 2 kΩ, and if R<sub>1</sub> is increased to 8 kΩ.</li>
+              <li>(d) Make a conclusion from your observations.</li></ul></li>
+            <li>A Wheatstone bridge has a 20 V supply and R<sub>1</sub> = 120 kΩ, R<sub>2</sub> = 480 kΩ, R<sub>3</sub> = x and R<sub>4</sub> = 60 kΩ, as shown. The bridge is balanced (V<sub>out</sub> = 0). Find the value x of R<sub>3</sub>.
+              <figure class="home-fig" id="homeFig2"></figure></li>
+            <li>In a Wheatstone bridge, R<sub>1</sub> = 100 Ω, R<sub>2</sub> = 200 Ω, R<sub>3</sub> = 300 Ω and R<sub>4</sub> = 50 Ω. A 10 V source is connected across the bridge (A positive), and a galvanometer is connected between points C and D to detect the balance condition.
+              <ul><li>(a) Calculate the output voltage V<sub>out</sub> across points C and D.</li>
+              <li>(b) Determine the direction of the galvanometer current (from C to D, or from D to C) from your V<sub>out</sub>.</li></ul>
+              <figure class="home-fig" id="homeFig3"></figure></li>
+            <li>Pop quiz: a circuit has two resistors R<sub>1</sub> = 6.0 Ω and R<sub>2</sub> = 1.5 Ω, a variable resistor R<sub>var</sub>, a resistor of unknown value R<sub>u</sub> and a 9.0 V battery, connected as shown. When R<sub>var</sub> is adjusted to 12 Ω, there is zero current through the ammeter. What is the unknown resistance R<sub>u</sub>?
+              <figure class="home-fig" id="homeFig4"></figure></li>
+          </ol>
+          <p class="small-note">For more detailed explanations, see Chapter 4 of the reference book.</p>
+        </div>
+
+        <nav class="pager" aria-label="Chapters" id="chPager"></nav>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="footer"></footer>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/lab.js"></script>
+  <script src="assets/js/chapter4.js"></script>
+</body>
+</html>

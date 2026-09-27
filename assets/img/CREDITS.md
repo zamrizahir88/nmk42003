@@ -51,3 +51,15 @@ All Chapter 2 diagrams (DAQ evolution, pinout, circuits, protocol and Wi-Fi diag
 | `chapter-3/sg90-servo.jpg` | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Tower_Pro_SG90_micro_servo_motor.jpg) | Suyash Dwivedi, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
 
 All Chapter 3 animations and diagrams are original SVGs. The microphone system and car parking sensor animations are redrawn in the style of the lecture figures.
+
+## Chapter 4
+
+| File | Source | Credit and licence |
+| --- | --- | --- |
+| `chapter-4/ldr.jpg` | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:25mm_light-dependent_resistor_(LDR)_(1).jpg) | Suyash Dwivedi, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
+| `chapter-4/ne555-timer.jpg` | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:NE555_DIP_%26_SOIC.jpg) | Swift.Hg, [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
+| `chapter-4/strain-gauge.jpg` | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Unmounted_strain_gauge.jpg) | Pleriche, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
+| `chapter-4/timer-sensor-board.jpg`, `two-wire-sensor-water.jpg` | Lecture material | NMK42003 teaching team, used with permission |
+
+Chapter 4 also reuses `chapter-1/wheatstone-bridge.jpg` and `chapter-1/galvanometer-mechanism.jpg` (credits above). All Chapter 4 animations and circuit diagrams are original SVGs.
+
