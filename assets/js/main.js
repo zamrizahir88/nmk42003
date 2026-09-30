@@ -172,7 +172,7 @@
   const here = (location.pathname.split("/").pop() || "index.html").toLowerCase();
   document.querySelectorAll("#nav a").forEach((a) => {
     const target = a.getAttribute("href").toLowerCase();
-    if (target === here || (target === "chapters.html" && /^(chapter-\d+|topic)\.html$/.test(here))) a.setAttribute("aria-current", "page");
+    if (target === here || (target === "chapters.html" && /^(chapter-\d+|topic)\.html$/.test(here)) || (target === "labs.html" && /^lab-\d+\.html$/.test(here))) a.setAttribute("aria-current", "page");
   });
 
   /* =====================================================================
@@ -217,7 +217,7 @@
       { i: "book", t: "Chapters", d: "Interactive lecture notes with animations, calculators with step-by-step working, and exercises for every chapter.", b: `${COURSE.topics.length} chapters · ${built} interactive`, h: "chapters.html", wide: true, extra: pills },
       { i: "cal", t: "Weekly schedule", d: "Topics, labs and assessments for every week of the semester.", b: `${TOTAL_WEEKS} weeks`, h: "schedule.html" },
       { i: "chart", t: "Assessment and outcomes", d: "How your grade is made up, and the course outcomes.", b: `${COURSE.assessment.length} parts · ${COURSE.outcomes.length} outcomes`, h: "assessment.html" },
-      { i: "flask", t: "Laboratory experiments", d: "The lab experiments and the weeks they run in.", b: `${COURSE.labs.length} labs`, h: "labs.html#labs" },
+      { i: "flask", t: "Laboratory experiments", d: "The lab experiments and the weeks they run in, with virtual labs to try before you come to the lab.", b: `${COURSE.labs.length} labs · ${COURSE.labs.filter((l) => l.page).length} virtual`, h: "labs.html#labs" },
       { i: "refs", t: "References", d: "Textbooks and reference books for the course.", b: `${COURSE.references.length} books`, h: "labs.html#refs" }
     ];
     $("#menuCards").innerHTML = cards.map((c) => `
@@ -543,8 +543,13 @@
 
   /* ---------- Labs, references, team ---------- */
   function renderLabs() {
-    $("#labList").innerHTML = COURSE.labs.map((l) =>
-      `<li><span>${esc(l.title)}${l.openEnded ? '<span class="oe">Open-ended</span>' : ""}</span><span class="muted">${esc(l.weeks)}</span></li>`
+    // A lab with a virtual lab page becomes a link card; the others stay plain rows.
+    $("#labList").innerHTML = COURSE.labs.map((l) => l.page
+      ? `<li class="lab-link"><a href="${esc(l.page)}">
+          <span class="ll-top"><span class="ll-title">${esc(l.title)}${l.openEnded ? '<span class="oe">Open-ended</span>' : ""}</span><span class="muted">${esc(l.weeks)}</span></span>
+          ${l.summary ? `<span class="ll-sum">${esc(l.summary)}</span>` : ""}
+          <span class="ll-go">Open the virtual lab <span aria-hidden="true">→</span></span></a></li>`
+      : `<li><span>${esc(l.title)}${l.openEnded ? '<span class="oe">Open-ended</span>' : ""}</span><span class="muted">${esc(l.weeks)}</span></li>`
     ).join("");
     $("#refList").innerHTML = COURSE.references.map((r) => `<li>${esc(r)}</li>`).join("");
   }

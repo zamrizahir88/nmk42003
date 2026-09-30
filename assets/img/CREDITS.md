@@ -70,3 +70,7 @@ Chapter 6 reuses `chapter-2/esp-wroom-32.jpg` (credit above). All Chapter 6 anim
 ## Chapter 7
 
 All Chapter 7 animations, circuit sketches and the virtual calibration lab are original SVGs. The calibration data in the lab come from the course textbook (Chapter 7).
+
+## Lab 1 virtual lab
+
+Lab 1 (`lab-1.html`) reuses the Chapter 2 screenshots `tuniot-menu.png`, `tuniot-workspace.png`, `ide-board-port.png`, `ide-ota-example.png` and `ota-upload-page.png` (credits above). The ESP32 board, breadboard circuits, TUNIOT and App Inventor blocks, phone apps, browser and Arduino IDE mock-ups are original drawings made for this site.

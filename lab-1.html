@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lab 1: Introduction (Software &amp; Hardware) | NMK42003 Instrumentation</title>
+  <meta name="description" content="Virtual lab for NMK42003 Instrumentation Lab 1: power and program the ESP32, blink its LED, upload over the air, and switch LEDs from a phone by Bluetooth, an MIT App Inventor app and a Wi-Fi web page.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css?v=2609301">
+  <link rel="stylesheet" href="assets/css/lab.css?v=2609301">
+  <link rel="stylesheet" href="assets/css/lab1.css?v=2609301">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0b6e6e">
+  <link rel="apple-touch-icon" href="assets/img/icon-180.png">
+  <meta name="apple-mobile-web-app-title" content="NMK42003">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b6e6e'/%3E%3Cpath d='M4 20h6l3-10 4 14 3-8h8' fill='none' stroke='white' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("nmk-theme");
+        if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="index.html">
+        <span class="brand-code">NMK42003</span>
+        <span class="brand-name">Instrumentation</span>
+      </a>
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="nav">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <nav class="nav" id="nav" aria-label="Main">
+        <a href="index.html">Home</a>
+        <a href="chapters.html">Chapters</a>
+        <a href="schedule.html">Schedule</a>
+        <a href="assessment.html">Assessment</a>
+        <a href="labs.html">Labs &amp; references</a>
+      </nav>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark mode">
+        <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap chapter-hero">
+      <a class="crumb" href="labs.html">Back to all labs</a>
+      <div class="chapter-no">Lab 1 · Virtual lab</div>
+      <h1 id="chTitle">Introduction (Software &amp; Hardware)</h1>
+      <div class="topic-meta" id="chMeta"></div>
+      <div class="authors" id="chAuthors"></div>
+      <p class="lab-lead">Try the whole of Lab 1 here before you come to the lab. You'll power and program the ESP32, blink its built-in LED, upload a program over Wi-Fi, and then switch LEDs from a phone in three ways: a Bluetooth terminal, your own MIT App Inventor app and a web page.</p>
+      <div class="goals">
+        <h2>Objectives</h2>
+        <ul>
+          <li>power and program the ESP32, by cable and over the air (OTA)</li>
+          <li>switch the built-in LED on and off from a mobile phone by Bluetooth</li>
+          <li>build a simple phone app with MIT App Inventor</li>
+          <li>switch an external LED on and off over Wi-Fi from a web browser</li>
+        </ul>
+      </div>
+      <p class="lab-how">This is a simulation: nothing here talks to a real board. Everything follows the lab sheet, so in the lab you'll do the same steps on the real ESP32. Where the page asks for your name, it uses it the way the lab sheet does (in the Bluetooth name and the Serial Monitor).</p>
+      <div class="name-box" id="nameBox"></div>
+      <noscript><div class="callout warn"><strong>JavaScript is off</strong>The virtual lab on this page needs JavaScript. Turn it on, or use the lab sheet on URLearn.</div></noscript>
+    </div>
+
+    <nav class="lab-nav" aria-label="Lab sections">
+      <div class="wrap">
+        <a href="#kit">Before you start</a>
+        <a href="#l1">Lesson 1: Blink</a>
+        <a href="#l2">Lesson 2: Bluetooth</a>
+        <a href="#l3">Lesson 3: App Inventor</a>
+        <a href="#l4">Lesson 4: Wi-Fi</a>
+        <a href="#exercises">Pre-lab check</a>
+      </div>
+    </nav>
+
+    <section class="lab-group" id="kit" aria-labelledby="kit-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="kit-h">Before you start</h2>
+          <p>The equipment, the software and the basic ESP32 circuit.</p>
+          <ul class="toc-chips" id="kitToc"></ul>
+        </div>
+        <div id="kitList"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="l1" aria-labelledby="l1-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="l1-h">Lesson 1: Blink the built-in LED</h2>
+          <p>Build the blocks in TUNIOT, then upload the code in two ways: by USB cable and over Wi-Fi.</p>
+          <ul class="toc-chips" id="l1Toc"></ul>
+        </div>
+        <div id="l1List"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="l2" aria-labelledby="l2-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="l2-h">Lesson 2: Control the LED with a Bluetooth terminal</h2>
+          <p>The ESP32 becomes a Bluetooth device with your name. You type ON or OFF on your phone.</p>
+          <ul class="toc-chips" id="l2Toc"></ul>
+        </div>
+        <div id="l2List"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="l3" aria-labelledby="l3-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="l3-h">Lesson 3: Control the LED with your own app</h2>
+          <p>Design a phone app with MIT App Inventor that sends ON and OFF to the same ESP32 program.</p>
+          <ul class="toc-chips" id="l3Toc"></ul>
+        </div>
+        <div id="l3List"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="l4" aria-labelledby="l4-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="l4-h">Lesson 4: Control an external LED over Wi-Fi</h2>
+          <p>Wire an LED to GPIO32, and let the ESP32 serve a web page with ON and OFF buttons.</p>
+          <ul class="toc-chips" id="l4Toc"></ul>
+        </div>
+        <div id="l4List"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="exercises" aria-labelledby="exercises-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="exercises-h">Pre-lab check</h2>
+          <p>A quick quiz, then four questions to check you're ready. Type or choose your answers and press <strong>Check answers</strong>. Each wrong try unlocks a hint, and when all your answers are correct the full working appears. Swipe left or right, or use the arrows, to move between questions.</p>
+        </div>
+        <div id="quizBox"></div>
+        <h3 class="sub-h">Questions</h3>
+        <div id="exList"></div>
+        <nav class="pager" aria-label="Labs" id="chPager"></nav>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="footer"></footer>
+
+  <script src="assets/js/data.js?v=2609301"></script>
+  <script src="assets/js/main.js?v=2609301"></script>
+  <script src="assets/js/lab.js?v=2609301"></script>
+  <script src="assets/js/lab1.js?v=2609301"></script>
+</body>
+</html>

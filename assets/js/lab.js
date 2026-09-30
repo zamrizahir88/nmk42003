@@ -731,30 +731,48 @@
      ===================================================================== */
   const pageOf = (t) => t.page || `topic.html?ch=${t.no}`;
 
-  function renderHero(topic) {
-    document.title = `Chapter ${topic.no}: ${topic.title} | ${COURSE.code} ${COURSE.name}`;
-    const title = $("#chTitle"), summary = $("#chSummary"), meta = $("#chMeta"), pager = $("#chPager"), authors = $("#chAuthors");
-    if (title) title.textContent = topic.title;
-    if (summary) summary.textContent = topic.summary;
-    if (meta) {
-      const [y, m, d] = COURSE.semesterStart.split("-").map(Number);
-      const wk = (topic.weeks.match(/\d+/g) || []).map(Number);
-      let dates = "";
-      if (wk.length) {
-        const start = new Date(y, m - 1, d + (wk[0] - 1) * 7), end = new Date(y, m - 1, d + (wk[wk.length - 1] - 1) * 7 + 6);
-        dates = `, ${start.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} to ${end.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
-      }
-      meta.innerHTML = `<span>${esc(topic.weeks)}${dates}</span><span class="badge ${topic.status}">Interactive</span>`;
-    }
+  // "Weeks 1 to 2" → "Weeks 1 to 2, 5 Oct to 18 Oct 2026"
+  function weekDates(weeks) {
+    const [y, m, d] = COURSE.semesterStart.split("-").map(Number);
+    const wk = (weeks.match(/\d+/g) || []).map(Number);
+    if (!wk.length) return esc(weeks);
+    const start = new Date(y, m - 1, d + (wk[0] - 1) * 7), end = new Date(y, m - 1, d + (wk[wk.length - 1] - 1) * 7 + 6);
+    return `${esc(weeks)}, ${start.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} to ${end.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
+  }
+  function renderAuthors() {
+    const authors = $("#chAuthors");
     if (authors) {
       authors.innerHTML = `<span class="by-label">Prepared by</span>` + COURSE.team.map((p) =>
         `<span class="by-person">${p.photo ? `<img src="${esc(p.photo)}" alt="" width="36" height="36">` : `<span class="by-init">${esc(p.initials)}</span>`}${esc(p.name)}</span>`).join("");
     }
+  }
+
+  function renderHero(topic) {
+    document.title = `Chapter ${topic.no}: ${topic.title} | ${COURSE.code} ${COURSE.name}`;
+    const title = $("#chTitle"), summary = $("#chSummary"), meta = $("#chMeta"), pager = $("#chPager");
+    if (title) title.textContent = topic.title;
+    if (summary) summary.textContent = topic.summary;
+    if (meta) meta.innerHTML = `<span>${weekDates(topic.weeks)}</span><span class="badge ${topic.status}">Interactive</span>`;
+    renderAuthors();
     if (pager) {
       const prev = COURSE.topics.find((t) => t.no === topic.no - 1), next = COURSE.topics.find((t) => t.no === topic.no + 1);
       pager.innerHTML =
         `<span>${prev ? `<a href="${esc(pageOf(prev))}"><small>Previous</small>Chapter ${prev.no}: ${esc(prev.title)}</a>` : ""}</span>` +
         `<span style="text-align:right">${next ? `<a href="${esc(pageOf(next))}"><small>Next</small>Chapter ${next.no}: ${esc(next.title)}</a>` : ""}</span>`;
+    }
+  }
+
+  // Virtual lab pages: same hero, pager to the previous and next virtual labs (or back to the lab list).
+  function renderLabHero(lab) {
+    document.title = `${lab.title} | ${COURSE.code} ${COURSE.name}`;
+    const meta = $("#chMeta"), pager = $("#chPager");
+    if (meta) meta.innerHTML = `<span>${weekDates(lab.weeks)}</span><span class="badge interactive">Virtual lab</span>`;
+    renderAuthors();
+    if (pager) {
+      const built = COURSE.labs.filter((l) => l.page), i = built.indexOf(lab), prev = built[i - 1], next = built[i + 1];
+      const link = (l, dir) => `<a href="${esc(l.page)}"><small>${dir}</small>${esc(l.title)}</a>`;
+      pager.innerHTML = `<span>${prev ? link(prev, "Previous") : `<a href="labs.html"><small>Back</small>All labs and references</a>`}</span>` +
+        `<span style="text-align:right">${next ? link(next, "Next") : ""}</span>`;
     }
   }
 
@@ -822,8 +840,8 @@
        exercises: [...], exList: "#exList"
      }) */
   function page(cfg) {
-    const topic = COURSE.topics.find((t) => t.no === cfg.topic);
-    renderHero(topic);
+    if (cfg.lab) renderLabHero(COURSE.labs.find((l) => l.no === cfg.lab));
+    else renderHero(COURSE.topics.find((t) => t.no === cfg.topic));
     if (cfg.collapseWorking) cfg.sections.forEach((s) => { s.collapse = true; });
     cfg.groups.forEach((g) => {
       const secs = cfg.sections.filter((s) => s.group === g.key);
