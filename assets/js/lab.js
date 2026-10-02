@@ -278,15 +278,15 @@
           </div>`
         : `<div class="c-grid single">${form}</div>`}
       ${sec.collapse
-        ? `<p class="result fold-result" aria-live="polite"></p>${fold("Step-by-step working", `<ol class="steps"></ol>`)}`
+        ? `<p class="result fold-result" aria-live="polite"></p>${fold("Step-by-Step Working", `<ol class="steps"></ol>`)}`
         : `<div class="working">
-        <h4>Step-by-step working</h4>
+        <h4>Step-by-Step Working</h4>
         <p class="result" aria-live="polite"></p>
         <ol class="steps"></ol>
       </div>`}
       <div class="warnings"></div>
       ${sec.render ? `<div class="extra"></div>` : ""}
-      ${sec.bode ? `<div class="bode"><h4>Frequency response (Bode magnitude plot)</h4><div class="bode-plot"></div>
+      ${sec.bode ? `<div class="bode"><h4>Frequency Response (Bode Magnitude Plot)</h4><div class="bode-plot"></div>
         <p class="bode-cap">Gain in dB against frequency on a log scale. Dashed lines mark the cut-off frequencies and the −3 dB level, and the red dot is your chosen f. Click or tap the graph to move f.</p></div>` : ""}
       ${sec.after || ""}`;
 

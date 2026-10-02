@@ -456,3 +456,49 @@ button.set-dev:hover { border-color: #2f7de0; }
 .pq-res .btn { margin-bottom: 6px; }
 .sim-side { grid-template-columns: minmax(0, 1fr); }
 .sim-side > * { min-width: 0; }
+
+/* ---------- Step bar (section navigation) ---------- */
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+.lab-nav.steps { grid-template-columns: minmax(0, 1fr); }
+.lab-nav.steps .wrap { gap: 0; scrollbar-width: none; min-width: 0; width: 100%; }
+.lab-nav.steps .wrap::-webkit-scrollbar { display: none; }
+.lab-nav.steps a { position: relative; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 36px; padding: 5px 11px; margin: 0 7px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink-2); font-size: .9rem; font-weight: 500; }
+.lab-nav.steps a:first-child { margin-left: auto; }
+.lab-nav.steps a:last-child { margin-right: auto; }
+.lab-nav.steps a + a::before { content: ""; position: absolute; right: calc(100% + 1px); top: 50%; width: 14px; height: 2px; background: var(--rule); pointer-events: none; }
+.lab-nav.steps a:hover { border-color: var(--teal); color: var(--teal); background: var(--surface); }
+.lab-nav.steps a:has(~ a[aria-current="true"]) { border-color: var(--teal); color: var(--teal); background: var(--teal-soft); }
+.lab-nav.steps a:has(~ a[aria-current="true"]) + a::before, .lab-nav.steps a[aria-current="true"]::before { background: var(--teal); }
+.lab-nav.steps a[aria-current="true"], .lab-nav.steps a[aria-current="true"]:hover { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+.lab-nav.steps .sb-l { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+.lab-nav.steps a[aria-current="true"] .sb-l { position: static; width: auto; height: auto; overflow: visible; clip: auto; clip-path: none; }
+.lab-nav.steps a[aria-current="true"] .sb-s { display: none; }
+.lab-nav.steps .sb-k { font-size: .85em; }
+.lab-nav.steps .sb-k[hidden] { display: none; }
+.sb-cap { display: none; }
+@media (max-width: 640px) {
+  .lab-nav.steps .wrap { height: 42px; -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%); }
+  .lab-nav.steps a { min-width: 30px; padding: 4px 8px; margin: 0 4px; font-size: .82rem; }
+  .lab-nav.steps a + a::before { width: 8px; }
+  .lab-nav.steps a[aria-current="true"] .sb-l { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); }
+  .lab-nav.steps a[aria-current="true"] .sb-s { display: inline; }
+  .sb-cap { display: block; margin: 0; padding: 0 16px 6px; text-align: center; font-size: .8rem; font-weight: 600; color: var(--ink); }
+}
+
+/* ---------- Pre-Lab Check: one question at a time ---------- */
+.pq-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; font-size: .92rem; color: var(--ink-2); margin: 4px 0 4px; }
+.pq-nav.ex-nav { position: static; background: none; margin: 4px 0 10px; }
+.pq-dot { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--ink-3); background: transparent; padding: 0; cursor: pointer; }
+.pq-dot.done { background: var(--ink-3); }
+.pq-dot.ok { background: var(--teal); border-color: var(--teal); }
+.pq-dot.ok.late { background: var(--teal-soft); }
+.pq-dot.no { background: var(--danger); border-color: var(--danger); }
+.pq-dot.on { transform: scale(1.35); box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--ink); }
+.pq-stage { min-height: 300px; }
+@media (max-width: 640px) { .pq-stage { min-height: 0; } }
+.pq-stage .pq-card { margin: 0; }
+.pq-card.in-r { animation: pq-in-r .22s ease-out; }
+.pq-card.in-l { animation: pq-in-l .22s ease-out; }
+@keyframes pq-in-r { from { transform: translateX(28px); opacity: .2; } }
+@keyframes pq-in-l { from { transform: translateX(-28px); opacity: .2; } }
+@media (prefers-reduced-motion: reduce) { .pq-card.in-r, .pq-card.in-l { animation: none; } }

@@ -125,7 +125,7 @@
       <figure class="scene-box"><svg class="scene park-rear" viewBox="0 0 330 230" role="img" aria-label="Animated rear parking sensor: a car reverses towards a wall; the rear sensor sends ultrasonic pulses that bounce back from the wall, and the beeping gets faster as the car gets closer."></svg><figcaption>Rear (reverse) sensors</figcaption></figure>
       <figure class="scene-box"><svg class="scene park-front" viewBox="0 0 330 230" role="img" aria-label="Animated front sensors: a car approaches an obstacle; first a warning sound, then initial braking, then auxiliary (full) braking."></svg><figcaption>Front sensors</figcaption>
         <ol class="stages"><li data-s="1">Warning sound</li><li data-s="2">Initial brake</li><li data-s="3">Auxiliary brake</li></ol></figure>
-      </div><div class="pv-pl"></div><p class="pv-read"></p>${fold("Step-by-step working: distance from the echo time", `<ol class="steps"></ol>`)}</div>`;
+      </div><div class="pv-pl"></div><p class="pv-read"></p>${fold("Step-by-Step Working: Distance from the Echo Time", `<ol class="steps"></ol>`)}</div>`;
     const rear = el.querySelector(".park-rear"), front = el.querySelector(".park-front"), read = el.querySelector(".pv-read"), steps = el.querySelector(".steps"), stages = el.querySelectorAll(".stages li");
     let lastD = -1;
     const draw = (t) => {
@@ -295,7 +295,7 @@
   function mountDynamic(el, sec) {
     const S = { tau: 3 };
     const c = pvCard(el, chips("Probe", PROBES, "3") + `<div class="slider-field"><label for="${sec.id}-tau">Time constant τ: <strong class="tau-v">3 s</strong></label><input type="range" id="${sec.id}-tau" min="0.5" max="10" step="0.5" value="3"></div>`,
-      fold("Step-by-step working", `<ol class="steps"></ol>`));
+      fold("Step-by-Step Working", `<ol class="steps"></ol>`));
     const sl = el.querySelector(`#${sec.id}-tau`), tv = el.querySelector(".tau-v"), steps = el.querySelector(".steps");
     const T0 = 20, T1 = 60, t0 = 2, SPAN = 40, out = (ts) => (ts < t0 ? T0 : T0 + (T1 - T0) * (1 - Math.exp(-(ts - t0) / S.tau)));
     const draw = (t) => {
@@ -510,7 +510,7 @@
   };
   function mountThermistor(el) {
     const S = { k: "ntc" };
-    const c = pvCard(el, chips("Sensor", [["ntc", "NTC thermistor"], ["ptc", "PTC sensor"], ["rtd", "Pt100 RTD (metal)"]], S.k), fold("Step-by-step working", `<ol class="steps"></ol>`));
+    const c = pvCard(el, chips("Sensor", [["ntc", "NTC thermistor"], ["ptc", "PTC sensor"], ["rtd", "Pt100 RTD (metal)"]], S.k), fold("Step-by-Step Working", `<ol class="steps"></ol>`));
     const steps = el.querySelector(".steps");
     let lastT = null;
     const work = (T) => {
@@ -779,7 +779,7 @@ void loop()
     extra.innerHTML = `<div class="plot-box">${svg(A.W, A.H, "Output voltage against light level", A.s + poly(curve(A, f, 0, emax, 120), "trace-a") + dot(A.X(v.E), A.Y(res.vout)))}</div>`;
   }
   function mountHall(el) {
-    const c = pvCard(el, "", fold("Step-by-step working: the Hall voltage", `<ol class="steps"></ol>`));
+    const c = pvCard(el, "", fold("Step-by-Step Working: The Hall Voltage", `<ol class="steps"></ol>`));
     const steps = el.querySelector(".steps"), I = 5e-3, n = 1e22, q = 1.602e-19, th = 1e-4;
     const dAt = (t) => 17 - 15 * Math.cos((2 * Math.PI * t) / 8), Bof = (d) => 0.25 / (1 + (d / 6) ** 2), VH = (B) => (I * B) / (n * q * th);
     let last = -1;
@@ -827,7 +827,7 @@ void loop()
     const S = { k: "red", d: 60 };
     el.innerHTML = `<div class="pv">${chips("LED colour", Object.entries(LEDS).map(([k, m]) => [k, m.n]), S.k)}
       <div class="slider-field"><label for="${sec.id}-d">PWM duty cycle: <strong class="d-v">60%</strong></label><input type="range" id="${sec.id}-d" min="0" max="100" step="1" value="60"></div>
-      <div class="pv-grid"><div class="pv-scene"></div><div class="pv-graph"></div></div><p class="pv-read"></p>${fold("Step-by-step working", `<ol class="steps"></ol>`)}</div>`;
+      <div class="pv-grid"><div class="pv-scene"></div><div class="pv-graph"></div></div><p class="pv-read"></p>${fold("Step-by-Step Working", `<ol class="steps"></ol>`)}</div>`;
     const q = (s) => el.querySelector(s), sl = q(`#${sec.id}-d`);
     const draw = () => {
       const m = LEDS[S.k], d = S.d / 100, R = (3.3 - m.vf) / 0.01;
@@ -851,7 +851,7 @@ void loop()
     const S = { d: 50, dir: "fwd" };
     el.innerHTML = `<div class="pv">${chips("Direction", [["fwd", "Forward"], ["rev", "Reverse"]], S.dir)}
       <div class="slider-field"><label for="${sec.id}-d">PWM duty cycle: <strong class="d-v">50%</strong></label><input type="range" id="${sec.id}-d" min="0" max="100" step="1" value="50"></div>
-      <div class="pv-grid"><div class="pv-scene"></div><div class="pv-graph"></div></div><p class="pv-read"></p>${fold("Step-by-step working", `<ol class="steps"></ol>`)}</div>`;
+      <div class="pv-grid"><div class="pv-scene"></div><div class="pv-graph"></div></div><p class="pv-read"></p>${fold("Step-by-Step Working", `<ol class="steps"></ol>`)}</div>`;
     const q = (s) => el.querySelector(s), sl = q(`#${sec.id}-d`);
     let s = `<rect class="bx" x="8" y="40" width="64" height="44" rx="6"/>${T(40, 60, "ESP32", "middle", "tt")}${T(40, 76, "PWM", "middle", "small")}<path class="w" d="M72,62H96"/>`;
     s += `<rect class="drv" x="96" y="36" width="76" height="52" rx="6"/>${T(134, 58, "motor", "middle", "small")}${T(134, 74, "driver", "middle", "small")}<path class="w" d="M172,56H196M172,68H196"/>`;
@@ -877,7 +877,7 @@ void loop()
   function mountServo(el, sec) {
     const S = { pw: 1.5 };
     el.innerHTML = `<div class="pv"><div class="slider-field"><label for="${sec.id}-p">Pulse width: <strong class="p-v">1.50 ms</strong></label><input type="range" id="${sec.id}-p" min="1" max="2" step="0.05" value="1.5"></div>
-      <div class="pv-grid"><div class="pv-scene"></div><div class="pv-graph"></div></div><p class="pv-read"></p>${fold("Step-by-step working", `<ol class="steps"></ol>`)}</div>`;
+      <div class="pv-grid"><div class="pv-scene"></div><div class="pv-graph"></div></div><p class="pv-read"></p>${fold("Step-by-Step Working", `<ol class="steps"></ol>`)}</div>`;
     const q = (s) => el.querySelector(s), sl = q(`#${sec.id}-p`), cx = 160, cy = 150;
     let s = `<path class="prot" d="M${cx - 100},${cy}A100,100 0 0 1 ${cx + 100},${cy}"/>`;
     [0, 45, 90, 135, 180].forEach((a) => { const r = (a * Math.PI) / 180; s += `<line class="tick" x1="${cx - 92 * Math.cos(r)}" y1="${cy - 92 * Math.sin(r)}" x2="${cx - 100 * Math.cos(r)}" y2="${cy - 100 * Math.sin(r)}"/>` + T(cx - 114 * Math.cos(r), cy - 114 * Math.sin(r) + 4, `${a}°`, "middle", "small"); });
@@ -995,13 +995,13 @@ void loop()
      ===================================================================== */
   const SECTIONS = [
     // ---------- Introduction ----------
-    { id: "transducer", group: "intro", title: "What is a transducer?", toc: "Transducers", mode: "intro",
+    { id: "transducer", group: "intro", title: "What Is a Transducer?", toc: "Transducers", mode: "intro",
       intro: `<p>A <strong>transducer</strong> converts one form of energy or physical variable into another. Physical variables can be mechanical, chemical, electrical, thermal or optical. In instrumentation we mostly convert <strong>mechanical to electrical</strong> and back again.</p>
         <dl class="defs"><div><dt>Sensor</dt><dd>A transducer that turns a physical variable (mechanical, optical, thermal…) into an <strong>electrical</strong> signal we can measure.</dd></div>
         <div><dt>Actuator</dt><dd>A transducer that turns an electrical signal back into a <strong>physical</strong> action: motion, light, sound or heat.</dd></div></dl>
         <p>A <strong>microphone</strong> is a sensor: sound waves vibrate its diaphragm and create an electrical signal. A <strong>loudspeaker</strong> is an actuator: the electrical signal moves its diaphragm and makes sound waves. Watch the signal travel through the system below.</p>`,
       mount: mountMicSystem,
-      after: `<h4 class="sub-h">Electrical and mechanical variables are equivalent</h4>
+      after: `<h4 class="sub-h">Electrical and Mechanical Variables Are Equivalent</h4>
         <p class="widget-lead">The same equations describe electrical circuits and mechanical (acoustic) systems. That is why one can be converted into the other.</p>
         ${table(["Quantity", "Electrical", "Mechanical (acoustic)"], [
           ["Effort (“tension”)", "Voltage, V (V)", "Acoustic pressure, p (Pa)"],
@@ -1009,13 +1009,13 @@ void loop()
           ["Storage (spring)", "Capacitance, C (F)", "Compliance, 1/K (m/N), the inverse of stiffness K"],
           ["Inertia", "Inductance, L (H)", "Mass, M (kg)"],
           ["Impedance", "Z<sub>e</sub> = V ÷ I (Ω)", "Z<sub>a</sub> = p ÷ v (Pa·s/m, called rayl)"]])}` },
-    { id: "parking", group: "intro", title: "Transducers at work: car parking sensors", toc: "Parking sensors",
+    { id: "parking", group: "intro", title: "Transducers at Work: Car Parking Sensors", toc: "Parking Sensors",
       intro: `<p>A car's <strong>collision avoidance system</strong> uses ultrasound, millimetre-wave radar, laser or LED transducers mounted at the front and rear. Each one sends out a high-frequency signal; if an object is in the way, part of the signal is reflected back and detected.</p>
         <p>The sensor times the echo. Because the signal travels to the object <strong>and back</strong>, the distance is <span class="formula">d = v × t ÷ 2</span> where v is the speed of the signal (343 m/s for sound in air at 20 °C). When reversing, the beeps speed up as the car gets closer. At the front, the system first sounds a warning, then starts braking, then brakes fully.</p>`,
       mount: mountParking },
 
     // ---------- Sensor parameters ----------
-    { id: "params", group: "params", title: "What makes a good sensor?", toc: "Overview",
+    { id: "params", group: "params", title: "What Makes a Good Sensor?", toc: "Overview",
       intro: `<p>A sensor must respond only to the quantity it is designed to measure, within its specified limits, and the relationship between its input and output must be known and fixed. Eight parameters describe how well it does that. Each one below is shown in a <strong>real situation</strong>: press play, change the settings and watch the graph.</p>`,
       mount: mountParams },
     { id: "linearity", group: "params", title: "1. Linearity", toc: "Linearity",
@@ -1030,40 +1030,40 @@ void loop()
       intro: `<p>A sensor must produce the <strong>same output every time</strong> it gets the same input. For example, a temperature sensor put into 30 °C water again and again should give the same voltage each time.</p>
         <p><strong>Real situation: a bathroom scale.</strong> The same person steps on it eight times. A good scale shows almost the same number every time; a poor one scatters. The third option shows why repeatability is not the same as accuracy.</p>`,
       mount: mountRepeat },
-    { id: "dynamic", group: "params", title: "4. Good dynamic response", toc: "Dynamic response",
+    { id: "dynamic", group: "params", title: "4. Good Dynamic Response", toc: "Dynamic Response",
       intro: `<p>The output should follow the input <strong>faithfully in time</strong>. When the input jumps, a real sensor catches up along a curve. Its <strong>time constant τ</strong> is the time to reach 63.2% of the change; after about 5τ it has settled (99.3%). Dynamic behaviour is also analysed as the sensor's frequency response.</p>
         <p class="formula">T(t) = T₁ + (T₂ − T₁)(1 − e<sup>−t/τ</sup>)</p>
         <p><strong>Real situation: industrial heating.</strong> A probe moves from 20 °C air into 60 °C water. A fast sensor reports the new temperature almost at once; a slow one lags behind, and a control system using it would react too late.</p>`,
       mount: mountDynamic },
-    { id: "snr", group: "params", title: "5. High output signal quality", toc: "Signal quality",
+    { id: "snr", group: "params", title: "5. High Output Signal Quality", toc: "Signal Quality",
       intro: `<p>The output should be <strong>strong and clean</strong>: its amplitude must be large enough, and the ratio of signal to noise (SNR) must be high.</p><p class="formula">SNR (dB) = 20 log<sub>10</sub>(V<sub>signal</sub> ÷ V<sub>noise</sub>)</p>
         <p><strong>Real situation: a noisy factory.</strong> A temperature sensor's cable runs past a large motor, which radiates electrical noise into it. Try a shielded twisted-pair cable, and amplifying the signal at the sensor before the long cable.</p>`,
       mount: mountSnr },
-    { id: "stability", group: "params", title: "6. High reliability and stability", toc: "Reliability and stability",
+    { id: "stability", group: "params", title: "6. High Reliability and Stability", toc: "Reliability and Stability",
       intro: `<p>The sensor should keep its error small despite <strong>temperature changes, vibration, humidity and time</strong>. A stable sensor keeps its calibration; an unstable one slowly <strong>drifts</strong>.</p>
         <p><strong>Real situation: an outdoor weather station.</strong> Two sensors spend two years outside through sun, heat and monsoon rain. Watch how far each one's reading moves away from the true temperature.</p>`,
       mount: mountStability },
-    { id: "hysteresis", group: "params", title: "7. No hysteresis", toc: "Hysteresis",
+    { id: "hysteresis", group: "params", title: "7. No Hysteresis", toc: "Hysteresis",
       intro: `<p>The output should be the same at a given input whether the input is <strong>rising or falling</strong>. If the two paths differ, the sensor has hysteresis.</p><p class="formula">Hysteresis (% of full scale) = largest difference between the two paths ÷ full-scale output × 100</p>
         <p><strong>Real situation:</strong> water heats from 20 °C to 50 °C and then cools back to 20 °C. At 35 °C a sensor with hysteresis reads differently on the way down than on the way up.</p>`,
       mount: mountHysteresis,
       after: `<div class="callout info"><strong>Good to know</strong>Hysteresis in a <em>sensor</em> is an error, but engineers add it on purpose to <em>controllers</em>. An air-conditioner thermostat switches on at 25 °C but off at 23 °C, so it doesn't click on and off every few seconds.</div>` },
-    { id: "residual", group: "params", title: "8. No residual deformation", toc: "Residual deformation",
+    { id: "residual", group: "params", title: "8. No Residual Deformation", toc: "Residual Deformation",
       intro: `<p>After a load has been applied, even for a long time, the sensor should return to its original state when the load is removed. A permanent change is <strong>residual deformation</strong>, and it leaves a zero error in every later reading.</p>
         <p><strong>Real situation: a load cell.</strong> The bending beam in a kitchen or industrial scale carries a strain gauge. Within its rating it springs back; overloaded, it stays bent. The same idea applies to heat: a temperature sensor pushed beyond its rated temperature (say 200 °C) may not return to its original reading.</p>`,
       mount: mountResidual },
-    { id: "criteria", group: "params", title: "Criteria for choosing a sensor", toc: "Choosing a sensor",
+    { id: "criteria", group: "params", title: "Criteria for Choosing a Sensor", toc: "Choosing a Sensor",
       intro: `<p>Before buying a sensor for a project, check it against these eight criteria.</p>`,
       mount: mountCriteria },
 
     // ---------- Passive sensors ----------
-    { id: "classify", group: "passive", title: "Classification of sensors", toc: "Classification",
+    { id: "classify", group: "passive", title: "Classification of Sensors", toc: "Classification",
       intro: `<p>Sensors are divided into two groups by where the energy for the output comes from.</p>
         <dl class="defs"><div><dt>Passive sensors</dt><dd>Do not generate an electrical signal themselves. Their resistance, capacitance or inductance changes, and an external supply (excitation) is needed to turn that into a voltage.</dd></div>
         <div><dt>Active sensors</dt><dd>Generate their own electrical signal from the quantity they sense. The output is usually very small, so an amplifier is needed.</dd></div></dl>`,
       mount: mountTree,
       after: `<div class="callout info"><strong>Good to know</strong>Textbooks don't all use these two words the same way: some call any sensor that needs a power supply “active”. To avoid confusion, say what you mean: <em>self-generating</em> (makes its own signal) or <em>modulating</em> (changes a signal supplied to it).</div>` },
-    { id: "resistive", group: "passive", title: "Resistive sensors: R = ρl ÷ A", toc: "Resistive",
+    { id: "resistive", group: "passive", title: "Resistive Sensors: R = ρl ÷ A", toc: "Resistive",
       intro: `<p>A resistive sensor converts a change such as displacement, temperature or light into a change of resistance, which is measured after signal conditioning. Potentiometers, thermistors and photoresistors are common examples. For a wire of length l and cross-section A:</p><p class="formula">R = ρ l ÷ A</p>
         <p>ρ is the resistivity. Any change in ρ, l or A changes R. A <strong>strain gauge</strong> uses this: stretching its wire makes it longer and thinner, so R rises.</p>`,
       inputs: [F("rho", "num", 1.1e-6, "nichrome 1.1 × 10⁻⁶, copper 1.72 × 10⁻⁸", { unit: "Ω·m", positive: true, label: "Resistivity ρ", name: "Resistivity" }),
@@ -1077,7 +1077,7 @@ void loop()
           step("Resistance", "R = ρ l ÷ A", `= ${num(v.rho)} Ω·m × ${num(v.l)} m ÷ ${num(A)} m²`, `R = ${eng(R, "Ω")}`),
           step("What if…", "", "double the length → 2R; double the area → R ÷ 2", `stretch to 2l (area halves) → 4R = ${eng(4 * R, "Ω")}`)] };
       } },
-    { id: "pot", group: "passive", title: "Potentiometer: sensing angle", toc: "Potentiometer",
+    { id: "pot", group: "passive", title: "Potentiometer: Sensing Angle", toc: "Potentiometer",
       intro: `<p>The resistance between GND and +V<sub>in</sub> is fixed, but the resistance between GND and the <strong>wiper</strong> depends on its position. The pot is a voltage divider, so the wiper voltage tells us the angle:</p><p class="formula">V<sub>out</sub> = V<sub>in</sub> × R<sub>2</sub> ÷ (R<sub>1</sub> + R<sub>2</sub>)</p>
         <p><strong>Real situations:</strong> volume knobs, joysticks, the position feedback inside a servo motor, and robot-arm joints. Move the slider to turn the knob.</p>
         <div class="cmp-grid">${photo("potentiometer.jpg", "A rotary potentiometer.", "small")}</div>`,
@@ -1093,7 +1093,7 @@ void loop()
           step("Output voltage", "V<sub>out</sub> = V<sub>in</sub> × R<sub>2</sub> ÷ (R<sub>1</sub> + R<sub>2</sub>)", `= ${num(v.Vin)} V × ${eng(R2, "Ω")} ÷ ${eng(v.Rt, "Ω")}`, `V<sub>out</sub> = ${eng(vout, "V")}`)] };
       },
       after: watch([video("Wdl77HBP_yU", "Resistive transducers: working of transducers", "EzEd Channel")]) },
-    { id: "thermistor", group: "passive", title: "Thermistors and RTDs: sensing temperature", toc: "Thermistor",
+    { id: "thermistor", group: "passive", title: "Thermistors and RTDs: Sensing Temperature", toc: "Thermistor",
       intro: `<p>These sensors change resistance when the temperature changes. They have two leads, like a resistor.</p>
         <dl class="defs"><div><dt>NTC thermistor</dt><dd>Negative temperature coefficient: resistance <strong>falls</strong> as temperature rises. Large change, non-linear: R = R<sub>0</sub> e<sup>β(1/T − 1/T<sub>0</sub>)</sup>, with T in kelvin.</dd></div>
         <div><dt>PTC thermistor</dt><dd>Positive temperature coefficient: resistance <strong>rises</strong> as temperature rises.</dd></div>
@@ -1101,7 +1101,7 @@ void loop()
         <p><strong>Real situation:</strong> checking a thermistor with a multimeter in ice water and warm water, just like the photo. Watch the resistance as the water heats and cools.</p>
         <div class="cmp-grid">${photo("ntc-thermistor-ice.jpg", "An NTC thermistor tested in ice water.", "small")}</div>`,
       mount: mountThermistor },
-    { id: "capacitive", group: "passive", title: "Capacitive sensors: C = ε<sub>r</sub>ε<sub>0</sub>A ÷ d", toc: "Capacitive",
+    { id: "capacitive", group: "passive", title: "Capacitive Sensors: C = ε<sub>r</sub>ε<sub>0</sub>A ÷ d", toc: "Capacitive",
       intro: `<p>Capacitive proximity sensors are <strong>non-contact</strong> devices that can detect almost any object, whatever its material. They work by the change in capacitance when something changes the electric field at the sensor's face. The basic sensor is a parallel-plate capacitor:</p>
         <p class="formula">C = ε<sub>r</sub> ε<sub>0</sub> A ÷ d = ε<sub>r</sub> ε<sub>0</sub> l w ÷ d</p>
         <p>ε<sub>0</sub> = 8.854 × 10<sup>−12</sup> F/m is the permittivity of free space, ε<sub>r</sub> the relative permittivity of the material between the plates, A = l × w the plate area and d the gap. Changing <strong>ε<sub>r</sub></strong> (liquid level, humidity), <strong>A</strong> (overlap, touch) or <strong>d</strong> (pressure, displacement) changes C.</p>`,
@@ -1115,7 +1115,7 @@ void loop()
           step("Gap in metres", "d (m) = d (mm) ÷ 1000", `= ${num(v.d)} ÷ 1000`, `d = ${num(d)} m`),
           step("Capacitance", "C = ε<sub>r</sub> ε<sub>0</sub> A ÷ d", `= ${num(v.er)} × 8.854 × 10<sup>−12</sup> × ${num(v.A)} ÷ ${num(d)}`, `C = ${num(C)} F = ${eng(C, "F")}`)] };
       } },
-    { id: "level", group: "passive", title: "Capacitive liquid-level sensor", toc: "Liquid level",
+    { id: "level", group: "passive", title: "Capacitive Liquid-Level Sensor", toc: "Liquid Level",
       intro: `<p>Two plates stand in a tank. Below the water line the gap is filled with water; above it, with air. The sensor is two capacitors side by side, and the net capacitance is their sum (water outside the plates doesn't count):</p>
         <p class="formula">C<sub>net</sub> = C<sub>water</sub> + C<sub>air</sub> = ε<sub>water</sub>ε<sub>0</sub> x w ÷ d + ε<sub>air</sub>ε<sub>0</sub>(L − x) w ÷ d</p>
         <p>Since ε<sub>air</sub> = 1, this becomes <strong>C<sub>net</sub> = ε<sub>0</sub>(w/d)(ε<sub>water</sub> − 1) x + ε<sub>0</sub>(w/d) L = a x + b</strong>: a straight line, so C<sub>net</sub> is proportional to the depth x. Press play to fill the tank.</p>`,
@@ -1137,7 +1137,7 @@ void loop()
           step("As a straight line", "C<sub>net</sub> = a x + b", `a = ε<sub>0</sub>(w/d)(ε<sub>water</sub> − 1) = ${num(k * (v.ew - 1))} F/m, b = ε<sub>0</sub>(w/d)L = ${eng(k * L, "F")}`, `each extra cm of water adds ${eng(k * (v.ew - 1) / 100, "F")}`)] };
       },
       after: watch([video("0du-QU1Q0T4", "How capacitive liquid level sensors work", "Gill Group")]) },
-    { id: "inductance", group: "passive", title: "Inductive sensors: L = μ<sub>r</sub>μ<sub>0</sub>N²A ÷ l", toc: "Inductive",
+    { id: "inductance", group: "passive", title: "Inductive Sensors: L = μ<sub>r</sub>μ<sub>0</sub>N²A ÷ l", toc: "Inductive",
       intro: `<p>An inductive sensor works from the changing magnetic field of a coil. The inductance of a simple coil is:</p>
         <p class="formula">L<sub>coil</sub> = μ<sub>r</sub> μ<sub>0</sub> N² A ÷ l = μ<sub>r</sub> μ<sub>0</sub> N² π r² ÷ l</p>
         <p>μ<sub>r</sub> is the relative permeability of the core, μ<sub>0</sub> = 4π × 10<sup>−7</sup> H/m, N the number of turns, A the coil area (radius r) and l its length. Any change in μ<sub>r</sub>, A or l changes L; moving metal near the coil does exactly that.</p>`,
@@ -1155,32 +1155,32 @@ void loop()
         st.push(step("Why an iron core helps", "L ∝ μ<sub>r</sub>", `with μ<sub>r</sub> = 200 instead of ${num(v.mur)}`, `L would be ${eng((L * 200) / v.mur, "H")}`));
         return { sum: `L = ${eng(L, "H")}`, L, steps: st };
       } },
-    { id: "proximity", group: "passive", title: "Inductive proximity sensor", toc: "Proximity sensor",
+    { id: "proximity", group: "passive", title: "Inductive Proximity Sensor", toc: "Proximity Sensor",
       intro: `<p>An inductive proximity sensor has four parts: the <strong>coil, oscillator, detection circuit and output circuit</strong>. An alternating current in the coil makes a magnetic field at the sensor face. When a metal object comes close, eddy currents in the metal take energy from the field, the oscillation gets weaker, and the detection circuit switches the output when the change passes a preset level.</p>
         <p><strong>Real situations:</strong> counting metal cans on a conveyor, checking a machine part is in place, sensing a piston's end position. It has no moving parts and never touches the object.</p>
         <div class="cmp-grid">${photo("inductive-proximity-switch.jpg", "An industrial inductive proximity switch.", "small")}</div>`,
       mount: mountProximity,
       after: watch([video("bvds2vkEWoQ", "How an inductive sensor works", "Rajvir Singh")]) },
-    { id: "loop", group: "passive", title: "Traffic lights with inductive loops", toc: "Traffic loop",
+    { id: "loop", group: "passive", title: "Traffic Lights with Inductive Loops", toc: "Traffic Loop",
       intro: `<p>An <strong>inductive loop</strong> is a coil of wire laid in a slot cut into the road surface near the stop line. The empty loop has inductance L<sub>0</sub> = μ<sub>0</sub>N²A ÷ l. When a vehicle stops over it, the vehicle's metal body changes the magnetic field of the loop, and the detector registers the vehicle by measuring that change.</p>`,
       mount: mountLoop },
-    { id: "lvdt", group: "passive", title: "LVDT: linear variable differential transformer", toc: "LVDT",
+    { id: "lvdt", group: "passive", title: "LVDT: Linear Variable Differential Transformer", toc: "LVDT",
       intro: `<p>An LVDT turns mechanical motion into an electrical signal to measure <strong>displacement</strong>. An AC supply drives the primary coil. Two secondary coils, connected in series opposition, pick up voltages V1 and V2 that depend on where the moveable iron core is. At the centre they cancel; move the core and V<sub>out</sub> = V1 − V2 grows in proportion to the displacement, with its phase showing the direction.</p>
         <p><strong>Real situations:</strong> force, tension, pressure and weight are first converted into a displacement (by a spring or diaphragm), which the LVDT measures. LVDTs are used in industrial automation, aircraft, turbines, satellites and hydraulics.</p>`,
       mount: mountLvdt,
       after: watch([video("E-kDsP0wq6w", "LVDT: linear variable differential transformer working", "ADTW Study")]) },
-    { id: "passivecompare", group: "passive", title: "Resistive, capacitive and inductive sensors compared", toc: "Comparison",
+    { id: "passivecompare", group: "passive", title: "Resistive, Capacitive and Inductive Sensors Compared", toc: "Comparison",
       mount: (el) => { el.innerHTML = PASSIVE_CMP; } },
 
     // ---------- Active sensors ----------
-    { id: "piezo", group: "active", title: "Piezoelectric sensors", toc: "Piezoelectric",
+    { id: "piezo", group: "active", title: "Piezoelectric Sensors", toc: "Piezoelectric",
       intro: `<p><em>Piezo</em> is Greek for pressure: piezoelectricity is electricity from pressure. Squeeze a piezoelectric crystal and charges appear on its faces, in proportion to the force (stress). It also works the other way: apply a voltage and the crystal deforms. Piezo materials are either <strong>ceramics</strong> or <strong>polymers</strong>.</p>
         <p><strong>Real situations:</strong> gas-stove igniters, microphones, knock and vibration sensors, and buzzers. Piezo actuators make movements as small as 1 ångström (10<sup>−10</sup> m) in scanning tunnelling and atomic force microscopes.</p>
         <div class="cmp-grid">${photo("piezo-discs.jpg", "Piezo discs: a ceramic layer on a brass plate.", "small")}</div>`,
       mount: mountPiezo,
       after: watch([readLink("https://deepbluembedded.com/arduino-active-passive-buzzer/", "Active and passive buzzers with Arduino", "DeepBlue Embedded · article"),
         readLink("https://techtutorialsx.com/2017/07/01/esp32-arduino-controlling-a-buzzer-with-pwm/", "ESP32 Arduino: controlling a buzzer with PWM", "techtutorialsx · tutorial")], "Read") },
-    { id: "photodiode", group: "active", title: "Photodiode in photoconductive mode", toc: "Photodiode",
+    { id: "photodiode", group: "active", title: "Photodiode in Photoconductive Mode", toc: "Photodiode",
       intro: `<p>In <strong>photoconductive mode</strong> the photodiode is <strong>reverse biased</strong> by an external supply. Light falling on it releases charge carriers, so its resistance drops and a photocurrent I<sub>λ</sub> flows, in proportion to the light. The load resistor turns that current into a voltage: <span class="formula">V<sub>out</sub> = I<sub>λ</sub> × R<sub>L</sub></span></p>
         <p>With no bias (<strong>photovoltaic mode</strong>) the same diode generates its own voltage, like a small solar cell: that is the self-generating way to use it. <strong>Real situations:</strong> optical-fibre receivers, smoke detectors, safety light curtains, and heart-rate sensors on smartwatches.</p>`,
       inputs: [F("E", "num", 400, "office 400, bright window 1000+", { unit: "lux", positive: false, label: "Light level", slider: { min: 0, max: 2000, step: 10 }, validate: (x) => (x < 0 ? "Light can't be negative." : "") }),
@@ -1194,26 +1194,26 @@ void loop()
           step("Photocurrent", "I<sub>λ</sub> = sensitivity × light", `= 0.05 µA/lux × ${num(v.E)} lux`, `I<sub>λ</sub> = ${eng(I, "A")}`),
           step("Output voltage", "V<sub>out</sub> = I<sub>λ</sub> × R<sub>L</sub>", `= ${eng(I, "A")} × ${eng(v.RL, "Ω")}`, `V<sub>out</sub> = ${eng(raw, "V")}${sat ? ` → limited to ${num(v.Vcc)} V` : ""}`)] };
       } },
-    { id: "hall", group: "active", title: "Hall effect sensors", toc: "Hall effect",
+    { id: "hall", group: "active", title: "Hall Effect Sensors", toc: "Hall Effect",
       intro: `<p>A Hall sensor detects a <strong>magnetic field</strong>. A bias current flows through a thin semiconductor plate; a magnetic field pushes the moving charges to one edge, so a voltage, the <strong>Hall voltage</strong>, appears across the plate in proportion to the field strength. It needs an external supply for the bias current.</p>
         <p><strong>Real situations:</strong> wheel-speed sensors for ABS brakes, brushless fan and motor control, the flip-cover sensor in a phone, contactless current sensors, and joysticks.</p>`,
       mount: mountHall },
-    { id: "activecompare", group: "active", title: "Passive and active sensors compared", toc: "Comparison",
-      mount: (el) => { el.innerHTML = `${ACTIVE_CMP}<h4 class="sub-h">By example</h4>${EXAMPLES_CMP}<h4 class="sub-h">Quick check: passive or active?</h4><div class="quiz-host"></div>`; quiz(el.querySelector(".quiz-host"), CLASS_QUIZ); } },
+    { id: "activecompare", group: "active", title: "Passive and Active Sensors Compared", toc: "Comparison",
+      mount: (el) => { el.innerHTML = `${ACTIVE_CMP}<h4 class="sub-h">By Example</h4>${EXAMPLES_CMP}<h4 class="sub-h">Quick Check: Passive or Active?</h4><div class="quiz-host"></div>`; quiz(el.querySelector(".quiz-host"), CLASS_QUIZ); } },
 
     // ---------- Actuators ----------
     { id: "actuators", group: "actuators", title: "Actuators", toc: "Actuators", mode: "act",
       intro: `<p>Actuators convert <strong>electrical energy</strong> into optical, mechanical or other forms of energy. They take an electrical signal from a system and produce an output in the environment. Examples: LEDs, LCD displays, relays and motors.</p>
         <p>The microphone system is a complete example: the diaphragm is the <strong>sensor</strong> and the loudspeaker is the <strong>actuator</strong>.</p>`,
       mount: mountMicSystem,
-      after: `<h4 class="sub-h">Sensor or actuator?</h4>${SA_CMP}` },
-    { id: "led", group: "actuators", title: "Light emitting diode (LED)", toc: "LED",
+      after: `<h4 class="sub-h">Sensor or Actuator?</h4>${SA_CMP}` },
+    { id: "led", group: "actuators", title: "Light Emitting Diode (LED)", toc: "LED",
       intro: `<p>An LED turns electrical energy into light. It needs a resistor to limit its current, and the ESP32 controls its brightness with <strong>PWM</strong>: switching fully on and off very fast, with the duty cycle setting the average power.</p>`,
       mount: mountLed },
-    { id: "motor", group: "actuators", title: "Permanent magnet DC motor", toc: "DC motor",
+    { id: "motor", group: "actuators", title: "Permanent Magnet DC Motor", toc: "DC Motor",
       intro: `<p>A permanent magnet DC (PMDC) motor turns electrical energy into rotation. Its speed is roughly proportional to its voltage, so PWM controls the speed; swapping the polarity reverses it. The ESP32 pin can't supply a motor's current, so a <strong>motor driver</strong> (H-bridge) sits in between.</p>`,
       mount: mountMotor },
-    { id: "servo", group: "actuators", title: "Servo motor", toc: "Servo",
+    { id: "servo", group: "actuators", title: "Servo Motor", toc: "Servo",
       intro: `<p>A servo turns to an <strong>angle</strong> set by the width of a pulse repeated every 20 ms. Inside is a DC motor, a gearbox and a potentiometer that feeds back the shaft position: a sensor and an actuator working together.</p>
         <div class="cmp-grid">${photo("sg90-servo.jpg", "An SG90 micro servo.", "small")}</div>`,
       mount: mountServo,
@@ -1231,7 +1231,7 @@ void loop()
   const W_ = (list) => `<div class="working"><h4>Working</h4><ol class="steps">${stepsHtml(list)}</ol></div>`;
   const PNAMES = PARAMS.map((p) => p[1]);
   const EXERCISES = [
-    { id: "c3-q1", title: "Exercise 1: which parameter?",
+    { id: "c3-q1", title: "Exercise 1: Which Parameter?",
       q: `<p>Each situation shows one sensor parameter going wrong. Choose the parameter.</p>`,
       ans: [{ l: "A pressure gauge reads 2.10 bar as pressure rises to 2 bar, but 2.18 bar as it falls back to 2 bar", opts: PNAMES, v: 6 },
         { l: "A thermometer takes 40 s to show the new temperature after being moved into a hot room", opts: PNAMES, v: 3 },
@@ -1240,61 +1240,61 @@ void loop()
         { l: "A sensor near a welding machine gives a fuzzy, jumpy signal", opts: PNAMES, v: 4 }],
       hints: [`Ask yourself what is being compared: rising vs falling, time, before vs after a load, repeated tries, or noise.`, `Replay the animations for hysteresis, dynamic response, residual deformation, repeatability and signal quality.`],
       working: () => W_([step("Rising vs falling", "", "", "Different readings at the same pressure depending on direction: <strong>hysteresis</strong>"), step("Slow to follow", "", "", "<strong>Dynamic response</strong> (a large time constant)"), step("Offset after overload", "", "", "<strong>Residual deformation</strong>"), step("Scatter for the same input", "", "", "<strong>Repeatability</strong>"), step("Noise", "", "", "<strong>Signal quality</strong>: low SNR")]) },
-    { id: "c3-q2", title: "Exercise 2: sensitivity of a linear sensor",
+    { id: "c3-q2", title: "Exercise 2: Sensitivity of a Linear Sensor",
       q: `<p>A linear temperature sensor gives <strong>0.50 V at 20 °C</strong> and <strong>1.30 V at 100 °C</strong>.</p>`,
       ans: [{ l: "Sensitivity", u: "mV/°C", v: 10 }, { l: "Output at 60 °C", u: "V", v: 0.9 }, { l: "Temperature when the output is 1.05 V", u: "°C", v: 75 }],
       hints: [`Sensitivity = change in output ÷ change in input. Convert volts to millivolts.`, `A linear sensor: V = V at 20 °C + sensitivity × (T − 20).`],
       working: () => W_([step("Sensitivity", "S = ΔV ÷ ΔT", "= (1.30 − 0.50) V ÷ (100 − 20) °C = 0.80 V ÷ 80 °C", "S = 0.010 V/°C = <strong>10 mV/°C</strong>"),
         step("Output at 60 °C", "V = 0.50 + S × (T − 20)", "= 0.50 + 0.010 × 40", "V = <strong>0.90 V</strong>"),
         step("Temperature at 1.05 V", "T = 20 + (V − 0.50) ÷ S", "= 20 + 0.55 ÷ 0.010", "T = <strong>75 °C</strong>")]) },
-    { id: "c3-q3", title: "Exercise 3: dynamic response",
+    { id: "c3-q3", title: "Exercise 3: Dynamic Response",
       q: `<p>A probe with a time constant <strong>τ = 4 s</strong> is moved from 20 °C air into 60 °C water.</p>`,
       ans: [{ l: "Reading after 4 s", u: "°C", v: 45.28 }, { l: "Reading after 12 s", u: "°C", v: 58.01 }, { l: "Time to settle (5τ)", u: "s", v: 20 }],
       hints: [`T(t) = T₁ + (T₂ − T₁)(1 − e<sup>−t/τ</sup>), with T₁ = 20 °C and T₂ = 60 °C.`, `4 s is one τ (63.2%), 12 s is three τ (95.0%).`],
       working: () => W_([step("After 4 s = 1τ", "T = 20 + 40(1 − e<sup>−1</sup>)", "= 20 + 40 × 0.632", "T = <strong>45.3 °C</strong>"), step("After 12 s = 3τ", "T = 20 + 40(1 − e<sup>−3</sup>)", "= 20 + 40 × 0.950", "T = <strong>58.0 °C</strong>"), step("Settling time", "≈ 5τ", "= 5 × 4 s", "<strong>20 s</strong> (99.3% of the change)")]) },
-    { id: "c3-q4", title: "Exercise 4: hysteresis",
+    { id: "c3-q4", title: "Exercise 4: Hysteresis",
       q: `<p>A sensor's full-scale output is 0.80 V to 2.00 V. At 35 °C it reads <strong>1.34 V</strong> while heating and <strong>1.46 V</strong> while cooling (the biggest difference).</p>`,
       ans: [{ l: "Hysteresis", u: "V", v: 0.12 }, { l: "Hysteresis as % of full scale", u: "%", v: 10 }],
       hints: [`Hysteresis is the difference between the falling and rising readings.`, `Full scale = 2.00 − 0.80 V. Divide and multiply by 100.`],
       working: () => W_([step("Difference", "h = V<sub>falling</sub> − V<sub>rising</sub>", "= 1.46 − 1.34", "h = <strong>0.12 V</strong>"), step("As % of full scale", "h ÷ (V<sub>max</sub> − V<sub>min</sub>) × 100", "= 0.12 ÷ 1.20 × 100", "= <strong>10%</strong>")]) },
-    { id: "c3-q5", title: "Exercise 5: potentiometer",
+    { id: "c3-q5", title: "Exercise 5: Potentiometer",
       q: `<p>A <strong>20 kΩ</strong> potentiometer is connected between V<sub>in</sub> = <strong>3.3 V</strong> and GND.</p>`,
       ans: [{ l: "V<sub>out</sub> with the wiper at the midpoint", u: "V", v: 1.65 }, { l: "R<sub>1</sub> when R<sub>2</sub> = 5 kΩ", u: "kΩ", v: 15 }, { l: "V<sub>out</sub> when R<sub>2</sub> = 5 kΩ", u: "V", v: 0.825 }],
       hints: [`R<sub>1</sub> + R<sub>2</sub> always equals the total resistance.`, `V<sub>out</sub> = V<sub>in</sub> × R<sub>2</sub> ÷ (R<sub>1</sub> + R<sub>2</sub>). Try the potentiometer calculator.`],
       working: () => W_([step("Midpoint", "R<sub>1</sub> = R<sub>2</sub> = 10 kΩ", "V<sub>out</sub> = 3.3 × 10 ÷ 20", "V<sub>out</sub> = <strong>1.65 V</strong>"), step("R<sub>1</sub>", "R<sub>1</sub> = 20 kΩ − R<sub>2</sub>", "= 20 − 5", "R<sub>1</sub> = <strong>15 kΩ</strong>"), step("V<sub>out</sub>", "V<sub>out</sub> = V<sub>in</sub> R<sub>2</sub> ÷ (R<sub>1</sub> + R<sub>2</sub>)", "= 3.3 × 5 ÷ 20", "V<sub>out</sub> = <strong>0.825 V</strong>")]) },
-    { id: "c3-q6", title: "Exercise 6: resistance of a wire",
+    { id: "c3-q6", title: "Exercise 6: Resistance of a Wire",
       q: `<p>A nichrome wire has resistivity <strong>ρ = 1.1 × 10<sup>−6</sup> Ω·m</strong>, length <strong>0.5 m</strong> and cross-section <strong>0.25 mm²</strong>.</p>`,
       ans: [{ l: "Resistance", u: "Ω", v: 2.2 }, { l: "Resistance if the area is doubled", u: "Ω", v: 1.1 }, { l: "Resistance if it is stretched to twice the length (area halves)", u: "Ω", v: 8.8 }],
       hints: [`Convert the area: 1 mm² = 10<sup>−6</sup> m². Then R = ρl ÷ A.`, `R is proportional to l and inversely proportional to A.`],
       working: () => W_([step("Resistance", "R = ρ l ÷ A", "= 1.1 × 10<sup>−6</sup> × 0.5 ÷ 0.25 × 10<sup>−6</sup>", "R = <strong>2.2 Ω</strong>"), step("Area doubled", "R ÷ 2", "= 2.2 ÷ 2", "<strong>1.1 Ω</strong>"), step("Stretched", "2l and A ÷ 2 → R × 4", "= 2.2 × 4", "<strong>8.8 Ω</strong>")]) },
-    { id: "c3-q7", title: "Exercise 7: parallel-plate capacitive sensor",
+    { id: "c3-q7", title: "Exercise 7: Parallel-Plate Capacitive Sensor",
       q: `<p>Plate area <strong>A = 0.01 m²</strong>, gap <strong>d = 2 mm</strong>, dielectric <strong>ε<sub>r</sub> = 2.2</strong>. (ε<sub>0</sub> = 8.854 × 10<sup>−12</sup> F/m)</p>`,
       ans: [{ l: "Capacitance", u: "pF", v: 97.39 }, { l: "Capacitance when the gap closes to 1 mm", u: "pF", v: 194.8 }],
       hints: [`C = ε<sub>r</sub>ε<sub>0</sub>A ÷ d with d in metres; 1 pF = 10<sup>−12</sup> F.`, `C is inversely proportional to d.`],
       working: () => W_([step("Capacitance", "C = ε<sub>r</sub> ε<sub>0</sub> A ÷ d", "= 2.2 × 8.854 × 10<sup>−12</sup> × 0.01 ÷ 0.002", "C = 9.739 × 10<sup>−11</sup> F = <strong>97.39 pF</strong>"), step("Half the gap", "C ∝ 1/d", "= 97.39 × 2", "<strong>194.8 pF</strong>")]) },
-    { id: "c3-q8", title: "Exercise 8: liquid-level sensor",
+    { id: "c3-q8", title: "Exercise 8: Liquid-Level Sensor",
       q: `<p>Plates <strong>L = 20 cm</strong> long and <strong>w = 4 cm</strong> wide, gap <strong>d = 2 mm</strong>, ε<sub>water</sub> = 80, ε<sub>air</sub> = 1.</p>`,
       ans: [{ l: "C<sub>net</sub> with the tank empty (x = 0)", u: "pF", v: 35.42 }, { l: "C<sub>net</sub> with x = 5 cm of water", u: "pF", v: 734.9 }, { l: "C<sub>net</sub> with the tank full (x = L)", u: "pF", v: 2833 }],
       hints: [`First work out ε<sub>0</sub>w ÷ d in F/m, with w and d in metres.`, `C<sub>net</sub> = ε<sub>0</sub>(w/d)(ε<sub>water</sub>x + ε<sub>air</sub>(L − x)), with x and L in metres.`],
       working: () => W_([step("Common factor", "ε<sub>0</sub> w ÷ d", "= 8.854 × 10<sup>−12</sup> × 0.04 ÷ 0.002", "= 1.771 × 10<sup>−10</sup> F/m"), step("Empty", "C = 1.771 × 10<sup>−10</sup> × (1 × 0.20)", "", "C = <strong>35.42 pF</strong>"), step("x = 5 cm", "C = 1.771 × 10<sup>−10</sup> × (80 × 0.05 + 1 × 0.15)", "= 1.771 × 10<sup>−10</sup> × 4.15", "C = <strong>734.9 pF</strong>"), step("Full", "C = 1.771 × 10<sup>−10</sup> × (80 × 0.20)", "", "C = <strong>2833 pF</strong> (2.833 nF)")]) },
-    { id: "c3-q9", title: "Exercise 9: coil inductance",
+    { id: "c3-q9", title: "Exercise 9: Coil Inductance",
       q: `<p>A coil has <strong>N = 200</strong> turns, radius <strong>r = 1 cm</strong>, length <strong>l = 10 cm</strong> and a core with <strong>μ<sub>r</sub> = 100</strong>. (μ<sub>0</sub> = 4π × 10<sup>−7</sup> H/m)</p>`,
       ans: [{ l: "Inductance", u: "mH", v: 15.79 }, { l: "Inductance with the core removed (air)", u: "mH", v: 0.1579 }],
       hints: [`Area A = πr², with r in metres.`, `L = μ<sub>r</sub>μ<sub>0</sub>N²A ÷ l. Removing the core makes μ<sub>r</sub> = 1.`],
       working: () => W_([step("Area", "A = π r²", "= π × 0.01²", "A = 3.142 × 10<sup>−4</sup> m²"), step("Inductance", "L = μ<sub>r</sub> μ<sub>0</sub> N² A ÷ l", "= 100 × 4π × 10<sup>−7</sup> × 200² × 3.142 × 10<sup>−4</sup> ÷ 0.1", "L = <strong>15.79 mH</strong>"), step("Air core", "L ÷ 100", "", "<strong>0.158 mH</strong> (158 µH)")]) },
-    { id: "c3-q10", title: "Exercise 10: passive, active or actuator?",
+    { id: "c3-q10", title: "Exercise 10: Passive, Active or Actuator?",
       q: `<p>Classify each device.</p>`,
       ans: [{ l: "Thermocouple", opts: ["Passive sensor", "Active sensor", "Actuator"], v: 1 }, { l: "LVDT", opts: ["Passive sensor", "Active sensor", "Actuator"], v: 0 },
         { l: "Piezo disc used as a knock sensor", opts: ["Passive sensor", "Active sensor", "Actuator"], v: 1 }, { l: "Servo motor", opts: ["Passive sensor", "Active sensor", "Actuator"], v: 2 },
         { l: "NTC thermistor", opts: ["Passive sensor", "Active sensor", "Actuator"], v: 0 }],
       hints: [`Does it produce its own electrical signal (active), need a supply to show a change (passive), or turn electricity into action (actuator)?`, `Two of these generate a voltage by themselves.`],
       working: () => W_([step("Thermocouple", "", "", "<strong>Active</strong>: makes its own voltage from heat"), step("LVDT", "", "", "<strong>Passive</strong>: needs an AC supply on the primary"), step("Piezo knock sensor", "", "", "<strong>Active</strong>: pressure makes charge"), step("Servo motor", "", "", "<strong>Actuator</strong>: electrical signal in, movement out"), step("Thermistor", "", "", "<strong>Passive</strong>: resistance change needs excitation")]) },
-    { id: "c3-q11", title: "Exercise 11: parking sensor",
+    { id: "c3-q11", title: "Exercise 11: Parking Sensor",
       q: `<p>A reversing sensor uses ultrasound at <strong>343 m/s</strong>.</p>`,
       ans: [{ l: "Distance when the echo returns after 2.9 ms", u: "m", v: 0.4974 }, { l: "Echo time for an object 1.5 m away", u: "ms", v: 8.746 }],
       hints: [`The sound travels to the object and back.`, `d = v × t ÷ 2, so t = 2d ÷ v.`],
       working: () => W_([step("Distance", "d = v t ÷ 2", "= 343 × 0.0029 ÷ 2", "d = <strong>0.497 m</strong>"), step("Echo time", "t = 2d ÷ v", "= 2 × 1.5 ÷ 343", "t = 8.75 × 10<sup>−3</sup> s = <strong>8.75 ms</strong>")]) },
-    { id: "c3-q12", title: "Exercise 12: actuators",
+    { id: "c3-q12", title: "Exercise 12: Actuators",
       q: `<p>Answer these about the actuators in this chapter.</p>`,
       ans: [{ l: "Servo angle for a 1.25 ms pulse (1 ms = 0°, 2 ms = 180°)", u: "°", v: 45 }, { l: "Average voltage on a 12 V motor at 75% duty", u: "V", v: 9 },
         { l: "Resistor for a red LED (V<sub>F</sub> = 2.0 V) from a 3.3 V pin at 10 mA", u: "Ω", v: 130 }, { l: "When a relay coil is energised, COM connects to", opts: ["NC", "NO"], v: 1 }],

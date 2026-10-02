@@ -80,7 +80,7 @@
       <div class="mini-inputs"><label>R (the MSB resistor) <span class="ctl"><input type="number" step="any" data-k="R" value="1" inputmode="decimal"><span class="unit">kΩ</span></span></label>
       <label>R<sub>f</sub> <span class="ctl"><input type="number" step="any" data-k="Rf" value="0.5" inputmode="decimal"><span class="unit">kΩ</span></span></label>
       <label>Logic HIGH <span class="ctl"><input type="number" step="any" data-k="VH" value="5" inputmode="decimal"><span class="unit">V</span></span></label></div>
-      <p class="small-note">Tap a switch in the circuit to change a bit, or press play to count through every code.</p>`, fold("Step-by-step working", `<ol class="steps"></ol>`));
+      <p class="small-note">Tap a switch in the circuit to change a bit, or press play to count through every code.</p>`, fold("Step-by-Step Working", `<ol class="steps"></ol>`));
     c.box.querySelector(".pv-grid").classList.add("stack");
     const steps = el.querySelector(".steps");
     const Rn = (b) => 2 ** (S.n - 1 - b) * S.R;
@@ -162,7 +162,7 @@
      ===================================================================== */
   function mountR2R(el) {
     const S = { code: 0b1010, VH: 5 };
-    el.innerHTML = `<div class="pv"><figure class="scene-box"><div class="scene-scroll"><svg class="scene r2r" viewBox="0 0 560 250" role="img" aria-label="Four-bit R-2R ladder DAC"></svg></div><figcaption>Tap a switch to change a bit. Only two resistor values are used: R and 2R.</figcaption></figure><p class="pv-read"></p>${fold("Step-by-step working", `<ol class="steps"></ol>`)}</div>`;
+    el.innerHTML = `<div class="pv"><figure class="scene-box"><div class="scene-scroll"><svg class="scene r2r" viewBox="0 0 560 250" role="img" aria-label="Four-bit R-2R ladder DAC"></svg></div><figcaption>Tap a switch to change a bit. Only two resistor values are used: R and 2R.</figcaption></figure><p class="pv-read"></p>${fold("Step-by-Step Working", `<ol class="steps"></ol>`)}</div>`;
     const sv = el.querySelector("svg"), read = el.querySelector(".pv-read"), steps = el.querySelector(".steps");
     const paint = () => {
       const code = S.code, v = (S.VH * code) / 16;
@@ -266,7 +266,7 @@
     if (n <= 6) { const pts = []; for (let k = 0; k <= max; k++) { const a = Math.max(0, (k - 0.5) * res.R), b = Math.min(v.Vref, (k + 0.5) * res.R); pts.push([A.X(a), A.Y(k)], [A.X(b), A.Y(k)]); } g += poly(pts, "trace-a"); }
     else g += poly([[A.X(0), A.Y(0)], [A.X(v.Vref), A.Y(max)]], "trace-a");
     g += dot(A.X(clamp(v.Vin, 0, v.Vref)), A.Y(res.code));
-    extra.innerHTML = `<h4 class="sub-h">Transfer graph</h4><div class="plot-box">${svg(A.W, A.H, "ADC output code against input voltage", g)}</div><p class="small-note">${n <= 6 ? "Each flat step is one code: every voltage inside it gives the same number." : "With this many bits the steps are too small to see: try 3 or 4 bits to see the staircase."}</p>`;
+    extra.innerHTML = `<h4 class="sub-h">Transfer Graph</h4><div class="plot-box">${svg(A.W, A.H, "ADC output code against input voltage", g)}</div><p class="small-note">${n <= 6 ? "Each flat step is one code: every voltage inside it gives the same number." : "With this many bits the steps are too small to see: try 3 or 4 bits to see the staircase."}</p>`;
   }
 
   // Real situation: an ESP32 reading an LM35 temperature sensor
@@ -307,33 +307,33 @@ void loop()
      Sections
      ===================================================================== */
   const SECTIONS = [
-    { id: "journey", group: "intro", title: "Analog to digital and back again", toc: "A song's journey",
+    { id: "journey", group: "intro", title: "Analog to Digital and Back Again", toc: "A Song's Journey",
       intro: `<p>Electronic data conversion lets analog signals be stored in digital form, and the stored digital data reproduce the analog signal. A song from a microphone is converted to digital form to be kept on pendrives, hard drives, CDs and cloud storage; the digital data can later be converted back to analog and turned into sound by a speaker.</p>
         <p>Conversion goes both ways: <strong>analog to digital (ADC)</strong> and <strong>digital to analog (DAC)</strong>. <strong>Data acquisition</strong> is simply gathering information about a system or process, and in modern instruments that means measuring with an ADC.</p>`,
       mount: mountSong },
-    { id: "bits", group: "codes", title: "Bits, words and codes", toc: "Digital codes",
+    { id: "bits", group: "codes", title: "Bits, Words and Codes", toc: "Digital Codes",
       intro: `<p>A digital code has two states, false or true, sent as <strong>logic 0</strong> (0 V) and <strong>logic 1</strong> (3.3 V or 5 V). A group of bits is a <strong>word</strong>, normally 8 to 64 bits long. An n-bit word has <strong>2<sup>n</sup></strong> combinations: 4 bits give 2<sup>4</sup> = 16, from 0 to 15.</p>
         <p>Unipolar (positive-only) signals use <strong>straight binary</strong>, <strong>binary-coded decimal (BCD)</strong>, where each decimal digit gets its own 4 bits, or <strong>hexadecimal (HEX)</strong>. Bipolar signals (positive and negative) use 1s complement, 2s complement, offset binary or sign-magnitude codes. Tap the bits below.</p>`,
       mount: mountBits },
-    { id: "weighted", group: "dac", title: "DAC 1: the binary-weighted resistor DAC", toc: "Binary-weighted DAC",
+    { id: "weighted", group: "dac", title: "DAC 1: The Binary-Weighted Resistor DAC", toc: "Binary-Weighted DAC",
       intro: `<p>A DAC takes a binary number and outputs an analog voltage (or current) that the next analog circuit can use. The binary-weighted DAC has three parts: a network of <strong>precision binary-weighted resistors</strong>, a <strong>current-to-voltage converter</strong> (an op-amp with R<sub>f</sub>) and a <strong>×1 inverter</strong>.</p>
         <p>For an N-bit DAC, bit n (D0 is the least significant bit, LSB) gets the resistor</p><p class="formula">R<sub>n</sub> = 2<sup>N − 1 − n</sup> R</p>
         <p>so for N = 8 and R = 1 kΩ: R<sub>0</sub> = 128 kΩ, R<sub>1</sub> = 64 kΩ, … R<sub>7</sub> = 1 kΩ. The currents add at point A (a virtual ground), and the sum of currents equals the current through R<sub>f</sub>:</p>
         <p class="formula">D<sub>0</sub>/R<sub>0</sub> + D<sub>1</sub>/R<sub>1</sub> + … + D<sub>N−1</sub>/R<sub>N−1</sub> = (0 − V<sub>A</sub>) ÷ R<sub>f</sub></p>
         <p>where each D<sub>n</sub> is the bit's voltage (logic HIGH or 0 V). The op-amp's output is negative, so the inverter makes the final output <strong>V<sub>out</sub> = R<sub>f</sub> × (D<sub>0</sub>/R<sub>0</sub> + … + D<sub>N−1</sub>/R<sub>N−1</sub>)</strong>.</p>`,
       mount: mountWeighted },
-    { id: "esp32dac", group: "dac", title: "Real situation: making a sound with the ESP32's DAC", toc: "ESP32 DAC",
+    { id: "esp32dac", group: "dac", title: "Real Situation: Making a Sound with the ESP32's DAC", toc: "ESP32 DAC",
       intro: `<p>The ESP32 has two 8-bit DACs, on GPIO25 and GPIO26 (<code>dacWrite</code> from Chapter 2). Sending a table of codes one after another makes a waveform, such as a tone for a speaker. The number of bits decides how smooth it is.</p>`,
       mount: mountSine },
-    { id: "r2r", group: "dac", title: "DAC 2: the R-2R ladder", toc: "R-2R ladder",
+    { id: "r2r", group: "dac", title: "DAC 2: The R-2R Ladder", toc: "R-2R Ladder",
       intro: `<p>The second type of DAC uses a ladder of only <strong>two resistor values, R and 2R</strong>, however many bits there are. Each bit's switch connects its 2R leg to logic HIGH or to 0 V. Every node in the ladder halves the contribution of the bits behind it, so the MSB counts ½, the next bit ¼, and so on:</p>
         <p class="formula">V<sub>out</sub> = V<sub>H</sub> × code ÷ 2<sup>N</sup></p>`,
       mount: mountR2R },
-    { id: "adcrace", group: "adc", title: "How an ADC finds the number: counter vs successive approximation", toc: "Counter vs SAR",
+    { id: "adcrace", group: "adc", title: "How an ADC Finds the Number: Counter vs Successive Approximation", toc: "Counter vs SAR",
       intro: `<p>Many ADCs work by guessing with a DAC: the DAC's output is compared with the input signal by a <strong>comparator</strong>. In a <strong>counter (ramp) ADC</strong> the digital input is increased one step at a time until the DAC output equals or passes the input; the comparator then stops the conversion, and the last digital input is the digital value of the analog input.</p>
         <p>A <strong>successive-approximation (SAR) ADC</strong> is much faster: it tests one bit at a time, from the MSB down. Other types include flash and dual-slope ADCs. Try both below with a 5-bit ADC (0.1 V per step).</p>`,
       mount: mountAdcRace },
-    { id: "adccalc", group: "adc", title: "ADC resolution and output code", toc: "Resolution and code",
+    { id: "adccalc", group: "adc", title: "ADC Resolution and Output Code", toc: "Resolution and Code",
       intro: `<p>The <strong>resolution</strong> (step size) is the smallest voltage change the ADC can detect:</p><p class="formula">R = V<sub>ref</sub> ÷ (2<sup>n</sup> − 1)</p>
         <p>where n is the number of bits and V<sub>ref</sub> the maximum input voltage. For example, a 5 V, 8-bit ADC has R = 5 ÷ 255 = 19.6 mV: every 19.6 mV adds 1 to the output number. The digital output is</p><p class="formula">code = V<sub>in</sub> ÷ R</p>
         <p>rounded to a whole number. For example, 2.94 V ÷ 19.6 mV = 150.</p>`,
@@ -343,7 +343,7 @@ void loop()
       view: "0 0 440 200", diagram: adcDiagram, render: adcRender, caption: "The output bits follow your values.",
       compute(v) { if (v.Vin > v.Vref) return Object.assign(adcCompute(Object.assign({}, v, { Vin: v.Vref })), { notes: [{ type: "warn", title: "Input above V<sub>ref</sub>", html: `The ADC can't read more than V<sub>ref</sub>: it just gives its largest code, ${2 ** Math.round(v.n) - 1}.` }] }); return adcCompute(v); },
       after: `<div class="callout info"><strong>Good to know</strong>Some books and datasheets define the step as V<sub>ref</sub> ÷ 2<sup>n</sup> instead of V<sub>ref</sub> ÷ (2<sup>n</sup> − 1). For 8 bits or more the difference is tiny; this course uses V<sub>ref</sub> ÷ (2<sup>n</sup> − 1).</div>` },
-    { id: "lm35", group: "adc", title: "Real situation: an ESP32 thermometer", toc: "ESP32 ADC",
+    { id: "lm35", group: "adc", title: "Real Situation: An ESP32 Thermometer", toc: "ESP32 ADC",
       intro: `<p>The ESP32's ADC is 12-bit, so it gives codes from 0 to 4095 for 0 to about 3.3 V: a resolution of 3.3 ÷ 4095 = 0.806 mV. An LM35 temperature sensor gives 10 mV per °C. Watch the temperature change and follow the numbers.</p>`,
       mount: mountLm35 }
   ];
@@ -353,52 +353,52 @@ void loop()
      ===================================================================== */
   const W_ = (list) => `<div class="working"><h4>Working</h4><ol class="steps">${stepsHtml(list)}</ol></div>`;
   const EXERCISES = [
-    { id: "c6-q1", title: "Exercise 1: binary, hex and BCD",
+    { id: "c6-q1", title: "Exercise 1: Binary, Hex and BCD",
       q: `<p>Write the decimal number <strong>45</strong> in other codes.</p>`,
       ans: [{ l: "Straight binary", u: "", v: 101101, tol: 0 }, { l: "Hexadecimal", opts: ["2D", "45", "D2", "2B"], v: 0 }, { l: "BCD", opts: ["0100 0101", "0010 1101", "0101 0100", "0100 1011"], v: 0 }],
       hints: [`45 = 32 + 8 + 4 + 1. Write a 1 for each power of 2 used.`, `For hex split the binary into groups of 4 from the right; for BCD code each decimal digit (4 and 5) separately.`],
       working: () => W_([step("Binary", "45 = 32 + 8 + 4 + 1", "", "<strong>101101</strong>"), step("Hex", "0010 1101 → 2 and D (13)", "", "<strong>2D</strong>"), step("BCD", "4 → 0100, 5 → 0101", "", "<strong>0100 0101</strong>")]) },
-    { id: "c6-q2", title: "Exercise 2: word length",
+    { id: "c6-q2", title: "Exercise 2: Word Length",
       q: `<p>An ADC produces <strong>10-bit</strong> words.</p>`,
       ans: [{ l: "Number of different codes", u: "", v: 1024, tol: 0 }, { l: "Largest code (decimal)", u: "", v: 1023, tol: 0 }],
       hints: [`n bits give 2<sup>n</sup> combinations.`, `Counting starts at 0.`],
       working: () => W_([step("Combinations", "2<sup>10</sup>", "", "<strong>1024</strong>"), step("Largest", "2<sup>10</sup> − 1", "", "<strong>1023</strong> (11 1111 1111)")]) },
-    { id: "c6-q3", title: "Exercise 3: binary-weighted resistors",
+    { id: "c6-q3", title: "Exercise 3: Binary-Weighted Resistors",
       q: `<p>A <strong>6-bit</strong> binary-weighted DAC has R<sub>0</sub> (the LSB resistor) = <strong>320 kΩ</strong>.</p>`,
       ans: [{ l: "R (the MSB resistor, R<sub>5</sub>)", u: "kΩ", v: 10 }, { l: "R<sub>3</sub>", u: "kΩ", v: 40 }],
       hints: [`R<sub>n</sub> = 2<sup>N − 1 − n</sup> R, so R<sub>0</sub> = 2<sup>5</sup> R.`, `Each step towards the MSB halves the resistor.`],
       working: () => W_([step("R", "R = R<sub>0</sub> ÷ 2<sup>5</sup>", "= 320 ÷ 32", "<strong>10 kΩ</strong>"), step("R<sub>3</sub>", "2<sup>6−1−3</sup> R = 4R", "", "<strong>40 kΩ</strong>")]) },
-    { id: "c6-q4", title: "Exercise 4: binary-weighted DAC output",
+    { id: "c6-q4", title: "Exercise 4: Binary-Weighted DAC Output",
       q: `<p>A 4-bit binary-weighted DAC has R = <strong>10 kΩ</strong> (so R<sub>3</sub> = 10 kΩ … R<sub>0</sub> = 80 kΩ), R<sub>f</sub> = <strong>5 kΩ</strong>, logic HIGH = <strong>5 V</strong>, and an inverter after the converter.</p>`,
       ans: [{ l: "V<sub>out</sub> for input 1011", u: "V", v: 3.4375 }, { l: "V<sub>out</sub> for 1111 (full scale)", u: "V", v: 4.6875 }],
       hints: [`1011 means D3, D1 and D0 are HIGH.`, `V<sub>out</sub> = R<sub>f</sub> × Σ(5 V ÷ R<sub>n</sub>) for the HIGH bits.`],
       working: () => W_([step("Currents for 1011", "5/10k + 5/40k + 5/80k", "= 0.5 + 0.125 + 0.0625 mA", "= 0.6875 mA"), step("V<sub>out</sub>", "5 kΩ × 0.6875 mA", "", "<strong>3.4375 V</strong>"), step("Full scale", "5 kΩ × 5 × (1/10k + 1/20k + 1/40k + 1/80k)", "= 5 kΩ × 0.9375 mA", "<strong>4.6875 V</strong>")]) },
-    { id: "c6-q5", title: "Exercise 5: choosing R<sub>f</sub>",
+    { id: "c6-q5", title: "Exercise 5: Choosing R<sub>f</sub>",
       q: `<p>A 4-bit binary-weighted DAC has R<sub>0</sub> = <strong>160 kΩ</strong>, logic HIGH = <strong>3.3 V</strong>, and must give <strong>6 V</strong> at full scale (1111).</p>`,
       ans: [{ l: "R (the MSB resistor)", u: "kΩ", v: 20 }, { l: "R<sub>f</sub>", u: "kΩ", v: 19.39 }],
       hints: [`R<sub>0</sub> = 2<sup>3</sup> R for 4 bits.`, `At full scale all four bits are HIGH: R<sub>f</sub> = 6 V ÷ ΣI.`],
       working: () => W_([step("R", "160 ÷ 8", "", "<strong>20 kΩ</strong>"), step("Full-scale current", "3.3 × (1/20k + 1/40k + 1/80k + 1/160k)", "= 3.3 × 15/160k", "= 0.3094 mA"), step("R<sub>f</sub>", "6 V ÷ 0.3094 mA", "", "<strong>19.39 kΩ</strong>")]) },
-    { id: "c6-q6", title: "Exercise 6: R-2R ladder",
+    { id: "c6-q6", title: "Exercise 6: R-2R Ladder",
       q: `<p>A buffered 4-bit R-2R ladder DAC runs from logic HIGH = <strong>5 V</strong>.</p>`,
       ans: [{ l: "V<sub>out</sub> for 1010", u: "V", v: 3.125 }, { l: "Step size (1 LSB)", u: "V", v: 0.3125 }, { l: "Number of different resistor values needed", u: "", v: 2, tol: 0 }],
       hints: [`V<sub>out</sub> = V<sub>H</sub> × code ÷ 2<sup>N</sup>.`, `1010 is decimal 10; 2<sup>4</sup> = 16.`],
       working: () => W_([step("V<sub>out</sub>", "5 × 10 ÷ 16", "", "<strong>3.125 V</strong>"), step("Step", "5 ÷ 16", "", "<strong>0.3125 V</strong>"), step("Resistors", "", "", "Only <strong>2</strong>: R and 2R")]) },
-    { id: "c6-q7", title: "Exercise 7: ADC resolution",
+    { id: "c6-q7", title: "Exercise 7: ADC Resolution",
       q: `<p>A <strong>10-bit</strong> ADC has V<sub>ref</sub> = <strong>3.3 V</strong>.</p>`,
       ans: [{ l: "Resolution", u: "mV", v: 3.226 }, { l: "Digital output for 1.30 V", u: "", v: 403, tol: 0 }],
       hints: [`R = V<sub>ref</sub> ÷ (2<sup>n</sup> − 1).`, `code = V<sub>in</sub> ÷ R, rounded to a whole number.`],
       working: () => W_([step("Resolution", "3.3 ÷ 1023", "", "<strong>3.226 mV</strong>"), step("Code", "1.30 V ÷ 3.226 mV", "= 403.0", "<strong>403</strong>")]) },
-    { id: "c6-q8", title: "Exercise 8: ESP32 thermometer",
+    { id: "c6-q8", title: "Exercise 8: ESP32 Thermometer",
       q: `<p>An ESP32 (12-bit ADC, 3.3 V) reads an LM35 (10 mV/°C).</p>`,
       ans: [{ l: "ADC code at 30 °C", u: "", v: 372, tol: 1 }, { l: "Temperature when the code is 620", u: "°C", v: 49.96 }],
       hints: [`Resolution = 3.3 ÷ 4095 = 0.806 mV.`, `30 °C → 0.30 V. For the reverse, V = code × resolution, then ÷ 10 mV.`],
       working: () => W_([step("Code at 30 °C", "0.30 V ÷ 0.806 mV", "= 372.3", "<strong>372</strong>"), step("Temperature", "620 × 3.3 ÷ 4095 = 0.4996 V", "0.4996 ÷ 0.010", "<strong>50.0 °C</strong>")]) },
-    { id: "c6-q9", title: "Exercise 9: counter vs SAR",
+    { id: "c6-q9", title: "Exercise 9: Counter vs SAR",
       q: `<p>Compare an <strong>8-bit</strong> counter ADC with an 8-bit SAR ADC, both with a <strong>1 MHz</strong> clock (one step per microsecond).</p>`,
       ans: [{ l: "Worst-case steps for the counter ADC", u: "", v: 255, tol: 1 }, { l: "Steps for the SAR ADC", u: "", v: 8, tol: 0 }, { l: "Worst-case counter conversion time", u: "µs", v: 255, tol: 1 }],
       hints: [`The counter may need to climb through every code up to 2<sup>n</sup> − 1.`, `SAR decides one bit per step.`],
       working: () => W_([step("Counter", "up to 2<sup>8</sup> − 1 steps", "", "<strong>255 steps → 255 µs</strong>"), step("SAR", "one step per bit", "", "<strong>8 steps → 8 µs</strong>")]) },
-    { id: "c6-q10", title: "Exercise 10: how many bits?",
+    { id: "c6-q10", title: "Exercise 10: How Many Bits?",
       q: `<p>A 5 V sensor must be read with a resolution of <strong>1 mV or better</strong>.</p>`,
       ans: [{ l: "Smallest number of bits", u: "bits", v: 13, tol: 0 }, { l: "Its resolution", u: "mV", v: 0.6104 }],
       hints: [`You need 5 V ÷ (2<sup>n</sup> − 1) ≤ 1 mV, so 2<sup>n</sup> − 1 ≥ 5000.`, `2<sup>12</sup> = 4096 is not enough.`],

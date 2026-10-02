@@ -148,7 +148,7 @@
         </div>
       </div>
       <div class="challenge-box" hidden></div>
-      <div class="working"><h4>Step-by-step working</h4><p class="result" aria-live="polite"></p><ol class="steps"></ol></div>`;
+      <div class="working"><h4>Step-by-Step Working</h4><p class="result" aria-live="polite"></p><ol class="steps"></ol></div>`;
 
     const q = (s) => el.querySelector(s), meter = q(".meter"), chBox = q(".challenge-box");
     const inputs = el.querySelectorAll("[data-f]");
@@ -550,7 +550,7 @@
       </div>
       <figure class="diagram plot-box"><div class="st-plot"></div><figcaption><span class="key digital"></span> Readings &nbsp; <span class="key analog"></span> Mean x̄ &nbsp; <span class="key band"></span> x̄ ± σ (sample)</figcaption></figure>
       <div class="table-wrap st-table"></div>
-      <div class="working"><h4>Step-by-step working</h4><p class="result" aria-live="polite"></p><ol class="steps"></ol></div>`;
+      <div class="working"><h4>Step-by-Step Working</h4><p class="result" aria-live="polite"></p><ol class="steps"></ol></div>`;
     const ta = el.querySelector("#st-data"), unitEl = el.querySelector("#st-unit"), err = el.querySelector("#st-err");
     const draw = () => {
       const xs = parseData(ta.value), u = unitEl.value.trim();
@@ -733,11 +733,11 @@
       mount(el) {
         el.innerHTML = `${chips("IoT example", Object.entries(IOT).map(([k, v]) => [k, v.label]), "farm")}
           <div class="iot-flow">
-            <div class="iot-card meas-card"><div class="iot-icon">${ICON.sensor}</div><h4>Connected things</h4><p class="iot-role">Sensors measure, actuators act.</p><p class="iot-ex" data-p="things"></p><span class="iot-tag">Measurement: this course</span></div>
+            <div class="iot-card meas-card"><div class="iot-icon">${ICON.sensor}</div><h4>Connected Things</h4><p class="iot-role">Sensors measure, actuators act.</p><p class="iot-ex" data-p="things"></p><span class="iot-tag">Measurement: this course</span></div>
             <div class="iot-arrow" aria-hidden="true"></div>
-            <div class="iot-card"><div class="iot-icon">${ICON.cloud}</div><h4>Connectivity and infrastructure</h4><p class="iot-role">Carries the data: radio links, gateways, the internet, cloud servers.</p><p class="iot-ex" data-p="conn"></p></div>
+            <div class="iot-card"><div class="iot-icon">${ICON.cloud}</div><h4>Connectivity and Infrastructure</h4><p class="iot-role">Carries the data: radio links, gateways, the internet, cloud servers.</p><p class="iot-ex" data-p="conn"></p></div>
             <div class="iot-arrow" aria-hidden="true"></div>
-            <div class="iot-card"><div class="iot-icon">${ICON.chart}</div><h4>Analytics and applications</h4><p class="iot-role">Turns data into information, decisions and actions.</p><p class="iot-ex" data-p="app"></p></div>
+            <div class="iot-card"><div class="iot-icon">${ICON.chart}</div><h4>Analytics and Applications</h4><p class="iot-role">Turns data into information, decisions and actions.</p><p class="iot-ex" data-p="app"></p></div>
           </div>`;
         const set = (k) => ["things", "conn", "app"].forEach((p) => { el.querySelector(`[data-p="${p}"]`).textContent = IOT[k][p]; });
         wireChips(el.querySelector(".chips-row"), set);
@@ -745,7 +745,7 @@
       },
       after: `<div class="callout info"><strong>Where instrumentation fits</strong>No IoT system is better than its data. The sensors and the circuits that condition, convert and transmit their signals are electronic instrumentation, and that is what this course is about.</div>` },
 
-    { id: "what", group: "basics", title: "What is instrumentation?", toc: "Measurement vs control",
+    { id: "what", group: "basics", title: "What Is Instrumentation?", toc: "Measurement vs Control",
       intro: `<p><strong>Instrumentation</strong> is the branch of engineering that deals with <strong>measurement and control</strong>. In a feedback control system, the measurement part tells the control part what is really happening. This course concentrates on the measurement part. Use the buttons to highlight each part.</p>`,
       mount(el) {
         el.innerHTML = `${chips("Highlight", [["both", "Both parts"], ["meas", "Measurement part"], ["ctrl", "Control part"]], "both")}
@@ -756,13 +756,13 @@
             <div><dt>Instrument</dt><dd>A device for finding the value or size of a quantity or variable.</dd></div>
             <div><dt>Electronic instrument</dt><dd>An instrument that uses electrical or electronic principles to measure.</dd></div>
           </div>
-          <h4 class="sub-h">Why measure electronically?</h4>
+          <h4 class="sub-h">Why Measure Electronically?</h4>
           <ul class="ticks"><li><strong>High sensitivity and little loading.</strong> Amplifiers boost tiny signals, and their high input impedance draws almost no power from what is being measured.</li><li><strong>Remote monitoring.</strong> An electrical signal can be sent by wire or radio and read far away.</li></ul>`;
         wireChips(el.querySelector(".chips-row"), (k) => { el.querySelector(".blocks-fig").dataset.show = k; });
       } },
 
     /* ---------------- Classification ---------------- */
-    { id: "classes", group: "classify", title: "Four ways to classify an instrument", toc: "Four classifications",
+    { id: "classes", group: "classify", title: "Four Ways to Classify an Instrument", toc: "Four Classifications",
       intro: `<p>The same instrument can be described in four different ways. Choose a tab.</p>`,
       mount(el) {
         el.innerHTML = `<div class="tabs" role="tablist" aria-label="Ways to classify instruments">${CLASSES.map((c, i) => `<button type="button" role="tab" id="tab-${c.k}" aria-controls="panel-${c.k}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}">${String.fromCharCode(97 + i)}) ${c.tab}</button>`).join("")}</div>
@@ -786,22 +786,22 @@
         });
       } },
 
-    { id: "bridge", group: "classify", title: "Null technique: the Wheatstone bridge", toc: "Wheatstone bridge",
+    { id: "bridge", group: "classify", title: "Null Technique: The Wheatstone Bridge", toc: "Wheatstone Bridge",
       intro: `<p>Two voltage dividers share one supply. When V<sub>a</sub> = V<sub>b</sub>, no current flows through the galvanometer: the bridge is at <strong>null</strong>. Then the voltage across R<sub>1</sub> equals the voltage across R<sub>3</sub> (I<sub>1</sub>R<sub>1</sub> = I<sub>2</sub>R<sub>3</sub>), and the voltage across R<sub>2</sub> equals the voltage across R<sub>x</sub> (I<sub>1</sub>R<sub>2</sub> = I<sub>2</sub>R<sub>x</sub>). Dividing one equation by the other cancels the currents:</p>
         <p class="formula">R<sub>x</sub> = (R<sub>2</sub> / R<sub>1</sub>) × R<sub>3</sub></p>
         <p>Turn the R<sub>3</sub> dials with ▲ and ▼ to balance the bridge. In <strong>Challenge</strong> mode R<sub>x</sub> is hidden, just like in the lab.</p>`,
       mount: mountBridge },
 
-    { id: "signal", group: "classify", title: "Analog vs digital signals", toc: "Analog vs digital",
+    { id: "signal", group: "classify", title: "Analog vs Digital Signals", toc: "Analog vs Digital",
       intro: `<p>An <strong>analog</strong> instrument's output varies continuously, so it can take any value in its range. A <strong>digital</strong> instrument's output changes in steps, so it can only show a finite number of values. Slide the resolution to see how the steps change.</p>`,
       mount: mountSignal },
 
-    { id: "classquiz", group: "classify", title: "Check yourself: classify it", toc: "Quiz",
+    { id: "classquiz", group: "classify", title: "Check Yourself: Classify It", toc: "Quiz",
       intro: `<p>Ten quick questions. You get feedback after each one.</p>`,
       mount: (el) => quiz(el, CLASS_QUIZ) },
 
     /* ---------------- Characteristics ---------------- */
-    { id: "static", group: "chars", title: "Static characteristics", toc: "Static",
+    { id: "static", group: "chars", title: "Static Characteristics", toc: "Static",
       intro: `<p><strong>Performance characteristics</strong> describe how well an instrument performs, so you can choose the right one for a job. <strong>Static</strong> characteristics apply to quantities that are constant or change slowly.</p>
         <dl class="defs">
           <div><dt>Accuracy</dt><dd>How close a measurement is to the expected value.</dd></div>
@@ -811,12 +811,12 @@
           <div><dt>Expected value</dt><dd>The design value, or the most probable value you expect to obtain.</dd></div>
           <div><dt>Error</dt><dd>The difference between the true (expected) value and the measured value.</dd></div>
         </dl>
-        <h4 class="sub-h">Accuracy is not the same as precision</h4>`,
+        <h4 class="sub-h">Accuracy Is Not the Same as Precision</h4>`,
       mount: mountTarget },
 
     { id: "resolution", group: "chars", title: "Resolution", toc: "Resolution", mount: mountResolution },
 
-    { id: "sensitivity", group: "chars", title: "Sensitivity calculator", toc: "Sensitivity",
+    { id: "sensitivity", group: "chars", title: "Sensitivity Calculator", toc: "Sensitivity",
       intro: `<p>An LM35 temperature sensor, for example, gives 10 mV more output for every 1 °C rise. Enter any change in output and the change in input that caused it.</p>`,
       inputs: [
         F("dOut", "num", 250, "change in output", { label: "Δoutput", positive: false, validate: (x) => (x === 0 ? "Must not be 0." : null) }),
@@ -832,7 +832,7 @@
         ], notes: [] };
       } },
 
-    { id: "dynamic", group: "chars", title: "Dynamic characteristics", toc: "Dynamic",
+    { id: "dynamic", group: "chars", title: "Dynamic Characteristics", toc: "Dynamic",
       intro: `<p><strong>Dynamic</strong> characteristics apply to quantities that change with time. Real instruments never respond instantly, because of mass, thermal capacitance, fluid capacitance or electrical capacitance. To test one, you apply a known change to its sensing element: a <strong>step</strong>, a <strong>linear (ramp)</strong> change or a <strong>sinusoidal</strong> change. The four dynamic characteristics:</p>
         <dl class="defs">
           <div><dt>Speed of response</dt><dd>How quickly the instrument responds to a change.</dd></div>
@@ -843,13 +843,13 @@
       mount: mountDynamic },
 
     /* ---------------- Standards ---------------- */
-    { id: "standards", group: "standards", title: "The hierarchy of standards", toc: "Four categories",
+    { id: "standards", group: "standards", title: "The Hierarchy of Standards", toc: "Four Categories",
       intro: `<p>A <strong>standard</strong> is a known, accurate measure of a physical quantity. Other measurements get their values by comparison with it. There are four categories, each calibrated against the one above.</p>`,
       mount: mountStandards,
       after: `<div class="callout info"><strong>Good to know</strong><strong>BIPM</strong> stands for <em>Bureau International des Poids et Mesures</em>, French for the International Bureau of Weights and Measures. It is at Sèvres, just outside Paris.</div>` },
 
     /* ---------------- Errors ---------------- */
-    { id: "errcalc", group: "errors", title: "Error and accuracy calculator", toc: "Error and accuracy",
+    { id: "errcalc", group: "errors", title: "Error and Accuracy Calculator", toc: "Error and Accuracy",
       intro: `<p>Measurement always introduces some error. It comes from three main sources: the <strong>limitations of the instrument</strong> (its accuracy is given as a percentage of full-scale deflection), the <strong>operator</strong> (for example misreading a scale), and the <strong>instrument disturbing the circuit</strong> it measures. For an expected value Y<sub>n</sub> and a measured value X<sub>n</sub>:</p>`,
       inputs: [
         F("Yn", "num", 50, null, { unit: "V", positive: false, validate: (x) => (x === 0 ? "The expected value must not be 0." : null), label: "Expected value Y<sub>n</sub>" }),
@@ -880,7 +880,7 @@
         return { steps, notes, sum: `e = ${num(e, 5)} V, %error = ${num(pct, 4)}%, A = ${num(A, 5)}, a = ${num(a, 5)}%` };
       } },
 
-    { id: "limiting", group: "errors", title: "Limiting error", toc: "Limiting error",
+    { id: "limiting", group: "errors", title: "Limiting Error", toc: "Limiting Error",
       intro: `<p>A manufacturer guarantees an instrument's accuracy as a percentage of its <strong>full scale</strong> (FS). That gives a fixed absolute error, dV = accuracy × FS, wherever the pointer is. So a small reading has a much larger <strong>percentage</strong> error. Move the reading and watch the graph.</p>`,
       inputs: [
         F("FS", "num", 100, "full-scale range", { unit: "V", positive: true, label: "Full scale FS" }),
@@ -915,10 +915,10 @@
         s += `<path class="trace-a" d="${d}"/>`;
         if (v.Vm <= xmax) { const pp = (v.acc * v.FS) / v.Vm; s += `<circle class="pt" cx="${X(v.Vm)}" cy="${Y(pp)}" r="6"/><text class="ptlab" x="${X(v.Vm) + (v.Vm > xmax * 0.6 ? -10 : 10)}" y="${Y(pp) - 10}" text-anchor="${v.Vm > xmax * 0.6 ? "end" : "start"}">${num(v.Vm)} V: ${num(pp, 3)}%</text>`; }
         s += `</svg>`;
-        host.innerHTML = `<div class="bode"><h4>Limiting error across the range</h4>${s}<p class="bode-cap">The percentage error is smallest at full scale and grows rapidly as the reading gets smaller.</p></div>`;
+        host.innerHTML = `<div class="bode"><h4>Limiting Error Across the Range</h4>${s}<p class="bode-cap">The percentage error is smallest at full scale and grows rapidly as the reading gets smaller.</p></div>`;
       } },
 
-    { id: "combine", group: "errors", title: "Combining limiting errors", toc: "Combining errors",
+    { id: "combine", group: "errors", title: "Combining Limiting Errors", toc: "Combining Errors",
       intro: `<p>Power is calculated from two measurements, P = V × I, and both have limiting errors. In the worst case both errors push the result the same way, so for a <strong>product or a quotient the percentage errors add</strong>. (For a sum or a difference, the absolute errors add instead.) You need this rule for Exercise 5.</p>`,
       inputs: [
         F("V", "num", 12, "voltage reading", { unit: "V", positive: true, label: "V" }),
@@ -936,12 +936,12 @@
         ] };
       } },
 
-    { id: "sigfig", group: "errors", title: "Significant figures", toc: "Significant figures",
+    { id: "sigfig", group: "errors", title: "Significant Figures", toc: "Significant Figures",
       intro: `<p>The <strong>significant figures</strong> of a measured value are all the digits you are sure of, plus the first uncertain one. A voltmeter reading of 12.47 V has four: the 7 is the uncertain digit. More significant figures mean a more precise measurement.</p>
         <p>The rules below are the standard way to <strong>report</strong> a calculated result in lab reports and exams, so that the answer never claims to be more precise than the measurements it came from.</p>`,
       mount(el) {
         el.innerHTML = `<div class="sf-rules">
-          <article class="sf-card"><h4>Counting significant figures</h4>
+          <article class="sf-card"><h4>Counting Significant Figures</h4>
             <table class="sf-table"><tbody>
               <tr><td>Non-zero digits always count</td><td>6.31</td><td>3</td></tr>
               <tr><td>Zeros between digits count</td><td>3.0005</td><td>5</td></tr>
@@ -950,7 +950,7 @@
               <tr><td>Trailing zeros in a whole number are unclear. Write 1.20 × 10³ to show 3.</td><td>1200</td><td>2 to 4</td></tr>
             </tbody></table></article>
 
-          <article class="sf-card"><h4><span class="sf-no">Rule 1</span> Adding or subtracting: keep the fewest <em>decimal places</em></h4>
+          <article class="sf-card"><h4><span class="sf-no">Rule 1</span> Adding or Subtracting: Keep the Fewest <em>Decimal Places</em></h4>
             <div class="col-sum" aria-label="6.31 plus 8.736 written in columns">
               <div><span>6</span><span>.</span><span>3</span><span>1</span><span class="unk">?</span></div>
               <div><span>+ 8</span><span>.</span><span>7</span><span>3</span><span>6</span></div>
@@ -959,42 +959,42 @@
             <p><strong>Why:</strong> 6.31 V tells us nothing about the thousandths place (the “?”), so the thousandths digit of the answer is unknown too. Keep 2 decimal places, like 6.31: <strong>15.05 V</strong>.</p>
             <p class="sf-tip">It is decimal places that matter, not significant figures: 99.5 + 0.72 = 100.22, which becomes 100.2 (4 significant figures, more than either number).</p></article>
 
-          <article class="sf-card"><h4><span class="sf-no">Rule 2</span> Multiplying or dividing: keep the fewest <em>significant figures</em></h4>
+          <article class="sf-card"><h4><span class="sf-no">Rule 2</span> Multiplying or Dividing: Keep the Fewest <em>Significant Figures</em></h4>
             <p>Example: P = V × I = 12.47 V × 0.53 A = 6.6091 W, which becomes <strong>6.6 W</strong>.</p>
             <p><strong>Why:</strong> 0.53 A has only 2 significant figures, so the current could be anything from 0.525 A to 0.535 A. That makes P anywhere from 6.55 W to 6.67 W. The first decimal place is already uncertain, so digits after it mean nothing.</p></article>
 
-          <article class="sf-card"><h4><span class="sf-no">Rule 3</span> Dropping figures (rounding)</h4>
+          <article class="sf-card"><h4><span class="sf-no">Rule 3</span> Dropping Figures (Rounding)</h4>
             <p>Look at the <strong>first digit you drop</strong>. If it is 5 or more, round the last kept digit up. If it is less than 5, leave it.</p>
             <p>0.0148 to 2 significant figures: the first dropped digit is 8, so it becomes <strong>0.015</strong>. To 1 significant figure: the first dropped digit is 4, so it becomes <strong>0.01</strong>.</p>
             <p class="sf-tip">Always round in <strong>one step</strong> from the original number. Rounding 0.0148 → 0.015 → 0.02 is wrong.</p></article>
 
-          <article class="sf-card"><h4><span class="sf-no">Rule 4</span> Round only the final answer</h4>
+          <article class="sf-card"><h4><span class="sf-no">Rule 4</span> Round Only the Final Answer</h4>
             <p>Keep every digit while you calculate, and round once at the end. Rounding in the middle adds error.</p>
             <p>Example: V = 1.24 V and I = 0.0355 A. The power is P = VI = 0.04402 W, so <strong>0.0440 W</strong>. If you first round R = V/I = 34.929 Ω to 34.9 Ω and then use P = V²/R, you get 0.0441 W, which is wrong in the last digit.</p>
             <p class="sf-tip">Exact numbers, such as the 2 in 2πf, the 100 in a percentage or the number of readings n, never limit the significant figures.</p></article>
         </div>
-        <h4 class="sub-h">Practice: try to get five in a row</h4>
+        <h4 class="sub-h">Practice: Try to Get Five in a Row</h4>
         <div class="sf-drill"></div>`;
         mountSigFig(el.querySelector(".sf-drill"));
       } },
 
-    { id: "errtypes", group: "errors", title: "Types of static error", toc: "Types of error",
+    { id: "errtypes", group: "errors", title: "Types of Static Error", toc: "Types of Error",
       intro: `<p>Static errors fall into three groups. Knowing which kind you are dealing with tells you how to reduce it.</p>`,
       mount(el) {
         el.innerHTML = `<div class="err-types">
-          <div class="err-card"><h4>1. Gross (human) errors</h4><p>Human mistakes in reading, recording or calculating, or setting up the instrument wrongly. They cannot be treated mathematically. You can't remove them completely, but you can minimise them by taking care and by taking at least three readings.</p></div>
-          <div class="err-card"><h4>2. Systematic errors</h4><p>Caused by shortcomings of the instrument or its surroundings, and push every reading the same way. <strong>Static</strong> systematic errors come from the limits of the device; <strong>dynamic</strong> ones from an instrument too slow to follow a change.</p>
+          <div class="err-card"><h4>1. Gross (Human) Errors</h4><p>Human mistakes in reading, recording or calculating, or setting up the instrument wrongly. They cannot be treated mathematically. You can't remove them completely, but you can minimise them by taking care and by taking at least three readings.</p></div>
+          <div class="err-card"><h4>2. Systematic Errors</h4><p>Caused by shortcomings of the instrument or its surroundings, and push every reading the same way. <strong>Static</strong> systematic errors come from the limits of the device; <strong>dynamic</strong> ones from an instrument too slow to follow a change.</p>
             <ul><li><strong>Instrumental:</strong> built into the instrument, such as bearing friction or a stretched spring. Reduce them by choosing a suitable instrument, applying correction factors, and calibrating against a standard.</li>
             <li><strong>Environmental:</strong> external conditions such as temperature, humidity, air pressure or magnetic fields. Reduce them with air-conditioning, sealed components and magnetic shields.</li>
             <li><strong>Observational:</strong> introduced by the observer, mainly parallax and estimation errors when reading a scale.</li></ul></div>
-          <div class="err-card"><h4>3. Random errors</h4><p>Small, unpredictable variations that remain after gross and systematic errors are removed. Readings scatter above and below the true value, so they can't be corrected one at a time. They are handled with statistics: take many readings and use the mean and standard deviation (next section).</p></div>
-        </div><h4 class="sub-h">Parallax: the classic observational error</h4><div class="parallax-box"></div><h4 class="sub-h">Check yourself: which type of error?</h4><div class="err-quiz"></div>`;
+          <div class="err-card"><h4>3. Random Errors</h4><p>Small, unpredictable variations that remain after gross and systematic errors are removed. Readings scatter above and below the true value, so they can't be corrected one at a time. They are handled with statistics: take many readings and use the mean and standard deviation (next section).</p></div>
+        </div><h4 class="sub-h">Parallax: The Classic Observational Error</h4><div class="parallax-box"></div><h4 class="sub-h">Check Yourself: Which Type of Error?</h4><div class="err-quiz"></div>`;
         mountParallax(el.querySelector(".parallax-box"));
         quiz(el.querySelector(".err-quiz"), ERR_QUIZ.map((x) => Object.assign({ opts: ERR_OPTS }, x)));
       } },
 
     /* ---------------- Statistics ---------------- */
-    { id: "stats", group: "stats", title: "Statistics lab", toc: "Statistics lab",
+    { id: "stats", group: "stats", title: "Statistics Lab", toc: "Statistics Lab",
       intro: `<p>Statistical analysis finds how uncertain a set of test results is. It needs many readings. Enter your own below, and every value, the table and the graph update as you type.</p>
         <dl class="defs">
           <div><dt>Arithmetic mean</dt><dd>x̄ = Σx<sub>n</sub> / n, where x<sub>n</sub> is the n-th reading and n is the number of readings. It is the best estimate of the true value.</dd></div>
@@ -1015,18 +1015,18 @@
   const dataTable = (xs) => `<div class="table-scroll"><table class="data-row"><tbody><tr><th scope="row">No.</th>${xs.map((_, i) => `<td>${i + 1}</td>`).join("")}</tr><tr><th scope="row">x<sub>n</sub></th>${xs.map((x) => `<td>${x}</td>`).join("")}</tr></tbody></table></div>`;
 
   const EXERCISES = [
-    { id: "c1-ex1", sec: "errcalc", title: "Exercise 1: error and accuracy",
+    { id: "c1-ex1", sec: "errcalc", title: "Exercise 1: Error and Accuracy",
       q: `<p>The expected voltage across a resistor is 80 V. The measurement is 79 V. Calculate the absolute error, the percentage error, the relative accuracy and the percentage accuracy.</p>`,
       runs: [{ vals: { Yn: 80, Xn: 79 } }],
       ans: [{ l: "Absolute error, e", u: "V", v: 1 }, { l: "% error", u: "%", v: 1.25 }, { l: "Relative accuracy, A", u: "", v: 0.9875, tol: 0.0006 }, { l: "% accuracy, a", u: "%", v: 98.75, tol: 0.06 }],
       hints: [`Absolute error e = Y<sub>n</sub> ${MINUS} X<sub>n</sub>, where Y<sub>n</sub> is the expected value and X<sub>n</sub> the measured value. Then %error = |e / Y<sub>n</sub>| × 100.`,
         `Relative accuracy A = 1 ${MINUS} |e / Y<sub>n</sub>|, written as a decimal (just under 1). Percentage accuracy a = A × 100, which is also 100% ${MINUS} %error.`] },
-    { id: "c1-ex2", sec: "stats", title: "Exercise 2: precision of one reading",
+    { id: "c1-ex2", sec: "stats", title: "Exercise 2: Precision of One Reading",
       q: `<p>From the values in the table, calculate the precision of the 6th element.</p>${dataTable(EX2)}`,
       runs: [{ vals: { data: EX2.join(", "), unit: "" } }], working: () => statsWorking(EX2, 6),
       ans: [{ l: "Mean, x̄", u: "", v: 100.5, tol: 0.01 }, { l: "Precision of the 6th element, P<sub>6</sub>", u: "", v: 0.995, tol: 0.0006 }],
       hints: [`First find the mean: add all 10 readings and divide by 10.`, `P<sub>6</sub> = 1 ${MINUS} |x<sub>6</sub> ${MINUS} x̄| / x̄, with x<sub>6</sub> = 100. Give P as a decimal close to 1.`] },
-    { id: "c1-ex3", sec: "stats", title: "Exercise 3: statistics of five readings",
+    { id: "c1-ex3", sec: "stats", title: "Exercise 3: Statistics of Five Readings",
       q: `<p>For the data x<sub>1</sub> = 49.7, x<sub>2</sub> = 50.1, x<sub>3</sub> = 50.2, x<sub>4</sub> = 49.6, x<sub>5</sub> = 49.7, calculate the arithmetic mean, the deviation of each value, the algebraic sum of the deviations, the average deviation and the standard deviation (both population and sample).</p>`,
       runs: [{ vals: { data: EX3.join(", "), unit: "" } }], working: () => statsWorking(EX3),
       ans: [{ l: "Mean, x̄", u: "", v: 49.86, tol: 0.005 },
@@ -1035,17 +1035,17 @@
         { l: "σ, population (÷ N)", u: "", v: 0.2417, tol: 0.002 }, { l: "σ, sample (÷ (n − 1))", u: "", v: 0.2702, tol: 0.002 }],
       hints: [`x̄ = (49.7 + 50.1 + 50.2 + 49.6 + 49.7) / 5. Each deviation is d<sub>n</sub> = x<sub>n</sub> ${MINUS} x̄, so readings below the mean have negative deviations.`,
         `The deviations always add up to zero. For d̄, add the deviations <em>without</em> their signs and divide by 5. For σ, square each deviation, add them, divide by 5 (population) or 4 (sample), then take the square root.`] },
-    { id: "c1-ex5", sec: "limiting", title: "Exercise 4: limiting error of a voltmeter",
+    { id: "c1-ex5", sec: "limiting", title: "Exercise 4: Limiting Error of a Voltmeter",
       q: `<p>A 600 V voltmeter has an accuracy of 2% of full scale. Calculate the limiting error when it is used to measure 250 V.</p>`,
       runs: [{ vals: { FS: 600, acc: 2, Vm: 250 } }],
       ans: [{ l: "Absolute limiting error, dV", u: "V", v: 12, tol: 0.05 }, { l: "Limiting error at 250 V", u: "%", v: 4.8, tol: 0.02 }],
       hints: [`The accuracy is a percentage of full scale, so the absolute error is dV = 2% × 600 V wherever the pointer is.`, `Now express that same dV as a percentage of the actual reading: dV / 250 V × 100%.`] },
-    { id: "c1-ex6", sec: "combine", title: "Exercise 5: limiting error of power",
+    { id: "c1-ex6", sec: "combine", title: "Exercise 5: Limiting Error of Power",
       q: `<p>In a measurement, the limiting error of the voltmeter at 70 V is 2.143% and the limiting error of the ammeter at 80 mA is 2.813%. Determine the limiting error of the power.</p>`,
       runs: [{ vals: { V: 70, eV: 2.143, I: 80, eI: 2.813 } }],
       ans: [{ l: "Limiting error of P", u: "%", v: 4.956, tol: 0.005 }, { l: "Power, P", u: "W", v: 5.6, tol: 0.01 }],
       hints: [`P = V × I. Remember to convert 80 mA to amperes.`, `For a product, the percentage limiting errors add: %error<sub>P</sub> = %error<sub>V</sub> + %error<sub>I</sub>.`] },
-    { id: "c1-ex7", title: "Exercise 6: precision and significant figures",
+    { id: "c1-ex7", title: "Exercise 6: Precision and Significant Figures",
       q: `<p>Find the precision of X<sub>1</sub> and X<sub>2</sub>, given the mean X̄<sub>n</sub> = 101, X<sub>1</sub> = 98 (2 significant figures) and X<sub>2</sub> = 98.5 (3 significant figures).</p>`,
       working: () => `<div class="working"><h4>Working</h4><ol class="steps">${stepsHtml([
         step("Precision of X<sub>1</sub>", `P<sub>1</sub> = 1 ${MINUS} |X<sub>1</sub> ${MINUS} X̄<sub>n</sub>| / X̄<sub>n</sub>`, `= 1 ${MINUS} |98 ${MINUS} 101| / 101 = 1 ${MINUS} 3 / 101`, `P<sub>1</sub> = 0.9703`),

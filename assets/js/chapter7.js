@@ -259,7 +259,7 @@ void loop()
       let work = "";
       if (fit && fit.kind === "lin") {
         const s = fit.sums;
-        work = fold("Step-by-step working: least-squares straight line", `<ol class="steps">${stepsHtml([
+        work = fold("Step-by-Step Working: Least-Squares Straight Line", `<ol class="steps">${stepsHtml([
           step("Sums of the n calibration points", "n, Σx, Σy, Σxy, Σx²", `n = ${s.n}, Σx = ${num(s.Sx, 6)}, Σy = ${num(s.Sy, 6)}`, `Σxy = ${num(s.Sxy, 6)}, Σx² = ${num(s.Sxx, 6)}`),
           step("Slope", "m = (nΣxy − ΣxΣy) ÷ (nΣx² − (Σx)²)", `= (${s.n} × ${num(s.Sxy, 6)} − ${num(s.Sx, 6)} × ${num(s.Sy, 6)}) ÷ (${s.n} × ${num(s.Sxx, 6)} − ${num(s.Sx, 6)}²)`, `m = ${num(fit.m, 5)}`),
           step("Intercept", "c = (Σy − mΣx) ÷ n", `= (${num(s.Sy, 6)} − ${num(fit.m, 5)} × ${num(s.Sx, 6)}) ÷ ${s.n}`, `c = ${num(fit.c, 5)}`),
@@ -267,11 +267,11 @@ void loop()
       } else if (fit) {
         const rd = { a: Number(fit.a.toPrecision(1)), b: fit.b, c: fit.c }, fr = (xx) => rd.a * xx * xx + rd.b * xx + rd.c;
         const worst = Math.max(...data.map(([dx]) => Math.abs(fr(dx) - fit.f(dx))));
-        work = fold("How the curve is found", `<p>A second-order (quadratic) curve y = ax² + bx + c is fitted by least squares, the same method a spreadsheet trendline uses. It needs at least 3 points, and follows data that bends.</p><p>Fitted here: a = ${num(fit.a, 5)}, b = ${num(fit.b, 5)}, c = ${num(fit.c, 5)}, R² = ${r2(data, fit.f).toFixed(4)}.</p>`) +
+        work = fold("How the Curve Is Found", `<p>A second-order (quadratic) curve y = ax² + bx + c is fitted by least squares, the same method a spreadsheet trendline uses. It needs at least 3 points, and follows data that bends.</p><p>Fitted here: a = ${num(fit.a, 5)}, b = ${num(fit.b, 5)}, c = ${num(fit.c, 5)}, R² = ${r2(data, fit.f).toFixed(4)}.</p>`) +
           `<div class="callout info"><strong>Good to know: keep enough significant figures</strong>The x² term is multiplied by a very large number (x² is about ${num(data[0][0] ** 2, 2)}), so a small rounding in a changes the answer a lot. Rounding a to one significant figure (${num(rd.a, 1)}) would change the depth by up to <strong>${worst.toFixed(2)} cm</strong> on a 6 cm range. Copy the coefficients with at least 4 or 5 significant figures, as in the sketch below.</div>`;
       }
       q(".lab-fold").innerHTML = work;
-      q(".lab-code").innerHTML = fit ? codeBlock(m.sketch((v) => eqText(fit, v)), "Step 4: the ESP32 sketch with your equation") + fold("Going further: send it to your phone (Bluetooth)", `<p>The ESP32 has Bluetooth built in. This version sends the value to a Bluetooth serial terminal app on your phone (pair with the ESP32 first).</p>${codeBlock(m.bt((v) => eqText(fit, v)), "Bluetooth version")}`) : "";
+      q(".lab-code").innerHTML = fit ? codeBlock(m.sketch((v) => eqText(fit, v)), "Step 4: the ESP32 sketch with your equation") + fold("Going Further: Send It to Your Phone (Bluetooth)", `<p>The ESP32 has Bluetooth built in. This version sends the value to a Bluetooth serial terminal app on your phone (pair with the ESP32 first).</p>${codeBlock(m.bt((v) => eqText(fit, v)), "Bluetooth version")}`) : "";
       q('[data-a="quad"]').hidden = S.mode === "pot";
       q('[data-a="lin"]').disabled = q('[data-a="quad"]').disabled = data.length < 3;
     };
@@ -318,7 +318,7 @@ void loop()
      Sections
      ===================================================================== */
   const SECTIONS = [
-    { id: "what", group: "intro", title: "What is calibration, and why?", toc: "Why calibrate",
+    { id: "what", group: "intro", title: "What Is Calibration, and Why?", toc: "Why Calibrate",
       intro: `<p>A sensor gives the microcontroller an electrical signal, and the ESP32 turns it into a number. <strong>Calibration</strong> is what gives that number a meaning in real units. Most instruments are <em>secondary</em> instruments: they must be calibrated against a reference. There are two reasons:</p>
         <ol class="rules"><li>to <strong>convert the electrical signal to the physical value</strong> (volts or counts → degrees, centimetres, °C…)</li><li>to <strong>keep the measurement accurate</strong> as the sensor ages and its surroundings change</li></ol>
         <p>A good sensor has high <strong>precision</strong> (the same output for the same input every time) and high <strong>resolution</strong> (it can detect small changes).</p>`,
@@ -326,14 +326,14 @@ void loop()
       after: `<dl class="defs"><div><dt>Using a standard table</dt><dd>Some sensors follow an international standard. A type K thermocouple always gives the same mV at a given temperature (see Chapter 3), so the instrument just looks up the table.</dd></div>
         <div><dt>Calibrating it yourself</dt><dd>For your own sensor, measure the real value independently with a trusted reference (a thermometer, a protractor, a ruler), record the sensor's output, and find the equation that links them.</dd></div></dl>
         <div class="callout info"><strong>Good to know</strong>In industry, sensors often send their signal as a current (the 4–20 mA loop) rather than a voltage, because a current is much less affected by the resistance of long wires and by electrical noise.</div>` },
-    { id: "steps", group: "intro", title: "Calibration in five steps", toc: "Five steps",
+    { id: "steps", group: "intro", title: "Calibration in Five Steps", toc: "Five Steps",
       intro: `<p>Every calibration follows the same pattern. Press play to walk through it; the virtual lab below uses exactly these steps.</p>`,
       mount: mountSteps },
-    { id: "vlab", group: "lab", title: "Calibrate a sensor, step by step", toc: "Virtual lab",
+    { id: "vlab", group: "lab", title: "Calibrate a Sensor, Step by Step", toc: "Virtual Lab",
       intro: `<p>Two sensors from the textbook. On the <strong>potentiometer</strong> tab, a pointer on the shaft turns over a protractor (the reference) and the wiper voltage goes to the ESP32's ADC on GPIO36. On the <strong>water level</strong> tab, a two-wire capacitive sensor stands in a bottle with a ruler (the reference); the 555 timer's frequency goes to GPIO14.</p>
         <p>Set a known value, <strong>record</strong> the reading, repeat, then <strong>fit</strong> and watch the ESP32 show real units. This is also good practice before the potentiometer lab.</p>`,
       mount: mountLab },
-    { id: "system", group: "whole", title: "Why calibrate the whole system?", toc: "The ESP32's ADC",
+    { id: "system", group: "whole", title: "Why Calibrate the Whole System?", toc: "The ESP32's ADC",
       intro: `<p>In theory the ESP32's 12-bit ADC turns 0 to 3.3 V into 0 to 4095, so V = 3.3 × ADC ÷ 4095. In practice, a 2.5 V supply may be shown as about 2.36 V, and the ADC is not linear near 0 V and near 3.3 V. The power supply itself may not be calibrated either.</p>
         <p>That is why the virtual lab calibrates the <strong>angle</strong> or the <strong>depth</strong> directly: one calibration corrects the sensor, the wiring and the ADC together.</p>`,
       mount: mountAdc,
@@ -345,32 +345,32 @@ void loop()
      ===================================================================== */
   const W_ = (list) => `<div class="working"><h4>Working</h4><ol class="steps">${stepsHtml(list)}</ol></div>`;
   const EXERCISES = [
-    { id: "c7-q1", title: "Exercise 1: a line from two points",
+    { id: "c7-q1", title: "Exercise 1: A Line from Two Points",
       q: `<p>A potentiometer angle sensor reads <strong>ADC = 2000 at 0°</strong> and <strong>ADC = 400 at 100°</strong>. Assume a straight line, angle = m × ADC + c.</p>`,
       ans: [{ l: "Slope m", u: "° per count", v: -0.0625, tol: 0.0005 }, { l: "Intercept c", u: "°", v: 125 }, { l: "Angle when ADC = 1200", u: "°", v: 50 }],
       hints: [`m = change in angle ÷ change in ADC = (100 − 0) ÷ (400 − 2000).`, `Then c = angle − m × ADC, using either point.`],
       working: () => W_([step("Slope", "m = Δy ÷ Δx", "= 100 ÷ (400 − 2000)", "m = <strong>−0.0625</strong>"), step("Intercept", "c = y − mx", "= 0 − (−0.0625 × 2000)", "c = <strong>125</strong>"), step("At ADC 1200", "−0.0625 × 1200 + 125", "", "<strong>50°</strong>")]) },
-    { id: "c7-q2", title: "Exercise 2: using a calibration equation",
+    { id: "c7-q2", title: "Exercise 2: Using a Calibration Equation",
       q: `<p>A calibrated sensor uses <strong>angle = −0.05 × ADC + 110</strong>.</p>`,
       ans: [{ l: "Angle when ADC = 900", u: "°", v: 65 }, { l: "ADC reading expected at 30°", u: "", v: 1600 }],
       hints: [`Substitute the ADC value into the equation.`, `For the reverse, rearrange: ADC = (angle − 110) ÷ (−0.05).`],
       working: () => W_([step("Angle", "−0.05 × 900 + 110", "", "<strong>65°</strong>"), step("ADC", "(30 − 110) ÷ (−0.05)", "", "<strong>1600</strong>")]) },
-    { id: "c7-q3", title: "Exercise 3: checking the accuracy",
+    { id: "c7-q3", title: "Exercise 3: Checking the Accuracy",
       q: `<p>After calibration, a sensor is checked at four reference angles.</p><table><thead><tr><th>True angle (°)</th><th>0</th><th>30</th><th>60</th><th>90</th></tr></thead><tbody><tr><th>Sensor shows (°)</th><td>1.2</td><td>29.1</td><td>61.5</td><td>89.4</td></tr></tbody></table>`,
       ans: [{ l: "Largest error (size only)", u: "°", v: 1.5 }, { l: "As a percentage of the 90° full scale", u: "%", v: 1.667 }],
       hints: [`Error = shown − true at each point; compare their sizes.`, `% of full scale = largest error ÷ 90 × 100.`],
       working: () => W_([step("Errors", "shown − true", "+1.2, −0.9, +1.5, −0.6", "largest: <strong>1.5°</strong> at 60°"), step("% of full scale", "1.5 ÷ 90 × 100", "", "<strong>1.67%</strong>")]) },
-    { id: "c7-q4", title: "Exercise 4: least-squares line",
+    { id: "c7-q4", title: "Exercise 4: Least-Squares Line",
       q: `<p>Fit y = mx + c by least squares to these calibration points.</p><table><thead><tr><th>x</th><th>1</th><th>2</th><th>3</th><th>4</th></tr></thead><tbody><tr><th>y</th><td>2.0</td><td>4.1</td><td>5.9</td><td>8.0</td></tr></tbody></table>`,
       ans: [{ l: "Slope m", u: "", v: 1.98, tol: 0.005 }, { l: "Intercept c", u: "", v: 0.05, tol: 0.005 }],
       hints: [`n = 4, Σx = 10, Σy = 20, Σx² = 30. Work out Σxy.`, `m = (nΣxy − ΣxΣy) ÷ (nΣx² − (Σx)²) and c = (Σy − mΣx) ÷ n.`],
       working: () => W_([step("Sums", "Σxy = 1×2.0 + 2×4.1 + 3×5.9 + 4×8.0", "", "Σxy = 59.9"), step("Slope", "(4 × 59.9 − 10 × 20) ÷ (4 × 30 − 10²)", "= 39.6 ÷ 20", "m = <strong>1.98</strong>"), step("Intercept", "(20 − 1.98 × 10) ÷ 4", "", "c = <strong>0.05</strong>")]) },
-    { id: "c7-q5", title: "Exercise 5: keep enough significant figures",
+    { id: "c7-q5", title: "Exercise 5: Keep Enough Significant Figures",
       q: `<p>A water-level sensor was calibrated as <strong>depth = 3.8714 × 10<sup>−8</sup> f² − 0.002625 f + 43.781</strong> (depth in cm, f in Hz).</p>`,
       ans: [{ l: "Depth when f = 25 000 Hz", u: "cm", v: 2.352, tol: 0.01 }, { l: "Depth if a is rounded to 4 × 10<sup>−8</sup>", u: "cm", v: 3.156, tol: 0.01 }, { l: "Error caused by the rounding", u: "cm", v: 0.804, tol: 0.01 }],
       hints: [`f² = 6.25 × 10<sup>8</sup>. Work out each term, then add.`, `Only the first term changes when a is rounded.`],
       working: () => W_([step("Exact", "3.8714×10<sup>−8</sup> × 6.25×10<sup>8</sup> − 0.002625 × 25 000 + 43.781", "= 24.196 − 65.625 + 43.781", "<strong>2.352 cm</strong>"), step("Rounded a", "4×10<sup>−8</sup> × 6.25×10<sup>8</sup> − 65.625 + 43.781", "= 25.000 − 65.625 + 43.781", "<strong>3.156 cm</strong>"), step("Error", "3.156 − 2.352", "", "<strong>0.80 cm</strong>: round the coefficients too much and the sensor is wrong")]) },
-    { id: "c7-q6", title: "Exercise 6: calibration ideas",
+    { id: "c7-q6", title: "Exercise 6: Calibration Ideas",
       q: `<p>Choose the best answer.</p>`,
       ans: [{ l: "In the potentiometer lab, the reference is", opts: ["the protractor", "the ESP32's ADC", "the Serial Monitor"], v: 0 },
         { l: "A sensor must be recalibrated because", opts: ["it ages and conditions change", "the ADC has 12 bits", "the line has a negative slope"], v: 0 },

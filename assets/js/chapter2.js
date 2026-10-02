@@ -226,11 +226,11 @@
   /* ---------------- Power ---------------- */
   function mountSupplies(el) {
     el.innerHTML = `<div class="supply-grid">
-      <article class="supply">${photo("usb-power.jpg")}<div><h4>1. USB port</h4><p>A micro-USB cable from a laptop or PC powers the board and also carries the program upload and Serial Monitor data.</p>
+      <article class="supply">${photo("usb-power.jpg")}<div><h4>1. USB Port</h4><p>A micro-USB cable from a laptop or PC powers the board and also carries the program upload and Serial Monitor data.</p>
         <p>A USB 2.0 port gives up to 500 mA, and some laptop ports struggle before that. If the power LED flickers, or the board resets when Wi-Fi starts, the supply is too weak.</p></div></article>
-      <article class="supply">${photo("power-bank.jpg")}<div><h4>2. Power bank</h4><p>For a portable project, a USB power bank is the simplest supply.</p>
+      <article class="supply">${photo("power-bank.jpg")}<div><h4>2. Power Bank</h4><p>For a portable project, a USB power bank is the simplest supply.</p>
         <p class="pin-note">Some power banks switch themselves off when the current is very small, for example while the ESP32 is in deep sleep.</p></div></article>
-      <article class="supply bench"><div class="bench-photos">${photo("bench-3v3.jpg", "Set to 3.3 V.")}${photo("bench-5v.jpg", "Set to 5 V.")}</div><div><h4>3. Bench supply, 3.3 V or 5 V</h4><p>When the whole system needs more than the USB port can give, use a bench power supply:</p>
+      <article class="supply bench"><div class="bench-photos">${photo("bench-3v3.jpg", "Set to 3.3 V.")}${photo("bench-5v.jpg", "Set to 5 V.")}</div><div><h4>3. Bench Supply, 3.3 V or 5 V</h4><p>When the whole system needs more than the USB port can give, use a bench power supply:</p>
         <ul class="ticks"><li><strong>3.3 V</strong> goes to the <strong>3V3</strong> pin. It bypasses the regulator, so it must be a clean, steady 3.3 V.</li><li><strong>5 V</strong> goes to the <strong>VIN</strong> pin and passes through the board's 3.3 V regulator.</li><li>Always connect <strong>GND</strong> to GND.</li></ul></div></article>
     </div>`;
   }
@@ -295,10 +295,10 @@ void loop()
 }`;
     el.innerHTML = `<ol class="ota-steps tun-steps">
       <li><h4>Open TUNIOT FOR ESP32</h4><p>Go to <a href="http://easycoding.tn" target="_blank" rel="noopener">easycoding.tn</a>, scroll down the menu on the left and choose <em>TUNIOT FOR ESP32</em>.</p>${photo("tuniot-menu.png", "", "shot small")}</li>
-      <li><h4>The empty workspace</h4><p>The block palette is on the left. Every program starts with two blocks: <strong>Setup</strong> runs once when the board starts, and <strong>Main loop</strong> repeats forever.</p>${photo("tuniot-workspace.png", "", "shot")}</li>
-      <li><h4>Build the program from blocks</h4><p>Using the palette on the left, drag blocks into <em>Main loop</em> to switch the built-in LED on for 200 ms and off for 2000 ms. Then click the <strong>red button</strong> at the top right to generate the C sketch.</p>${photo("tuniot-blink-blocks.png", "", "shot")}</li>
-      <li><h4>The sketch opens in the Arduino IDE</h4><p>TUNIOT writes the code for you. It is also shown below as text, so you can copy it.</p>${photo("tuniot-blink-code.png", "", "shot")}${codeBlock(code, "Generated sketch")}</li>
-      <li><h4>Check the board and port</h4><p>In the IDE, click <em>Tools</em> and make sure <strong>Board</strong> is <em>“ESP32 Dev Module”</em> and <strong>Port</strong> is <em>“COMx”</em>, where x is the COM port number from Device Manager.</p>${photo("ide-board-port.png", "", "shot")}</li>
+      <li><h4>The Empty Workspace</h4><p>The block palette is on the left. Every program starts with two blocks: <strong>Setup</strong> runs once when the board starts, and <strong>Main loop</strong> repeats forever.</p>${photo("tuniot-workspace.png", "", "shot")}</li>
+      <li><h4>Build the Program from Blocks</h4><p>Using the palette on the left, drag blocks into <em>Main loop</em> to switch the built-in LED on for 200 ms and off for 2000 ms. Then click the <strong>red button</strong> at the top right to generate the C sketch.</p>${photo("tuniot-blink-blocks.png", "", "shot")}</li>
+      <li><h4>The Sketch Opens in the Arduino IDE</h4><p>TUNIOT writes the code for you. It is also shown below as text, so you can copy it.</p>${photo("tuniot-blink-code.png", "", "shot")}${codeBlock(code, "Generated sketch")}</li>
+      <li><h4>Check the Board and Port</h4><p>In the IDE, click <em>Tools</em> and make sure <strong>Board</strong> is <em>“ESP32 Dev Module”</em> and <strong>Port</strong> is <em>“COMx”</em>, where x is the COM port number from Device Manager.</p>${photo("ide-board-port.png", "", "shot")}</li>
       <li><h4>Upload</h4><p>Click the Upload arrow. When the upload finishes, the program starts and the blue onboard LED blinks.</p>${photo("board-blink.jpg", "", "small")}</li>
     </ol>`;
   }
@@ -402,17 +402,17 @@ void loop() {                        // 5. main loop
   delay(5000);
 }`;
     el.innerHTML = `<ol class="ota-steps">
-      <li><h4>Load the OTA sketch by cable, once</h4><p>Connect the ESP32 by USB. Open <em>File → Examples → ArduinoOTA → OTAWebUpdater</em>, enter your Wi-Fi name and password, and upload it. The PC and the ESP32 must be on the <strong>same Wi-Fi network</strong>.</p>${photo("ide-ota-example.png", "", "shot")}</li>
-      <li><h4>Find the ESP32's IP address</h4><p>Open the Serial Monitor. The ESP32 prints the address it received from the router:</p>
+      <li><h4>Load the OTA Sketch by Cable, Once</h4><p>Connect the ESP32 by USB. Open <em>File → Examples → ArduinoOTA → OTAWebUpdater</em>, enter your Wi-Fi name and password, and upload it. The PC and the ESP32 must be on the <strong>same Wi-Fi network</strong>.</p>${photo("ide-ota-example.png", "", "shot")}</li>
+      <li><h4>Find the ESP32's IP Address</h4><p>Open the Serial Monitor. The ESP32 prints the address it received from the router:</p>
         <div class="console"><pre>Connected to NMK42003
 IP address: 192.168.68.107
 mDNS responder started</pre></div><p>From now on the USB cable can be removed.</p></li>
-      <li><h4>Open the upload page</h4><p>In a web browser, type the IP address (for example <code>192.168.68.107</code>) and log in. The example sketch's default user name and password are both <code>admin</code>.</p>
+      <li><h4>Open the Upload Page</h4><p>In a web browser, type the IP address (for example <code>192.168.68.107</code>) and log in. The example sketch's default user name and password are both <code>admin</code>.</p>
         <div class="callout info"><strong>Good to know</strong>Change the default password in the sketch before using OTA on a shared network, or anyone on it can upload code to your board.</div></li>
-      <li><h4>Add your own program</h4><p>Build your blocks in TUNIOT (here: LED on for 50 ms, off for 5 s), generate the code, and paste it into the <code>setup()</code> and <code>loop()</code> of the OTA sketch. Keep the OTA lines, or the board can't be updated wirelessly again.</p>
+      <li><h4>Add Your Own Program</h4><p>Build your blocks in TUNIOT (here: LED on for 50 ms, off for 5 s), generate the code, and paste it into the <code>setup()</code> and <code>loop()</code> of the OTA sketch. Keep the OTA lines, or the board can't be updated wirelessly again.</p>
         ${photo("blocks-ota.png", "", "shot small")}
         ${codeBlock(skel, "Structure of the OTA sketch")}</li>
-      <li><h4>Export the binary</h4><p>In the IDE choose <em>Sketch → Export compiled Binary</em>. This saves a <code>.bin</code> file in the sketch folder.</p>${photo("ide-export-binary.png", "", "shot")}</li>
+      <li><h4>Export the Binary</h4><p>In the IDE choose <em>Sketch → Export compiled Binary</em>. This saves a <code>.bin</code> file in the sketch folder.</p>${photo("ide-export-binary.png", "", "shot")}</li>
       <li><h4>Upload over Wi-Fi</h4><p>On the upload page, click <em>Choose File</em>, select the <code>.bin</code> file and click <em>Update</em>. At 100% the ESP32 restarts and runs the new program.</p>${photo("ota-upload-page.png", "", "shot small")}</li>
     </ol>`;
   }
@@ -546,7 +546,7 @@ void loop()
         <div class="io-panel"><div class="io-ctl"></div><div class="io-read" aria-live="polite"></div></div>
       </div>
       <div class="io-work"></div>
-      <div class="blocks-code"><div><h4 class="sub-h">TUNIOT blocks</h4><div class="io-blocks"></div></div><div><h4 class="sub-h">Arduino sketch</h4><div class="io-code"></div></div></div>
+      <div class="blocks-code"><div><h4 class="sub-h">TUNIOT Blocks</h4><div class="io-blocks"></div></div><div><h4 class="sub-h">Arduino Sketch</h4><div class="io-code"></div></div></div>
       <div class="io-serial"><div class="serial-head"><span>Serial Monitor, 115200 baud</span><button type="button" class="code-copy" data-clear>Clear</button></div><pre class="serial" aria-live="off"></pre></div>
       <div class="io-photo"></div>`;
     const q = (s) => el.querySelector(s);
@@ -581,7 +581,7 @@ void loop()
           <div class="field slider-field"><label for="io-off">LED off for: <strong>${S.off} ms</strong></label><input type="range" id="io-off" min="100" max="3000" step="100" value="${S.off}"></div>`;
         const blink = () => { S.lit = !S.lit; renderSvg(); read.innerHTML = `<p class="io-state">${S.lit ? "D23 = HIGH (3.3 V): LED <strong>on</strong>" : "D23 = LOW (0 V): LED <strong>off</strong>"}</p>`; S.timers.push(setTimeout(blink, S.lit ? S.on : S.off)); };
         blink();
-        work.innerHTML = `<div class="working"><h4>What happens</h4><ol class="steps">${stepsHtml([
+        work.innerHTML = `<div class="working"><h4>What Happens</h4><ol class="steps">${stepsHtml([
           step("LED current when the pin is HIGH", "I = (V<sub>pin</sub> − V<sub>LED</sub>) / R", "= (3.3 V − 2.0 V) / 330 Ω", `I ≈ ${num((3.3 - 2) / 330 * 1000, 3)} mA, safely under the 20 mA pin limit`),
           step("One blink takes", "t = on time + off time", `= ${S.on} ms + ${S.off} ms`, `t = ${S.on + S.off} ms, so about ${num(60000 / (S.on + S.off), 3)} blinks per minute`)])}</ol></div>`;
       } else if (S.tab === "in") {
@@ -590,7 +590,7 @@ void loop()
         read.innerHTML = `<p class="io-state">D22 reads <strong>${level() ? "HIGH (1)" : "LOW (0)"}</strong></p>`;
         const tick = () => { serialOut(level() ? "Switch OPEN" : "Switch CLOSE"); S.timers.push(setTimeout(tick, 2000)); };
         tick();
-        work.innerHTML = `<div class="working"><h4>How the pull-up resistor works</h4><ol class="steps">${stepsHtml([
+        work.innerHTML = `<div class="working"><h4>How the Pull-Up Resistor Works</h4><ol class="steps">${stepsHtml([
           step("Switch open", "No current flows through the 10 kΩ resistor", "", "D22 is pulled up to 3.3 V, so it reads HIGH (1): “Switch OPEN”"),
           step("Switch closed", "The switch connects D22 straight to GND", `Current through the resistor = 3.3 V / 10 kΩ = ${num(0.33, 3)} mA`, "D22 reads LOW (0): “Switch CLOSE”"),
           step("Why print only every 2 s?", "delay(2000) at the end of loop()", "", "The ESP32 checks the switch once every 2 seconds, so a quick press between checks is missed")])}</ol></div>`;
@@ -599,7 +599,7 @@ void loop()
           const v = S.pos * 3.3, raw = Math.round((v / 3.3) * 4095);
           q("#io-pot-l").innerHTML = `Potentiometer position: <strong>${Math.round(S.pos * 100)}%</strong>`;
           read.innerHTML = `<p class="io-state">D4 voltage <strong>${fx(v)} V</strong> → analogRead(4) = <strong>${raw}</strong></p>`;
-          work.innerHTML = `<div class="working"><h4>Analog to digital conversion (12-bit ADC)</h4><ol class="steps">${stepsHtml([
+          work.innerHTML = `<div class="working"><h4>Analog to Digital Conversion (12-Bit ADC)</h4><ol class="steps">${stepsHtml([
             step("Wiper voltage", "V = position × 3.3 V", `= ${fx(S.pos)} × 3.3 V`, `V = ${fx(v, 3)} V`),
             step("ADC reading", "raw = V / 3.3 V × 4095", `= ${fx(v, 3)} / 3.3 × 4095`, `raw = ${raw}`),
             step("Resolution", "step = 3.3 V / 4096", "", `≈ ${num(3.3 / 4096 * 1000, 3)} mV per count`)])}</ol></div>
@@ -615,7 +615,7 @@ void loop()
           const v = dacV(S.dac), g = dacGlow(S.dac);
           q("#io-dac-l").innerHTML = `DAC value: <strong>${S.dac}</strong>`;
           read.innerHTML = `<p class="io-state">GPIO25 = <strong>${fx(v)} V</strong>. LED ${g < 0.02 ? "<strong>off</strong>: the transistor is not conducting yet" : g > 0.98 ? "<strong>fully on</strong>" : `<strong>glowing (${Math.round(g * 100)}%)</strong>`}</p>`;
-          work.innerHTML = `<div class="working"><h4>Digital to analog conversion (8-bit DAC)</h4><ol class="steps">${stepsHtml([
+          work.innerHTML = `<div class="working"><h4>Digital to Analog Conversion (8-Bit DAC)</h4><ol class="steps">${stepsHtml([
             step("Voltage per step", "step = 3.3 V / 256", "", "= 0.01289 V per count"),
             step("Output voltage", "V = value × 3.3 V / 256", `= ${S.dac} × 0.01289 V`, `V = ${fx(v, 3)} V`),
             step("When does the LED light?", "The TIP120 is a Darlington: two transistors in one package", "Its base needs about 1.1 to 1.3 V before it conducts", `That is a DAC value of about ${Math.round(1.1 / 0.01289)} to ${Math.round(1.3 / 0.01289)}. Below that the LED stays off`)])}</ol></div>`;
@@ -634,7 +634,7 @@ void loop()
           const d = S.duty / 256, T = 200, hi = d * T, vavg = d * 3.3;
           q("#io-pwm-l").innerHTML = `Duty value: <strong>${S.duty}</strong> of 256`;
           read.innerHTML = `<p class="io-state">Duty cycle <strong>${fx(d * 100, 1)}%</strong>, average voltage <strong>${fx(vavg, 3)} V</strong></p>${scope(d)}`;
-          work.innerHTML = `<div class="working"><h4>Pulse width modulation</h4><ol class="steps">${stepsHtml([
+          work.innerHTML = `<div class="working"><h4>Pulse Width Modulation</h4><ol class="steps">${stepsHtml([
             step("Period", "T = 1 / f", "= 1 / 5000 Hz", "T = 200 µs"),
             step("Duty cycle", "D = value / 2<sup>8</sup>", `= ${S.duty} / 256`, `D = ${fx(d * 100, 2)}%`),
             step("High time", "t<sub>high</sub> = D × T", `= ${fx(d, 4)} × 200 µs`, `t<sub>high</sub> = ${fx(hi, 1)} µs`),
@@ -710,7 +710,7 @@ void loop()
         <label for="u-text">Characters to send <span class="hint">write \\r for carriage return</span></label><input id="u-text" type="text" value="R078\\r" maxlength="12" autocomplete="off" spellcheck="false">
         <label for="u-baud">Baud rate</label><select id="u-baud"><option>9600</option><option>115200</option></select></div>
       <figure class="diagram"><div class="ckt-wrap uart-wave"></div><figcaption>UART frames at 3.3 V logic: idle HIGH, a start bit (0), 8 data bits sent <strong>least significant bit first</strong>, and a stop bit (1). <span class="swipe">Swipe sideways to see every bit.</span></figcaption></figure>
-      <p class="result fold-result" aria-live="polite"></p>${fold("Timing, step by step", `<ol class="steps"></ol>`)}`;
+      <p class="result fold-result" aria-live="polite"></p>${fold("Timing, Step by Step", `<ol class="steps"></ol>`)}`;
     const parse = (s) => s.replace(/\\r/g, "\r").replace(/\\n/g, "\n");
     const show = (c) => (c === "\r" ? "CR" : c === "\n" ? "LF" : c === " " ? "space" : c);
     const draw = () => {
@@ -779,7 +779,7 @@ void loop()
         <label for="i2c-rw">Operation</label><select id="i2c-rw"><option value="0">Write (R/W = 0)</option><option value="1">Read (R/W = 1)</option></select></div>
       <figure class="diagram"><div class="ckt-wrap i2c-bus"></div></figure>
       <figure class="diagram"><div class="ckt-wrap i2c-frame"></div><figcaption>One I²C transaction: <strong>S</strong> start, 7 address bits, R/W bit, <strong>A</strong> acknowledge from the device, a data byte, another acknowledge, <strong>P</strong> stop. <span class="swipe">Swipe sideways to see the whole frame.</span></figcaption></figure>
-      <p class="result fold-result" aria-live="polite"></p>${fold("The first byte, step by step", `<ol class="steps"></ol>`)}`;
+      <p class="result fold-result" aria-live="polite"></p>${fold("The First Byte, Step by Step", `<ol class="steps"></ol>`)}`;
     const draw = () => {
       const found = I2C_DEVS.some(([a]) => a === S.addr), first = (S.addr << 1) | S.rw;
       el.querySelector(".i2c-bus").innerHTML = `<svg class="ckt i2c" viewBox="0 0 740 200" role="img" aria-label="I2C bus with an ESP32 and three devices">
@@ -855,13 +855,13 @@ WiFi.softAP("ESP32-setup", "12345678");`]
      ===================================================================== */
   const SECTIONS = [
     /* ---------------- Overview ---------------- */
-    { id: "daq", group: "overview", title: "From lab DAQ to wireless nodes", toc: "DAQ to ESP32",
+    { id: "daq", group: "overview", title: "From Lab DAQ to Wireless Nodes", toc: "DAQ to ESP32",
       intro: `<p>A <strong>data acquisition system (DAQ)</strong> is the hardware that measures physical quantities. It used to be a DAQ card plugged into a desktop PC, or an ADC module wired to a computer. These were big and complicated, so they stayed in the lab. Today a single small board with a built-in processor, ADC and wireless radio, such as the <strong>ESP32</strong>, can measure, process and send data on its own.</p>`,
       mount: mountDaq },
-    { id: "specs", group: "overview", title: "ESP32 characteristics", toc: "Characteristics",
+    { id: "specs", group: "overview", title: "ESP32 Characteristics", toc: "Characteristics",
       intro: `<p>The <strong>ESP32-WROOM-32</strong> is a Wi-Fi, Bluetooth and BLE microcontroller module. It suits everything from low-power sensor networks to demanding jobs such as voice encoding and music streaming. At its core is the <strong>ESP32-D0WDQ6</strong> chip.</p>`,
       mount: mountSpecs },
-    { id: "dbm", group: "overview", title: "Radio power: dBm to milliwatts", toc: "dBm calculator",
+    { id: "dbm", group: "overview", title: "Radio Power: dBm to Milliwatts", toc: "dBm Calculator",
       intro: `<p>Radio output power is usually given in <strong>dBm</strong>, decibels relative to 1 mW. Every +10 dBm is ten times more power, so the ESP32's +20 dBm is 100 mW.</p>`,
       inputs: [F("dBm", "num", 20, null, { unit: "dBm", positive: false, label: "Power", slider: { min: -20, max: 30, step: 1 } })],
       compute(v) {
@@ -870,10 +870,10 @@ WiFi.softAP("ESP32-setup", "12345678");`]
           step("Convert dBm to milliwatts", "P(mW) = 10<sup>P(dBm) / 10</sup>", `= 10<sup>${num(v.dBm)} / 10</sup> = 10<sup>${num(v.dBm / 10)}</sup>`, `P = ${num(mw)} mW`),
           step("In watts", "P(W) = P(mW) / 1000", "", `P = ${eng(mw / 1000, "W")}`)] };
       } },
-    { id: "lowpower", group: "overview", title: "Low power: sleep modes and battery life", toc: "Low power",
+    { id: "lowpower", group: "overview", title: "Low Power: Sleep Modes and Battery Life", toc: "Low Power",
       intro: `<p>The ESP32 can switch off the parts it isn't using. The deeper the sleep, the less current it draws, but the fewer parts stay awake: in deep sleep only the real-time clock (RTC) and its small memory keep running, and in hibernation even less. A battery-powered sensor node wakes up, measures, sends, and goes back to deep sleep.</p>`,
       mount: mountModes },
-    { id: "battery", group: "overview", title: "Battery life calculator", toc: "Battery life",
+    { id: "battery", group: "overview", title: "Battery Life Calculator", toc: "Battery Life",
       intro: `<p>A node that wakes for a short time and then sleeps has an <strong>average current</strong> much closer to its sleep current than its active current. Try making the active time shorter or the sleep current smaller.</p>`,
       inputs: [
         F("cap", "num", 2000, null, { unit: "mAh", positive: true, label: "Battery capacity" }),
@@ -892,29 +892,29 @@ WiFi.softAP("ESP32-setup", "12345678");`]
           step("Battery life", "t = capacity / I<sub>avg</sub>", `= ${num(v.cap)} mAh / ${num(avg)} mA`, `t = ${num(hours)} h = ${num(hours / 24, 3)} days`),
           step("Compare: never sleeping", "t = capacity / I<sub>active</sub>", `= ${num(v.cap)} mAh / ${num(v.ia)} mA`, `t = ${num(v.cap / v.ia)} h, only ${num(v.cap / v.ia / 24, 2)} days`)] };
       } },
-    { id: "pinout", group: "overview", title: "Pinout explorer", toc: "Pinout",
+    { id: "pinout", group: "overview", title: "Pinout Explorer", toc: "Pinout",
       intro: `<p>The DevKit board brings 30 pins out to its two headers. Most are GPIO (general-purpose input/output) pins, and many have extra jobs. Choose a function to highlight the pins that support it, or tap any pin for details.</p>`,
       mount: mountPinout },
 
     /* ---------------- Power ---------------- */
-    { id: "supplies", group: "power", title: "Three ways to power the ESP32", toc: "Power options", mount: mountSupplies },
-    { id: "budget", group: "power", title: "Power budget planner", toc: "Power budget",
+    { id: "supplies", group: "power", title: "Three Ways to Power the ESP32", toc: "Power Options", mount: mountSupplies },
+    { id: "budget", group: "power", title: "Power Budget Planner", toc: "Power Budget",
       intro: `<p>Add up everything your project will power, allow a safety margin, and check that the supply can deliver it. When Wi-Fi transmits, the ESP32 alone can briefly draw about 240 mA.</p>`,
       mount: mountBudget },
 
     /* ---------------- Programming ---------------- */
-    { id: "progmodes", group: "program", title: "Two ways to program the ESP32", toc: "Wired vs wireless",
+    { id: "progmodes", group: "program", title: "Two Ways to Program the ESP32", toc: "Wired vs Wireless",
       intro: `<p>A program can reach the ESP32 through a <strong>USB cable (wired)</strong>, or <strong>over the air (OTA)</strong> through Wi-Fi. Wired programming itself has two modes: <strong>manual</strong>, where you press the board's buttons, and <strong>automatic</strong>.</p>`,
       mount: mountModesDiagram },
-    { id: "connect", group: "program", title: "Connecting the board to the PC", toc: "COM port", mount: mountConnect },
-    { id: "tuniot", group: "program", title: "Block programming with TUNIOT", toc: "TUNIOT",
+    { id: "connect", group: "program", title: "Connecting the Board to the PC", toc: "COM Port", mount: mountConnect },
+    { id: "tuniot", group: "program", title: "Block Programming with TUNIOT", toc: "TUNIOT",
       intro: `<p>There are many ways to program the ESP32. In this course we use <strong>TUNIOT</strong>, a free web tool where you build the program from blocks, and it writes the C code for the Arduino IDE.</p>`,
       mount: mountTuniot },
-    { id: "manual", group: "program", title: "Manual programming mode: EN and BOOT", toc: "Manual mode",
+    { id: "manual", group: "program", title: "Manual Programming Mode: EN and BOOT", toc: "Manual Mode",
       intro: `<p>To accept a new program, the ESP32 must start up in <strong>download mode</strong>. It does this when the <strong>BOOT</strong> button (GPIO0) is held down at the moment the chip comes out of reset, that is, when <strong>EN</strong> is released. Try it: click Upload, then press the buttons in the right order while the IDE shows “Connecting…”.</p>`,
       mount: mountBootSim,
       after: `<div class="callout info"><strong>Good to know</strong>Many DevKit boards press EN and BOOT for you through the USB chip, so an upload usually just works. Use the buttons when the IDE gets stuck on “Connecting…”.</div>` },
-    { id: "rcreset", group: "program", title: "Automatic programming mode: the EN capacitor", toc: "Automatic mode",
+    { id: "rcreset", group: "program", title: "Automatic Programming Mode: The EN Capacitor", toc: "Automatic Mode",
       intro: `<p>In a remote lab nobody can press the buttons. A capacitor between <strong>EN</strong> and <strong>GND</strong> (0.47 µF in our lab kit) fixes this. The board's pull-up resistor charges the capacitor, so EN rises slowly. That delay keeps the chip in reset long enough for the USB chip to hold BOOT low, and the ESP32 starts in download mode by itself. The time constant τ = RC sets the delay.</p>`,
       inputs: [F("R", "R", 10e3, "EN pull-up on the board"), F("C", "C", 0.47e-6, "capacitor from EN to GND")],
       compute(v) {
@@ -924,21 +924,21 @@ WiFi.softAP("ESP32-setup", "12345678");`]
           step("Voltage on EN after one τ", "V = 3.3 V × (1 − e<sup>−1</sup>)", "= 3.3 V × 0.632", `V ≈ 2.09 V after ${eng(tau, "s")}`),
           step("Almost fully charged", "after about 3τ", `= 3 × ${eng(tau, "s")}`, `≈ ${eng(3 * tau, "s")} (95% of 3.3 V)`)] };
       } },
-    { id: "ota", group: "program", title: "Over-the-air (OTA) programming", toc: "OTA",
+    { id: "ota", group: "program", title: "Over-the-Air (OTA) Programming", toc: "OTA",
       intro: `<p>With OTA, the ESP32 runs a small web server, and you upload new programs from a web browser over Wi-Fi. No cable is needed after the first upload.</p>`,
       mount: mountOta },
 
     /* ---------------- Input and output ---------------- */
-    { id: "iolab", group: "io", title: "Virtual I/O lab", toc: "Virtual lab",
+    { id: "iolab", group: "io", title: "Virtual I/O Lab", toc: "Virtual Lab",
       intro: `<p>Practise all five lab experiments here before you build them. Each one shows the circuit, the TUNIOT blocks, the Arduino sketch and, where the sketch prints, a live Serial Monitor. Change the values and watch the board respond.</p>`,
       mount: mountIoLab },
 
     /* ---------------- Wired ---------------- */
-    { id: "uart", group: "wired", title: "UART: universal asynchronous receiver-transmitter", toc: "UART",
+    { id: "uart", group: "wired", title: "UART: Universal Asynchronous Receiver-Transmitter", toc: "UART",
       intro: `<p><strong>UART</strong> (serial) is the simplest way for two devices to talk. It uses two wires, <strong>TX</strong> (transmit) and <strong>RX</strong> (receive), crossed over so one device's TX goes to the other's RX, plus a shared GND. Data goes one bit at a time.</p>
         <p>There is <strong>no clock wire</strong>: the devices don't need to share a clock, but both must be set to the same <strong>baud rate</strong> (bits per second). A UART link can be simplex, half duplex or full duplex:</p>`,
       mount: mountDuplex },
-    { id: "uartframe", group: "wired", title: "UART frame viewer", toc: "UART frames",
+    { id: "uartframe", group: "wired", title: "UART Frame Viewer", toc: "UART Frames",
       intro: `<p>The <strong>MB1010 sonar</strong> reports distance over UART at <strong>9600 baud, 8 data bits, no parity, 1 stop bit (9600 8N1)</strong>. It sends 5 characters: a capital <strong>R</strong>, three digits giving the distance in inches (006 to 254), and a carriage return. Type any text below and see the bits on the wire.</p>`,
       mount: mountUartFrame,
       after: `${videos([
@@ -946,7 +946,7 @@ WiFi.softAP("ESP32-setup", "12345678");`]
         ["TGusjcKSNIU", "Transmit data using UART in ESP32", "Elconics"],
         ["_A2KwuiE7Ww", "Arduino and ESP32 serial communication (UART)", "Hacks360"],
         ["pVcjXIG4KW8", "GPS module with Arduino: u-blox NEO-6M (a UART device)", "BINARYUPDATES"]])}<div class="callout info"><strong>Good to know</strong>The MB1010's serial output uses RS-232 polarity (idle LOW), so the ESP32's UART must be told to invert it: <code>Serial2.begin(9600, SERIAL_8N1, 16, 17, true);</code> reads it on RX2 (GPIO16).</div>` },
-    { id: "sonar", group: "wired", title: "Sonar distance calculator", toc: "Sonar",
+    { id: "sonar", group: "wired", title: "Sonar Distance Calculator", toc: "Sonar",
       intro: `<p>An ultrasonic range finder sends a short 42 kHz pulse and times its echo. The sound travels to the object <strong>and back</strong>, so the distance is half of speed × time. The MB1010 works from 2.5 to 5.5 V and measures from 6 to 254 inches.</p>
         ${photo("maxsonar.jpg", "A MaxBotix LV-MaxSonar, the family the MB1010 belongs to.", "small")}`,
       inputs: [F("t", "num", 5.83, null, { unit: "ms", positive: true, label: "Echo time" }), F("T", "num", 25, null, { unit: "°C", positive: false, label: "Air temperature" })],
@@ -958,15 +958,15 @@ WiFi.softAP("ESP32-setup", "12345678");`]
           step("Distance (half the round trip)", "d = v × t / 2", `= ${num(c)} m/s × ${num(v.t / 1000)} s / 2`, `d = ${num(d)} m`),
           step("In inches, as the MB1010 reports it", "inches = metres / 0.0254", `= ${num(d)} / 0.0254`, `= ${num(inch)} in, sent as “R${String(Math.round(inch)).padStart(3, "0")}”`)] };
       } },
-    { id: "spi", group: "wired", title: "SPI: serial peripheral interface", toc: "SPI",
+    { id: "spi", group: "wired", title: "SPI: Serial Peripheral Interface", toc: "SPI",
       intro: `<p><strong>SPI</strong> is a <strong>synchronous</strong> serial protocol: the master (the ESP32) drives a clock line, <strong>SCLK</strong>. Data goes out on <strong>MOSI</strong> (master out, slave in) and comes back on <strong>MISO</strong> at the same time, so it is <strong>full duplex</strong>. Each slave has its own <strong>chip select (CS)</strong> line, pulled low to talk to it.</p>
         <p>The ESP32 has four SPI controllers: two are used internally (for its flash memory), and two are free, called <strong>HSPI</strong> (GPIO14, 12, 13, 15) and <strong>VSPI</strong> (GPIO18, 19, 23, 5).</p>`,
       mount: mountSpi },
-    { id: "i2c", group: "wired", title: "I²C: inter-integrated circuit", toc: "I²C",
+    { id: "i2c", group: "wired", title: "I²C: Inter-Integrated Circuit", toc: "I²C",
       intro: `<p><strong>I²C</strong> uses just two wires shared by every device: <strong>SCL</strong> (clock) and <strong>SDA</strong> (data), each with a pull-up resistor. Every device has a <strong>7-bit address</strong>, and the master starts each message by sending the address it wants. Data goes both ways on SDA, one way at a time, so I²C is <strong>half duplex</strong>.</p>
         <p>The ESP32 has two I²C controllers (default pins SDA 21, SCL 22). One ESP32 can talk to many sensors (one master, many slaves), and two ESP32s can even share one display (multiple masters).</p>`,
       mount: mountI2c },
-    { id: "wiredcompare", group: "wired", title: "UART, SPI and I²C compared", toc: "Comparison",
+    { id: "wiredcompare", group: "wired", title: "UART, SPI and I²C Compared", toc: "Comparison",
       mount(el) {
         el.innerHTML = `<div class="table-wrap"><table class="cmp"><thead><tr><th scope="col"></th><th scope="col">UART</th><th scope="col">SPI</th><th scope="col">I²C</th></tr></thead><tbody>
           <tr><th scope="row">Wires (plus GND)</th><td>2: TX and RX</td><td>4: SCLK, MOSI, MISO and one CS per device</td><td>2: SDA and SCL, with pull-up resistors</td></tr>
@@ -977,7 +977,7 @@ WiFi.softAP("ESP32-setup", "12345678");`]
           <tr><th scope="row">Distance</th><td>A metre or so at 3.3 V logic; much further with RS-232 or RS-485 line drivers</td><td>Short: on the same board</td><td>Short: on the board or a short cable</td></tr>
           <tr><th scope="row">On the ESP32</th><td>3 UARTs (UART0 is used for USB and uploading)</td><td>4 SPI (HSPI and VSPI are free)</td><td>2 I²C controllers</td></tr>
           <tr><th scope="row">Typical uses</th><td>GPS, MB1010 sonar, Bluetooth modules, PC serial</td><td>SD cards, TFT displays, fast ADCs</td><td>Sensors (BME280, MPU6050), OLED displays, clocks</td></tr>
-        </tbody></table></div><h4 class="sub-h">Check yourself: which protocol?</h4><div class="proto-quiz"></div>`;
+        </tbody></table></div><h4 class="sub-h">Check Yourself: Which Protocol?</h4><div class="proto-quiz"></div>`;
         quiz(el.querySelector(".proto-quiz"), PROTO_QUIZ);
       } },
 
@@ -991,7 +991,7 @@ WiFi.softAP("ESP32-setup", "12345678");`]
           <ul class="ticks"><li><strong>Uses:</strong> control devices from an Android app, send or receive sensor data, exchange data locally where there's no Wi-Fi.</li>
           <li><strong>Advantages:</strong> low power (especially BLE), quick pairing and setup, works offline with no router.</li></ul>`;
       } },
-    { id: "wifi", group: "wireless", title: "Wi-Fi and its three modes", toc: "Wi-Fi",
+    { id: "wifi", group: "wireless", title: "Wi-Fi and Its Three Modes", toc: "Wi-Fi",
       intro: `<p>The ESP32's Wi-Fi follows IEEE 802.11 b/g/n in the 2.4 GHz band, at up to 150 Mbps and about 100 m range in open space. It can be used for web servers that monitor or control devices, for sending data to IoT dashboards and cloud platforms such as Blynk or ThingSpeak, and for OTA programming. Choose a mode:</p>`,
       mount: mountWifiModes },
     { id: "wlcompare", group: "wireless", title: "Bluetooth or Wi-Fi?", toc: "Comparison",
@@ -1003,7 +1003,7 @@ WiFi.softAP("ESP32-setup", "12345678");`]
           <tr><th scope="row">Power use</th><td>Low (BLE very low)</td><td>High</td></tr>
           <tr><th scope="row">Internet access</th><td>No, needs a phone or gateway</td><td>Yes, through a router</td></tr>
           <tr><th scope="row">Best for</th><td>Local control, wearables, battery sensors</td><td>Cloud dashboards, web servers, OTA updates</td></tr>
-        </tbody></table></div><h4 class="sub-h">Check yourself: Bluetooth or Wi-Fi?</h4><div class="wl-quiz"></div>`;
+        </tbody></table></div><h4 class="sub-h">Check Yourself: Bluetooth or Wi-Fi?</h4><div class="wl-quiz"></div>`;
         quiz(el.querySelector(".wl-quiz"), WL_QUIZ);
       } }
   ];
@@ -1013,26 +1013,26 @@ WiFi.softAP("ESP32-setup", "12345678");`]
      ===================================================================== */
   const W_ = (list) => `<div class="working"><h4>Working</h4><ol class="steps">${stepsHtml(list)}</ol></div>`;
   const EXERCISES = [
-    { id: "c2-q1", title: "Exercise 1: inside the ESP32",
+    { id: "c2-q1", title: "Exercise 1: Inside the ESP32",
       q: `<p>Answer these about the ESP32's processor.</p>`,
       ans: [{ l: "Number of CPU cores", u: "", v: 2, tol: 0 }, { l: "Lowest clock frequency", u: "MHz", v: 80, tol: 0 }, { l: "Highest clock frequency", u: "MHz", v: 240, tol: 0 }],
       hints: [`Look at the “Two CPU cores” card in the Overview.`, `The clock can be adjusted between two values. The lower one saves power; the higher one is the fastest.`],
       working: () => W_([step("Cores", "", "", "The ESP32 has <strong>2</strong> CPU cores that can be controlled separately."), step("Clock frequency", "", "", "Adjustable from <strong>80 MHz</strong> to <strong>240 MHz</strong>. A lower clock saves power.")]) },
-    { id: "c2-q2", title: "Exercise 2: low power",
+    { id: "c2-q2", title: "Exercise 2: Low Power",
       q: `<p>The ESP32 is designed for battery-powered sensor nodes.</p>`,
       ans: [{ l: "Sleep current in hibernation is about", opts: ["5 µA", "5 mA", "50 mA", "500 mA"], v: 0 },
         { l: "The part that can watch sensors while the main cores sleep", opts: ["Ultra-low-power (ULP) co-processor", "Wi-Fi radio", "DAC", "USB-serial chip"], v: 0 },
         { l: "Which uses the least current?", opts: ["Active with Wi-Fi transmitting", "Modem sleep", "Light sleep", "Deep sleep"], v: 3 }],
       hints: [`µA is a millionth of an ampere; the ESP32's sleep current is tiny.`, `Look at the sleep-mode bars in “Low power”: the deeper the sleep, the less current.`],
       working: () => W_([step("Sleep current", "", "", "In hibernation the ESP32 chip draws only about <strong>5 µA</strong>."), step("Low-power helper", "", "", "The <strong>ULP co-processor</strong> monitors peripherals so the main CPUs can stay asleep."), step("Least current", "", "", "<strong>Deep sleep</strong>: only the RTC and its memory stay on (about 10 µA).")]) },
-    { id: "c2-q3", title: "Exercise 3: radio and the module",
+    { id: "c2-q3", title: "Exercise 3: Radio and the Module",
       q: `<p>About the ESP32-WROOM-32 module used on the DevKit board.</p>`,
       ans: [{ l: "The chip at the core of the module", opts: ["ESP32-D0WDQ6", "ESP8266EX", "ATmega328P", "CP2102"], v: 0 },
         { l: "Maximum Wi-Fi data rate", u: "Mbps", v: 150, tol: 0 },
         { l: "Output power at the antenna", u: "dBm", v: 20, tol: 0 }],
       hints: [`The chip name starts with “ESP32-”.`, `Check the “Wi-Fi and Bluetooth” and “Strong radio” cards in the Overview.`],
       working: () => W_([step("Core chip", "", "", "<strong>ESP32-D0WDQ6</strong>"), step("Data rate", "", "", "Up to <strong>150 Mbps</strong> (fast connection)"), step("Output power", "", "", "<strong>20 dBm</strong> (100 mW) at the antenna, for a wide range")]) },
-    { id: "c2-q4", title: "Exercise 4: power supply setup",
+    { id: "c2-q4", title: "Exercise 4: Power Supply Setup",
       q: `<p>Three ways to power the ESP32 are covered in this chapter.</p>`,
       ans: [{ l: "Number of power supply setups", u: "", v: 3, tol: 0 },
         { l: "Simplest supply for a portable project", opts: ["USB port", "Power bank", "Bench DC supply"], v: 1 },
@@ -1040,7 +1040,7 @@ WiFi.softAP("ESP32-setup", "12345678");`]
         { l: "When the system needs more current than the USB port gives, use", opts: ["A longer USB cable", "A bench DC supply", "Deep sleep"], v: 1 }],
       hints: [`The three setups are USB port, power bank and bench supply.`, `5 V must go through the board's regulator; 3.3 V goes straight to the 3V3 pin.`],
       working: () => W_([step("Setups", "", "", "<strong>3</strong>: USB port, power bank, 3.3 V or 5 V bench supply"), step("Portable", "", "", "A <strong>power bank</strong>"), step("5 V", "", "", "<strong>VIN</strong>, through the 3.3 V regulator"), step("More current", "", "", "A <strong>bench DC supply</strong>")]) },
-    { id: "c2-q5", title: "Exercise 5: programming modes",
+    { id: "c2-q5", title: "Exercise 5: Programming Modes",
       q: `<p>The ESP32 can be programmed in several ways.</p>`,
       ans: [{ l: "Number of programming modes", u: "", v: 3, tol: 0 },
         { l: "The default mode", opts: ["Manual", "Automatic", "Over the air (OTA)"], v: 0 },
@@ -1048,7 +1048,7 @@ WiFi.softAP("ESP32-setup", "12345678");`]
         { l: "Mode that uses a capacitor between EN and GND", opts: ["Manual", "Automatic", "Over the air (OTA)"], v: 1 }],
       hints: [`There are two wired modes and one wireless mode.`, `The capacitor is for the remote lab, where nobody can press the buttons.`],
       working: () => W_([step("Modes", "", "", "<strong>3</strong>: manual and automatic (both wired), and over the air (wireless)"), step("Default", "", "", "<strong>Manual</strong> mode"), step("No cable", "", "", "<strong>OTA</strong>, through Wi-Fi and a web browser"), step("Capacitor", "", "", "<strong>Automatic</strong> mode: a capacitor from EN to GND")]) },
-    { id: "c2-q6", title: "Exercise 6: manual mode and the PC connection",
+    { id: "c2-q6", title: "Exercise 6: Manual Mode and the PC Connection",
       q: `<p>About uploading a program through the USB cable.</p>`,
       ans: [{ l: "Button that makes the ESP32 start in download mode", opts: ["BOOT", "EN"], v: 0 },
         { l: "Button that resets the ESP32", opts: ["BOOT", "EN"], v: 1 },
@@ -1056,7 +1056,7 @@ WiFi.softAP("ESP32-setup", "12345678");`]
         { l: "Driver shown in Device Manager", opts: ["Silicon Labs CP210x USB to UART Bridge", "FTDI FT232", "Bluetooth adapter"], v: 0 }],
       hints: [`EN is “enable”: pulling it low resets the chip.`, `Try the simulator in “Manual mode”, and look at the Device Manager screenshot in “COM port”.`],
       working: () => W_([step("BOOT", "", "", "Held down while the chip comes out of reset: the ESP32 waits for a new program (download mode)."), step("EN", "", "", "Resets the chip."), step("Baud rate", "", "", "<strong>115200</strong> bits per second"), step("Driver", "", "", "<strong>Silicon Labs CP210x USB to UART Bridge</strong>")]) },
-    { id: "c2-q7", title: "Exercise 7: input and output",
+    { id: "c2-q7", title: "Exercise 7: Input and Output",
       q: `<p>About the ESP32's input and output features used in the lab.</p>`,
       ans: [{ l: "Number of DAC channels", u: "", v: 2, tol: 0 },
         { l: "DAC resolution", u: "bits", v: 8, tol: 0 },
@@ -1064,7 +1064,7 @@ WiFi.softAP("ESP32-setup", "12345678");`]
         { l: "A smoother way to control LED brightness than the DAC", opts: ["PWM", "UART", "I²C", "Touch sensor"], v: 0 }],
       hints: [`Use the pinout explorer with the DAC filter.`, `The last experiment in the virtual lab controls LED brightness a better way.`],
       working: () => W_([step("DAC", "", "", "<strong>2</strong> channels, <strong>8-bit</strong>, on <strong>GPIO25</strong> (channel 1) and <strong>GPIO26</strong> (channel 2)"), step("Brightness", "", "", "<strong>PWM</strong> switches the pin fully on and off very fast; the duty cycle sets the brightness")]) },
-    { id: "c2-q8", title: "Exercise 8: types of connectivity",
+    { id: "c2-q8", title: "Exercise 8: Types of Connectivity",
       q: `<p>How can the ESP32 connect to other devices?</p>`,
       ans: [{ l: "Number of connectivity types", u: "", v: 2, tol: 0 },
         { l: "Number of wired protocols in this chapter", u: "", v: 3, tol: 0 },

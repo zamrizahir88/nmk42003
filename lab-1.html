@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=2610023">
-  <link rel="stylesheet" href="assets/css/lab.css?v=2610023">
-  <link rel="stylesheet" href="assets/css/lab1.css?v=2610023">
+  <link rel="stylesheet" href="assets/css/style.css?v=2610033">
+  <link rel="stylesheet" href="assets/css/lab.css?v=2610033">
+  <link rel="stylesheet" href="assets/css/lab1.css?v=2610033">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0b6e6e">
   <link rel="apple-touch-icon" href="assets/img/icon-180.png">
@@ -70,28 +70,30 @@
         </ul>
       </div>
       <p class="lab-how">This is a simulation: nothing here talks to a real board. Everything follows the lab sheet, so in the lab you'll do the same steps on the real ESP32. Where the page asks for your name, it uses it the way the lab sheet does (in the Bluetooth name and the Serial Monitor).</p>
-      <p class="gate-note" id="gateNote"><span aria-hidden="true">🔒</span> <span>The <strong>lab task</strong> unlocks when you pass the <a href="#exercises">Pre-lab check</a> quiz with at least <strong>7 out of 10</strong>.</span></p>
+      <p class="gate-note" id="gateNote"><span aria-hidden="true">🔒</span> <span>The <strong>Lab Task</strong> unlocks when you pass the <a href="#exercises">Pre-Lab Check</a> quiz with at least <strong>7 out of 10</strong>.</span></p>
       <div class="name-box" id="nameBox"></div>
       <noscript><div class="callout warn"><strong>JavaScript is off</strong>The virtual lab on this page needs JavaScript. Turn it on, or use the lab sheet on URLearn.</div></noscript>
     </div>
 
-    <nav class="lab-nav" aria-label="Lab sections">
+    <nav class="lab-nav steps" aria-label="Lab sections">
       <div class="wrap">
-        <a href="#kit">Before you start</a>
-        <a href="#l1">Lesson 1: Blink</a>
-        <a href="#l2">Lesson 2: Bluetooth</a>
-        <a href="#l3">Lesson 3: App Inventor</a>
-        <a href="#l4">Lesson 4: Wi-Fi</a>
-        <a href="#l5">Lesson 5: Switch</a>
-        <a href="#exercises">Pre-lab check</a>
-        <a href="#labtask" id="taskNav">Lab task 🔒</a>
+        <a href="#kit" title="Before You Start"><span class="sb-s" aria-hidden="true">Start</span><span class="sb-l">Before You Start</span></a>
+        <a href="#l1" title="Lesson 1: Blink"><span class="sb-s" aria-hidden="true">1</span><span class="sb-l">Lesson 1: Blink</span></a>
+        <a href="#l2" title="Lesson 2: Bluetooth"><span class="sb-s" aria-hidden="true">2</span><span class="sb-l">Lesson 2: Bluetooth</span></a>
+        <a href="#l3" title="Lesson 3: App Inventor"><span class="sb-s" aria-hidden="true">3</span><span class="sb-l">Lesson 3: App Inventor</span></a>
+        <a href="#l4" title="Lesson 4: Wi-Fi"><span class="sb-s" aria-hidden="true">4</span><span class="sb-l">Lesson 4: Wi-Fi</span></a>
+        <a href="#l5" title="Lesson 5: Switch"><span class="sb-s" aria-hidden="true">5</span><span class="sb-l">Lesson 5: Switch</span></a>
+        <a href="#exercises" title="Pre-Lab Check"><span class="sb-s" aria-hidden="true">Check</span><span class="sb-l">Pre-Lab Check</span></a>
+        <a href="#labtask" id="taskNav" title="Lab Task (locked)"><span class="sb-s" aria-hidden="true">Task</span><span class="sb-l">Lab Task</span><span class="sb-k"> 🔒<span class="vh"> locked</span></span></a>
+        <a href="#review" title="Lab 1 Review"><span class="sb-s" aria-hidden="true">Review</span><span class="sb-l">Lab 1 Review</span></a>
       </div>
+      <p class="sb-cap" aria-hidden="true"></p>
     </nav>
 
     <section class="lab-group" id="kit" aria-labelledby="kit-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="kit-h">Before you start</h2>
+          <h2 id="kit-h">Before You Start</h2>
           <p>The equipment, the software and the basic ESP32 circuit.</p>
           <ul class="toc-chips" id="kitToc"></ul>
         </div>
@@ -102,7 +104,7 @@
     <section class="lab-group" id="l1" aria-labelledby="l1-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="l1-h">Lesson 1: Blink the built-in LED</h2>
+          <h2 id="l1-h">Lesson 1: Blink the Built-in LED</h2>
           <p>Build the blocks in TUNIOT, then upload the code in two ways: by USB cable and over Wi-Fi.</p>
           <ul class="toc-chips" id="l1Toc"></ul>
         </div>
@@ -113,7 +115,7 @@
     <section class="lab-group" id="l2" aria-labelledby="l2-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="l2-h">Lesson 2: Control the LED with a Bluetooth terminal</h2>
+          <h2 id="l2-h">Lesson 2: Control the LED with a Bluetooth Terminal</h2>
           <p>The ESP32 becomes a Bluetooth device with your name. You type ON or OFF on your phone.</p>
           <ul class="toc-chips" id="l2Toc"></ul>
         </div>
@@ -124,7 +126,7 @@
     <section class="lab-group" id="l3" aria-labelledby="l3-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="l3-h">Lesson 3: Control the LED with your own app</h2>
+          <h2 id="l3-h">Lesson 3: Control the LED with Your Own App</h2>
           <p>Design a phone app with MIT App Inventor that sends ON and OFF to the same ESP32 program.</p>
           <ul class="toc-chips" id="l3Toc"></ul>
         </div>
@@ -135,7 +137,7 @@
     <section class="lab-group" id="l4" aria-labelledby="l4-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="l4-h">Lesson 4: Control an external LED over Wi-Fi</h2>
+          <h2 id="l4-h">Lesson 4: Control an External LED over Wi-Fi</h2>
           <p>Wire an LED to GPIO32, and let the ESP32 serve a web page with ON and OFF buttons.</p>
           <ul class="toc-chips" id="l4Toc"></ul>
         </div>
@@ -146,7 +148,7 @@
     <section class="lab-group" id="l5" aria-labelledby="l5-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="l5-h">Lesson 5: Monitor the switch condition</h2>
+          <h2 id="l5-h">Lesson 5: Monitor the Switch Condition</h2>
           <p>Add a toggle switch, read its condition, and monitor it in three ways: on the Serial Monitor, on a phone via Bluetooth and on a web page.</p>
           <ul class="toc-chips" id="l5Toc"></ul>
         </div>
@@ -157,31 +159,38 @@
     <section class="lab-group" id="exercises" aria-labelledby="exercises-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="exercises-h">Pre-lab check</h2>
-          <p>Answer all 10 quiz questions, then press <strong>Submit</strong>. Score at least <strong>7 out of 10</strong> to unlock the lab task. Each attempt gets a new random set of questions.</p>
+          <h2 id="exercises-h">Pre-Lab Check</h2>
+          <p>Ten questions, one at a time. Pick an answer and the next question comes up. When all 10 are answered, press <strong>Submit</strong>. Score at least <strong>7 out of 10</strong> to unlock the Lab Task. Each new attempt gets a new random set of questions.</p>
         </div>
         <div id="quizBox"></div>
-        <h3 class="sub-h">Practice questions</h3>
-        <p class="widget-lead">Optional practice with numbers. Type or choose your answers and press <strong>Check answers</strong>. Each wrong try unlocks a hint, and when all your answers are correct the full working appears. Swipe left or right, or use the arrows, to move between questions.</p>
-        <div id="exList"></div>
       </div>
     </section>
 
     <section class="lab-group" id="labtask" aria-labelledby="labtask-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="labtask-h">Lab task</h2>
+          <h2 id="labtask-h">Lab Task</h2>
           <p>The task you build on your own and demonstrate in the lab.</p>
         </div>
         <div class="lock-card" id="taskLock" role="region" aria-labelledby="lock-h">
           <div class="lock-ico" aria-hidden="true">🔒</div>
           <div>
-            <h3 id="lock-h">Complete the Pre-lab check first</h3>
-            <p>Score at least <strong>7 out of 10</strong> in the Pre-lab check quiz to unlock the lab task.</p>
-            <a class="btn" href="#exercises">Go to the Pre-lab check</a>
+            <h3 id="lock-h">Complete the Pre-Lab Check First</h3>
+            <p>Score at least <strong>7 out of 10</strong> in the Pre-Lab Check quiz to unlock the Lab Task.</p>
+            <a class="btn" href="#exercises">Go to the Pre-Lab Check</a>
           </div>
         </div>
         <div id="taskList" hidden></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="review" aria-labelledby="review-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="review-h">Lab 1 Review</h2>
+          <p>Four exercises that bring the whole lab together: timing, the LED resistor, web requests and Bluetooth messages. Type or choose your answers and press <strong>Check answers</strong>. Each wrong try unlocks a hint, and when all your answers are correct the full working appears. Swipe left or right, or use the arrows, to move between exercises.</p>
+        </div>
+        <div id="exList"></div>
         <nav class="pager" aria-label="Labs" id="chPager"></nav>
       </div>
     </section>
@@ -189,9 +198,9 @@
 
   <footer class="site-footer" id="footer"></footer>
 
-  <script src="assets/js/data.js?v=2610023"></script>
-  <script src="assets/js/main.js?v=2610023"></script>
-  <script src="assets/js/lab.js?v=2610023"></script>
-  <script src="assets/js/lab1.js?v=2610023"></script>
+  <script src="assets/js/data.js?v=2610033"></script>
+  <script src="assets/js/main.js?v=2610033"></script>
+  <script src="assets/js/lab.js?v=2610033"></script>
+  <script src="assets/js/lab1.js?v=2610033"></script>
 </body>
 </html>

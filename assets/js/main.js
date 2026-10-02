@@ -215,9 +215,9 @@
     const pills = `<span class="mc-pills">${COURSE.topics.map((t) => `<span class="pill${t.page ? " on" : ""}" title="Chapter ${t.no}">${t.no}</span>`).join("")}</span>`;
     const cards = [
       { i: "book", t: "Chapters", d: "Interactive lecture notes with animations, calculators with step-by-step working, and exercises for every chapter.", b: `${COURSE.topics.length} chapters · ${built} interactive`, h: "chapters.html", wide: true, extra: pills },
-      { i: "cal", t: "Weekly schedule", d: "Topics, labs and assessments for every week of the semester.", b: `${TOTAL_WEEKS} weeks`, h: "schedule.html" },
-      { i: "chart", t: "Assessment and outcomes", d: "How your grade is made up, and the course outcomes.", b: `${COURSE.assessment.length} parts · ${COURSE.outcomes.length} outcomes`, h: "assessment.html" },
-      { i: "flask", t: "Laboratory experiments", d: "The lab experiments and the weeks they run in, with virtual labs to try before you come to the lab.", b: `${COURSE.labs.length} labs · ${COURSE.labs.filter((l) => l.page).length} virtual`, h: "labs.html#labs" },
+      { i: "cal", t: "Weekly Schedule", d: "Topics, labs and assessments for every week of the semester.", b: `${TOTAL_WEEKS} weeks`, h: "schedule.html" },
+      { i: "chart", t: "Assessment and Outcomes", d: "How your grade is made up, and the course outcomes.", b: `${COURSE.assessment.length} parts · ${COURSE.outcomes.length} outcomes`, h: "assessment.html" },
+      { i: "flask", t: "Laboratory Experiments", d: "The lab experiments and the weeks they run in, with virtual labs to try before you come to the lab.", b: `${COURSE.labs.length} labs · ${COURSE.labs.filter((l) => l.page).length} virtual`, h: "labs.html#labs" },
       { i: "refs", t: "References", d: "Textbooks and reference books for the course.", b: `${COURSE.references.length} books`, h: "labs.html#refs" }
     ];
     $("#menuCards").innerHTML = cards.map((c) => `
@@ -587,8 +587,8 @@
     const wks = weekNumbers(t.weeks).map((n) => COURSE.weeks[n - 1]).filter(Boolean);
     const prev = COURSE.topics.find((x) => x.no === t.no - 1), next = COURSE.topics.find((x) => x.no === t.no + 1);
     const notice = t.status === "building"
-      ? `<div class="notice"><h2>Interactive chapter in progress</h2><p>This chapter is being built with live circuit calculators. You'll be able to change component values and see each step of the working.</p>${t.planned ? `<ul>${t.planned.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : ""}</div>`
-      : `<div class="notice"><h2>Notes coming soon</h2><p>This chapter's online notes haven't been published yet. Use the lecture slides on URLearn in the meantime.</p></div>`;
+      ? `<div class="notice"><h2>Interactive Chapter in Progress</h2><p>This chapter is being built with live circuit calculators. You'll be able to change component values and see each step of the working.</p>${t.planned ? `<ul>${t.planned.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : ""}</div>`
+      : `<div class="notice"><h2>Notes Coming Soon</h2><p>This chapter's online notes haven't been published yet. Use the lecture slides on URLearn in the meantime.</p></div>`;
     chapterEl.innerHTML = `
       <div class="wrap chapter-hero">
         <a class="crumb" href="chapters.html">Back to all chapters</a>
@@ -599,7 +599,7 @@
       <div class="wrap chapter-body">
         <p style="font-size:1.08rem;color:var(--ink-2)">${esc(t.summary)}</p>
         ${notice}
-        ${wks.length ? `<h2 style="font-size:1.3rem;margin:32px 0 10px">In the teaching plan</h2>
+        ${wks.length ? `<h2 style="font-size:1.3rem;margin:32px 0 10px">In the Teaching Plan</h2>
           <ul>${wks.map((w) => `<li><strong>Week ${w.w}, ${esc(w.topic)}.</strong> ${esc(w.sub)}${w.activities.length ? ` Activities: ${esc(w.activities.join(", "))}.` : ""}</li>`).join("")}</ul>` : ""}
         <nav class="pager" aria-label="Chapters">
           <span>${prev ? `<a href="${esc(pageOf(prev))}"><small>Previous</small>Chapter ${prev.no}: ${esc(prev.title)}</a>` : ""}</span>

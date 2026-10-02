@@ -166,7 +166,7 @@
     ["ESP32 Wi-Fi module and micro-USB cable", "The ESP32 DevKit V1 (30 pins). The cable powers it and carries the program."],
     ["Breadboard", "Holds the capacitor, and later the LED and resistor."],
     ["0.47 µF capacitor", "Goes between EN and GND, for automatic programming mode."],
-    ["Toggle switch", "An input on GPIO33, for Lesson 5 and the lab task."],
+    ["Toggle switch", "An input on GPIO33, for Lesson 5 and the Lab Task."],
     ["LED", "The external LED on GPIO32 in Lesson 4."],
     ["Resistor", "In series with the LED, to limit its current."],
     ["Male-female jumper wires (at least 7)", "From the board's pins to the breadboard: 4 for the capacitor and LED, 3 more for the switch."],
@@ -189,7 +189,7 @@
       return `<li><label class="kit-item"><input type="checkbox" data-k="${k}"${got.includes(k) ? " checked" : ""}><span><strong>${esc(t)}</strong>${url ? ` <a href="${url}" target="_blank" rel="noopener">open ↗</a>` : ""}<small>${esc(d)}</small></span></label></li>`;
     };
     el.innerHTML = `<div class="kit-grid">
-        <div class="kit-col"><h4 class="sub-h">Equipment and components</h4><ul class="kit">${KIT.map((x, i) => item("e", i, x)).join("")}</ul></div>
+        <div class="kit-col"><h4 class="sub-h">Equipment and Components</h4><ul class="kit">${KIT.map((x, i) => item("e", i, x)).join("")}</ul></div>
         <div class="kit-col"><h4 class="sub-h">Software</h4><ul class="kit">${SOFT.map((x, i) => item("s", i, x)).join("")}</ul></div>
       </div>
       <p class="kit-count" aria-live="polite"></p>`;
@@ -354,7 +354,7 @@ ${body}
           <span class="upl-state" aria-live="polite"></span></div>
         <div class="ide"><div class="ide-h">Arduino IDE · Output</div><pre class="ide-o" role="log">Press Upload to compile the code and send it to the ESP32.</pre></div>
       </div>
-      ${fold("Arduino code made from your blocks", `<div class="code-slot"></div>`, true)}`;
+      ${fold("Arduino Code Made from Your Blocks", `<div class="code-slot"></div>`, true)}`;
 
     const wsEl = $(".bk-ws", el), sceneEl = $(".blink-scene", el), stripEl = $(".blink-strip", el), read = $(".blink-read", el);
     const ide = $(".ide-o", el), stateEl = $(".upl-state", el), upBtn = $("[data-upload]", el), bootBtn = $("[data-boot]", el);
@@ -507,35 +507,35 @@ ${body}
       sceneEl.innerHTML = `<svg class="scene ota" viewBox="0 0 520 200" role="img" aria-label="Laptop, Wi-Fi router and ESP32. ${L.cable ? "The USB cable is in use." : ""}${L.wifiLap || L.wifiEsp ? " Wi-Fi links are active." : ""}">${s}</svg>`;
     };
     const panels = [
-      () => `<h4>1. Export the blink program as a binary file</h4>
+      () => `<h4>1. Export the Blink Program as a Binary File</h4>
         <p>Open your blink sketch from Lesson 1 in the Arduino IDE and choose <em>Sketch → Export Compiled Binary</em>. The IDE compiles the sketch and saves the compiled program as a <code>.bin</code> file in the same folder as the project.</p>
         <div class="menu-mock" role="group" aria-label="Arduino IDE Sketch menu"><div class="mm-bar"><span>File</span><span>Edit</span><span class="on">Sketch</span><span>Tools</span><span>Help</span></div>
           <div class="mm-list"><span class="mm-i">Verify/Compile <kbd>Ctrl+R</kbd></span><span class="mm-i">Upload <kbd>Ctrl+U</kbd></span><span class="mm-i">Upload Using Programmer <kbd>Ctrl+Shift+U</kbd></span>
           <button type="button" class="mm-i hl" data-exp>Export Compiled Binary <kbd>Ctrl+Alt+S</kbd></button><span class="mm-i">Show Sketch Folder <kbd>Ctrl+K</kbd></span></div></div>
         <div class="folder" aria-live="polite"><div class="fd-h">blink (sketch folder)</div><div class="fd-i">blink.ino</div>${done.exp ? `<div class="fd-i new">blink.ino.bin <small>new, 264 KB</small></div>` : ""}</div>
         ${done.exp ? "" : `<p class="small-note">Click <em>Export Compiled Binary</em> in the menu above.</p>`}`,
-      () => `<h4>2. Open the OTA web updater example</h4>
+      () => `<h4>2. Open the OTA Web Updater Example</h4>
         <p>Choose <em>File → Examples → ArduinoOTA → OTAWebUpdater</em>. This sketch joins your Wi-Fi network and runs a small web server with an upload page. It has to be on the ESP32 first, so the board can accept programs over Wi-Fi.</p>
         ${photo("ide-ota-example.png", "", "small")}`,
-      () => `<h4>3. Put in your Wi-Fi name and password</h4>
+      () => `<h4>3. Put in Your Wi-Fi Name and Password</h4>
         <p>Near the top of the example, type the name (SSID) and password of the Wi-Fi network you'll use. The laptop must join the <strong>same network</strong>.</p>
         <div class="ssid-box"><label for="otaSsid">Wi-Fi name in this simulation</label><input id="otaSsid" type="text" maxlength="24" value="${esc(ssid)}" autocomplete="off" spellcheck="false"></div>
         <div class="ota-code"></div>
         <p class="small-note">Don't type a real password into this page. In the lab you type it only into the Arduino IDE.</p>`,
-      () => `<h4>4. Upload the OTA sketch by cable (once)</h4>
+      () => `<h4>4. Upload the OTA Sketch by Cable (Once)</h4>
         <p>Upload the example with the USB cable, the same way as the blink program. From now on the board can be updated over Wi-Fi.</p>
         <button type="button" class="btn" data-cable${done.cable ? " disabled" : ""}>${done.cable ? "✓ Uploaded" : "Upload by cable"}</button>
         <div class="ide"><div class="ide-h">Arduino IDE · Output</div><pre class="ide-o" role="log">${done.cable ? "Wrote 912,384 bytes. Hash of data verified.\nHard resetting via RTS pin…" : ""}</pre></div>`,
-      () => `<h4>5. Open the Serial Monitor to get the IP address</h4>
+      () => `<h4>5. Open the Serial Monitor to Get the IP Address</h4>
         <p>Open <em>Tools → Serial Monitor</em> and set it to <strong>115200 baud</strong>. The ESP32 prints the IP address the router gave it. If nothing appears, press <strong>EN</strong> on the board to restart it.</p>
         ${serialBox()}<button type="button" class="btn ghost" data-en>Press EN (restart)</button>`,
-      () => `<h4>6. Go to the IP address and log in</h4>
+      () => `<h4>6. Go to the IP Address and Log In</h4>
         <p>In a browser on the laptop, type the IP address. Log in with user name and password <code>admin</code> (the example's defaults).</p>
         <div class="browser"><div class="br-bar"><span class="br-dots" aria-hidden="true"></span><span class="br-url">http://${IP}/</span></div>
           <form class="br-page login" data-login><p class="br-h">ESP32 Login Page</p>
             <label>Username <input type="text" value="admin" readonly></label><label>Password <input type="password" value="admin" readonly></label>
             <button type="submit" class="br-btn">Login</button></form></div>`,
-      () => `<h4>7. Upload the binary from Step 1</h4>
+      () => `<h4>7. Upload the Binary from Step 1</h4>
         <p>On the upload page choose the <code>.bin</code> file and click <em>Update</em>. At 100% the ESP32 restarts and runs the new program: the blue LED blinks. No cable needed.</p>
         <div class="browser"><div class="br-bar"><span class="br-dots" aria-hidden="true"></span><span class="br-url">http://${IP}/serverIndex</span></div>
           <div class="br-page"><div class="br-file"><button type="button" class="br-btn ghost" data-file>Choose File</button><span class="br-fn">${done.bin ? "blink.ino.bin" : "No file chosen"}</span></div>
@@ -860,8 +860,8 @@ ${on ? "digitalWrite(2, HIGH): LED on" : off ? "digitalWrite(2, LOW): LED off" :
         <li><span class="ls-n">1</span><div><h4>Install the Companion</h4><p>On your phone, install <strong>MIT AI2 Companion</strong> from the Play Store or App Store.</p></div></li>
         <li><span class="ls-n">2</span><div><h4>Connect → AI Companion</h4><p>In App Inventor, open <em>Connect → AI Companion</em>. It shows a QR code and a six-letter code.</p>
           <div class="qr-card">${fakeQr()}<div><small>Your code is:</small><strong>mfsdiv</strong><small>(example)</small></div></div></div></li>
-        <li><span class="ls-n">3</span><div><h4>Scan it</h4><p>Open the Companion on the phone and scan the QR code (or type the code). Your app opens on the phone, and it updates live while you change the design or blocks.</p></div></li>
-        <li><span class="ls-n">4</span><div><h4>Pair first</h4><p>In the phone's Bluetooth settings, pair with <strong class="bt-n"></strong> (as in Lesson 2). The ListPicker only lists <strong>paired</strong> devices.</p></div></li>
+        <li><span class="ls-n">3</span><div><h4>Scan It</h4><p>Open the Companion on the phone and scan the QR code (or type the code). Your app opens on the phone, and it updates live while you change the design or blocks.</p></div></li>
+        <li><span class="ls-n">4</span><div><h4>Pair First</h4><p>In the phone's Bluetooth settings, pair with <strong class="bt-n"></strong> (as in Lesson 2). The ListPicker only lists <strong>paired</strong> devices.</p></div></li>
       </ol>`;
     const paint = () => { $(".bt-n", el).textContent = btName(); };
     onName(paint);
@@ -875,7 +875,7 @@ ${on ? "digitalWrite(2, HIGH): LED on" : off ? "digitalWrite(2, LOW): LED off" :
         <div class="sim-phone">${phoneFrame("Your app running on the phone")}</div>
         <div class="sim-side">
           <figure class="scene-box"><div class="ai-scene"></div></figure>
-          <div class="ai-fired"><h4>Block that just ran</h4><div class="ai-fired-b"><p class="small-note">Tap a button in the app.</p></div></div>
+          <div class="ai-fired"><h4>Block That Just Ran</h4><div class="ai-fired-b"><p class="small-note">Tap a button in the app.</p></div></div>
           <p class="pv-read ai-read"></p>
         </div></div>`;
     const screen = $(".ph-screen", el), sceneEl = $(".ai-scene", el), firedEl = $(".ai-fired-b", el), read = $(".ai-read", el);
@@ -1431,7 +1431,7 @@ void loop()
   function mountT81(el) {
     let on = false, last = -1, so;
     el.innerHTML = `<div class="sw-blocks"></div>
-      <h4 class="sub-h">Try it: monitor on the Serial Monitor</h4>
+      <h4 class="sub-h">Try It: Monitor on the Serial Monitor</h4>
       <div class="task-sim"><figure class="scene-box"><div class="scene-scroll"><div class="bench-host"></div></div><figcaption>Tap the switch to flip it.<span class="swipe"> Swipe sideways to see all of it.</span></figcaption></figure>
         <div class="task-side"><button type="button" class="btn" data-flip>Flip the switch</button>${serialBox()}<p class="pv-read t81-read"></p></div></div>`;
     const host = $(".bench-host", el), read = $(".t81-read", el);
@@ -1452,12 +1452,12 @@ void loop()
   function mountT82(el) {
     let on = false, connected = false, list = false, status = "Not Connected", label = "Switch: --", last = -1, count = 0, busy = false, sent = "";
     el.innerHTML = `<div class="sw-blocks"></div>
-      <h4 class="sub-h">Add to your Lesson 3 app</h4>
+      <h4 class="sub-h">Add to Your Lesson 3 App</h4>
       <ul class="what"><li>A <strong>Label</strong> named <code>Label_Switch</code>, text <code>Switch: --</code>.</li>
         <li>A <strong>Clock</strong> (Sensors palette), TimerInterval <strong>200</strong> ms.</li>
         <li>On <code>BluetoothClient1</code>, set <strong>DelimiterByte = 10</strong>. That is the line-feed character that <code>println</code> puts at the end of each message, so <code>ReceiveText</code> with −1 reads exactly one message.</li></ul>
       ${ws(AI_RX(), "App Inventor block that receives the switch state")}
-      <h4 class="sub-h">Try it: monitor on a phone via Bluetooth</h4>
+      <h4 class="sub-h">Try It: Monitor on a Phone via Bluetooth</h4>
       <div class="sim-grid"><div class="sim-phone">${phoneFrame("Phone app")}</div>
         <div class="sim-side"><figure class="scene-box"><div class="scene-scroll"><div class="bench-host"></div></div></figure>
           <div class="wf-row"><button type="button" class="btn" data-flip>Flip the switch</button></div>
@@ -1512,11 +1512,11 @@ void loop()
   function mountT83(el) {
     let on = false, loaded = false, auto = true, loads = 0, pageState = "OFF", url = IP;
     el.innerHTML = `<div class="sw-blocks"></div>
-      ${fold("Optional: show it in an App Inventor app instead", `<p>Add a path that replies with just <code>ON</code> or <code>OFF</code> as plain text. In the Arduino IDE, put these lines straight after <code>client.flush();</code>:</p>
+      ${fold("Optional: Show It in an App Inventor App Instead", `<p>Add a path that replies with just <code>ON</code> or <code>OFF</code> as plain text. In the Arduino IDE, put these lines straight after <code>client.flush();</code>:</p>
         ${codeBlock(stateCode, "Add to switch_web.ino")}
         <p>In the app, add a <strong>Web</strong> component (Connectivity), a <strong>Clock</strong> (TimerInterval 1000 ms) and a <code>Label_Switch</code>. The app asks <code>http://${IP}/state</code> every second:</p>
         ${ws(AI_WEB(), "App Inventor blocks that read the switch state over Wi-Fi")}`)}
-      <h4 class="sub-h">Try it: monitor on a web page</h4>
+      <h4 class="sub-h">Try It: Monitor on a Web Page</h4>
       <div class="sim-grid"><div class="sim-phone">${phoneFrame("Phone web browser")}</div>
         <div class="sim-side"><figure class="scene-box"><div class="scene-scroll"><div class="bench-host"></div></div></figure>
           <div class="wf-row"><button type="button" class="btn" data-flip>Flip the switch</button></div>
@@ -1556,7 +1556,7 @@ void loop()
     read.innerHTML = `The ESP32 is already on the Wi-Fi (see the Serial Monitor). Tap <strong>Go</strong> in the phone's browser, then flip the switch.`;
   }
 
-  /* ---------- Lab task: brief only, with values from the student's matric number ---------- */
+  /* ---------- Lab Task: brief only, with values from the student's matric number ---------- */
   const DEMO_PINS = [33, 25, 26, 27, 14];
   const demoVals = (m) => {
     const d = String(m || "").replace(/\D/g, "");
@@ -1596,11 +1596,11 @@ void loop()
           <li><strong>Switch OFF:</strong> the GPIO32 LED flashes <strong>3 times</strong> quickly (100 ms on, 100 ms off), then both LEDs turn off and stay off.</li>
           <li>The Serial Monitor shows <code>Pattern running</code> when the pattern starts and <code>Pattern stopped</code> when it stops: once each time, not over and over.</li>
           <li>It is fine if the LED finishes its current blink before reacting to the switch.</li></ol></div>
-        <div class="task-card"><h4>Extension: choose one</h4>
+        <div class="task-card"><h4>Extension: Choose One</h4>
           <p><strong>A. Bluetooth:</strong> your app shows <code>Pattern: RUNNING</code> or <code>Pattern: STOPPED</code>.</p>
           <p><strong>B. Wi-Fi:</strong> a web page from the ESP32 shows the same, and updates by itself.</p>
           <p class="small-note">Doing both in one program is an extra challenge: the program gets large, and the web server has to answer while the LED is blinking.</p></div>
-        <div class="task-card"><h4>At the demo, be ready to</h4><ol>
+        <div class="task-card"><h4>At the Demo, Be Ready To</h4><ol>
           <li>show every requirement working on your own board and phone;</li>
           <li>make a change the lecturer asks for on the spot (for example a new blink time or another GPIO), and upload it in a few minutes;</li>
           <li>answer two short questions about your circuit and program.</li></ol></div>
@@ -1627,54 +1627,54 @@ void loop()
   const W_ = (steps, h = "Working") => `<div class="working"><h4>${h}</h4><ol class="steps">${stepsHtml(steps)}</ol></div>`;
 
   const sections = [
-    { id: "equipment", group: "kit", title: "Equipment and software", toc: "Equipment",
+    { id: "equipment", group: "kit", title: "Equipment and Software", toc: "Equipment",
       intro: `<p>Tick each item as you get it ready. You need a Google account for MIT App Inventor, and the Arduino IDE with ESP32 board support on your laptop.</p>`,
       mount: mountKit,
       after: `<div class="callout info"><strong>Good to know</strong>The ESP32 uses Classic Bluetooth serial in Lessons 2 and 3. Android phones support it, but iPhones don't let apps use it. If you have an iPhone, work with a classmate who has an Android phone for those two lessons. Lesson 4 (Wi-Fi) works on any phone.</div>` },
-    { id: "basic", group: "kit", title: "The basic ESP32 circuit", toc: "Basic circuit",
+    { id: "basic", group: "kit", title: "The Basic ESP32 Circuit", toc: "Basic Circuit",
       intro: `<p>Assemble the basic circuit first: the ESP32 on USB, and a 0.47 µF capacitor between its <strong>EN</strong> pin and <strong>GND</strong>. Play the animation to see each step.</p>`,
       mount: mountBasic,
-      after: fold("Where to choose the board and port in the Arduino IDE", photo("ide-board-port.png", "Tools → Board and Tools → Port.", "small")) },
-    { id: "autoreset", group: "kit", title: "Why the capacitor helps", toc: "Why the capacitor",
+      after: fold("Where to Choose the Board and Port in the Arduino IDE", photo("ide-board-port.png", "Tools → Board and Tools → Port.", "small")) },
+    { id: "autoreset", group: "kit", title: "Why the Capacitor Helps", toc: "Why the Capacitor",
       intro: `<p>To upload, the ESP32 must start in <strong>download mode</strong>. It does that when its BOOT pin (GPIO0) is LOW at the moment it starts. The USB chip on the board drives both EN and BOOT; the capacitor makes sure their timing works. Switch between the two cases.</p>`,
       mount: mountAuto,
       after: `<p class="small-note">More on programming modes in <a href="chapter-2.html#rcreset">Chapter 2: Automatic programming mode</a>.</p>` },
 
-    { id: "blink", group: "l1", title: "Build and upload the blink program", toc: "Blink by cable",
+    { id: "blink", group: "l1", title: "Build and Upload the Blink Program", toc: "Blink by Cable",
       intro: `<p>In the lab you go to <a href="http://easycoding.tn/esp32/demos/code/" target="_blank" rel="noopener">TUNIOT for ESP32</a>, build the blocks, download the code, open it in the Arduino IDE and upload it. The program switches the built-in LED on and off every 2 seconds:</p>
         <p class="formula">Main loop: LED HIGH → wait 2000 ms → LED LOW → wait 2000 ms</p>
         <p>Build it here, then press <strong>Upload by cable</strong>. The board runs whatever you uploaded, so try other delays too. Also try uploading with no capacitor.</p>`,
       mount: mountBlink,
-      after: fold("What TUNIOT looks like", `<div class="two-photos">${photo("tuniot-menu.png", "Choose TUNIOT FOR ESP32.")}${photo("tuniot-workspace.png", "The workspace: blocks on the left, Setup and Main loop on the right.")}</div>`) },
-    { id: "ota", group: "l1", title: "Upload over the air (OTA)", toc: "Upload by Wi-Fi",
+      after: fold("What TUNIOT Looks Like", `<div class="two-photos">${photo("tuniot-menu.png", "Choose TUNIOT FOR ESP32.")}${photo("tuniot-workspace.png", "The workspace: blocks on the left, Setup and Main loop on the right.")}</div>`) },
+    { id: "ota", group: "l1", title: "Upload over the Air (OTA)", toc: "Upload by Wi-Fi",
       intro: `<p>The second way to upload needs no cable: the ESP32 runs a small web server, and you send it the compiled program from a web browser over Wi-Fi. Go through the seven steps. Tap the buttons inside each step.</p>`,
       mount: mountOta,
       after: `<div class="callout info"><strong>Good to know</strong>The program you upload over the air <em>replaces</em> the OTA sketch. After the blink upload the board blinks, but it can't take another OTA upload until you put the OTA sketch back by cable. To keep OTA working, add your own code into the OTA sketch (see <a href="chapter-2.html#ota">Chapter 2: OTA</a>).</div>` },
 
-    { id: "btblocks", group: "l2", title: "The Bluetooth blocks", toc: "Blocks and code",
+    { id: "btblocks", group: "l2", title: "The Bluetooth Blocks", toc: "Blocks and Code",
       intro: `<p>Change the Lesson 1 blocks so the ESP32 receives text from the phone by Bluetooth. Include your name in the Bluetooth name, so you can find your own board in the lab (type your name at the top of this page). Then upload as before.</p>`,
       mount: mountBtBlocks },
-    { id: "btterm", group: "l2", title: "Try it: a Bluetooth terminal", toc: "Try it",
+    { id: "btterm", group: "l2", title: "Try It: A Bluetooth Terminal", toc: "Try It",
       intro: `<p>Install a Bluetooth terminal app on the phone (for example S2 Terminal for Bluetooth). Pair the phone with the ESP32, connect from the app, and send <strong>ON</strong> and <strong>OFF</strong>.</p>`,
       mount: mountBtTerm },
 
-    { id: "aidesign", group: "l3", title: "Design the app screen", toc: "Design",
+    { id: "aidesign", group: "l3", title: "Design the App Screen", toc: "Design",
       intro: `<p>Go to <a href="https://appinventor.mit.edu/" target="_blank" rel="noopener">MIT App Inventor</a>, click <em>Create Apps!</em>, sign in with your Google account and start a new project (for example <code>BT_LEDControl_YourName</code>). In the Designer, drag in the components below from the palettes, and <strong>rename each one</strong> as shown: the names make the blocks much easier to build. Tap a component to see what it is.</p>`,
       mount: mountAiDesign },
-    { id: "aiblocks", group: "l3", title: "The app's blocks", toc: "Blocks",
+    { id: "aiblocks", group: "l3", title: "The App's Blocks", toc: "Blocks",
       intro: `<p>Switch to the <em>Blocks</em> editor and build these five event blocks. Each one runs when something happens in the app.</p>`,
       mount: mountAiBlocks },
-    { id: "aiload", group: "l3", title: "Put the app on your phone", toc: "Load the app",
+    { id: "aiload", group: "l3", title: "Put the App on Your Phone", toc: "Load the App",
       intro: `<p>The AI Companion runs your app on the phone while you build it. No installing needed.</p>`,
       mount: mountAiLoad },
-    { id: "airun", group: "l3", title: "Try it: your app", toc: "Try it",
+    { id: "airun", group: "l3", title: "Try It: Your App", toc: "Try It",
       intro: `<p>The ESP32 runs the same Bluetooth program as in Lesson 2. Now your own app sends the text. Each tap shows which block ran.</p>`,
       mount: mountAiRun },
 
-    { id: "wire", group: "l4", title: "Wire the external LED", toc: "Wiring",
+    { id: "wire", group: "l4", title: "Wire the External LED", toc: "Wiring",
       intro: `<p>Add an LED and a resistor to the circuit: <strong>GPIO32 → LED → resistor → GND</strong>. The resistor limits the current. Switch GPIO32 and turn the LED round to see what happens.</p>`,
       mount: mountWire },
-    { id: "ledcalc", group: "l4", title: "LED resistor calculator", toc: "Resistor",
+    { id: "ledcalc", group: "l4", title: "LED Resistor Calculator", toc: "Resistor",
       intro: `<p>The resistor takes the voltage the LED doesn't use, and sets the current: <span class="formula">R = (V<sub>pin</sub> − V<sub>F</sub>) / I</span></p>
         <p>V<sub>F</sub> is the LED's forward voltage: about 1.8 to 2.2 V for red, 2.0 to 2.4 V for yellow and green, and 2.8 to 3.3 V for blue and white. An indicator LED needs only a few milliamps.</p>`,
       inputs: [
@@ -1715,14 +1715,14 @@ void loop()
         if (v.Vf >= 2.7) notes.push({ type: "info", title: "Blue and white LEDs", html: "Only a little voltage is left for the resistor, so small changes in V<sub>F</sub> change the current a lot. Expect a dimmer LED on 3.3 V." });
         return { sum: `Use ${eng(Rstd, "Ω")} (the exact value is ${eng(R, "Ω")}). The LED current is then ${eng(Iact, "A")}.`, steps, notes, Rstd, Iact };
       } },
-    { id: "wifiblocks", group: "l4", title: "The Wi-Fi web server blocks", toc: "Blocks and code",
+    { id: "wifiblocks", group: "l4", title: "The Wi-Fi Web Server Blocks", toc: "Blocks and Code",
       intro: `<p>These blocks join the Wi-Fi, print your name, the ESP32's MAC address and its IP address, and serve a web page that switches the LED on GPIO32 (D32). Put your own network name and password in the <em>Connect Network</em> block.</p>`,
       mount: mountWifiBlocks },
-    { id: "wifirun", group: "l4", title: "Try it: control the LED from a browser", toc: "Try it",
+    { id: "wifirun", group: "l4", title: "Try It: Control the LED from a Browser", toc: "Try It",
       intro: `<p>Upload the code and open the Serial Monitor to get the IP address. Then type it into a browser on your phone (on the same Wi-Fi network) and use the buttons.</p>`,
       mount: mountWifiRun },
 
-    { id: "swwire", group: "l5", title: "Read the switch condition", toc: "Read the switch",
+    { id: "swwire", group: "l5", title: "Read the Switch Condition", toc: "Read the Switch",
       intro: `<p>Start from the Lesson 4 circuit (LED on GPIO32) and add a toggle switch on <strong>GPIO33</strong>. The ESP32 reads its condition as 1 or 0.</p>
         <ul class="what"><li><strong>3-pin switch (use this):</strong> middle pin to GPIO33, one outer pin to 3V3, the other outer pin to GND. GPIO33 is always joined to 3.3 V or to 0 V, so no resistor is needed. ON reads 1.</li>
         <li><strong>2-pin switch:</strong> one pin to GPIO33, the other to GND, and a 10 kΩ resistor from GPIO33 to 3V3. Here ON reads 0.</li></ul>
@@ -1735,27 +1735,27 @@ void loop()
         <li>Print <code>Switch ON</code> or <code>Switch OFF</code> on the Serial Monitor (115200 baud), <strong>only when the condition changes</strong>.</li></ol>
         <p><strong>Check:</strong> flip the switch 5 times. Both LEDs follow it, and the Serial Monitor shows exactly one line per flip.</p>`,
       mount: mountT81 },
-    { id: "t82", group: "l5", title: "On a phone via Bluetooth", toc: "Phone via Bluetooth",
+    { id: "t82", group: "l5", title: "On a Phone via Bluetooth", toc: "Phone via Bluetooth",
       intro: `<p>The ESP32 sends the switch condition to your phone, and your App Inventor app displays it.</p>
         <ol class="what"><li>Use the Bluetooth name <code>ESP32_YourName</code>. Send <code>ON</code> or <code>OFF</code> (print on new line) when the switch changes, and again every 2 s, so the app catches up after it connects. The LEDs still follow the switch.</li>
         <li>In MIT App Inventor, add a label, a Clock and the receiving block below to your Lesson 3 app.</li></ol>
         <p><strong>Check:</strong> the app shows the new condition within 1 s of flipping the switch. (Android phone needed, as in Lessons 2 and 3.)</p>`,
       mount: mountT82 },
-    { id: "t83", group: "l5", title: "On a web page", toc: "Web page",
+    { id: "t83", group: "l5", title: "On a Web Page", toc: "Web Page",
       intro: `<p>The ESP32's web server from Lesson 4 now reports the switch condition, and the page keeps itself up to date.</p>
         <ol class="what"><li>Change the Lesson 4 web server so the page shows <code>Switch: ON/OFF</code> and <code>LEDs: ON/OFF</code>. The LEDs still follow the switch.</li>
         <li>Add <code>&lt;meta http-equiv='refresh' content='1'&gt;</code> in the page's Head, so the browser reloads the page every second.</li></ol>
         <p><strong>Check:</strong> the page updates within 2 s of flipping the switch.</p>`,
       mount: mountT83,
       after: `<div class="callout info"><strong>Good to know</strong>Read the switch <em>before</em> the <em>Wait Connection</em> block. That block leaves the loop early when no browser is asking, so anything after it only runs when the page is loaded.</div>` },
-    { id: "demo", group: "task", title: "Your own blink pattern", toc: "Your own blink pattern",
+    { id: "demo", group: "task", title: "Your Own Blink Pattern", toc: "Your Own Blink Pattern",
       intro: `<p>Build this <strong>on your own</strong> and demonstrate it in the lab. It uses what you learnt in Lessons 1 to 5, but there is no worked solution here. Your blink times and switch pin come from your matric number, so everyone's program is a little different.</p>
         <p class="small-note">Plan first: write the steps as a short flowchart before you build the blocks.</p>`,
       mount: mountDemo }
   ];
 
   /* =====================================================================
-     Pre-lab check: quiz and exercises
+     Pre-Lab Check quiz and the Lab 1 Review exercises
      ===================================================================== */
   const BANK = [
     { q: "Which GPIO drives the ESP32's built-in blue LED?", opts: ["GPIO2", "GPIO32", "GPIO0", "GPIO23"], a: 0, why: "The built-in LED is on GPIO2. The TUNIOT <em>Integrated LED Stat</em> block writes to GPIO2." },
@@ -1776,8 +1776,9 @@ void loop()
     { q: "Why should the Serial Monitor example print only when the switch changes?", opts: ["Otherwise it prints every 200 ms and floods the screen", "Printing is slow", "The ESP32 can only print 10 lines", "The switch stops working"], a: 0, why: "The loop runs every 200 ms. Printing only on a change gives one clear line per flip." }
   ];
 
-  /* ---------- Pre-lab check quiz: unlocks the lab task at 7/10 ----------
-     A random 10 from the bank, options shuffled. No marks are shown until all 10 are answered.
+  /* ---------- Pre-Lab Check quiz: unlocks the Lab Task at 7/10 ----------
+     One question at a time (arrows, dots, swipe). A random 10 from the bank, options shuffled.
+     Picking an answer moves on to the next unanswered question. No marks until all 10 are submitted.
      The first attempt is the score. Wrong answers can then be re-answered until right (to learn),
      and a new random set is offered once they are all corrected. A pass is remembered on this device. */
   const PASS_KEY = "nmk-lab1-prelab", PASS_MARK = 7, NQ = 10;
@@ -1786,49 +1787,70 @@ void loop()
     const lock = $("#taskLock"), list = $("#taskList"), nav = $("#taskNav"), note = $("#gateNote");
     if (lock) lock.hidden = !!pass;
     if (list) list.hidden = !pass;
-    if (nav) nav.textContent = pass ? "Lab task" : "Lab task 🔒";
+    if (nav) {
+      nav.querySelector(".sb-k").hidden = !!pass;
+      nav.title = pass ? "Lab Task" : "Lab Task (locked)";
+    }
     if (note) {
       note.classList.toggle("ok", !!pass);
-      note.innerHTML = pass ? `<span aria-hidden="true">✓</span> <span>You passed the Pre-lab check (${pass.score} out of ${NQ}). The <a href="#labtask">lab task</a> is unlocked.</span>` : GATE_LOCKED;
+      note.innerHTML = pass ? `<span aria-hidden="true">✓</span> <span>You passed the Pre-Lab Check (${pass.score} out of ${NQ}). The <a href="#labtask">Lab Task</a> is unlocked.</span>` : GATE_LOCKED;
     }
   }
   function mountPrelab(host) {
-    let set = [], picks = [], tried = [], fixed = [], state = "answer", score = 0;
+    let set = [], picks = [], tried = [], fixed = [], state = "answer", score = 0, cur = 0, timer = 0, dir = 0;
     const shuffle = Lab.shuffle;
+    const answered = () => picks.filter((x) => x !== null).length;
+    const isRight = (i) => picks[i] === 0 || fixed[i];
+    const wrongLeft = () => set.filter((_, i) => !isRight(i)).length;
     const start = (focus) => {
       set = shuffle(BANK).slice(0, NQ).map((q) => ({ q, order: shuffle(q.opts.map((_, k) => k)) }));
-      picks = Array(NQ).fill(null); tried = set.map(() => []); fixed = Array(NQ).fill(false); state = "answer"; score = 0;
+      picks = Array(NQ).fill(null); tried = set.map(() => []); fixed = Array(NQ).fill(false);
+      state = "answer"; score = 0; cur = 0; dir = 0;
       draw();
-      if (focus) { const f = host.querySelector("input"); if (f) f.focus(); }
+      if (focus) focusCard();
     };
-    const answered = () => picks.filter((x) => x !== null).length;
+    const focusCard = () => { const l = host.querySelector(".pq-card legend"); if (l) l.focus({ preventScroll: true }); };
+    const go = (i, focus = true) => { clearTimeout(timer); dir = Math.sign(i - cur); cur = clamp(i, 0, NQ - 1); draw(); if (focus) focusCard(); };
+
     // In each bank question the right answer is option 0; the order on screen is shuffled.
-    const card = (it, i) => {
-      const firstOk = state === "review" && picks[i] === 0, done = state === "review" && (firstOk || fixed[i]);
+    const card = (i) => {
+      const it = set[i], firstOk = state === "review" && picks[i] === 0, done = state === "review" && isRight(i);
       const cls = state === "answer" ? "" : firstOk ? " ok" : fixed[i] ? " ok late" : " no";
       const fb = state === "answer" ? "" : firstOk ? `<strong>✓ Correct.</strong> ${it.q.why}` : fixed[i] ? `<strong>✓ Correct now.</strong> ${it.q.why}` : `<strong>✗ Not right.</strong> Choose another answer.`;
-      return `<li class="pq-card${cls}" id="pq-${i}"><fieldset><legend><span class="pq-n">Question ${i + 1}</span>${it.q.q}</legend><div class="pq-opts">` +
-        it.order.map((k) => {
-          const bad = tried[i].includes(k), right = done && k === 0, chosen = state === "answer" ? picks[i] === k : right;
-          return `<label class="pq-opt${bad ? " bad" : ""}${right ? " right" : ""}"><input type="radio" name="pq-${i}" value="${k}"${chosen ? " checked" : ""}${state === "review" && (done || bad) ? " disabled" : ""}><span>${it.q.opts[k]}</span></label>`;
-        }).join("") + `</div><p class="pq-fb" aria-live="polite">${fb}</p></fieldset></li>`;
+      const opts = it.order.map((k) => {
+        const bad = state === "review" && tried[i].includes(k), right = done && k === 0, chosen = state === "answer" ? picks[i] === k : right;
+        return `<label class="pq-opt${bad ? " bad" : ""}${right ? " right" : ""}"><input type="radio" name="pq-${i}" value="${k}"${chosen ? " checked" : ""}${state === "review" && (done || bad) ? " disabled" : ""}><span>${it.q.opts[k]}</span></label>`;
+      }).join("");
+      return `<div class="pq-card${cls}${dir ? (dir > 0 ? " in-r" : " in-l") : ""}"><fieldset><legend tabindex="-1"><span class="pq-n">Question ${i + 1} of ${NQ}</span>${it.q.q}</legend>
+        <div class="pq-opts">${opts}</div><p class="pq-fb" aria-live="polite">${fb}</p></fieldset></div>`;
     };
-    const wrongLeft = () => set.filter((_, i) => picks[i] !== 0 && !fixed[i]).length;
+    const dots = () => set.map((_, i) => {
+      const st = state === "answer" ? (picks[i] !== null ? "done" : "") : isRight(i) ? (picks[i] === 0 ? "ok" : "ok late") : "no";
+      const lab = state === "answer" ? (picks[i] !== null ? "answered" : "not answered") : picks[i] === 0 ? "right" : fixed[i] ? "corrected" : "wrong";
+      return `<button type="button" class="pq-dot ${st}${i === cur ? " on" : ""}" data-i="${i}" aria-label="Question ${i + 1}, ${lab}"${i === cur ? ' aria-current="true"' : ""}></button>`;
+    }).join("");
     const resultHtml = () => {
       const left = wrongLeft();
       return score >= PASS_MARK
-        ? `<div class="pq-res pass"><p><strong>✓ You scored ${score} out of ${NQ}: passed!</strong> The lab task is now unlocked.</p><a class="btn" href="#labtask">Go to the lab task</a>${score < NQ ? `<p class="small-note">Correct the ones you got wrong below, to learn from them.</p>` : ""}</div>`
-        : `<div class="pq-res fail"><p><strong>You scored ${score} out of ${NQ}. You need at least ${PASS_MARK}.</strong></p><p>${left ? `Correct the ${left} wrong answer${left > 1 ? "s" : ""} below first. Then you can start a new quiz.` : "All corrected. Start a new quiz when you're ready: it has a new random set of questions."}</p>
+        ? `<div class="pq-res pass"><p><strong>✓ You scored ${score} out of ${NQ}: passed!</strong> The Lab Task is now unlocked.</p><a class="btn" href="#labtask">Go to the Lab Task</a>${score < NQ ? `<p class="small-note">The red dots are the ones you got wrong. Correct them, to learn from them.</p>` : ""}</div>`
+        : `<div class="pq-res fail"><p><strong>You scored ${score} out of ${NQ}. You need at least ${PASS_MARK}.</strong></p><p>${left ? `Correct the ${left} wrong answer${left > 1 ? "s" : ""} first (the red dots). Then you can start a new quiz.` : "All corrected. Start a new quiz when you're ready: it has a new random set of questions."}</p>
            <button type="button" class="btn" data-new${left ? " disabled" : ""}>Start a new quiz</button></div>`;
     };
     const draw = () => {
-      const saved = store.get(PASS_KEY, null), fresh = state === "answer" && !picks.some((x) => x !== null);
+      const saved = store.get(PASS_KEY, null), fresh = state === "answer" && !answered();
+      const nextWrong = state === "review" ? set.findIndex((_, i) => i > cur && !isRight(i)) : -1;
       host.innerHTML = `<div class="pq">
-        ${saved && fresh ? `<div class="pq-res pass"><p><strong>✓ You passed the Pre-lab check on this device (${saved.score} out of ${NQ}).</strong> The lab task is unlocked. You can take the quiz again below for practice.</p></div>` : ""}
+        ${saved && fresh ? `<div class="pq-res pass"><p><strong>✓ You passed the Pre-Lab Check on this device (${saved.score} out of ${NQ}).</strong> The Lab Task is unlocked. You can take the quiz again for practice.</p></div>` : ""}
         <div class="pq-result" tabindex="-1">${state === "review" ? resultHtml() : ""}</div>
-        <div class="pq-top"><span>Pass mark: <strong>${PASS_MARK} out of ${NQ}</strong></span><span class="pq-count">${state === "answer" ? `${answered()} of ${NQ} answered` : `Score: ${score} out of ${NQ}`}</span></div>
-        <ol class="pq-list">${set.map(card).join("")}</ol>
-        ${state === "answer" ? `<div class="pq-foot"><button type="button" class="btn" data-submit${answered() < NQ ? " disabled" : ""}>Submit answers</button><span class="small-note">Answer all ${NQ} questions to submit. Marks appear after you submit.</span></div>` : ""}
+        <div class="pq-head"><span>Pass mark: <strong>${PASS_MARK} out of ${NQ}</strong></span><span class="pq-count">${state === "answer" ? `${answered()} of ${NQ} answered` : `Score: ${score} out of ${NQ}`}</span></div>
+        <div class="ex-nav pq-nav"><button type="button" class="ex-arrow" data-d="-1" aria-label="Previous question"${cur === 0 ? " disabled" : ""}>‹</button>
+          <span class="ex-count">Question ${cur + 1} of ${NQ}</span>
+          <button type="button" class="ex-arrow" data-d="1" aria-label="Next question"${cur === NQ - 1 ? " disabled" : ""}>›</button>
+          <div class="ex-dots pq-dots">${dots()}</div></div>
+        <div class="pq-stage">${card(cur)}</div>
+        ${state === "answer"
+          ? `<div class="pq-foot"><button type="button" class="btn" data-submit${answered() < NQ ? " disabled" : ""}>Submit answers</button><span class="small-note">${answered() < NQ ? `Answer all ${NQ} questions to submit. Marks appear after you submit.` : "All answered. Check any answer with the dots, then submit."}</span></div>`
+          : nextWrong >= 0 && isRight(cur) ? `<div class="pq-foot"><button type="button" class="btn ghost" data-i="${nextWrong}">Next question to correct ›</button></div>` : ""}
       </div>`;
     };
     host.addEventListener("change", (e) => {
@@ -1837,20 +1859,34 @@ void loop()
       const i = +r.name.slice(3), k = +r.value;
       if (state === "answer") {
         picks[i] = k;
-        host.querySelector(".pq-count").textContent = `${answered()} of ${NQ} answered`;
-        host.querySelector("[data-submit]").disabled = answered() < NQ;
+        draw();
+        // move on to the next unanswered question (after a short pause, so the choice is seen)
+        let nxt = -1;
+        for (let s = 1; s <= NQ; s++) { const j = (i + s) % NQ; if (picks[j] === null) { nxt = j; break; } }
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          if (nxt >= 0) go(nxt);
+          else { const b = host.querySelector("[data-submit]"); if (b) b.focus(); }
+        }, Lab.reduceMotion ? 0 : 450);
         return;
       }
       if (k === 0) fixed[i] = true; else tried[i].push(k);
-      draw();
-      const back = host.querySelector(`#pq-${i} input:not([disabled])`) || host.querySelector(`#pq-${i} legend`);
-      if (back) { if (!back.matches("input")) back.setAttribute("tabindex", "-1"); back.focus({ preventScroll: true }); }
+      dir = 0; draw();
+      const back = host.querySelector(".pq-card input:not([disabled])") || host.querySelector(".pq-card legend");
+      if (back) back.focus({ preventScroll: true });
     });
     host.addEventListener("click", (e) => {
-      if (e.target.closest("[data-submit]")) {
+      const b = e.target.closest("button");
+      if (!b) return;
+      if (b.dataset.d) go(cur + +b.dataset.d);
+      else if (b.dataset.i !== undefined) go(+b.dataset.i);
+      else if (b.hasAttribute("data-submit")) {
+        clearTimeout(timer);
         score = picks.filter((k) => k === 0).length;
         set.forEach((_, i) => { if (picks[i] !== 0) tried[i].push(picks[i]); });
         state = "review";
+        const firstWrong = set.findIndex((_, i) => picks[i] !== 0);
+        cur = firstWrong >= 0 ? firstWrong : 0; dir = 0;
         if (score >= PASS_MARK) {
           const old = store.get(PASS_KEY, null);
           if (!old || old.score < score) store.set(PASS_KEY, { score, date: new Date().toISOString().slice(0, 10) });
@@ -1858,19 +1894,46 @@ void loop()
         }
         draw();
         const r = host.querySelector(".pq-result");
-        r.scrollIntoView({ behavior: Lab.reduceMotion ? "auto" : "smooth", block: "center" });
+        r.scrollIntoView({ behavior: Lab.reduceMotion ? "auto" : "smooth", block: "start" });
         r.focus({ preventScroll: true });
-      } else if (e.target.closest("[data-new]")) {
+      } else if (b.hasAttribute("data-new")) {
         start(true);
-        host.scrollIntoView({ behavior: Lab.reduceMotion ? "auto" : "smooth", block: "start" });
       }
+    });
+    // Swipe left or right on the question card (phones)
+    let sx = null, sy = 0;
+    host.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse" && e.target.closest(".pq-stage")) { sx = e.clientX; sy = e.clientY; } });
+    host.addEventListener("pointerup", (e) => {
+      if (sx === null) return;
+      const dx = e.clientX - sx, dy = e.clientY - sy; sx = null;
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) go(cur + (dx < 0 ? 1 : -1));
+    });
+    host.addEventListener("keydown", (e) => {
+      if (e.target.matches('input[type="radio"]')) return; // arrow keys move between options
+      if (e.key === "ArrowRight" && e.target.closest(".pq-nav")) go(cur + 1);
+      if (e.key === "ArrowLeft" && e.target.closest(".pq-nav")) go(cur - 1);
     });
     start();
   }
 
+  // Step bar: on phones, the name of the current part shows under the numbers
+  function stepCaption() {
+    const cap = $(".sb-cap");
+    if (!cap) return;
+    let last = null;
+    const paint = () => {
+      const a = $(".lab-nav a[aria-current]");
+      const t = a ? a.querySelector(".sb-l").textContent : "Before You Start";
+      if (t !== last) { cap.textContent = t; last = t; }
+    };
+    let tick = false;
+    addEventListener("scroll", () => { if (!tick) { tick = true; requestAnimationFrame(() => { tick = false; paint(); }); } }, { passive: true });
+    paint();
+  }
+
 
   const exercises = [
-    { id: "l1-q1", title: "Question 1: blink timing",
+    { id: "l1-q1", title: "Exercise 1: Blink Timing",
       q: `<p>Your blocks switch the built-in LED on, wait 2000 ms, switch it off, wait 2000 ms, and repeat. Find the period of one blink, its frequency, and the duty cycle (the percentage of time the LED is on).</p>`,
       ans: [{ l: "Period T", u: "s", v: 4 }, { l: "Frequency f", u: "Hz", v: 0.25 }, { l: "Duty cycle", u: "%", v: 50 }],
       hints: ["One period is one full on-and-off cycle: add up all the delays in the main loop, then change milliseconds to seconds.",
@@ -1879,13 +1942,13 @@ void loop()
         step("Period: add the delays", "T = t<sub>on</sub> + t<sub>off</sub>", "2000 ms + 2000 ms", "T = 4000 ms = <strong>4 s</strong>"),
         step("Frequency", "f = 1 / T", "1 / 4 s", "f = <strong>0.25 Hz</strong>"),
         step("Duty cycle", "D = t<sub>on</sub> / T × 100%", "2 s / 4 s × 100%", "D = <strong>50%</strong>")]) },
-    { id: "l1-q2", title: "Question 2: the LED resistor",
+    { id: "l1-q2", title: "Exercise 2: The LED Resistor",
       q: `<p>A GPIO pin gives 3.3 V when HIGH. A red LED has a forward voltage of 2.0 V and should carry 5 mA.</p><p>(a) What resistance gives exactly 5 mA? (b) The next standard value up is 270 Ω. What current flows with 270 Ω, in mA?</p>`,
       ans: [{ l: "(a) R", u: "Ω", v: 260 }, { l: "(b) I", u: "mA", v: 4.815 }],
       hints: ["The resistor takes the voltage the LED doesn't: V<sub>R</sub> = V<sub>pin</sub> − V<sub>F</sub>.",
         "Use Ohm's law R = V<sub>R</sub> / I with I in amperes (5 mA = 0.005 A). For (b) turn it round: I = V<sub>R</sub> / R."],
       sec: "ledcalc", runs: [{ vals: { Vpin: 3.3, Vf: 2, I: 5, Rfit: 270 } }] },
-    { id: "l1-q3", title: "Question 3: reading the web request",
+    { id: "l1-q3", title: "Exercise 3: Reading the Web Request",
       q: `<p>You tap ON on the ESP32's web page. The first line of the request is:</p><p><code>GET /LED=ON HTTP/1.1</code></p><p>Counting the first character as position 0, what do these return, and does the LED turn on? (The program switches it when the result is greater than 0.)</p>`,
       ans: [{ l: 'ClientRequest.indexOf("LED=ON")', v: 5, tol: 0.01 }, { l: 'ClientRequest.indexOf("LED=OFF")', v: -1, tol: 0.01 }, { l: "Does the LED turn on?", opts: ["Yes", "No"], v: 0 }],
       hints: ["indexOf gives the position where the text starts, counting from 0. Count G, E, T, the space and the / first.",
@@ -1894,7 +1957,7 @@ void loop()
         step("Find LED=ON", "", "G(0) E(1) T(2) space(3) /(4) L(5)", "indexOf(\"LED=ON\") = <strong>5</strong>"),
         step("Look for LED=OFF", "", "The request has LED=ON, not LED=OFF", "indexOf(\"LED=OFF\") = <strong>−1</strong> (not found)"),
         step("Decide", "if (indexOf(\"LED=ON\") > 0)", "5 > 0 is true", "digitalWrite(32, HIGH): <strong>yes</strong>, the LED turns on")]) },
-    { id: "l1-q4", title: "Question 4: the line ending",
+    { id: "l1-q4", title: "Exercise 4: The Line Ending",
       q: `<p>The Bluetooth terminal app is set to add CR+LF (carriage return and line feed, one character each) to every message. You type <code>ON</code> and send it to the Lesson 2 program.</p>`,
       ans: [{ l: "Characters the ESP32 receives", v: 4, tol: 0.01 }, { l: 'Is LED == "ON" true?', opts: ["Yes", "No"], v: 1 }, { l: "Line-ending setting that works", opts: ["None", "CR", "LF", "CR+LF"], v: 0 }],
       hints: ["Count the letters you typed, then add the characters the app puts on the end.",
@@ -1923,6 +1986,7 @@ void loop()
   });
   mountPrelab($("#quizBox"));
   setLock(store.get(PASS_KEY, null));
+  stepCaption();
   // A link straight to the locked task lands on the lock notice instead
   if (!store.get(PASS_KEY, null) && /^#demo/.test(location.hash)) setTimeout(() => $("#labtask").scrollIntoView(), 0);
 })();

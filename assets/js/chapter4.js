@@ -228,7 +228,7 @@
     }
     sec.lastRes = res;
   }
-  const WORKED = fold("Worked example from the lecture", `<p>An unbalanced Wheatstone bridge has a 100 V supply, R<sub>1</sub> = 80 Ω, R<sub>2</sub> = 120 Ω, R<sub>3</sub> = 480 Ω and R<sub>4</sub> = 160 Ω. Find the output across C and D, and the R<sub>4</sub> that balances the bridge.</p>
+  const WORKED = fold("Worked Example from the Lecture", `<p>An unbalanced Wheatstone bridge has a 100 V supply, R<sub>1</sub> = 80 Ω, R<sub>2</sub> = 120 Ω, R<sub>3</sub> = 480 Ω and R<sub>4</sub> = 160 Ω. Find the output across C and D, and the R<sub>4</sub> that balances the bridge.</p>
     <ol class="steps">${stepsHtml([
       step("First arm, A–C–B", "V<sub>C</sub> = V<sub>s</sub> × R<sub>2</sub> ÷ (R<sub>1</sub> + R<sub>2</sub>)", "= 100 × 120 ÷ (80 + 120)", "V<sub>C</sub> = 60 V"),
       step("Second arm, A–D–B", "V<sub>D</sub> = V<sub>s</sub> × R<sub>4</sub> ÷ (R<sub>3</sub> + R<sub>4</sub>)", "= 100 × 160 ÷ (480 + 160)", "V<sub>D</sub> = 25 V"),
@@ -267,7 +267,7 @@
 
   // Real situation: a weighing scale with a strain gauge in a quarter bridge
   function mountScale(el) {
-    const c = pvCard(el, "", fold("Step-by-step working", `<ol class="steps"></ol>`)), steps = el.querySelector(".steps");
+    const c = pvCard(el, "", fold("Step-by-Step Working", `<ol class="steps"></ol>`)), steps = el.querySelector(".steps");
     const R = 350, GF = 2.0, VS = 5, GAIN = 1000, EPK = 200e-6; // strain per kg
     const vq = (m) => { const x = GF * EPK * m; return (VS * x) / (2 * (2 + x)); }; // exact quarter-bridge output
     let lastM = -1;
@@ -334,7 +334,7 @@
     sec.scope = res ? { p: res, v } : null;
     if (!extra.dataset.ready) {
       extra.dataset.ready = "1";
-      extra.innerHTML = `<h4 class="sub-h">Oscilloscope: capacitor voltage and output</h4><div class="lv-graph"></div><div class="pv-pl"></div>`;
+      extra.innerHTML = `<h4 class="sub-h">Oscilloscope: Capacitor Voltage and Output</h4><div class="lv-graph"></div><div class="pv-pl"></div>`;
       const box = extra.querySelector(".lv-graph");
       sec.scopePl = player(extra.querySelector(".pv-pl"), extra, { dur: 6, hold: 0, still: 3, label: "Oscilloscope sweep position", draw: (t) => {
         if (!sec.scope) { box.innerHTML = ""; return; }
@@ -354,7 +354,7 @@
   // Capacitive water-level sensor with a 555 (the lecture's two-wire sensor)
   const C0 = 20e-12, CPER = 12e-12, RAl = 10e3, RBl = 100e3; // C = 20 pF + 12 pF per cm of water
   function mountLevelTimer(el) {
-    const c = pvCard(el, "", fold("Step-by-step working", `<ol class="steps"></ol>`)), steps = el.querySelector(".steps");
+    const c = pvCard(el, "", fold("Step-by-Step Working", `<ol class="steps"></ol>`)), steps = el.querySelector(".steps");
     const Cof = (l) => C0 + CPER * l, fof = (l) => t555(RAl, RBl, Cof(l)).f;
     let lastL = -1;
     const draw = (t) => {
@@ -423,7 +423,7 @@
     const A = axes({ x: [lf0 - 1.5, lf0 + 1.5], y: [y0, Math.max(y1, y0 + 1)], xt: [Math.ceil(lf0 - 1.5), Math.ceil(lf0 - 0.5), Math.ceil(lf0 + 0.5)].filter((q) => q <= lf0 + 1.5), fx: (q) => eng(10 ** q, "Hz", 3), yt: Array.from({ length: Math.max(y1, y0 + 1) - y0 + 1 }, (_, i) => y0 + i), fy: (q) => eng(10 ** q, "Ω", 3), l: 60, xl: "Frequency (log scale)", yl: "", H: 240 });
     let g = A.s + poly(curve(A, (q) => Math.log10(zf(10 ** q)), lf0 - 1.5, lf0 + 1.5, 300), "trace-a");
     g += `<line class="mk" x1="${A.X(lf0)}" x2="${A.X(lf0)}" y1="${A.t}" y2="${A.t + A.ph}"/>` + dot(A.X(lf0), A.Y(Math.log10(zf(res.f0)))) + label(A.X(lf0) + 6, A.t + 14, `fres = ${eng(res.f0, "Hz")}`, "start", "mklab");
-    extra.innerHTML = `<h4 class="sub-h">Impedance |Z| against frequency</h4><div class="plot-box">${svg(A.W, A.H, `Impedance against frequency for a ${ser ? "series" : "parallel"} LC circuit, with a ${ser ? "dip" : "peak"} at resonance`, g)}</div>
+    extra.innerHTML = `<h4 class="sub-h">Impedance |Z| Against Frequency</h4><div class="plot-box">${svg(A.W, A.H, `Impedance against frequency for a ${ser ? "series" : "parallel"} LC circuit, with a ${ser ? "dip" : "peak"} at resonance`, g)}</div>
       <p class="small-note">${ser ? "A sharp dip: at f<sub>res</sub> the series circuit lets the most current through." : "A sharp peak: at f<sub>res</sub> the parallel (tank) circuit blocks the most."}</p>`;
   }
 
@@ -454,7 +454,7 @@
   const TARGETS = { coin: { name: "Coin (non-ferrous)", dL: -0.03 }, nail: { name: "Iron nail", dL: 0.04 } };
   function mountDetector(el) {
     const S = { k: "coin" }, L0 = 1e-3, Cd = 100e-9;
-    const c = pvCard(el, chips("Buried object", Object.entries(TARGETS).map(([k, o]) => [k, o.name]), S.k), fold("Good to know: contactless cards are tuned circuits", `<ol class="steps">${stepsHtml([
+    const c = pvCard(el, chips("Buried object", Object.entries(TARGETS).map(([k, o]) => [k, o.name]), S.k), fold("Good to Know: Contactless Cards Are Tuned Circuits", `<ol class="steps">${stepsHtml([
       step("A contactless card or tag (NFC) is a coil and a capacitor", "f<sub>res</sub> = 1 ÷ (2π √(L C))", "L ≈ 2 µH (the antenna coil in the card), C ≈ 69 pF", "f<sub>res</sub> ≈ 13.56 MHz: the NFC frequency"),
       step("Why it matters", "", "", "The reader's field makes the card's LC circuit resonate, which powers the chip without a battery.")])}</ol>`));
     const xAt = (t) => lerp(30, 300, 0.5 - 0.5 * Math.cos((TAU * t) / 8)), near = (x) => Math.exp(-(((x - 170) / 34) ** 2));
@@ -483,7 +483,7 @@
   function mountPiezo(el) {
     const S = { R: 1e6, C: 20e-9 }, Q = 10e-9; // 5 N press → 10 nC
     const c = pvCard(el, chips("Resistor R", [["1e5", "100 kΩ"], ["1e6", "1 MΩ"], ["1e7", "10 MΩ"]], "1e6") + chips("Piezo capacitance C", [["2e-8", "20 nF (typical piezo disc)"], ["1e-6", "1 µF"]], "2e-8"),
-      fold("Step-by-step working", `<ol class="steps"></ol>`));
+      fold("Step-by-Step Working", `<ol class="steps"></ol>`));
     const steps = el.querySelector(".steps");
     const vt = (x) => { const tau = S.R * S.C, v0 = Q / S.C; let v = 0; if (x >= 1) v += v0 * Math.exp(-(x - 1) / tau); if (x >= 6) v -= v0 * Math.exp(-(x - 6) / tau); return v; };
     const work = () => {
@@ -527,14 +527,14 @@
   const Rlc = (v) => (v.type === "par" ? v.Rp : v.Rs);
   const SECTIONS = [
     // ---------- Introduction ----------
-    { id: "why", group: "intro", title: "Why do sensors need a transduction circuit?", toc: "Why a circuit?",
+    { id: "why", group: "intro", title: "Why Do Sensors Need a Transduction Circuit?", toc: "Why a Circuit?",
       intro: `<p>A <strong>passive sensor</strong> (resistive, capacitive or inductive) only changes a property: its R, C or L. The ESP32 cannot read a resistance or a capacitance directly. It can read a <strong>voltage</strong> (with its ADC) and it can count a <strong>frequency</strong> (with a timer). A transduction circuit turns the sensor's change into one of these. The three common techniques for passive sensors are:</p>
         <ol class="rules"><li><strong>voltage divider and bridge circuits</strong>: R, C or L change → a voltage</li><li><strong>timing circuits</strong> (the 555 timer): C or R change → a frequency</li><li><strong>tuned (LC) circuits</strong>: L or C change → a resonant frequency</li></ol>
         <p>An <strong>active sensor</strong> makes its own signal, but it may not be a voltage: a piezo gives a <strong>charge</strong>, which a resistor turns into a voltage.</p>`,
       mount: mountFlow },
 
     // ---------- Voltage divider ----------
-    { id: "divider", group: "divider", title: "The voltage divider", toc: "Divider rule",
+    { id: "divider", group: "divider", title: "The Voltage Divider", toc: "Divider Rule",
       intro: `<p>Two impedances in series share the input voltage. Z<sub>1</sub> is fixed and Z<sub>2</sub> can be the sensor (or the other way round):</p>
         <p class="formula">V<sub>out</sub> = V<sub>in</sub> × Z<sub>2</sub> ÷ (Z<sub>1</sub> + Z<sub>2</sub>)</p>
         <p>Z can be a resistance, <strong>Z = R</strong>, or the reactance of a capacitor, <strong>Z<sub>C</sub> = 1 ÷ (ωC) = 1 ÷ (2πfC)</strong>, or of an inductor, <strong>Z<sub>L</sub> = ωL = 2πfL</strong>. Capacitor and inductor dividers need an AC supply. Choose the type and change the values.</p>`,
@@ -546,10 +546,10 @@
         F("f", "f", 1000, "AC frequency", { show: (v) => v.type !== "R" })],
       view: "0 0 400 240", diagram: dividerDiagram, caption: "The components and labels follow your choice.", compute: dividerCompute,
       after: `<div class="callout info"><strong>Good to know</strong>1 ÷ (ωC) and ωL are the <em>sizes</em> of the impedances (the reactances). When both parts of a divider are the same type, the frequency cancels: a capacitor divider gives V<sub>in</sub> × C<sub>1</sub> ÷ (C<sub>1</sub> + C<sub>2</sub>) and an inductor divider gives V<sub>in</sub> × L<sub>2</sub> ÷ (L<sub>1</sub> + L<sub>2</sub>). Mixing a resistor with a capacitor in one divider needs complex numbers, because their voltages are not in phase.</div>` },
-    { id: "explorer", group: "divider", title: "What changes V<sub>out</sub>?", toc: "Divider explorer",
+    { id: "explorer", group: "divider", title: "What Changes V<sub>out</sub>?", toc: "Divider Explorer",
       intro: `<p>Press play to sweep R<sub>2</sub>, or drag the sliders yourself. Watch the output level and the two curves: one for changing R<sub>2</sub>, one for changing R<sub>1</sub>.</p>`,
       mount: mountExplorer },
-    { id: "streetlight", group: "divider", title: "Real situation: an automatic street light", toc: "LDR street light",
+    { id: "streetlight", group: "divider", title: "Real Situation: An Automatic Street Light", toc: "LDR Street Light",
       intro: `<p>A <strong>light-dependent resistor (LDR)</strong> is about 5 kΩ in normal light and 300 kΩ in complete darkness. In a divider with a fixed 4.7 kΩ resistor and a 5 V supply it turns light into a voltage, and a controller switches the street lamp on when the voltage crosses a set level.</p>
         <ul class="rules"><li><strong>LDR at the bottom:</strong> about 2.5 V in normal light, rising to about 5 V in the dark.</li><li><strong>LDR at the top:</strong> about 2.5 V in normal light, falling to about 0 V in the dark.</li></ul>
         <p>Either way the output is very non-linear, and only roughly linear over a short range (about 5 to 10 kΩ).</p>
@@ -558,7 +558,7 @@
       after: `<div class="callout info"><strong>Good to know</strong>The ESP32's ADC reads at most 3.3 V, so on an ESP32 the divider is powered from 3.3 V instead of 5 V. The shape of the curve is the same.</div>` },
 
     // ---------- Bridge circuits ----------
-    { id: "bridge", group: "bridge", title: "The Wheatstone bridge", toc: "Wheatstone bridge",
+    { id: "bridge", group: "bridge", title: "The Wheatstone Bridge", toc: "Wheatstone Bridge",
       intro: `<p>A voltage divider has two shortcomings: its transfer function is <strong>non-linear</strong>, and its output has a <strong>voltage offset</strong> from zero. A bridge, two dividers side by side, removes the offset. Its output is the difference between the two middle points:</p>
         <p class="formula">V<sub>out</sub> = V<sub>C</sub> − V<sub>D</sub> = (R<sub>2</sub> ÷ (R<sub>1</sub> + R<sub>2</sub>) − R<sub>4</sub> ÷ (R<sub>3</sub> + R<sub>4</sub>)) × V<sub>s</sub></p>
         <p>The four arms can be resistors, capacitors or inductors (impedances Z). The bridge is <strong>balanced</strong> (V<sub>out</sub> = 0) when the two ratios are equal, <strong>R<sub>1</sub> ÷ R<sub>2</sub> = R<sub>3</sub> ÷ R<sub>4</sub></strong>, which includes the case where all four are equal. A <strong>galvanometer</strong> between C and D shows the balance: no current at balance, and the needle swings one way or the other depending on which point is higher.</p>
@@ -567,16 +567,16 @@
         F("R1", "R", 1e3, "A–C"), F("R2", "R", 2.2e3, "C–B"), F("R3", "R", 3.3e3, "A–D"), F("R4", "R", 4.7e3, "D–B")],
       view: "0 0 440 270", diagram: bridgeDiagram, render: bridgeRender, compute: bridgeCompute, caption: "The needle and the current arrow follow your values. A is the positive terminal.",
       after: WORKED + watch([video("ZqAM_wQ35ow", "Basic configurations #1: Wheatstone bridge", "Electronoobs")]) },
-    { id: "offset", group: "bridge", title: "Divider or bridge? Removing the offset", toc: "Offset removed",
+    { id: "offset", group: "bridge", title: "Divider or Bridge? Removing the Offset", toc: "Offset Removed",
       intro: `<p>The same LDR is used twice: in a divider (LDR at the top, 4.7 kΩ at the bottom, 5 V) and in a bridge whose other three arms are 4.7 kΩ. Press play to change the light.</p>`,
       mount: mountOffset },
-    { id: "scale", group: "bridge", title: "Real situation: a digital weighing scale", toc: "Weighing scale",
+    { id: "scale", group: "bridge", title: "Real Situation: A Digital Weighing Scale", toc: "Weighing Scale",
       intro: `<p>A <strong>strain gauge</strong> is a zig-zag metal foil glued to a beam. When a load bends the beam, the foil stretches and its resistance rises by ΔR = GF × ε × R, where ε is the strain and GF the gauge factor (about 2). The change is tiny, so the gauge is placed in a bridge (a <em>quarter bridge</em>: one gauge and three fixed resistors), whose output is about <strong>V<sub>out</sub> ≈ V<sub>s</sub> × GF × ε ÷ 4</strong>, then amplified.</p>
         <div class="cmp-grid">${photo("strain-gauge.jpg", "A foil strain gauge.", "small")}</div>`,
       mount: mountScale },
 
     // ---------- Timing circuit ----------
-    { id: "timer", group: "timing", title: "The 555 timer in astable mode", toc: "555 timer",
+    { id: "timer", group: "timing", title: "The 555 Timer in Astable Mode", toc: "555 Timer",
       intro: `<p>A <strong>timing circuit</strong> produces pulses at precise intervals. In <strong>astable</strong> mode the 555 timer charges a capacitor through R<sub>A</sub> + R<sub>B</sub> and discharges it through R<sub>B</sub>, again and again, between ⅓ and ⅔ of V<sub>CC</sub>. The output is a square wave:</p>
         <p class="formula">f = 1.44 ÷ ((R<sub>A</sub> + 2R<sub>B</sub>) C)</p>
         <p>If C is a <strong>capacitive sensor</strong>, its change becomes a change of frequency, and one end of the sensor can be grounded. Frequency is easy for a microcontroller to measure and is not upset by small voltage noise.</p>
@@ -584,7 +584,7 @@
       inputs: [F("RA", "R", 1e3, null, { label: "R<sub>A</sub>" }), F("RB", "R", 10e3, null, { label: "R<sub>B</sub>" }), F("C", "C", 10e-9, "timing capacitor or sensor"),
         F("Vcc", "num", 9, null, { unit: "V", positive: true, label: "Supply V<sub>CC</sub>", name: "Vcc" })],
       view: "0 0 440 250", diagram: timerDiagram, render: timerRender, compute: timerCompute, caption: "The 555 in astable mode, pin numbers shown." },
-    { id: "leveltimer", group: "timing", title: "Real situation: a capacitive water-level sensor", toc: "Level sensor",
+    { id: "leveltimer", group: "timing", title: "Real Situation: A Capacitive Water-Level Sensor", toc: "Level Sensor",
       intro: `<p>This sensor is two insulated wires taped along a ruler. The green wire is the ground; the white wire is insulated from the water. Together they form a capacitor whose capacitance depends on the water depth l, like the plate sensor in Chapter 3:</p>
         <p class="formula">C = C<sub>l</sub> + C<sub>L−l</sub> = ε<sub>0</sub>(W ÷ D)(ε<sub>l</sub> l + ε<sub>L−l</sub>(L − l))</p>
         <p>So C rises in a straight line with depth, and the 555 turns it into a frequency. The same idea is used in <strong>capacitive soil-moisture sensors</strong>, where wetter soil means a higher capacitance.</p>
@@ -593,7 +593,7 @@
       after: `<div class="callout info"><strong>Good to know</strong>In this example the capacitance rises by 12 pF for every centimetre of water. That is much less than ε<sub>water</sub> = 80 suggests, because the wire's plastic insulation sits in series with the water.</div>` },
 
     // ---------- Tuned circuit ----------
-    { id: "lc", group: "tuned", title: "Tuned (LC) circuits and resonance", toc: "LC resonance",
+    { id: "lc", group: "tuned", title: "Tuned (LC) Circuits and Resonance", toc: "LC Resonance",
       intro: `<p>A <strong>tuned circuit</strong> (resonant or tank circuit) contains an inductor and a capacitor. At the <strong>resonant frequency</strong> their reactances are equal and cancel:</p>
         <p class="formula">f<sub>res</sub> = 1 ÷ (2π √(L C))</p>
         <ul class="rules"><li><strong>Series LC:</strong> at f<sub>res</sub> the impedance is a <strong>minimum</strong>, so the most current flows.</li><li><strong>Parallel LC:</strong> at f<sub>res</sub> the impedance is a <strong>maximum</strong>, so the least current is drawn from the source, while the current circulates between L and C.</li></ul>
@@ -606,15 +606,15 @@
       compute: (v) => lcCompute(Object.assign({}, v, { R: Rlc(v) })), render: (extra, res, v) => lcRender(extra, res, Object.assign({}, v, { R: Rlc(v) })),
       caption: "The circuit follows your choice of series or parallel.",
       after: `<div class="callout info"><strong>Good to know</strong>Whether an LC circuit passes or blocks f<sub>res</sub> depends on where it sits. In the signal path, a series LC is a band-pass filter and a parallel LC is a band-stop filter. Connected across the signal to ground they swap roles: the parallel tank in a radio tuner picks out one station (band-pass).</div>` },
-    { id: "tank", group: "tuned", title: "Inside the tank: energy moving between L and C", toc: "Energy at resonance",
+    { id: "tank", group: "tuned", title: "Inside the Tank: Energy Moving Between L and C", toc: "Energy at Resonance",
       intro: `<p>At resonance a tuned circuit stores energy and passes it back and forth: the capacitor stores it in the <strong>electric field</strong> between its plates, and the inductor stores it in its <strong>magnetic field</strong>.</p>`,
       mount: mountTank },
-    { id: "detector", group: "tuned", title: "Real situation: a metal detector", toc: "Metal detector",
+    { id: "detector", group: "tuned", title: "Real Situation: A Metal Detector", toc: "Metal Detector",
       intro: `<p>A metal detector's search coil is the L of an LC oscillator. Metal under the coil changes L: eddy currents in a coin <strong>lower</strong> it, iron <strong>raises</strong> it. The resonant frequency shifts, and the detector beeps. The inductive proximity sensor in Chapter 3 works the same way.</p>`,
       mount: mountDetector },
 
     // ---------- Active sensors ----------
-    { id: "piezo", group: "active", title: "Transduction for active sensors: the piezo", toc: "Piezo circuit",
+    { id: "piezo", group: "active", title: "Transduction for Active Sensors: The Piezo", toc: "Piezo Circuit",
       intro: `<p>Active sensors generate their own signal, but it may not be a voltage. A piezoelectric sensor generates <strong>charge</strong>: when it is deformed, charges build up on its surfaces. It can be modelled as a voltage source in series with a capacitor (its own capacitance C).</p>
         <p>The charge is turned into a voltage by letting it flow through a <strong>resistor</strong>. The voltage starts at V<sub>0</sub> = Q ÷ C and then leaks away with the time constant <strong>τ = RC</strong>. Together R and C form a high-pass filter, f<sub>c</sub> = 1 ÷ (2πRC).</p>`,
       mount: mountPiezo,
@@ -626,62 +626,62 @@
      ===================================================================== */
   const W_ = (list) => `<div class="working"><h4>Working</h4><ol class="steps">${stepsHtml(list)}</ol></div>`;
   const EXERCISES = [
-    { id: "c4-q1", title: "Exercise 1: voltage divider",
+    { id: "c4-q1", title: "Exercise 1: Voltage Divider",
       q: `<p>V<sub>in</sub> = <strong>9 V</strong>, R<sub>1</sub> = <strong>3 kΩ</strong> (top), R<sub>2</sub> = <strong>6 kΩ</strong> (bottom).</p>`,
       ans: [{ l: "V<sub>out</sub>", u: "V", v: 6 }, { l: "V<sub>out</sub> if R<sub>2</sub> is changed to 3 kΩ", u: "V", v: 4.5 }, { l: "V<sub>out</sub> if instead R<sub>1</sub> is changed to 6 kΩ (R<sub>2</sub> = 6 kΩ)", u: "V", v: 4.5 }],
       hints: [`V<sub>out</sub> = V<sub>in</sub> × R<sub>2</sub> ÷ (R<sub>1</sub> + R<sub>2</sub>).`, `When R<sub>1</sub> = R<sub>2</sub>, V<sub>out</sub> is exactly half of V<sub>in</sub>.`],
       working: () => W_([step("Original", "V<sub>out</sub> = 9 × 6 ÷ (3 + 6)", "", "<strong>6 V</strong>"), step("R<sub>2</sub> = 3 kΩ", "9 × 3 ÷ (3 + 3)", "", "<strong>4.5 V</strong> (smaller R<sub>2</sub> → lower V<sub>out</sub>)"), step("R<sub>1</sub> = 6 kΩ", "9 × 6 ÷ (6 + 6)", "", "<strong>4.5 V</strong> (larger R<sub>1</sub> → lower V<sub>out</sub>)")]) },
-    { id: "c4-q2", title: "Exercise 2: capacitor divider",
+    { id: "c4-q2", title: "Exercise 2: Capacitor Divider",
       q: `<p>A 10 V, 1 kHz AC supply feeds C<sub>1</sub> = <strong>100 nF</strong> (top) and C<sub>2</sub> = <strong>400 nF</strong> (bottom).</p>`,
       ans: [{ l: "Reactance of C<sub>1</sub>", u: "Ω", v: 1591.5 }, { l: "V<sub>out</sub> across C<sub>2</sub>", u: "V", v: 2 }, { l: "If the frequency doubles, V<sub>out</sub>", opts: ["doubles", "halves", "stays the same"], v: 2 }],
       hints: [`X<sub>C</sub> = 1 ÷ (2πfC). Then use the divider rule with the reactances.`, `For two capacitors the frequency cancels: V<sub>out</sub> = V<sub>in</sub> × C<sub>1</sub> ÷ (C<sub>1</sub> + C<sub>2</sub>).`],
       working: () => W_([step("X<sub>C1</sub>", "1 ÷ (2π × 1000 × 100 × 10<sup>−9</sup>)", "", "<strong>1592 Ω</strong>"), step("X<sub>C2</sub>", "1 ÷ (2π × 1000 × 400 × 10<sup>−9</sup>)", "", "398 Ω"), step("V<sub>out</sub>", "10 × 398 ÷ (1592 + 398) = 10 × 100 ÷ 500", "", "<strong>2 V</strong>"), step("Frequency doubles", "both reactances halve; the ratio is unchanged", "", "<strong>stays the same</strong>")]) },
-    { id: "c4-q3", title: "Exercise 3: LDR night light",
+    { id: "c4-q3", title: "Exercise 3: LDR Night Light",
       q: `<p>An LDR (<strong>2 kΩ</strong> in light, <strong>200 kΩ</strong> in the dark) is at the bottom of a divider with a fixed <strong>10 kΩ</strong> resistor on top, powered from <strong>3.3 V</strong>.</p>`,
       ans: [{ l: "V<sub>out</sub> in the light", u: "V", v: 0.55 }, { l: "V<sub>out</sub> in the dark", u: "V", v: 3.143 }, { l: "To make V<sub>out</sub> fall in the dark instead, put the LDR", opts: ["at the top", "at the bottom", "in parallel with the resistor"], v: 0 }],
       hints: [`The LDR is R<sub>2</sub> here.`, `Moving the LDR to the top swaps which resistor V<sub>out</sub> is measured across.`],
       working: () => W_([step("Light", "3.3 × 2 ÷ (10 + 2)", "", "<strong>0.55 V</strong>"), step("Dark", "3.3 × 200 ÷ (10 + 200)", "", "<strong>3.14 V</strong>"), step("Reverse the action", "", "", "Put the LDR <strong>at the top</strong>")]) },
-    { id: "c4-q4", title: "Exercise 4: unbalanced bridge",
+    { id: "c4-q4", title: "Exercise 4: Unbalanced Bridge",
       q: `<p>V<sub>s</sub> = <strong>12 V</strong>. R<sub>1</sub> = 2 kΩ (A–C), R<sub>2</sub> = 3 kΩ (C–B), R<sub>3</sub> = 4 kΩ (A–D), R<sub>4</sub> = 5 kΩ (D–B). A is positive.</p>`,
       ans: [{ l: "V<sub>C</sub>", u: "V", v: 7.2 }, { l: "V<sub>out</sub> = V<sub>C</sub> − V<sub>D</sub>", u: "V", v: 0.5333 }, { l: "R<sub>4</sub> that would balance the bridge", u: "kΩ", v: 6 }],
       hints: [`V<sub>C</sub> = V<sub>s</sub> R<sub>2</sub> ÷ (R<sub>1</sub> + R<sub>2</sub>) and V<sub>D</sub> = V<sub>s</sub> R<sub>4</sub> ÷ (R<sub>3</sub> + R<sub>4</sub>).`, `At balance R<sub>4</sub> = R<sub>2</sub>R<sub>3</sub> ÷ R<sub>1</sub>.`],
       working: () => W_([step("V<sub>C</sub>", "12 × 3 ÷ 5", "", "<strong>7.2 V</strong>"), step("V<sub>D</sub>", "12 × 5 ÷ 9", "", "6.667 V"), step("V<sub>out</sub>", "7.2 − 6.667", "", "<strong>0.533 V</strong>"), step("Balance", "R<sub>4</sub> = 3 × 4 ÷ 2", "", "<strong>6 kΩ</strong>")]) },
-    { id: "c4-q5", title: "Exercise 5: galvanometer direction",
+    { id: "c4-q5", title: "Exercise 5: Galvanometer Direction",
       q: `<p>V<sub>s</sub> = <strong>6 V</strong> (A positive). R<sub>1</sub> = 1 kΩ, R<sub>2</sub> = 1 kΩ, R<sub>3</sub> = 2 kΩ, R<sub>4</sub> = 1 kΩ, with a galvanometer between C and D.</p>`,
       ans: [{ l: "V<sub>out</sub> = V<sub>C</sub> − V<sub>D</sub>", u: "V", v: 1 }, { l: "Current through the galvanometer flows", opts: ["from C to D", "from D to C", "no current"], v: 0 }],
       hints: [`Find V<sub>C</sub> and V<sub>D</sub> separately.`, `Current flows from the higher potential to the lower one.`],
       working: () => W_([step("V<sub>C</sub>", "6 × 1 ÷ 2", "", "3 V"), step("V<sub>D</sub>", "6 × 1 ÷ 3", "", "2 V"), step("V<sub>out</sub>", "3 − 2", "", "<strong>1 V</strong>"), step("Direction", "", "", "C is higher: <strong>from C to D</strong>")]) },
-    { id: "c4-q6", title: "Exercise 6: finding an unknown resistor",
+    { id: "c4-q6", title: "Exercise 6: Finding an Unknown Resistor",
       q: `<p>A bridge is <strong>balanced</strong> with R<sub>1</sub> = 250 Ω (A–C), R<sub>2</sub> = 1 kΩ (C–B) and R<sub>4</sub> = 800 Ω (D–B). R<sub>3</sub> (A–D) is unknown.</p>`,
       ans: [{ l: "R<sub>3</sub>", u: "Ω", v: 200 }, { l: "The galvanometer current at balance is", opts: ["zero", "maximum", "equal to the supply current"], v: 0 }],
       hints: [`Balanced: R<sub>1</sub> ÷ R<sub>2</sub> = R<sub>3</sub> ÷ R<sub>4</sub>.`, `The supply voltage is not needed at balance.`],
       working: () => W_([step("Balance", "R<sub>3</sub> = R<sub>1</sub> R<sub>4</sub> ÷ R<sub>2</sub>", "= 250 × 800 ÷ 1000", "<strong>200 Ω</strong>"), step("At balance", "", "", "V<sub>C</sub> = V<sub>D</sub>: the galvanometer current is <strong>zero</strong>")]) },
-    { id: "c4-q7", title: "Exercise 7: strain gauge bridge",
+    { id: "c4-q7", title: "Exercise 7: Strain Gauge Bridge",
       q: `<p>A <strong>120 Ω</strong> strain gauge (GF = <strong>2.1</strong>) in a quarter bridge with V<sub>s</sub> = <strong>5 V</strong> is strained by <strong>500 µε</strong>.</p>`,
       ans: [{ l: "ΔR", u: "Ω", v: 0.126 }, { l: "Bridge output (approximate)", u: "mV", v: 1.3125 }],
       hints: [`ΔR = GF × ε × R, with ε = 500 × 10<sup>−6</sup>.`, `V<sub>out</sub> ≈ V<sub>s</sub> × GF × ε ÷ 4.`],
       working: () => W_([step("ΔR", "2.1 × 500 × 10<sup>−6</sup> × 120", "", "<strong>0.126 Ω</strong>"), step("V<sub>out</sub>", "5 × 2.1 × 500 × 10<sup>−6</sup> ÷ 4", "", "<strong>1.31 mV</strong>")]) },
-    { id: "c4-q8", title: "Exercise 8: 555 timer",
+    { id: "c4-q8", title: "Exercise 8: 555 Timer",
       q: `<p>A 555 in astable mode has R<sub>A</sub> = <strong>2.2 kΩ</strong>, R<sub>B</sub> = <strong>6.8 kΩ</strong> and C = <strong>47 nF</strong>.</p>`,
       ans: [{ l: "Frequency", u: "Hz", v: 1939 }, { l: "Duty cycle", u: "%", v: 56.96 }, { l: "Time low t<sub>L</sub>", u: "ms", v: 0.2215 }],
       hints: [`f = 1.44 ÷ ((R<sub>A</sub> + 2R<sub>B</sub>) C).`, `Duty = (R<sub>A</sub> + R<sub>B</sub>) ÷ (R<sub>A</sub> + 2R<sub>B</sub>); t<sub>L</sub> = 0.693 R<sub>B</sub> C.`],
       working: () => W_([step("f", "1.44 ÷ ((2.2 + 13.6) kΩ × 47 nF)", "= 1.44 ÷ 7.426 × 10<sup>−4</sup>", "<strong>1939 Hz</strong>"), step("Duty", "9.0 ÷ 15.8", "", "<strong>57.0%</strong>"), step("t<sub>L</sub>", "0.693 × 6.8 kΩ × 47 nF", "", "<strong>0.2215 ms</strong>")]) },
-    { id: "c4-q9", title: "Exercise 9: level sensor frequency",
+    { id: "c4-q9", title: "Exercise 9: Level Sensor Frequency",
       q: `<p>A two-wire level sensor has C = <strong>30 pF + 10 pF per cm</strong> of water. It is the timing capacitor of a 555 with R<sub>A</sub> = 10 kΩ and R<sub>B</sub> = 100 kΩ.</p>`,
       ans: [{ l: "f at 5 cm depth", u: "kHz", v: 85.71 }, { l: "f at 12 cm depth", u: "kHz", v: 45.71 }, { l: "As the water rises, f", opts: ["rises", "falls", "stays the same"], v: 1 }],
       hints: [`First find C at each depth.`, `f = 1.44 ÷ ((R<sub>A</sub> + 2R<sub>B</sub>) C) with R<sub>A</sub> + 2R<sub>B</sub> = 210 kΩ.`],
       working: () => W_([step("5 cm", "C = 80 pF; f = 1.44 ÷ (210 kΩ × 80 pF)", "", "<strong>85.7 kHz</strong>"), step("12 cm", "C = 150 pF; f = 1.44 ÷ (210 kΩ × 150 pF)", "", "<strong>45.7 kHz</strong>"), step("Trend", "", "", "More water → bigger C → f <strong>falls</strong>")]) },
-    { id: "c4-q10", title: "Exercise 10: LC resonance",
+    { id: "c4-q10", title: "Exercise 10: LC Resonance",
       q: `<p>L = <strong>3.3 mH</strong> and C = <strong>68 nF</strong>.</p>`,
       ans: [{ l: "Resonant frequency", u: "kHz", v: 10.62 }, { l: "X<sub>L</sub> at resonance", u: "Ω", v: 220.3 }, { l: "A series LC at resonance has impedance that is", opts: ["a minimum", "a maximum"], v: 0 }],
       hints: [`f<sub>res</sub> = 1 ÷ (2π √(LC)).`, `At resonance X<sub>L</sub> = X<sub>C</sub> = 2πf<sub>res</sub>L (which also equals √(L/C)).`],
       working: () => W_([step("f<sub>res</sub>", "1 ÷ (2π √(3.3 × 10<sup>−3</sup> × 68 × 10<sup>−9</sup>))", "", "<strong>10.62 kHz</strong>"), step("X<sub>L</sub>", "2π × 10.62 kHz × 3.3 mH", "", "<strong>220 Ω</strong> (= X<sub>C</sub>)"), step("Series", "", "", "Impedance is a <strong>minimum</strong>")]) },
-    { id: "c4-q11", title: "Exercise 11: piezo circuit",
+    { id: "c4-q11", title: "Exercise 11: Piezo Circuit",
       q: `<p>A piezo disc (C = <strong>20 nF</strong>) is connected across R = <strong>1 MΩ</strong>. A knock produces Q = <strong>40 nC</strong>.</p>`,
       ans: [{ l: "Voltage just after the knock", u: "V", v: 2 }, { l: "Time constant τ", u: "ms", v: 20 }, { l: "Cut-off frequency f<sub>c</sub>", u: "Hz", v: 7.958 }],
       hints: [`V<sub>0</sub> = Q ÷ C and τ = R C.`, `f<sub>c</sub> = 1 ÷ (2π R C) = 1 ÷ (2πτ).`],
       working: () => W_([step("V<sub>0</sub>", "40 nC ÷ 20 nF", "", "<strong>2 V</strong>"), step("τ", "1 MΩ × 20 nF", "", "<strong>20 ms</strong>"), step("f<sub>c</sub>", "1 ÷ (2π × 0.02 s)", "", "<strong>7.96 Hz</strong>")]) },
-    { id: "c4-q12", title: "Exercise 12: which technique?",
+    { id: "c4-q12", title: "Exercise 12: Which Technique?",
       q: `<p>Match each circuit with what it gives the ESP32.</p>`,
       ans: [{ l: "LDR voltage divider", opts: ["A voltage", "A voltage that is zero at balance", "A square-wave frequency", "A resonant frequency", "A voltage pulse from charge"], v: 0 },
         { l: "Strain gauge in a Wheatstone bridge", opts: ["A voltage", "A voltage that is zero at balance", "A square-wave frequency", "A resonant frequency", "A voltage pulse from charge"], v: 1 },

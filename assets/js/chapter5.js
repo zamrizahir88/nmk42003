@@ -106,7 +106,7 @@
     sec.scopeData = res && WAVES[sec.id] ? WAVES[sec.id](v, res) : null;
     if (!extra.dataset.ready) {
       extra.dataset.ready = "1";
-      extra.innerHTML = `<h4 class="sub-h">Oscilloscope: input and output</h4><div class="scope-box"></div><div class="pv-pl"></div><p class="small-note scope-note"></p>`;
+      extra.innerHTML = `<h4 class="sub-h">Oscilloscope: Input and Output</h4><div class="scope-box"></div><div class="pv-pl"></div><p class="small-note scope-note"></p>`;
       sec.scopePl = player(extra.querySelector(".pv-pl"), extra, { dur: 4, hold: 0, auto: false, still: 0, label: "Oscilloscope sweep", draw: (t) => drawScope(sec, extra, t) });
     }
     sec.scopePl.redraw();
@@ -167,7 +167,7 @@
   const SECTIONS = [
     /* ---------------- Voltage follower ---------------- */
     {
-      id: "follower", group: "amp", title: "Voltage follower", view: AMP_VIEW,
+      id: "follower", group: "amp", title: "Voltage Follower", view: AMP_VIEW,
       intro: `<p>The output is wired straight back to the inverting (−) input, so the op-amp drives its output until it equals the input: ${n("Vout")} = ${n("Vin")} and the gain is exactly 1. It is also called a unity-gain buffer.</p>
         <p>It doesn't make the voltage any bigger. Its job is <strong>isolation</strong>. Its very high input impedance means it draws almost no current from the source, and its very low output impedance means it can supply current to the next stage without the source voltage sagging. Use it between a high-impedance sensor (a pH probe, a potentiometer, an RC filter) and whatever reads it.</p>`,
       inputs: [F("Vin", "V", 2, "input voltage"), VCC()],
@@ -187,7 +187,7 @@
 
     /* ---------------- Inverting ---------------- */
     {
-      id: "inverting", group: "amp", title: "Inverting amplifier", view: AMP_VIEW,
+      id: "inverting", group: "amp", title: "Inverting Amplifier", view: AMP_VIEW,
       intro: `<p>The input goes through ${n("R1")} into the inverting (−) input, and ${n("Rf")} feeds the output back to the same point. The + input is grounded. The gain depends only on the two resistors, ${n("Av")} = −${n("Rf")} / ${n("R1")}, so it is accurate and doesn't depend on the op-amp's very large open-loop gain.</p>
         <p>The minus sign means the output is inverted: a positive input gives a negative output. If ${n("Rf")} &gt; ${n("R1")} the signal is amplified. If ${n("Rf")} &lt; ${n("R1")} it is made smaller. If ${n("Rf")} = ${n("R1")} you get a unity-gain inverter (${n("Vout")} = −${n("Vin")}). It is used to scale sensor signals and, with several input resistors, to add signals together.</p>`,
       inputs: [F("Vin", "V", 1, "input voltage"), F("R1", "R", 10e3, "input resistor"), F("Rf", "R", 47e3, "feedback resistor"), VCC()],
@@ -211,7 +211,7 @@
 
     /* ---------------- Non-inverting ---------------- */
     {
-      id: "noninv", group: "amp", title: "Non-inverting amplifier", view: AMP_VIEW,
+      id: "noninv", group: "amp", title: "Non-Inverting Amplifier", view: AMP_VIEW,
       intro: `<p>The input goes into the non-inverting (+) input. ${n("Rf")} and ${n("R1")} form a divider that feeds a fraction of the output back to the − input, and the op-amp drives its output until that fraction equals ${n("Vin")}. The gain is ${n("Av")} = 1 + ${n("Rf")} / ${n("R1")}. It is always at least 1, and the output has the same sign as the input.</p>
         <p>The very high input impedance of the + input is kept, so this is the usual choice for amplifying a weak sensor voltage without loading the sensor. With a load ${n("RL")}, the op-amp supplies both the load current ${n("IL")} and the small current ${n("I1")} through the feedback resistors.</p>`,
       inputs: [F("Vin", "V", 1, "input voltage"), F("R1", "R", 10e3, "resistor to ground"), F("Rf", "R", 47e3, "feedback resistor"), F("RL", "R", null, "load resistor (optional)", { opt: true }), VCC()],
@@ -242,7 +242,7 @@
 
     /* ---------------- Differential ---------------- */
     {
-      id: "diff", group: "amp", title: "Differential amplifier", view: AMP_VIEW,
+      id: "diff", group: "amp", title: "Differential Amplifier", view: AMP_VIEW,
       intro: `<p>A differential amplifier amplifies the <em>difference</em> between two inputs. ${n("V1")} reaches the + input through the divider ${n("R1")}, ${n("R2")}. ${n("V2")} reaches the − input through ${n("R3")}, with ${n("R4")} as the feedback resistor.</p>
         <p>Work it out by <strong>superposition</strong>. First find the output due to ${n("V1")} alone (${n("V2")} grounded), then the output due to ${n("V2")} alone (${n("V1")} grounded), and add them. When ${n("R1")} = ${n("R3")} and ${n("R2")} = ${n("R4")}, this simplifies to ${n("Vout")} = (${n("R2")} / ${n("R1")})(${n("V1")} − ${n("V2")}). Anything common to both inputs then cancels, such as interference picked up equally on two sensor wires. That's why this circuit is used with strain-gauge bridges and thermocouples. Try the common-mode offset input to see it.</p>`,
       inputs: [F("V1", "V", 2.5, "to the + side"), F("V2", "V", 2, "to the − side"), F("R1", "R", 10e3), F("R2", "R", 47e3), F("R3", "R", 10e3), F("R4", "R", 47e3, "feedback"),
@@ -300,7 +300,7 @@
 
     /* ---------------- Passive RC low-pass ---------------- */
     {
-      id: "rclpf", group: "filt", toc: "RC low-pass", title: "Passive RC low-pass filter (1st order)", view: FILT_VIEW, bode: true,
+      id: "rclpf", group: "filt", toc: "RC Low-Pass", title: "Passive RC Low-Pass Filter (1st Order)", view: FILT_VIEW, bode: true,
       intro: `<p>R is in series and C sits across the output. At low frequencies the capacitor's reactance X<sub>C</sub> is large, so almost all of ${n("Vin")} appears across it. As frequency rises X<sub>C</sub> falls and the capacitor shorts more of the signal to ground. The circuit is a voltage divider whose ratio depends on frequency.</p>
         <p>It is used to remove high-frequency noise from slowly changing sensor signals (temperature, pressure) and as an anti-aliasing filter before an ADC. Above f<sub>c</sub> the output falls by 20 dB per decade.</p>`,
       inputs: [F("R", "R", 10e3), F("C", "C", 100e-9), F("Vin", "Vac", 5, "amplitude"), F("f", "f", 100, "signal frequency")],
@@ -324,7 +324,7 @@
 
     /* ---------------- Passive RC high-pass ---------------- */
     {
-      id: "rchpf", group: "filt", toc: "RC high-pass", title: "Passive RC high-pass filter (1st order)", view: FILT_VIEW, bode: true,
+      id: "rchpf", group: "filt", toc: "RC High-Pass", title: "Passive RC High-Pass Filter (1st Order)", view: FILT_VIEW, bode: true,
       intro: `<p>Swap R and C: C is in series and R sits across the output. The capacitor blocks DC and low frequencies and passes high ones. The cut-off formula is the same as for the low-pass filter, f<sub>c</sub> = 1 / (2πRC), but now the output is taken across R.</p>
         <p>It is used to remove a DC offset or slow drift from a signal, for example to AC-couple a vibration or audio sensor. Below f<sub>c</sub> the output falls by 20 dB per decade.</p>`,
       inputs: [F("R", "R", 10e3), F("C", "C", 100e-9), F("Vin", "Vac", 5, "amplitude"), F("f", "f", 1000, "signal frequency")],
@@ -347,7 +347,7 @@
 
     /* ---------------- Passive RL low-pass ---------------- */
     {
-      id: "rllpf", group: "filt", toc: "RL low-pass", title: "Passive RL low-pass filter (1st order)", view: FILT_VIEW, bode: true,
+      id: "rllpf", group: "filt", toc: "RL Low-Pass", title: "Passive RL Low-Pass Filter (1st Order)", view: FILT_VIEW, bode: true,
       intro: `<p>An inductor is in series and R sits across the output. An inductor's reactance X<sub>L</sub> = 2πfL grows with frequency, the opposite of a capacitor, so the inductor blocks high frequencies and passes low ones. The cut-off is f<sub>c</sub> = R / (2πL).</p>
         <p>RL filters are common in power circuits, for example smoothing the supply to a sensor. Inductors are bulky and pick up magnetic fields, so RC filters are preferred for small signals.</p>`,
       inputs: [F("R", "R", 100), F("L", "L", 10e-3), F("Vin", "Vac", 5, "amplitude"), F("f", "f", 1000, "signal frequency")],
@@ -370,7 +370,7 @@
 
     /* ---------------- 2nd-order passive RC low-pass ---------------- */
     {
-      id: "rc2", group: "filt", toc: "2nd-order RC low-pass", title: "Passive RC low-pass filter (2nd order)", view: FILT_VIEW, bode: true,
+      id: "rc2", group: "filt", toc: "2nd-Order RC Low-Pass", title: "Passive RC Low-Pass Filter (2nd Order)", view: FILT_VIEW, bode: true,
       intro: `<p>This is two RC low-pass stages in a row. Above the cut-off the output falls twice as fast as with a single stage, 40 dB per decade instead of 20, so noise is rejected more strongly.</p>
         <p>The usual quick formula is f<sub>c</sub> = 1 / (2π√(R<sub>1</sub>C<sub>1</sub>R<sub>2</sub>C<sub>2</sub>)). The working and the graph also use the exact response of the two connected stages, which shows where the output really falls by 3 dB.</p>`,
       inputs: [F("R1", "R", 10e3), F("C1", "C", 10e-9), F("R2", "R", 10e3), F("C2", "C", 10e-9), F("Vin", "Vac", 5, "amplitude"), F("f", "f", 1000, "signal frequency")],
@@ -409,7 +409,7 @@
 
     /* ---------------- Active 1st-order LPF / HPF ---------------- */
     {
-      id: "active", group: "filt", toc: "Active low/high-pass", title: "Active filter (1st order, low-pass or high-pass)", view: "0 0 520 240", bode: true,
+      id: "active", group: "filt", toc: "Active Low/High-Pass", title: "Active Filter (1st Order, Low-Pass or High-Pass)", view: "0 0 520 240", bode: true,
       intro: `<p>A passive RC stage followed by an op-amp. The op-amp buffers the RC stage, so the load can't shift the cut-off frequency. As a non-inverting amplifier it can also add gain, ${n("Av")} = 1 + ${n("Rf")} / ${n("Rg")}. Without ${n("Rf")} and ${n("Rg")} it is a voltage follower with a gain of 1.</p>
         <p>The cut-off is still f<sub>c</sub> = 1 / (2πRC). Choose low-pass or high-pass below: the positions of R and C swap, and the amplifier stays the same. Because the op-amp can add gain, check the output against the supply rails.</p>`,
       inputs: [
@@ -456,7 +456,7 @@
 
     /* ---------------- Band-pass ---------------- */
     {
-      id: "bandpass", group: "filt", toc: "Band-pass", title: "Band-pass filter (high-pass then low-pass)", view: FILT_VIEW, bode: true,
+      id: "bandpass", group: "filt", toc: "Band-Pass", title: "Band-Pass Filter (High-Pass Then Low-Pass)", view: FILT_VIEW, bode: true,
       intro: `<p>A high-pass stage followed by a low-pass stage. The high-pass stage (${n("R1")}, ${n("C1")}) removes frequencies below f<sub>L</sub>, and the low-pass stage (${n("R2")}, ${n("C2")}) removes frequencies above f<sub>H</sub>. Only the band between them passes.</p>
         <p>This only works if f<sub>L</sub> is below f<sub>H</sub>. The bandwidth is BW = f<sub>H</sub> − f<sub>L</sub> and the centre frequency is f<sub>c</sub> = √(f<sub>L</sub> × f<sub>H</sub>). Band-pass filters pick one signal out of noise, for example a modulated sensor carrier or a heart-rate signal.</p>`,
       inputs: [F("R1", "R", 10e3, "high-pass stage"), F("C1", "C", 100e-9, "high-pass stage"), F("R2", "R", 10e3, "low-pass stage"), F("C2", "C", 1e-9, "low-pass stage"),
@@ -497,7 +497,7 @@
 
     /* ---------------- Band-stop (twin-T) ---------------- */
     {
-      id: "bandstop", group: "filt", toc: "Band-stop (twin-T)", title: "Band-stop filter (twin-T notch)", view: "0 0 520 240", bode: true,
+      id: "bandstop", group: "filt", toc: "Band-Stop (Twin-T)", title: "Band-Stop Filter (Twin-T Notch)", view: "0 0 520 240", bode: true,
       intro: `<p>A band-stop (notch) filter blocks a narrow band and passes everything else. The twin-T puts a low-pass T (R, R and 2C) <strong>in parallel</strong> with a high-pass T (C, C and R/2). Well below the notch the low-pass path carries the signal, and well above it the high-pass path does. At the notch frequency the two paths deliver equal signals in opposite phase, so they cancel.</p>
         <p>With these component ratios the notch sits at f<sub>notch</sub> = 1 / (2πRC). A classic instrumentation use is removing 50 Hz mains hum from a sensor signal.</p>`,
       inputs: [F("R", "R", 10e3), F("C", "C", 10e-9), F("Vin", "Vac", 1, "amplitude"), F("f", "f", 1000, "signal frequency")],
@@ -539,7 +539,7 @@
   ];
 
   SECTIONS.forEach((sec) => { if (WAVES[sec.id]) sec.render = scopeRender; });
-  SECTIONS.unshift({ id: "why", group: "why", title: "Why condition a signal?", toc: "Overview",
+  SECTIONS.unshift({ id: "why", group: "why", title: "Why Condition a Signal?", toc: "Overview",
     intro: `<p>Sensor signals are rarely ready to measure. They are often <strong>too small</strong> (millivolts), <strong>noisy</strong> (mains hum, motor interference), or have the wrong range for the ADC. Signal conditioning means amplifying, filtering and shifting a signal so the next stage can measure it accurately.</p>`,
     mount: mountWhy });
 
@@ -553,40 +553,40 @@
      Exercises
      ===================================================================== */
   const EXERCISES = [
-    { id: "ex-a1", sec: "follower", title: "Amplifier exercise 1: voltage follower",
+    { id: "ex-a1", sec: "follower", title: "Amplifier Exercise 1: Voltage Follower",
       q: `Calculate the gain and V<sub>o</sub> of this amplifier. Given V<sub>in</sub> = 15 V.`,
       runs: [{ vals: { Vin: 15, Vcc: 15 } }],
       ans: [{ l: "Gain, G", u: "", v: 1 }, { l: "V<sub>o</sub>", u: "V", v: 15 }],
       hints: [`In a voltage follower the output is wired straight back to the − input. What gain does that give?`, `The gain is 1, so V<sub>o</sub> = G × V<sub>in</sub>. Give the ideal value; don't clip it to the supply rails.`],
       note: `15 V is the ideal answer. With ±15 V supply rails a real op-amp output only reaches about ±13.5 V, so in practice the output would clip.` },
-    { id: "ex-a2", sec: "inverting", title: "Amplifier exercise 2: inverting amplifier",
+    { id: "ex-a2", sec: "inverting", title: "Amplifier Exercise 2: Inverting Amplifier",
       q: `Calculate the gain and V<sub>o</sub>. Given V<sub>in</sub> = 7 V, R<sub>1</sub> = 48 kΩ, R<sub>f</sub> = 200 kΩ.`,
       runs: [{ vals: { Vin: 7, R1: 48e3, Rf: 200e3, Vcc: 15 } }],
       ans: [{ l: "Gain, G", u: "", v: -4.167 }, { l: "V<sub>o</sub>", u: "V", v: -29.17 }],
       hints: [`For an inverting amplifier, G = −R<sub>f</sub> / R<sub>1</sub>. Keep the minus sign.`, `G = −200 kΩ / 48 kΩ. Then V<sub>o</sub> = G × 7 V. Give the ideal value; the output would saturate in practice.`],
       note: `The ideal V<sub>o</sub> of −29.17 V is beyond the ±13.5 V limit, so a real output would saturate at about −13.5 V.` },
-    { id: "ex-a3", sec: "noninv", title: "Amplifier exercise 3: non-inverting amplifier",
+    { id: "ex-a3", sec: "noninv", title: "Amplifier Exercise 3: Non-Inverting Amplifier",
       q: `Calculate the gain, V<sub>o</sub> and I<sub>L</sub>. Given V<sub>in</sub> = 5 V, R<sub>1</sub> = 20 kΩ, R<sub>F</sub> = 40 kΩ, R<sub>L</sub> = 4 kΩ.`,
       runs: [{ vals: { Vin: 5, R1: 20e3, Rf: 40e3, RL: 4e3, Vcc: 15 } }],
       ans: [{ l: "Gain, G", u: "", v: 3 }, { l: "V<sub>o</sub>", u: "V", v: 15 }, { l: "I<sub>L</sub>", u: "mA", v: 3.75 }],
       hints: [`For a non-inverting amplifier, G = 1 + R<sub>F</sub> / R<sub>1</sub>, then V<sub>o</sub> = G × V<sub>in</sub>.`, `I<sub>L</sub> = V<sub>o</sub> / R<sub>L</sub>. The answer box is in mA (1 mA = 0.001 A).`],
       note: `V<sub>o</sub> = 15 V is the ideal answer. It is above the ±13.5 V limit for ±15 V rails, so check the supply in a real circuit.` },
-    { id: "ex-a4", sec: "diff", title: "Amplifier exercise 4: differential amplifier",
+    { id: "ex-a4", sec: "diff", title: "Amplifier Exercise 4: Differential Amplifier",
       q: `Calculate the gain and V<sub>o</sub>. Given V<sub>1</sub> = 5 V, V<sub>2</sub> = 6 V, R<sub>1</sub> = R<sub>3</sub> = 10 kΩ, R<sub>2</sub> = R<sub>4</sub> = 38 kΩ.`,
       runs: [{ vals: { V1: 5, V2: 6, R1: 10e3, R2: 38e3, R3: 10e3, R4: 38e3, RL: null, Vcm: 0, Vcc: 15 } }],
       ans: [{ l: "Differential gain", u: "", v: 3.8 }, { l: "V<sub>o</sub>", u: "V", v: -3.8 }],
       hints: [`R<sub>1</sub> = R<sub>3</sub> and R<sub>2</sub> = R<sub>4</sub>, so the shortcut V<sub>o</sub> = (R<sub>2</sub>/R<sub>1</sub>)(V<sub>1</sub> − V<sub>2</sub>) applies. The differential gain is R<sub>2</sub>/R<sub>1</sub>.`, `Watch the order: V<sub>1</sub> − V<sub>2</sub> = 5 V − 6 V.`] },
-    { id: "ex-f1", sec: "rclpf", title: "Filter exercise 1: passive low-pass filter",
+    { id: "ex-f1", sec: "rclpf", title: "Filter Exercise 1: Passive Low-Pass Filter",
       q: `A passive low-pass filter has a 47 kΩ resistor in series with a 47 nF capacitor, connected across a 5 V sinusoidal supply. Calculate (a) the cut-off frequency and (b) V<sub>out</sub> at 100 Hz and at 10 kHz.`,
       runs: [{ label: "At f = 100 Hz", vals: { R: 47e3, C: 47e-9, Vin: 5, f: 100 } }, { label: "At f = 10 kHz", vals: { R: 47e3, C: 47e-9, Vin: 5, f: 10e3 } }],
       ans: [{ l: "f<sub>c</sub>", u: "Hz", v: 72.05 }, { l: "V<sub>out</sub> at 100 Hz", u: "V", v: 2.92 }, { l: "V<sub>out</sub> at 10 kHz", u: "mV", v: 36.0 }],
       hints: [`f<sub>c</sub> = 1 / (2πRC). For V<sub>out</sub>, first find X<sub>C</sub> = 1 / (2πfC) at each frequency.`, `V<sub>out</sub> = V<sub>in</sub> × X<sub>C</sub> / √(R² + X<sub>C</sub>²). At 10 kHz the answer is small: give it in mV.`], },
-    { id: "ex-f2", sec: "rchpf", title: "Filter exercise 2: passive high-pass filter",
+    { id: "ex-f2", sec: "rchpf", title: "Filter Exercise 2: Passive High-Pass Filter",
       q: `A passive high-pass filter has a 240 kΩ resistor in series with an 82 pF capacitor, connected across a 10 V sinusoidal supply. Calculate (a) the cut-off frequency and (b) V<sub>out</sub> at 100 Hz and at 10 kHz.`,
       runs: [{ label: "At f = 100 Hz", vals: { R: 240e3, C: 82e-12, Vin: 10, f: 100 } }, { label: "At f = 10 kHz", vals: { R: 240e3, C: 82e-12, Vin: 10, f: 10e3 } }],
       ans: [{ l: "f<sub>c</sub>", u: "kHz", v: 8.087 }, { l: "V<sub>out</sub> at 100 Hz", u: "V", v: 0.124 }, { l: "V<sub>out</sub> at 10 kHz", u: "V", v: 7.78 }],
       hints: [`The cut-off formula is the same as for the low-pass filter, f<sub>c</sub> = 1 / (2πRC). Give it in kHz.`, `In a high-pass filter the output is taken across R: V<sub>out</sub> = V<sub>in</sub> × R / √(R² + X<sub>C</sub>²).`], },
-    { id: "ex-f3", sec: "active", title: "Filter exercise 3: active low-pass filter",
+    { id: "ex-f3", sec: "active", title: "Filter Exercise 3: Active Low-Pass Filter",
       q: `A 1st-order active low-pass filter has a 1 kΩ resistor in series with a 1 µF capacitor and a 10 V source. The RC output feeds a non-inverting amplifier with a 10 kΩ feedback resistor and 10 kΩ from the inverting terminal to ground. Calculate V<sub>o</sub> at 100 Hz and at 10 kHz.`,
       runs: [{ label: "At f = 100 Hz", vals: { type: "lp", mode: "noninv", R: 1e3, C: 1e-6, Rg: 10e3, Rf: 10e3, Vin: 10, f: 100, Vcc: 15 } },
         { label: "At f = 10 kHz", vals: { type: "lp", mode: "noninv", R: 1e3, C: 1e-6, Rg: 10e3, Rf: 10e3, Vin: 10, f: 10e3, Vcc: 15 } }],
