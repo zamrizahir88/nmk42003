@@ -500,3 +500,7 @@ h2.h3 { font-size: 1.3rem; margin-bottom: 12px; }
   a { color: inherit; }
   .lab-group, section.block { padding: 12px 0; }
 }
+
+/* Header: keep each menu item on one line; on mid-width screens drop the subtitle to make room */
+.nav a { white-space: nowrap; }
+@media (min-width: 821px) and (max-width: 980px) { .brand-name { display: none; } .nav a { padding: 6px 8px; } }

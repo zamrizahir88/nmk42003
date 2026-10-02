@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=2610021">
-  <link rel="stylesheet" href="assets/css/lab.css?v=2610021">
-  <link rel="stylesheet" href="assets/css/lab1.css?v=2610021">
+  <link rel="stylesheet" href="assets/css/style.css?v=2610023">
+  <link rel="stylesheet" href="assets/css/lab.css?v=2610023">
+  <link rel="stylesheet" href="assets/css/lab1.css?v=2610023">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0b6e6e">
   <link rel="apple-touch-icon" href="assets/img/icon-180.png">
@@ -40,10 +40,10 @@
       </button>
       <nav class="nav" id="nav" aria-label="Main">
         <a href="index.html">Home</a>
-        <a href="chapters.html">Chapters</a>
         <a href="schedule.html">Schedule</a>
         <a href="assessment.html">Assessment</a>
-        <a href="labs.html">Labs &amp; references</a>
+        <a href="chapters.html">Chapters</a>
+        <a href="labs.html">Laboratory experiments</a>
       </nav>
       <button class="icon-btn" id="themeBtn" aria-label="Switch to dark mode">
         <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -66,10 +66,11 @@
           <li>switch the built-in LED on and off from a mobile phone by Bluetooth</li>
           <li>build a simple phone app with MIT App Inventor</li>
           <li>switch an external LED on and off over Wi-Fi from a web browser</li>
-          <li>read a switch and show its state on the Serial Monitor, a phone app and a web page</li>
+          <li>read a switch and monitor its condition on the Serial Monitor, a phone and a web page</li>
         </ul>
       </div>
       <p class="lab-how">This is a simulation: nothing here talks to a real board. Everything follows the lab sheet, so in the lab you'll do the same steps on the real ESP32. Where the page asks for your name, it uses it the way the lab sheet does (in the Bluetooth name and the Serial Monitor).</p>
+      <p class="gate-note" id="gateNote"><span aria-hidden="true">🔒</span> <span>The <strong>lab task</strong> unlocks when you pass the <a href="#exercises">Pre-lab check</a> quiz with at least <strong>7 out of 10</strong>.</span></p>
       <div class="name-box" id="nameBox"></div>
       <noscript><div class="callout warn"><strong>JavaScript is off</strong>The virtual lab on this page needs JavaScript. Turn it on, or use the lab sheet on URLearn.</div></noscript>
     </div>
@@ -81,8 +82,9 @@
         <a href="#l2">Lesson 2: Bluetooth</a>
         <a href="#l3">Lesson 3: App Inventor</a>
         <a href="#l4">Lesson 4: Wi-Fi</a>
-        <a href="#tasks">Lab tasks</a>
+        <a href="#l5">Lesson 5: Switch</a>
         <a href="#exercises">Pre-lab check</a>
+        <a href="#labtask" id="taskNav">Lab task 🔒</a>
       </div>
     </nav>
 
@@ -141,14 +143,14 @@
       </div>
     </section>
 
-    <section class="lab-group" id="tasks" aria-labelledby="tasks-h">
+    <section class="lab-group" id="l5" aria-labelledby="l5-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="tasks-h">Lab tasks</h2>
-          <p>Add a toggle switch and report its state three ways: on the Serial Monitor, on your phone by Bluetooth, and on a web page. Then build the demo task on your own.</p>
-          <ul class="toc-chips" id="tasksToc"></ul>
+          <h2 id="l5-h">Lesson 5: Monitor the switch condition</h2>
+          <p>Add a toggle switch, read its condition, and monitor it in three ways: on the Serial Monitor, on a phone via Bluetooth and on a web page.</p>
+          <ul class="toc-chips" id="l5Toc"></ul>
         </div>
-        <div id="tasksList"></div>
+        <div id="l5List"></div>
       </div>
     </section>
 
@@ -156,11 +158,30 @@
       <div class="wrap">
         <div class="group-head">
           <h2 id="exercises-h">Pre-lab check</h2>
-          <p>A quick quiz, then four questions to check you're ready. Type or choose your answers and press <strong>Check answers</strong>. Each wrong try unlocks a hint, and when all your answers are correct the full working appears. Swipe left or right, or use the arrows, to move between questions.</p>
+          <p>Answer all 10 quiz questions, then press <strong>Submit</strong>. Score at least <strong>7 out of 10</strong> to unlock the lab task. Each attempt gets a new random set of questions.</p>
         </div>
         <div id="quizBox"></div>
-        <h3 class="sub-h">Questions</h3>
+        <h3 class="sub-h">Practice questions</h3>
+        <p class="widget-lead">Optional practice with numbers. Type or choose your answers and press <strong>Check answers</strong>. Each wrong try unlocks a hint, and when all your answers are correct the full working appears. Swipe left or right, or use the arrows, to move between questions.</p>
         <div id="exList"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="labtask" aria-labelledby="labtask-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="labtask-h">Lab task</h2>
+          <p>The task you build on your own and demonstrate in the lab.</p>
+        </div>
+        <div class="lock-card" id="taskLock" role="region" aria-labelledby="lock-h">
+          <div class="lock-ico" aria-hidden="true">🔒</div>
+          <div>
+            <h3 id="lock-h">Complete the Pre-lab check first</h3>
+            <p>Score at least <strong>7 out of 10</strong> in the Pre-lab check quiz to unlock the lab task.</p>
+            <a class="btn" href="#exercises">Go to the Pre-lab check</a>
+          </div>
+        </div>
+        <div id="taskList" hidden></div>
         <nav class="pager" aria-label="Labs" id="chPager"></nav>
       </div>
     </section>
@@ -168,9 +189,9 @@
 
   <footer class="site-footer" id="footer"></footer>
 
-  <script src="assets/js/data.js?v=2610021"></script>
-  <script src="assets/js/main.js?v=2610021"></script>
-  <script src="assets/js/lab.js?v=2610021"></script>
-  <script src="assets/js/lab1.js?v=2610021"></script>
+  <script src="assets/js/data.js?v=2610023"></script>
+  <script src="assets/js/main.js?v=2610023"></script>
+  <script src="assets/js/lab.js?v=2610023"></script>
+  <script src="assets/js/lab1.js?v=2610023"></script>
 </body>
 </html>

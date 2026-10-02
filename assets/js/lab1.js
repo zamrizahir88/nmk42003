@@ -5,7 +5,7 @@
 (function () {
   "use strict";
 
-  const { esc, num, eng, F, D, step, stepsHtml, reduceMotion, store, chips, wireChips, quiz, codeBlock, fold, player, poly } = Lab;
+  const { esc, num, eng, F, D, step, stepsHtml, reduceMotion, store, chips, wireChips, codeBlock, fold, player, poly } = Lab;
   const $ = (s, r = document) => r.querySelector(s);
   const T = (x, y, t, a = "middle", c = "") => `<text x="${x}" y="${y}" text-anchor="${a}"${c ? ` class="${c}"` : ""}>${t}</text>`;
   const sleep = (ms) => new Promise((r) => setTimeout(r, reduceMotion ? Math.min(ms, 60) : ms));
@@ -166,7 +166,7 @@
     ["ESP32 Wi-Fi module and micro-USB cable", "The ESP32 DevKit V1 (30 pins). The cable powers it and carries the program."],
     ["Breadboard", "Holds the capacitor, and later the LED and resistor."],
     ["0.47 µF capacitor", "Goes between EN and GND, for automatic programming mode."],
-    ["Toggle switch", "An input for the lab tasks, on GPIO33."],
+    ["Toggle switch", "An input on GPIO33, for Lesson 5 and the lab task."],
     ["LED", "The external LED on GPIO32 in Lesson 4."],
     ["Resistor", "In series with the LED, to limit its current."],
     ["Male-female jumper wires (at least 7)", "From the board's pins to the breadboard: 4 for the capacitor and LED, 3 more for the switch."],
@@ -1154,7 +1154,7 @@ Answer: send the web page back`;
   }
 
   /* =====================================================================
-     LAB TASKS (section 8): a toggle switch on GPIO33
+     LESSON 5: monitor the condition of a toggle switch on GPIO33
      The bench: breadboard with a 3V3 rail and a GND rail, the switch, the LED on GPIO32, the board.
      ON is always the lever on the left (pin A). 3-pin switch: A → 3V3, B → GND, middle (C) → GPIO33.
      2-pin switch: A → GND, C → GPIO33, plus a 10 kΩ pull-up (or nothing: a floating input).
@@ -1218,7 +1218,7 @@ Answer: send the web page back`;
       const W = 300, H = 80, l = 40, X = (i) => l + (i / 29) * (W - l - 10), Y = (v) => (v ? 16 : 56);
       const pts = []; hist.forEach((v, i) => { if (i) pts.push([X(i), Y(hist[i - 1])]); pts.push([X(i), Y(v)]); });
       strip.innerHTML = `<svg class="plot" viewBox="0 0 ${W} ${H}" role="img" aria-label="What GPIO33 read over the last 6 seconds">${T(l - 6, 20, "1", "end", "axis")}${T(l - 6, 60, "0", "end", "axis")}<line class="gl" x1="${l}" x2="${W - 10}" y1="16" y2="16"/><line class="gl" x1="${l}" x2="${W - 10}" y1="56" y2="56"/>${pts.length > 1 ? poly(pts, "trace-a") : ""}${T(W - 10, 76, "last 6 s", "end", "axis")}</svg>`;
-      read.innerHTML = type === "spdt" ? `<strong>3-pin switch.</strong> The middle pin is always joined to 3V3 (ON) or GND (OFF), so GPIO33 reads a clean <strong>${on ? "1" : "0"}</strong>. ON = 1. This is the wiring used in the tasks.`
+      read.innerHTML = type === "spdt" ? `<strong>3-pin switch.</strong> The middle pin is always joined to 3V3 (ON) or GND (OFF), so GPIO33 reads a clean <strong>${on ? "1" : "0"}</strong>. ON = 1. This is the wiring used in this lesson.`
         : type === "pull" ? `<strong>2-pin switch with a pull-up.</strong> OFF: the 10 kΩ resistor pulls GPIO33 up to 3.3 V, so it reads 1. ON: the switch joins GPIO33 to GND, so it reads 0. It works, but <strong>ON reads 0</strong>: swap the 1 and the 0 in your program.`
         : on ? `<strong>2-pin switch, no resistor, switch ON.</strong> GPIO33 is joined to GND and reads 0.` : `<strong>Floating input.</strong> With the switch OFF, nothing sets the voltage on GPIO33. It picks up noise and reads 0 and 1 at random, so the LEDs flicker. Add a pull-up resistor, or use a 3-pin switch.`;
       if (focus) refocusSw(host);
@@ -1229,7 +1229,7 @@ Answer: send the web page back`;
     draw();
   }
 
-  /* ---------- TUNIOT blocks and code for the tasks ---------- */
+  /* ---------- TUNIOT blocks and code for Lesson 5 ---------- */
   const ifVar = (a, op, b) => inl("var", `${bf(a)} ${bf(op)} ${b}`);
   const ledBoth = (st) => bk("led", `Integrated LED Stat ${bf(st)}`) + bk("pin", `DigitalWrite PIN# ${bf("D32")} STAT ${bf(st)}`);
   const t81Blocks = () =>
@@ -1431,12 +1431,12 @@ void loop()
   function mountT81(el) {
     let on = false, last = -1, so;
     el.innerHTML = `<div class="sw-blocks"></div>
-      <h4 class="sub-h">Try it</h4>
+      <h4 class="sub-h">Try it: monitor on the Serial Monitor</h4>
       <div class="task-sim"><figure class="scene-box"><div class="scene-scroll"><div class="bench-host"></div></div><figcaption>Tap the switch to flip it.<span class="swipe"> Swipe sideways to see all of it.</span></figcaption></figure>
         <div class="task-side"><button type="button" class="btn" data-flip>Flip the switch</button>${serialBox()}<p class="pv-read t81-read"></p></div></div>`;
     const host = $(".bench-host", el), read = $(".t81-read", el);
     so = serialOut($(".serial", el));
-    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(t81Blocks(), t81Code(), "task_8_1.ino", "TUNIOT blocks for task 8.1"); };
+    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(t81Blocks(), t81Code(), "switch_serial.ino", "TUNIOT blocks: monitor the switch on the Serial Monitor"); };
     const step_ = (focus) => {
       const sw = on ? 1 : 0;
       if (sw !== last) { so.add(sw ? "Switch ON" : "Switch OFF"); last = sw; }
@@ -1457,13 +1457,13 @@ void loop()
         <li>A <strong>Clock</strong> (Sensors palette), TimerInterval <strong>200</strong> ms.</li>
         <li>On <code>BluetoothClient1</code>, set <strong>DelimiterByte = 10</strong>. That is the line-feed character that <code>println</code> puts at the end of each message, so <code>ReceiveText</code> with −1 reads exactly one message.</li></ul>
       ${ws(AI_RX(), "App Inventor block that receives the switch state")}
-      <h4 class="sub-h">Try it</h4>
+      <h4 class="sub-h">Try it: monitor on a phone via Bluetooth</h4>
       <div class="sim-grid"><div class="sim-phone">${phoneFrame("Phone app")}</div>
         <div class="sim-side"><figure class="scene-box"><div class="scene-scroll"><div class="bench-host"></div></div></figure>
           <div class="wf-row"><button type="button" class="btn" data-flip>Flip the switch</button></div>
           <div class="esp-in"><h4>Inside the ESP32</h4><pre class="esp-vars" aria-live="polite"></pre></div><p class="pv-read t82-read"></p></div></div>`;
     const host = $(".bench-host", el), screen = $(".ph-screen", el), vars = $(".esp-vars", el), read = $(".t82-read", el);
-    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(t82Blocks(), t82Code(), "task_8_2.ino", "TUNIOT blocks for task 8.2"); };
+    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(t82Blocks(), t82Code(), "switch_bluetooth.ino", "TUNIOT blocks: monitor the switch on a phone via Bluetooth"); };
     const drawBench = (focus) => { host.innerHTML = bench({ type: "spdt", on, read: on ? 1 : 0, led2: on, led32: on, phone: "t82Path", link: connected }); if (focus) refocusSw(host); };
     const render = () => {
       const lst = list ? `<div class="ai-list" role="dialog" aria-label="Choose a device"><p class="ai-list-h">Choose a device</p><button type="button" class="ai-li" data-pick="esp">${esc(MAC)} ${esc(btName())}</button><button type="button" class="ai-li cancel" data-pick="">Cancel</button></div>` : "";
@@ -1513,10 +1513,10 @@ void loop()
     let on = false, loaded = false, auto = true, loads = 0, pageState = "OFF", url = IP;
     el.innerHTML = `<div class="sw-blocks"></div>
       ${fold("Optional: show it in an App Inventor app instead", `<p>Add a path that replies with just <code>ON</code> or <code>OFF</code> as plain text. In the Arduino IDE, put these lines straight after <code>client.flush();</code>:</p>
-        ${codeBlock(stateCode, "Add to task_8_3.ino")}
+        ${codeBlock(stateCode, "Add to switch_web.ino")}
         <p>In the app, add a <strong>Web</strong> component (Connectivity), a <strong>Clock</strong> (TimerInterval 1000 ms) and a <code>Label_Switch</code>. The app asks <code>http://${IP}/state</code> every second:</p>
         ${ws(AI_WEB(), "App Inventor blocks that read the switch state over Wi-Fi")}`)}
-      <h4 class="sub-h">Try it</h4>
+      <h4 class="sub-h">Try it: monitor on a web page</h4>
       <div class="sim-grid"><div class="sim-phone">${phoneFrame("Phone web browser")}</div>
         <div class="sim-side"><figure class="scene-box"><div class="scene-scroll"><div class="bench-host"></div></div></figure>
           <div class="wf-row"><button type="button" class="btn" data-flip>Flip the switch</button></div>
@@ -1524,7 +1524,7 @@ void loop()
           ${serialBox()}<p class="pv-read t83-read"></p></div></div>`;
     const host = $(".bench-host", el), screen = $(".ph-screen", el), read = $(".t83-read", el), so = serialOut($(".serial", el));
     ["Obtained an IP address", IP, who(), MAC].forEach((x) => so.add(x));
-    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(t83Blocks(), t83Code(), "task_8_3.ino", "TUNIOT blocks for task 8.3"); };
+    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(t83Blocks(), t83Code(), "switch_web.ino", "TUNIOT blocks: monitor the switch on a web page"); };
     const drawBench = (focus) => { host.innerHTML = bench({ type: "spdt", on, read: on ? 1 : 0, led2: on, led32: on }); if (focus) refocusSw(host); };
     screen.innerHTML = `<form class="br-bar ph" data-go><input type="text" inputmode="url" aria-label="Address" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(url)}"><button type="submit" class="go-b">Go</button></form><div class="br-view"></div>`;
     const view = $(".br-view", screen), go = $(".go-b", screen);
@@ -1556,7 +1556,7 @@ void loop()
     read.innerHTML = `The ESP32 is already on the Wi-Fi (see the Serial Monitor). Tap <strong>Go</strong> in the phone's browser, then flip the switch.`;
   }
 
-  /* ---------- Demo task D1: brief only, with values from the student's matric number ---------- */
+  /* ---------- Lab task: brief only, with values from the student's matric number ---------- */
   const DEMO_PINS = [33, 25, 26, 27, 14];
   const demoVals = (m) => {
     const d = String(m || "").replace(/\D/g, "");
@@ -1722,32 +1722,34 @@ void loop()
       intro: `<p>Upload the code and open the Serial Monitor to get the IP address. Then type it into a browser on your phone (on the same Wi-Fi network) and use the buttons.</p>`,
       mount: mountWifiRun },
 
-    { id: "swwire", group: "tasks", title: "Wiring the toggle switch", toc: "Switch wiring",
-      intro: `<p>All three tasks start from the Lesson 4 circuit (LED on GPIO32) and add a toggle switch on <strong>GPIO33</strong>.</p>
+    { id: "swwire", group: "l5", title: "Read the switch condition", toc: "Read the switch",
+      intro: `<p>Start from the Lesson 4 circuit (LED on GPIO32) and add a toggle switch on <strong>GPIO33</strong>. The ESP32 reads its condition as 1 or 0.</p>
         <ul class="what"><li><strong>3-pin switch (use this):</strong> middle pin to GPIO33, one outer pin to 3V3, the other outer pin to GND. GPIO33 is always joined to 3.3 V or to 0 V, so no resistor is needed. ON reads 1.</li>
         <li><strong>2-pin switch:</strong> one pin to GPIO33, the other to GND, and a 10 kΩ resistor from GPIO33 to 3V3. Here ON reads 0.</li></ul>
         <p>You need 3 more male-female jumper wires. Try all three wirings below, including what happens with no resistor.</p>`,
       mount: mountSwWire,
       after: `<div class="callout info"><strong>Good to know: choosing an input pin</strong>GPIO33 is a safe choice. Avoid GPIO2 (the built-in LED), GPIO0, 5, 12 and 15 (they decide how the ESP32 starts), TX0 and RX0 (used for uploading) and GPIO32 (the LED). GPIO34 to 39 work as inputs, but they have no internal pull-up or pull-down resistors.</div>` },
-    { id: "t81", group: "tasks", title: "Task 8.1: monitor the switch", toc: "8.1 Serial Monitor",
-      intro: `<ol class="what" type="a"><li>Wire the toggle switch to GPIO33 as above.</li>
-        <li>In TUNIOT, read GPIO33 every 200 ms. When the switch is ON, turn on the built-in LED (GPIO2) and the external LED (GPIO32). When it is OFF, turn both off.</li>
-        <li>Print <code>Switch ON</code> or <code>Switch OFF</code> on the Serial Monitor (115200 baud), <strong>only when the state changes</strong>.</li></ol>
+    { id: "t81", group: "l5", title: "On the Serial Monitor", toc: "Serial Monitor",
+      intro: `<p>The ESP32 checks the switch every 200 ms, makes both LEDs follow it, and reports each change on the Serial Monitor.</p>
+        <ol class="what"><li>In TUNIOT, read GPIO33 every 200 ms. When the switch is ON, turn on the built-in LED (GPIO2) and the external LED (GPIO32). When it is OFF, turn both off.</li>
+        <li>Print <code>Switch ON</code> or <code>Switch OFF</code> on the Serial Monitor (115200 baud), <strong>only when the condition changes</strong>.</li></ol>
         <p><strong>Check:</strong> flip the switch 5 times. Both LEDs follow it, and the Serial Monitor shows exactly one line per flip.</p>`,
       mount: mountT81 },
-    { id: "t82", group: "tasks", title: "Task 8.2: show the switch on your phone by Bluetooth", toc: "8.2 Bluetooth",
-      intro: `<ol class="what" type="a"><li>Use the Bluetooth name <code>ESP32_YourName</code>. Send <code>ON</code> or <code>OFF</code> (print on new line) when the switch changes, and again every 2 s, so the app catches up after it connects. The LEDs still follow the switch.</li>
-        <li>In MIT App Inventor, add a label, a Clock and the receiving block below to your Lesson 3 app, so it shows the switch state.</li></ol>
-        <p><strong>Check:</strong> the app shows the new state within 1 s of flipping the switch. (Android phone needed, as in Lessons 2 and 3.)</p>`,
+    { id: "t82", group: "l5", title: "On a phone via Bluetooth", toc: "Phone via Bluetooth",
+      intro: `<p>The ESP32 sends the switch condition to your phone, and your App Inventor app displays it.</p>
+        <ol class="what"><li>Use the Bluetooth name <code>ESP32_YourName</code>. Send <code>ON</code> or <code>OFF</code> (print on new line) when the switch changes, and again every 2 s, so the app catches up after it connects. The LEDs still follow the switch.</li>
+        <li>In MIT App Inventor, add a label, a Clock and the receiving block below to your Lesson 3 app.</li></ol>
+        <p><strong>Check:</strong> the app shows the new condition within 1 s of flipping the switch. (Android phone needed, as in Lessons 2 and 3.)</p>`,
       mount: mountT82 },
-    { id: "t83", group: "tasks", title: "Task 8.3: show the switch on a web page", toc: "8.3 Wi-Fi",
-      intro: `<ol class="what" type="a"><li>Change the Lesson 4 web server so the page shows <code>Switch: ON/OFF</code> and <code>LEDs: ON/OFF</code>. The LEDs still follow the switch.</li>
+    { id: "t83", group: "l5", title: "On a web page", toc: "Web page",
+      intro: `<p>The ESP32's web server from Lesson 4 now reports the switch condition, and the page keeps itself up to date.</p>
+        <ol class="what"><li>Change the Lesson 4 web server so the page shows <code>Switch: ON/OFF</code> and <code>LEDs: ON/OFF</code>. The LEDs still follow the switch.</li>
         <li>Add <code>&lt;meta http-equiv='refresh' content='1'&gt;</code> in the page's Head, so the browser reloads the page every second.</li></ol>
         <p><strong>Check:</strong> the page updates within 2 s of flipping the switch.</p>`,
       mount: mountT83,
       after: `<div class="callout info"><strong>Good to know</strong>Read the switch <em>before</em> the <em>Wait Connection</em> block. That block leaves the loop early when no browser is asking, so anything after it only runs when the page is loaded.</div>` },
-    { id: "demo", group: "tasks", title: "Demo task: your own blink pattern", toc: "Demo task",
-      intro: `<p>This is the task you build <strong>on your own</strong> and show in the lab. It uses everything from Lessons 1 to 4 and tasks 8.1 to 8.3, but there is no worked solution here. Your blink times and switch pin come from your matric number, so everyone's program is a little different.</p>
+    { id: "demo", group: "task", title: "Your own blink pattern", toc: "Your own blink pattern",
+      intro: `<p>Build this <strong>on your own</strong> and demonstrate it in the lab. It uses what you learnt in Lessons 1 to 5, but there is no worked solution here. Your blink times and switch pin come from your matric number, so everyone's program is a little different.</p>
         <p class="small-note">Plan first: write the steps as a short flowchart before you build the blocks.</p>`,
       mount: mountDemo }
   ];
@@ -1755,7 +1757,7 @@ void loop()
   /* =====================================================================
      Pre-lab check: quiz and exercises
      ===================================================================== */
-  const QUIZ = [
+  const BANK = [
     { q: "Which GPIO drives the ESP32's built-in blue LED?", opts: ["GPIO2", "GPIO32", "GPIO0", "GPIO23"], a: 0, why: "The built-in LED is on GPIO2. The TUNIOT <em>Integrated LED Stat</em> block writes to GPIO2." },
     { q: "Where does the 0.47 µF capacitor go?", opts: ["Between EN and GND", "Between 3V3 and GND", "In series with the LED", "Between GPIO2 and GND"], a: 0, why: "Between EN (reset) and GND. It slows EN down so the board enters programming mode by itself when you upload." },
     { q: "What must be true for an OTA (over-the-air) upload?", opts: ["The laptop and the ESP32 are on the same Wi-Fi network", "The USB cable stays plugged in", "The phone is paired by Bluetooth", "BOOT is held down"], a: 0, why: "The browser talks to the ESP32's web server through the Wi-Fi network, so both must be on it." },
@@ -1767,8 +1769,105 @@ void loop()
     { q: "Which way round does the external LED go?", opts: ["Long leg (anode) to GPIO32, short leg towards GND", "Long leg to GND", "Either way works", "Both legs to GPIO32"], a: 0, why: "Current flows from anode (long leg) to cathode (short leg). Reversed, it stays off." },
     { q: "A 2-pin switch is wired from GPIO33 to GND with no resistor. With the switch OFF, what does GPIO33 read?", opts: ["0 and 1 at random (a floating input)", "Always 1", "Always 0", "The ESP32 resets"], a: 0, why: "Nothing sets the voltage on an open input, so it picks up noise. A pull-up resistor or a 3-pin switch fixes it." },
     { q: "Your switch web page only changes when you reload it. What makes it update by itself?", opts: ["A refresh tag in the page head", "A faster delay in the loop", "A bigger resistor", "Pairing by Bluetooth"], a: 0, why: "The ESP32 can't push a change to the browser. <code>&lt;meta http-equiv='refresh' content='1'&gt;</code> makes the browser ask again every second." },
-    { q: "The Serial Monitor shows random symbols. What do you check first?", opts: ["The baud rate matches Serial.begin() (115200)", "The LED's direction", "The Bluetooth name", "The capacitor's value"], a: 0, why: "Both sides of a serial link must use the same baud rate, or the characters come out garbled." }
+    { q: "The Serial Monitor shows random symbols. What do you check first?", opts: ["The baud rate matches Serial.begin() (115200)", "The LED's direction", "The Bluetooth name", "The capacitor's value"], a: 0, why: "Both sides of a serial link must use the same baud rate, or the characters come out garbled." },
+    { q: "Why does the Bluetooth example send the switch condition again every 2 s, not only when it changes?", opts: ["So a phone that connects later still gets the condition", "To save battery", "Bluetooth disconnects if nothing is sent", "To make the LED blink"], a: 0, why: "If the phone connects after the last change, it would wait forever. A regular update every 2 s fixes that." },
+    { q: "In App Inventor, why set BluetoothClient1's DelimiterByte to 10?", opts: ["So ReceiveText with −1 reads exactly one line, up to the line feed", "To send 10 bytes at a time", "To connect 10 times faster", "To limit messages to 10 characters"], a: 0, why: "println ends each message with a line feed (byte 10). With DelimiterByte 10, ReceiveText(−1) reads up to it: one message at a time." },
+    { q: "Which pin is a safe choice for the switch input?", opts: ["GPIO33", "GPIO2", "GPIO0", "TX0"], a: 0, why: "GPIO2 is the built-in LED and a boot pin, GPIO0 decides the boot mode, and TX0 is used for uploading. GPIO33 is free." },
+    { q: "Why should the Serial Monitor example print only when the switch changes?", opts: ["Otherwise it prints every 200 ms and floods the screen", "Printing is slow", "The ESP32 can only print 10 lines", "The switch stops working"], a: 0, why: "The loop runs every 200 ms. Printing only on a change gives one clear line per flip." }
   ];
+
+  /* ---------- Pre-lab check quiz: unlocks the lab task at 7/10 ----------
+     A random 10 from the bank, options shuffled. No marks are shown until all 10 are answered.
+     The first attempt is the score. Wrong answers can then be re-answered until right (to learn),
+     and a new random set is offered once they are all corrected. A pass is remembered on this device. */
+  const PASS_KEY = "nmk-lab1-prelab", PASS_MARK = 7, NQ = 10;
+  const GATE_LOCKED = $("#gateNote") ? $("#gateNote").innerHTML : "";
+  function setLock(pass) {
+    const lock = $("#taskLock"), list = $("#taskList"), nav = $("#taskNav"), note = $("#gateNote");
+    if (lock) lock.hidden = !!pass;
+    if (list) list.hidden = !pass;
+    if (nav) nav.textContent = pass ? "Lab task" : "Lab task 🔒";
+    if (note) {
+      note.classList.toggle("ok", !!pass);
+      note.innerHTML = pass ? `<span aria-hidden="true">✓</span> <span>You passed the Pre-lab check (${pass.score} out of ${NQ}). The <a href="#labtask">lab task</a> is unlocked.</span>` : GATE_LOCKED;
+    }
+  }
+  function mountPrelab(host) {
+    let set = [], picks = [], tried = [], fixed = [], state = "answer", score = 0;
+    const shuffle = Lab.shuffle;
+    const start = (focus) => {
+      set = shuffle(BANK).slice(0, NQ).map((q) => ({ q, order: shuffle(q.opts.map((_, k) => k)) }));
+      picks = Array(NQ).fill(null); tried = set.map(() => []); fixed = Array(NQ).fill(false); state = "answer"; score = 0;
+      draw();
+      if (focus) { const f = host.querySelector("input"); if (f) f.focus(); }
+    };
+    const answered = () => picks.filter((x) => x !== null).length;
+    // In each bank question the right answer is option 0; the order on screen is shuffled.
+    const card = (it, i) => {
+      const firstOk = state === "review" && picks[i] === 0, done = state === "review" && (firstOk || fixed[i]);
+      const cls = state === "answer" ? "" : firstOk ? " ok" : fixed[i] ? " ok late" : " no";
+      const fb = state === "answer" ? "" : firstOk ? `<strong>✓ Correct.</strong> ${it.q.why}` : fixed[i] ? `<strong>✓ Correct now.</strong> ${it.q.why}` : `<strong>✗ Not right.</strong> Choose another answer.`;
+      return `<li class="pq-card${cls}" id="pq-${i}"><fieldset><legend><span class="pq-n">Question ${i + 1}</span>${it.q.q}</legend><div class="pq-opts">` +
+        it.order.map((k) => {
+          const bad = tried[i].includes(k), right = done && k === 0, chosen = state === "answer" ? picks[i] === k : right;
+          return `<label class="pq-opt${bad ? " bad" : ""}${right ? " right" : ""}"><input type="radio" name="pq-${i}" value="${k}"${chosen ? " checked" : ""}${state === "review" && (done || bad) ? " disabled" : ""}><span>${it.q.opts[k]}</span></label>`;
+        }).join("") + `</div><p class="pq-fb" aria-live="polite">${fb}</p></fieldset></li>`;
+    };
+    const wrongLeft = () => set.filter((_, i) => picks[i] !== 0 && !fixed[i]).length;
+    const resultHtml = () => {
+      const left = wrongLeft();
+      return score >= PASS_MARK
+        ? `<div class="pq-res pass"><p><strong>✓ You scored ${score} out of ${NQ}: passed!</strong> The lab task is now unlocked.</p><a class="btn" href="#labtask">Go to the lab task</a>${score < NQ ? `<p class="small-note">Correct the ones you got wrong below, to learn from them.</p>` : ""}</div>`
+        : `<div class="pq-res fail"><p><strong>You scored ${score} out of ${NQ}. You need at least ${PASS_MARK}.</strong></p><p>${left ? `Correct the ${left} wrong answer${left > 1 ? "s" : ""} below first. Then you can start a new quiz.` : "All corrected. Start a new quiz when you're ready: it has a new random set of questions."}</p>
+           <button type="button" class="btn" data-new${left ? " disabled" : ""}>Start a new quiz</button></div>`;
+    };
+    const draw = () => {
+      const saved = store.get(PASS_KEY, null), fresh = state === "answer" && !picks.some((x) => x !== null);
+      host.innerHTML = `<div class="pq">
+        ${saved && fresh ? `<div class="pq-res pass"><p><strong>✓ You passed the Pre-lab check on this device (${saved.score} out of ${NQ}).</strong> The lab task is unlocked. You can take the quiz again below for practice.</p></div>` : ""}
+        <div class="pq-result" tabindex="-1">${state === "review" ? resultHtml() : ""}</div>
+        <div class="pq-top"><span>Pass mark: <strong>${PASS_MARK} out of ${NQ}</strong></span><span class="pq-count">${state === "answer" ? `${answered()} of ${NQ} answered` : `Score: ${score} out of ${NQ}`}</span></div>
+        <ol class="pq-list">${set.map(card).join("")}</ol>
+        ${state === "answer" ? `<div class="pq-foot"><button type="button" class="btn" data-submit${answered() < NQ ? " disabled" : ""}>Submit answers</button><span class="small-note">Answer all ${NQ} questions to submit. Marks appear after you submit.</span></div>` : ""}
+      </div>`;
+    };
+    host.addEventListener("change", (e) => {
+      const r = e.target.closest('input[type="radio"]');
+      if (!r) return;
+      const i = +r.name.slice(3), k = +r.value;
+      if (state === "answer") {
+        picks[i] = k;
+        host.querySelector(".pq-count").textContent = `${answered()} of ${NQ} answered`;
+        host.querySelector("[data-submit]").disabled = answered() < NQ;
+        return;
+      }
+      if (k === 0) fixed[i] = true; else tried[i].push(k);
+      draw();
+      const back = host.querySelector(`#pq-${i} input:not([disabled])`) || host.querySelector(`#pq-${i} legend`);
+      if (back) { if (!back.matches("input")) back.setAttribute("tabindex", "-1"); back.focus({ preventScroll: true }); }
+    });
+    host.addEventListener("click", (e) => {
+      if (e.target.closest("[data-submit]")) {
+        score = picks.filter((k) => k === 0).length;
+        set.forEach((_, i) => { if (picks[i] !== 0) tried[i].push(picks[i]); });
+        state = "review";
+        if (score >= PASS_MARK) {
+          const old = store.get(PASS_KEY, null);
+          if (!old || old.score < score) store.set(PASS_KEY, { score, date: new Date().toISOString().slice(0, 10) });
+          setLock(store.get(PASS_KEY, null) || { score });
+        }
+        draw();
+        const r = host.querySelector(".pq-result");
+        r.scrollIntoView({ behavior: Lab.reduceMotion ? "auto" : "smooth", block: "center" });
+        r.focus({ preventScroll: true });
+      } else if (e.target.closest("[data-new]")) {
+        start(true);
+        host.scrollIntoView({ behavior: Lab.reduceMotion ? "auto" : "smooth", block: "start" });
+      }
+    });
+    start();
+  }
+
 
   const exercises = [
     { id: "l1-q1", title: "Question 1: blink timing",
@@ -1817,9 +1916,13 @@ void loop()
       { key: "l2", list: "#l2List", toc: "#l2Toc" },
       { key: "l3", list: "#l3List", toc: "#l3Toc" },
       { key: "l4", list: "#l4List", toc: "#l4Toc" },
-      { key: "tasks", list: "#tasksList", toc: "#tasksToc" }
+      { key: "l5", list: "#l5List", toc: "#l5Toc" },
+      { key: "task", list: "#taskList" }
     ],
     exercises, exList: "#exList", exerciseCarousel: true
   });
-  quiz($("#quizBox"), QUIZ);
+  mountPrelab($("#quizBox"));
+  setLock(store.get(PASS_KEY, null));
+  // A link straight to the locked task lands on the lock notice instead
+  if (!store.get(PASS_KEY, null) && /^#demo/.test(location.hash)) setTimeout(() => $("#labtask").scrollIntoView(), 0);
 })();

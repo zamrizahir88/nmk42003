@@ -771,7 +771,7 @@
     if (pager) {
       const built = COURSE.labs.filter((l) => l.page), i = built.indexOf(lab), prev = built[i - 1], next = built[i + 1];
       const link = (l, dir) => `<a href="${esc(l.page)}"><small>${dir}</small>${esc(l.title)}</a>`;
-      pager.innerHTML = `<span>${prev ? link(prev, "Previous") : `<a href="labs.html"><small>Back</small>All labs and references</a>`}</span>` +
+      pager.innerHTML = `<span>${prev ? link(prev, "Previous") : `<a href="labs.html"><small>Back</small>All laboratory experiments</a>`}</span>` +
         `<span style="text-align:right">${next ? link(next, "Next") : ""}</span>`;
     }
   }
