@@ -362,3 +362,54 @@ button.set-dev:hover { border-color: #2f7de0; }
 .web.err, .web.blank { font-family: var(--sans); color: #444; font-size: .9rem; }
 .err-h { font-weight: 600; font-size: 1.05rem; color: #222; }
 .wf-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ---------- Lab tasks: switch bench, task cards, demo brief ---------- */
+.rail-p { stroke: #d93a2b; stroke-width: 2; }
+.wire.y { stroke: #e0a800; }
+.scene .bb-t.sm, .scene .wl.sm { font-size: 11px; }
+.sw { cursor: pointer; }
+.sw:focus { outline: none; }
+.sw:focus-visible .sw-body { stroke: var(--focus); stroke-width: 3; }
+.sw-body { fill: #2b3640; stroke: #11181f; stroke-width: 1.5; }
+.sw-slot { fill: #11181f; }
+.sw-lever { fill: #c9d1d8; stroke: #6d7a86; }
+.sw-lever.on { fill: #ffd27a; stroke: #a86e00; }
+.sw:hover .sw-lever { filter: brightness(1.08); }
+.scene .sw-t { fill: #1c2a36; font: 700 10px var(--sans); }
+.rd rect { fill: var(--surface); stroke: var(--rule); }
+.scene .rd-l { font: 10.5px ui-monospace, Consolas, monospace; fill: var(--ink-3); }
+.scene .rd-v { font: 700 13px ui-monospace, Consolas, monospace; fill: var(--ink-2); }
+.scene .rd-v.hi { fill: var(--teal); }
+.scene.bench { min-width: 460px; max-width: 640px; margin: 0 auto; }
+.task-sim { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; align-items: start; margin: 8px 0 12px; }
+@media (max-width: 860px) { .task-sim { grid-template-columns: minmax(0, 1fr); } }
+.task-sim > * { min-width: 0; }
+.task-sim .scene-box { margin: 0; }
+.task-side { display: grid; gap: 10px; justify-items: start; }
+.task-side > * { max-width: 100%; }
+.task-side .strip-box, .task-side .serial { width: 100%; margin: 0; }
+.task-side .pv-read { margin: 0; min-height: 0; }
+.sw-blocks { margin: 6px 0 4px; }
+.ai-switch { font-size: 1.2rem; font-weight: 600; padding: 10px 16px; border-radius: 6px; background: #bdbdbd; color: #222; min-width: 160px; }
+.ai-switch.on { background: #22d32b; }
+.web h2 { font-size: 1.2rem; margin: 8px 0; color: #000; }
+.web-note { font: 12px Arial, sans-serif; color: #666; margin-top: 12px; }
+.sim-side .chips-row { margin: 0; }
+.demo-me { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 12px 16px; max-width: 720px; }
+.demo-me label { display: block; font-weight: 500; font-size: .92rem; margin-bottom: 6px; }
+.demo-me input { font: inherit; height: 40px; padding: 0 10px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); width: 14em; max-width: 100%; }
+@media (max-width: 860px) { .demo-me input { font-size: 16px; height: 44px; } }
+.demo-vals { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.demo-vals .small-note { flex-basis: 100%; margin: 2px 0 0; }
+.dv { background: var(--teal-soft); border-radius: var(--r-sm); padding: 6px 12px; display: grid; }
+.dv span { font-size: .8rem; color: var(--ink-2); }
+.dv strong { font-size: 1.1rem; color: var(--teal); }
+.demo-fig { max-width: 640px; }
+.demo-fig .plot { min-width: 460px; }
+.demo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 12px; margin: 12px 0; }
+.task-card { background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--teal); border-radius: var(--r-md); padding: 12px 16px; }
+.task-card h4 { font-family: var(--serif); font-size: 1.05rem; margin: 0 0 6px; }
+.task-card ol { margin: 0; padding-left: 1.2em; color: var(--ink-2); }
+.task-card li { margin-bottom: 6px; }
+.task-card p { margin: 0 0 8px; color: var(--ink-2); }
+.task-card strong { color: var(--ink); }

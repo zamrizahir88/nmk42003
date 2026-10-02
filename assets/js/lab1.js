@@ -166,11 +166,12 @@
     ["ESP32 Wi-Fi module and micro-USB cable", "The ESP32 DevKit V1 (30 pins). The cable powers it and carries the program."],
     ["Breadboard", "Holds the capacitor, and later the LED and resistor."],
     ["0.47 µF capacitor", "Goes between EN and GND, for automatic programming mode."],
-    ["Toggle switch", "An input for the lab tasks."],
+    ["Toggle switch", "An input for the lab tasks, on GPIO33."],
     ["LED", "The external LED on GPIO32 in Lesson 4."],
     ["Resistor", "In series with the LED, to limit its current."],
-    ["Male-female jumper wires (4×)", "From the board's pins to the breadboard."],
-    ["Mobile phone", "Runs the Bluetooth terminal, your App Inventor app and the web page."]
+    ["Male-female jumper wires (at least 7)", "From the board's pins to the breadboard: 4 for the capacitor and LED, 3 more for the switch."],
+    ["Mobile phone", "Runs the Bluetooth terminal, your App Inventor app and the web page."],
+    ["10 kΩ resistor (only for a 2-pin switch)", "Pulls the switch input up to 3.3 V. Not needed with a 3-pin switch."]
   ];
   const SOFT = [
     ["Web browser", "For TUNIOT, App Inventor and the ESP32's own web pages.", ""],
@@ -1153,6 +1154,474 @@ Answer: send the web page back`;
   }
 
   /* =====================================================================
+     LAB TASKS (section 8): a toggle switch on GPIO33
+     The bench: breadboard with a 3V3 rail and a GND rail, the switch, the LED on GPIO32, the board.
+     ON is always the lever on the left (pin A). 3-pin switch: A → 3V3, B → GND, middle (C) → GPIO33.
+     2-pin switch: A → GND, C → GPIO33, plus a 10 kΩ pull-up (or nothing: a floating input).
+     ===================================================================== */
+  const BX = 130, BY = 150;
+  // GPIO33 reading for a wiring type and switch position (null = floating: random)
+  const swRead = (type, on) => (type === "spdt" ? (on ? 1 : 0) : on ? 0 : type === "pull" ? 1 : null);
+
+  // o: { type, on, read, led2, led32, phone, hiSw }
+  function bench(o) {
+    const [cX, cY] = pinXY(BX, BY, 1, "top", "D33"), [dX, dY] = pinXY(BX, BY, 1, "top", "D32");
+    const [gX, gY] = pinXY(BX, BY, 1, "top", "GND"), [vX, vY] = pinXY(BX, BY, 1, "bot", "3V3");
+    const A = 300, C = 330, B = 360, two = o.type !== "spdt";
+    let s = `<rect class="bb" x="${BX}" y="-8" width="360" height="128" rx="6"/>`;
+    for (let x = BX + 12; x < BX + 352; x += 12) for (const y of [44, 92, 104]) s += `<circle class="bb-h" cx="${x}" cy="${y}" r="1.6"/>`;
+    s += `<line class="rail-p" x1="${BX + 8}" x2="${BX + 352}" y1="16" y2="16"/><line class="rail-n" x1="${BX + 8}" x2="${BX + 352}" y1="30" y2="30"/>`;
+    s += T(BX + 12, 10, "3V3 rail", "start", "bb-t sm") + T(BX + 12, 41, "GND rail", "start", "bb-t sm");
+    s += board(BX, BY, { pwr: true, led: o.led2, hi: ["t:D33", "t:D32", "t:GND", "b:3V3"] });
+    // rails to the board
+    s += `<path class="wire r" d="M${vX},${vY}V290H112V16H${BX + 8}"/><path class="wire g" d="M${gX},${gY}V30"/>`;
+    // switch legs and jumpers
+    s += `<path class="leg" d="M${A},64V80M${C},64V80${two ? "" : `M${B},64V80`}"/>`;
+    s += `<path class="wire y" d="M${C},80V92H${cX}V${cY}"/>`;
+    if (o.type === "spdt") s += `<path class="wire r" d="M${A},80H280V16"/><path class="wire g" d="M${B},80H390V30"/>`;
+    else s += `<path class="wire g" d="M${A},80H280V30"/>`;
+    if (o.type === "pull") s += `<path class="wire r thin" d="M${C},92H262V16"/><rect class="res-body" x="257" y="40" width="10" height="28" rx="3"/>` + T(250, 60, "10 kΩ", "end", "bb-t sm");
+    // switch body and lever (clickable)
+    s += `<g class="sw${o.hiSw ? " hl" : ""}" tabindex="0" role="button" aria-label="Toggle switch, now ${o.on ? "ON" : "OFF"}. Press to flip it.">
+      <rect class="sw-body" x="285" y="44" width="90" height="22" rx="4"/><rect class="sw-slot" x="295" y="50" width="70" height="10" rx="3"/>
+      <rect class="sw-lever${o.on ? " on" : ""}" x="${o.on ? 297 : 333}" y="36" width="30" height="20" rx="4"/>
+      ${T(o.on ? 312 : 348, 50, o.on ? "ON" : "OFF", "middle", "sw-t")}</g>`;
+    // LED on GPIO32, resistor to the GND rail
+    s += `<path class="wire r" d="M${dX},${dY}V112H473V84"/><path class="leg" d="M473,84V70M457,84V72"/><path class="wire g thin" d="M457,84H440V30"/><rect class="res-body" x="435" y="40" width="10" height="28" rx="3"/>`;
+    s += `<path class="led-dome${o.led32 ? " on" : ""}" d="M452,72V58a13,13 0 0 1 26,0V72Z"/>`;
+    s += T(cX - 4, 136, "GPIO33", "end", "wl sm") + T(dX + 4, 136, "GPIO32", "start", "wl sm");
+    const rd = o.read === null || o.read === undefined ? "?" : o.read;
+    s += `<g class="rd"><rect x="2" y="56" width="104" height="44" rx="6"/>${T(54, 74, "digitalRead(33)", "middle", "rd-l")}${T(54, 93, rd === "?" ? "?" : `${rd} (${rd ? "HIGH" : "LOW"})`, "middle", `rd-v${rd === 1 ? " hi" : ""}`)}</g>`;
+    if (o.phone) s += phoneIco(20, 170, "phone") + `<path id="${o.phone}" class="rf-link${o.link ? " on" : ""}" d="M${BX + 256},${BY + 30}C${BX + 200},${BY - 30} 90,${BY - 10} 64,${BY + 40}"/>`;
+    return `<svg class="scene bench" viewBox="0 -12 520 312" role="img" aria-label="Breadboard with a toggle switch on GPIO33 and an LED on GPIO32. The switch is ${o.on ? "ON" : "OFF"}; GPIO33 reads ${rd === "?" ? "a random value (floating)" : rd ? "HIGH" : "LOW"}.">${s}</svg>`;
+  }
+  // Click or press Enter/Space on the drawn switch, or the button next to it
+  function wireSwitch(el, flip) {
+    el.addEventListener("click", (e) => { if (e.target.closest(".sw") || e.target.closest("[data-flip]")) flip(); });
+    el.addEventListener("keydown", (e) => { if (e.target.closest && e.target.closest(".sw") && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); flip(true); } });
+  }
+  const refocusSw = (host) => { const g = host.querySelector(".sw"); if (g) g.focus(); };
+  // Run a 200 ms tick while the page is open (cheap; stops when the element leaves the page)
+  function every(el, ms, fn) { const id = setInterval(() => { if (!el.isConnected) return clearInterval(id); fn(); }, ms); return id; }
+
+  // 8 wiring: three ways to wire the switch, with a 6-second record of what GPIO33 reads
+  function mountSwWire(el) {
+    let type = "spdt", on = false, hist = [];
+    el.innerHTML = chips("Switch wiring", [["spdt", "3-pin switch (recommended)"], ["pull", "2-pin + 10 kΩ pull-up"], ["float", "2-pin, no resistor"]], "spdt") +
+      `<div class="task-sim"><figure class="scene-box"><div class="scene-scroll"><div class="bench-host"></div></div><figcaption>Tap the switch to flip it.<span class="swipe"> Swipe sideways to see all of it.</span></figcaption></figure>
+        <div class="task-side"><button type="button" class="btn" data-flip>Flip the switch</button><div class="strip-box"><div class="sw-strip"></div></div><p class="pv-read sw-read"></p></div></div>`;
+    const host = $(".bench-host", el), strip = $(".sw-strip", el), read = $(".sw-read", el);
+    const val = () => { const r = swRead(type, on); return r === null ? (Math.random() < 0.5 ? 0 : 1) : r; };
+    const draw = (focus) => {
+      const r = hist.length ? hist[hist.length - 1] : val(), fl = swRead(type, on) === null;
+      host.innerHTML = bench({ type, on, read: fl ? null : r, led2: r === 1, led32: r === 1 });
+      const W = 300, H = 80, l = 40, X = (i) => l + (i / 29) * (W - l - 10), Y = (v) => (v ? 16 : 56);
+      const pts = []; hist.forEach((v, i) => { if (i) pts.push([X(i), Y(hist[i - 1])]); pts.push([X(i), Y(v)]); });
+      strip.innerHTML = `<svg class="plot" viewBox="0 0 ${W} ${H}" role="img" aria-label="What GPIO33 read over the last 6 seconds">${T(l - 6, 20, "1", "end", "axis")}${T(l - 6, 60, "0", "end", "axis")}<line class="gl" x1="${l}" x2="${W - 10}" y1="16" y2="16"/><line class="gl" x1="${l}" x2="${W - 10}" y1="56" y2="56"/>${pts.length > 1 ? poly(pts, "trace-a") : ""}${T(W - 10, 76, "last 6 s", "end", "axis")}</svg>`;
+      read.innerHTML = type === "spdt" ? `<strong>3-pin switch.</strong> The middle pin is always joined to 3V3 (ON) or GND (OFF), so GPIO33 reads a clean <strong>${on ? "1" : "0"}</strong>. ON = 1. This is the wiring used in the tasks.`
+        : type === "pull" ? `<strong>2-pin switch with a pull-up.</strong> OFF: the 10 kΩ resistor pulls GPIO33 up to 3.3 V, so it reads 1. ON: the switch joins GPIO33 to GND, so it reads 0. It works, but <strong>ON reads 0</strong>: swap the 1 and the 0 in your program.`
+        : on ? `<strong>2-pin switch, no resistor, switch ON.</strong> GPIO33 is joined to GND and reads 0.` : `<strong>Floating input.</strong> With the switch OFF, nothing sets the voltage on GPIO33. It picks up noise and reads 0 and 1 at random, so the LEDs flicker. Add a pull-up resistor, or use a 3-pin switch.`;
+      if (focus) refocusSw(host);
+    };
+    every(el, 200, () => { hist.push(val()); if (hist.length > 30) hist.shift(); draw(); });
+    wireChips($(".chips-row", el), (v) => { type = v; draw(); });
+    wireSwitch(el, (k) => { on = !on; hist.push(val()); draw(k); });
+    draw();
+  }
+
+  /* ---------- TUNIOT blocks and code for the tasks ---------- */
+  const ifVar = (a, op, b) => inl("var", `${bf(a)} ${bf(op)} ${b}`);
+  const ledBoth = (st) => bk("led", `Integrated LED Stat ${bf(st)}`) + bk("pin", `DigitalWrite PIN# ${bf("D32")} STAT ${bf(st)}`);
+  const t81Blocks = () =>
+    bk("root", "Setup", bk("var", `Declare ${bf("SW")} as int Value ${bn(0)}`) + bk("var", `Declare ${bf("LAST")} as int Value ${bn(-1)}`)) +
+    bk("root", "Main loop",
+      bk("var", `set ${bf("SW")} to ${inl("pin", `Digital read PIN# ${bf("D33")}`)}`) +
+      bk("logic", `if ${ifVar("SW", "≠", bf("LAST"))}`,
+        bk("logic", `if ${ifVar("SW", "=", bn(1))}`, ledBoth("HIGH") + bk("print", `Print on new line ${bs("Switch ON")}`)) +
+        bk("logic", `if ${ifVar("SW", "=", bn(0))}`, ledBoth("LOW") + bk("print", `Print on new line ${bs("Switch OFF")}`)) +
+        bk("var", `set ${bf("LAST")} to ${bf("SW")}`)) +
+      bk("delay", `Delay Ms ${bn(200)}`));
+  const t81Code = () => `${HEAD}
+int SW;
+int LAST;
+
+void setup()
+{
+SW = 0;
+LAST = -1;
+Serial.begin(115200);
+pinMode(33, INPUT);
+pinMode(2, OUTPUT);
+pinMode(32, OUTPUT);
+}
+
+void loop()
+{
+
+    SW = digitalRead(33);
+    if (SW != LAST) {
+      if (SW == 1) {
+        digitalWrite(2,HIGH);
+        digitalWrite(32,HIGH);
+        Serial.println("Switch ON");
+      }
+      if (SW == 0) {
+        digitalWrite(2,LOW);
+        digitalWrite(32,LOW);
+        Serial.println("Switch OFF");
+      }
+      LAST = SW;
+    }
+    delay(200);
+
+}`;
+  const t82Blocks = () =>
+    bk("root", "Setup",
+      bk("var", `Declare ${bf("SW")} as int Value ${bn(0)}`) + bk("var", `Declare ${bf("LAST")} as int Value ${bn(-1)}`) + bk("var", `Declare ${bf("COUNT")} as int Value ${bn(0)}`) +
+      bk("bt", `Start Internal Bluetooth<br>Name ${bs(esc(btName()))}`)) +
+    bk("root", "Main loop",
+      bk("var", `set ${bf("SW")} to ${inl("pin", `Digital read PIN# ${bf("D33")}`)}`) +
+      bk("var", `set ${bf("COUNT")} to ${inl("var", `${bf("COUNT")} + ${bn(1)}`)}`) +
+      bk("logic", `if ${inl("logic", `${ifVar("SW", "≠", bf("LAST"))} or ${ifVar("COUNT", "≥", bn(10))}`)}`,
+        bk("logic", `if ${ifVar("SW", "=", bn(1))}`, ledBoth("HIGH") + bk("bt", `SerialBT print on new line ${bs("ON")}`)) +
+        bk("logic", `if ${ifVar("SW", "=", bn(0))}`, ledBoth("LOW") + bk("bt", `SerialBT print on new line ${bs("OFF")}`)) +
+        bk("var", `set ${bf("LAST")} to ${bf("SW")}`) + bk("var", `set ${bf("COUNT")} to ${bn(0)}`)) +
+      bk("delay", `Delay Ms ${bn(200)}`));
+  const t82Code = () => `${HEAD}#include "BluetoothSerial.h"
+
+int SW;
+int LAST;
+int COUNT;
+BluetoothSerial SerialBT;
+
+void setup()
+{
+SW = 0;
+LAST = -1;
+COUNT = 0;
+SerialBT.begin("${btName()}");
+pinMode(33, INPUT);
+pinMode(2, OUTPUT);
+pinMode(32, OUTPUT);
+}
+
+void loop()
+{
+
+    SW = digitalRead(33);
+    COUNT = COUNT + 1;
+    if (SW != LAST || COUNT >= 10) {      // on a change, or every 10 × 200 ms = 2 s
+      if (SW == 1) {
+        digitalWrite(2,HIGH);
+        digitalWrite(32,HIGH);
+        SerialBT.println("ON");
+      }
+      if (SW == 0) {
+        digitalWrite(2,LOW);
+        digitalWrite(32,LOW);
+        SerialBT.println("OFF");
+      }
+      LAST = SW;
+      COUNT = 0;
+    }
+    delay(200);
+
+}`;
+  const AI_RX = () => bk("ai-ev", `when ${bf("Clock1")} .Timer`,
+    bk("ai-ctl", `if ${inl("ai-call", `${inl("ai-get", `${bf("BluetoothClient1")} . ${bf("IsConnected")}`)} and ${inl("ai-get", `${bf("BluetoothClient1")} . ${bf("BytesAvailableToReceive")}`)} &gt; ${bn(0)}`)}`,
+      bk("ai-set", `then set ${bf("Label_Switch")} . ${bf("Text")} to ${inl("ai-text", `join “ Switch: ” ${inl("ai-text", `trim ${inl("ai-call", `call ${bf("BluetoothClient1")} .ReceiveText<br>numberOfBytes ${bn(-1)}`)}`)}`)}`)));
+  const t83Blocks = () =>
+    bk("root", "Setup", `<span class="bk-empty">The same Setup blocks as Lesson 4 (join the Wi-Fi, print the IP, your name and the MAC, Start Server Port 80)</span>` +
+      bk("var", `Declare ${bf("SW")} as int Value ${bn(0)}`) + bk("var", `Declare ${bf("STATE")} as String Value ${bs("OFF")}`)) +
+    bk("root", "Main loop",
+      bk("var", `set ${bf("SW")} to ${inl("pin", `Digital read PIN# ${bf("D33")}`)}`) +
+      bk("logic", `if ${ifVar("SW", "=", bn(1))}`, bk("var", `set STRING ${bf("STATE")} to ${bs("ON")}`) + ledBoth("HIGH")) +
+      bk("logic", `if ${ifVar("SW", "=", bn(0))}`, bk("var", `set STRING ${bf("STATE")} to ${bs("OFF")}`) + ledBoth("LOW")) +
+      bk("wifi", "Wait Connection") +
+      bk("var", `set STRING ${bf("ClientRequest")} to ${inl("wifi", "Server Read request")}`) +
+      bk("wifi", "client flush") +
+      bk("wbk", "Answer Web page",
+        bk("wbk", `Head ${inl("wbk", `Web page HTML ${bs("&lt;meta http-equiv='refresh' content='1'&gt;&lt;title&gt;Switch Monitor&lt;/title&gt;")}`)}`) +
+        bk("wbk", `Body ${inl("wbk", `Heading ${bf("1")} Text ${bs("Switch Monitor")}`)}`) +
+        bk("wbk", `${inl("wbk", `Heading ${bf("2")} Text ${inl("var", `join ${bs("Switch: ")} ${bf("STATE")}`)}`)}`) +
+        bk("wbk", `${inl("wbk", `Heading ${bf("2")} Text ${inl("var", `join ${bs("LEDs: ")} ${bf("STATE")}`)}`)}`)));
+  const t83Code = () => `${HEAD}#include <WiFi.h>
+
+String ClientRequest;
+int SW;
+String STATE;
+WiFiServer server(80);
+WiFiClient client;
+
+void setup()
+{
+ClientRequest = "";
+SW = 0;
+STATE = "OFF";
+Serial.begin(115200);
+pinMode(33, INPUT);
+pinMode(2, OUTPUT);
+pinMode(32, OUTPUT);
+  WiFi.disconnect();
+  delay(1000);
+  Serial.println("Searching for an access point (AP)");
+  WiFi.begin("${SSID}","Password");
+  while ((!(WiFi.status() == WL_CONNECTED))){
+    delay(1000);
+    Serial.println("Waiting for an IP address");
+  }
+  Serial.println("Obtained an IP address");
+  Serial.println((WiFi.localIP()));
+  Serial.println("${who()}");
+  Serial.println((WiFi.macAddress()));
+  server.begin();
+}
+
+void loop()
+{
+    SW = digitalRead(33);               // read the switch first, every loop
+    if (SW == 1) {
+      STATE = "ON";
+      digitalWrite(2,HIGH);
+      digitalWrite(32,HIGH);
+    }
+    if (SW == 0) {
+      STATE = "OFF";
+      digitalWrite(2,LOW);
+      digitalWrite(32,LOW);
+    }
+    client = server.available();
+    if (!client) { return; }
+    while(!client.available()){  delay(1); }
+    ClientRequest = (client.readStringUntil('\\r'));
+    client.flush();
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: text/html");
+    client.println("");
+    client.println("<!DOCTYPE HTML>");
+    client.println("<html>");
+    client.println("<head>");
+    client.println("<meta http-equiv='refresh' content='1'><title>Switch Monitor</title>");
+    client.println("</head>");
+    client.println("<body>");
+    client.println("<h1>Switch Monitor</h1>");
+    client.println("<h2>Switch: " + STATE + "</h2>");
+    client.println("<h2>LEDs: " + STATE + "</h2>");
+    client.println("</body>");
+    client.println("</html>");
+    client.stop();
+    delay(1);
+}`;
+  const stateCode = `    // Optional: a plain-text reply for an App Inventor app (put it before the HTML page)
+    if (ClientRequest.indexOf("/state") > 0) {
+      client.println("HTTP/1.1 200 OK");
+      client.println("Content-Type: text/plain");
+      client.println("");
+      client.println(STATE);
+      client.stop();
+      return;
+    }`;
+  const AI_WEB = () =>
+    bk("ai-ev", `when ${bf("Clock1")} .Timer`, bk("ai-set", `set ${bf("Web1")} . ${bf("Url")} to ${inl("ai-text", `“ http://${IP}/state ”`)}`) + bk("ai-call", `call ${bf("Web1")} .Get`)) +
+    bk("ai-ev", `when ${bf("Web1")} .GotText<br><small>url, responseCode, responseType, responseContent</small>`, bk("ai-set", `set ${bf("Label_Switch")} . ${bf("Text")} to ${inl("ai-text", `join “ Switch: ” ${inl("ai-text", `trim ${inl("ai-get", "get responseContent")}`)}`)}`));
+
+  const blocksAndCode = (blocks, code, file, label) => `<div class="bc-grid"><div>${ws(blocks, label)}</div><div>${codeBlock(code, file)}</div></div>
+    <p class="small-note">TUNIOT may name a few blocks slightly differently. What matters is that your Arduino code does the same.</p>`;
+
+  function mountT81(el) {
+    let on = false, last = -1, so;
+    el.innerHTML = `<div class="sw-blocks"></div>
+      <h4 class="sub-h">Try it</h4>
+      <div class="task-sim"><figure class="scene-box"><div class="scene-scroll"><div class="bench-host"></div></div><figcaption>Tap the switch to flip it.<span class="swipe"> Swipe sideways to see all of it.</span></figcaption></figure>
+        <div class="task-side"><button type="button" class="btn" data-flip>Flip the switch</button>${serialBox()}<p class="pv-read t81-read"></p></div></div>`;
+    const host = $(".bench-host", el), read = $(".t81-read", el);
+    so = serialOut($(".serial", el));
+    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(t81Blocks(), t81Code(), "task_8_1.ino", "TUNIOT blocks for task 8.1"); };
+    const step_ = (focus) => {
+      const sw = on ? 1 : 0;
+      if (sw !== last) { so.add(sw ? "Switch ON" : "Switch OFF"); last = sw; }
+      host.innerHTML = bench({ type: "spdt", on, read: sw, led2: !!sw, led32: !!sw });
+      read.innerHTML = `The loop reads GPIO33 every 200 ms. It only prints when <code>SW</code> is different from <code>LAST</code>, so each flip gives exactly <strong>one line</strong>. Both LEDs follow the switch.`;
+      if (focus) refocusSw(host);
+    };
+    wireSwitch(el, (k) => { on = !on; step_(k); });
+    onName(blocks);
+    blocks(); step_();
+  }
+
+  function mountT82(el) {
+    let on = false, connected = false, list = false, status = "Not Connected", label = "Switch: --", last = -1, count = 0, busy = false, sent = "";
+    el.innerHTML = `<div class="sw-blocks"></div>
+      <h4 class="sub-h">Add to your Lesson 3 app</h4>
+      <ul class="what"><li>A <strong>Label</strong> named <code>Label_Switch</code>, text <code>Switch: --</code>.</li>
+        <li>A <strong>Clock</strong> (Sensors palette), TimerInterval <strong>200</strong> ms.</li>
+        <li>On <code>BluetoothClient1</code>, set <strong>DelimiterByte = 10</strong>. That is the line-feed character that <code>println</code> puts at the end of each message, so <code>ReceiveText</code> with −1 reads exactly one message.</li></ul>
+      ${ws(AI_RX(), "App Inventor block that receives the switch state")}
+      <h4 class="sub-h">Try it</h4>
+      <div class="sim-grid"><div class="sim-phone">${phoneFrame("Phone app")}</div>
+        <div class="sim-side"><figure class="scene-box"><div class="scene-scroll"><div class="bench-host"></div></div></figure>
+          <div class="wf-row"><button type="button" class="btn" data-flip>Flip the switch</button></div>
+          <div class="esp-in"><h4>Inside the ESP32</h4><pre class="esp-vars" aria-live="polite"></pre></div><p class="pv-read t82-read"></p></div></div>`;
+    const host = $(".bench-host", el), screen = $(".ph-screen", el), vars = $(".esp-vars", el), read = $(".t82-read", el);
+    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(t82Blocks(), t82Code(), "task_8_2.ino", "TUNIOT blocks for task 8.2"); };
+    const drawBench = (focus) => { host.innerHTML = bench({ type: "spdt", on, read: on ? 1 : 0, led2: on, led32: on, phone: "t82Path", link: connected }); if (focus) refocusSw(host); };
+    const render = () => {
+      const lst = list ? `<div class="ai-list" role="dialog" aria-label="Choose a device"><p class="ai-list-h">Choose a device</p><button type="button" class="ai-li" data-pick="esp">${esc(MAC)} ${esc(btName())}</button><button type="button" class="ai-li cancel" data-pick="">Cancel</button></div>` : "";
+      screen.innerHTML = `<div class="ai-app"><div class="app-bar ai">Screen1</div><div class="ai-body">
+          <div class="ai-title">Switch Monitor</div>
+          <div class="ai-row"><button type="button" class="ai-btn blue" data-c="ListPicker_BT">Connect Bluetooth</button><span class="ai-status">${esc(status)}</span></div>
+          <div class="ai-switch${/ON$/.test(label) ? " on" : ""}" aria-live="polite">${esc(label)}</div>
+          <div class="ai-by">Created by ${esc(who())}</div></div>${lst}</div>`;
+    };
+    const showVars = () => {
+      vars.textContent = `SW = digitalRead(33)   → ${on ? 1 : 0}\nLAST = ${last}   COUNT = ${count}\n${sent ? `Last sent: SerialBT.println("${sent}")` : "Nothing sent yet"}${connected ? "" : "\n(no phone connected: nothing is received)"}`;
+    };
+    async function send(txt) {
+      sent = txt; showVars();
+      if (!connected) return;
+      busy = true;
+      await fly($("svg", host), $("#t82Path", host).getAttribute("d"), txt, 700);
+      busy = false;
+      label = `Switch: ${txt}`; render();
+    }
+    // The ESP32's loop, every 200 ms
+    every(el, 200, () => {
+      const sw = on ? 1 : 0;
+      count++;
+      if (sw !== last || count >= 10) { last = sw; count = 0; send(sw ? "ON" : "OFF"); }
+      showVars();
+    });
+    el.addEventListener("click", async (e) => {
+      const b = e.target.closest("button");
+      if (!b || !screen.contains(b)) return;
+      if (b.dataset.c === "ListPicker_BT") { list = true; render(); const f = $(".ai-li", screen); if (f) f.focus(); }
+      else if (b.dataset.pick !== undefined) {
+        list = false;
+        if (!b.dataset.pick) { render(); return; }
+        status = "Connecting…"; render(); await sleep(800);
+        connected = true; status = "BT is now connected"; drawBench(); render();
+        read.innerHTML = `Connected. Within 2 s the ESP32's regular update arrives, then flip the switch: the label changes within about half a second.`;
+      }
+    });
+    wireSwitch(el, (k) => { on = !on; drawBench(k); });
+    onName(() => { blocks(); render(); });
+    blocks(); drawBench(); render(); showVars();
+    read.innerHTML = `Tap <strong>Connect Bluetooth</strong> and choose your ESP32, then flip the switch. The ESP32 sends on every change, and again every 2 s so a phone that connects later still gets the state.`;
+  }
+
+  function mountT83(el) {
+    let on = false, loaded = false, auto = true, loads = 0, pageState = "OFF", url = IP;
+    el.innerHTML = `<div class="sw-blocks"></div>
+      ${fold("Optional: show it in an App Inventor app instead", `<p>Add a path that replies with just <code>ON</code> or <code>OFF</code> as plain text. In the Arduino IDE, put these lines straight after <code>client.flush();</code>:</p>
+        ${codeBlock(stateCode, "Add to task_8_3.ino")}
+        <p>In the app, add a <strong>Web</strong> component (Connectivity), a <strong>Clock</strong> (TimerInterval 1000 ms) and a <code>Label_Switch</code>. The app asks <code>http://${IP}/state</code> every second:</p>
+        ${ws(AI_WEB(), "App Inventor blocks that read the switch state over Wi-Fi")}`)}
+      <h4 class="sub-h">Try it</h4>
+      <div class="sim-grid"><div class="sim-phone">${phoneFrame("Phone web browser")}</div>
+        <div class="sim-side"><figure class="scene-box"><div class="scene-scroll"><div class="bench-host"></div></div></figure>
+          <div class="wf-row"><button type="button" class="btn" data-flip>Flip the switch</button></div>
+          ${chips("Auto refresh", [["1", "With the refresh tag"], ["0", "Without it"]], "1")}
+          ${serialBox()}<p class="pv-read t83-read"></p></div></div>`;
+    const host = $(".bench-host", el), screen = $(".ph-screen", el), read = $(".t83-read", el), so = serialOut($(".serial", el));
+    ["Obtained an IP address", IP, who(), MAC].forEach((x) => so.add(x));
+    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(t83Blocks(), t83Code(), "task_8_3.ino", "TUNIOT blocks for task 8.3"); };
+    const drawBench = (focus) => { host.innerHTML = bench({ type: "spdt", on, read: on ? 1 : 0, led2: on, led32: on }); if (focus) refocusSw(host); };
+    screen.innerHTML = `<form class="br-bar ph" data-go><input type="text" inputmode="url" aria-label="Address" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(url)}"><button type="submit" class="go-b">Go</button></form><div class="br-view"></div>`;
+    const view = $(".br-view", screen), go = $(".go-b", screen);
+    // Only the page area and the Go button change, so typing in the address bar is never interrupted
+    const render = (spin) => {
+      view.innerHTML = loaded
+        ? `<div class="web"><h1>Switch Monitor</h1><h2>Switch: ${pageState}</h2><h2>LEDs: ${pageState}</h2><p class="web-note">Page loaded ${loads} time${loads === 1 ? "" : "s"}</p></div>`
+        : `<div class="web blank"><p>Type the ESP32's IP address, then tap Go.</p></div>`;
+      go.textContent = spin ? "↻" : "Go";
+    };
+    const load = () => { loads++; pageState = on ? "ON" : "OFF"; loaded = true; render(true); setTimeout(() => { if (el.isConnected) go.textContent = "Go"; }, 250); };
+    every(el, 1000, () => { if (loaded && auto) load(); });
+    el.addEventListener("submit", (e) => {
+      if (!e.target.matches("[data-go]")) return;
+      e.preventDefault();
+      url = e.target.querySelector("input").value.trim().replace(/^https?:\/\//i, "").replace(/\/$/, "");
+      if (url !== IP) { loaded = false; render(); read.innerHTML = `No device at <code>${esc(url || "(blank)")}</code>. The Serial Monitor shows <strong>${IP}</strong>.`; return; }
+      load();
+      read.innerHTML = auto ? `The page reloads itself every second, so flip the switch and watch it follow.` : `Without the refresh tag the page only changes when you tap Go again.`;
+    });
+    wireChips($(".chips-row", el), (v) => {
+      auto = v === "1";
+      read.innerHTML = auto ? `With <code>&lt;meta http-equiv='refresh' content='1'&gt;</code> the browser asks for the page again every second, so it keeps up with the switch.`
+        : `Without the tag the browser shows the page from the last time it loaded it. Flip the switch: the page doesn't change until you tap Go. The ESP32 can't push a change to the browser; the browser has to ask.`;
+    });
+    wireSwitch(el, (k) => { on = !on; drawBench(k); });
+    onName(blocks);
+    blocks(); drawBench(); render();
+    read.innerHTML = `The ESP32 is already on the Wi-Fi (see the Serial Monitor). Tap <strong>Go</strong> in the phone's browser, then flip the switch.`;
+  }
+
+  /* ---------- Demo task D1: brief only, with values from the student's matric number ---------- */
+  const DEMO_PINS = [33, 25, 26, 27, 14];
+  const demoVals = (m) => {
+    const d = String(m || "").replace(/\D/g, "");
+    if (d.length < 3) return null;
+    const d1 = +d[d.length - 1], d2 = +d[d.length - 2], d3 = +d[d.length - 3];
+    return { on: ((d1 % 5) + 1) * 200, off: ((d2 % 5) + 2) * 200, pin: DEMO_PINS[d3 % 5], d1, d2, d3 };
+  };
+  function demoTiming(v) {
+    // Expected behaviour: switch ON at 1 s, OFF at 7 s, window 0 to 10 s
+    const W = 520, H = 170, l = 92, r = 12, X = (t) => l + (t / 10) * (W - l - r), tOn = 1, tOff = 7;
+    const rows = [["Switch", 30], ["Built-in LED", 80], ["GPIO32 LED", 130]];
+    const sw = (t) => t >= tOn && t < tOff;
+    const ext = (t) => {
+      if (t < tOn) return 0;
+      if (t < tOff) { const p = (v.on + v.off) / 1000, k = (t - tOn) % p; return k < v.on / 1000 ? 1 : 0; }
+      const k = t - tOff; return k < 0.6 && (k % 0.2) < 0.1 ? 1 : 0;
+    };
+    const intl = (t) => (t >= tOn && t < tOff + 0.6 ? 1 : 0);
+    let s = "";
+    for (let k = 0; k <= 10; k++) s += `<line class="gl" x1="${X(k)}" x2="${X(k)}" y1="14" y2="${H - 22}"/>` + T(X(k), H - 6, k + (k === 10 ? " s" : ""), "middle", "axis");
+    [sw, intl, ext].forEach((f, i) => {
+      const y0 = rows[i][1], pts = []; let prev = null;
+      for (let j = 0; j <= 2000; j++) { const t = (j / 2000) * 10, y = f(t) ? y0 - 14 : y0 + 6; if (prev !== null && prev !== y) pts.push([X(t), prev]); pts.push([X(t), y]); prev = y; }
+      s += T(l - 8, y0 + 2, rows[i][0], "end", "axl") + poly(pts, i ? "trace-a" : "trace-d");
+    });
+    s += T(X(tOn), 10, "switch ON", "middle", "axis") + T(X(tOff), 10, "switch OFF", "middle", "axis");
+    return `<svg class="plot" viewBox="0 0 ${W} ${H}" role="img" aria-label="Expected timing: the switch turns on at 1 second and off at 7 seconds. While on, the built-in LED is on and the GPIO32 LED blinks ${v.on} ms on, ${v.off} ms off. After the switch turns off, the GPIO32 LED flashes 3 times quickly, then both LEDs are off.">${s}</svg>`;
+  }
+  function mountDemo(el) {
+    el.innerHTML = `<div class="demo-me"><label for="matric">Your matric number</label><div class="name-row"><input id="matric" type="text" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="e.g. 251234567"></div>
+        <div class="demo-vals" aria-live="polite"></div></div>
+      <div class="demo-tl"></div>
+      <div class="demo-grid">
+        <div class="task-card"><h4>Requirements</h4><ol>
+          <li>Wire the toggle switch (3-pin) to <strong class="dv-pin">your GPIO</strong>, and keep the LED on GPIO32.</li>
+          <li><strong>Switch ON:</strong> the built-in LED turns on, and the GPIO32 LED blinks: on for <strong class="dv-on">T<sub>on</sub></strong>, off for <strong class="dv-off">T<sub>off</sub></strong>, again and again.</li>
+          <li><strong>Switch OFF:</strong> the GPIO32 LED flashes <strong>3 times</strong> quickly (100 ms on, 100 ms off), then both LEDs turn off and stay off.</li>
+          <li>The Serial Monitor shows <code>Pattern running</code> when the pattern starts and <code>Pattern stopped</code> when it stops: once each time, not over and over.</li>
+          <li>It is fine if the LED finishes its current blink before reacting to the switch.</li></ol></div>
+        <div class="task-card"><h4>Extension: choose one</h4>
+          <p><strong>A. Bluetooth:</strong> your app shows <code>Pattern: RUNNING</code> or <code>Pattern: STOPPED</code>.</p>
+          <p><strong>B. Wi-Fi:</strong> a web page from the ESP32 shows the same, and updates by itself.</p>
+          <p class="small-note">Doing both in one program is an extra challenge: the program gets large, and the web server has to answer while the LED is blinking.</p></div>
+        <div class="task-card"><h4>At the demo, be ready to</h4><ol>
+          <li>show every requirement working on your own board and phone;</li>
+          <li>make a change the lecturer asks for on the spot (for example a new blink time or another GPIO), and upload it in a few minutes;</li>
+          <li>answer two short questions about your circuit and program.</li></ol></div>
+      </div>`;
+    const out = $(".demo-vals", el), tl = $(".demo-tl", el), inp = $("#matric", el);
+    const paint = () => {
+      const v = demoVals(inp.value), show = v || { on: 600, off: 800, pin: 33 };
+      out.innerHTML = v
+        ? `<div class="dv"><span>T<sub>on</sub></span><strong>${v.on} ms</strong></div><div class="dv"><span>T<sub>off</sub></span><strong>${v.off} ms</strong></div><div class="dv"><span>Switch pin</span><strong>GPIO${v.pin}</strong></div>
+           <p class="small-note">From the last three digits (${v.d3}, ${v.d2}, ${v.d1}): T<sub>on</sub> = (${v.d1} mod 5 + 1) × 200 ms, T<sub>off</sub> = (${v.d2} mod 5 + 2) × 200 ms, pin = list [33, 25, 26, 27, 14] at position ${v.d3} mod 5.</p>`
+        : `<p class="small-note">Type your matric number to get your own blink times and switch pin. Nothing is saved or sent anywhere. The chart below uses example values until then.</p>`;
+      el.querySelector(".dv-pin").textContent = `GPIO${show.pin}`;
+      el.querySelector(".dv-on").innerHTML = `${show.on} ms`;
+      el.querySelector(".dv-off").innerHTML = `${show.off} ms`;
+      tl.innerHTML = `<figure class="scene-box demo-fig"><div class="scene-scroll">${demoTiming(show)}</div><figcaption>What it should look like: the switch is turned ON at 1 s and OFF at 7 s${v ? "" : " (example values)"}.<span class="swipe"> Swipe sideways to see all of it.</span></figcaption></figure>`;
+    };
+    inp.addEventListener("input", paint);
+    paint();
+  }
+
+  /* =====================================================================
      Sections
      ===================================================================== */
   const W_ = (steps, h = "Working") => `<div class="working"><h4>${h}</h4><ol class="steps">${stepsHtml(steps)}</ol></div>`;
@@ -1251,7 +1720,36 @@ Answer: send the web page back`;
       mount: mountWifiBlocks },
     { id: "wifirun", group: "l4", title: "Try it: control the LED from a browser", toc: "Try it",
       intro: `<p>Upload the code and open the Serial Monitor to get the IP address. Then type it into a browser on your phone (on the same Wi-Fi network) and use the buttons.</p>`,
-      mount: mountWifiRun }
+      mount: mountWifiRun },
+
+    { id: "swwire", group: "tasks", title: "Wiring the toggle switch", toc: "Switch wiring",
+      intro: `<p>All three tasks start from the Lesson 4 circuit (LED on GPIO32) and add a toggle switch on <strong>GPIO33</strong>.</p>
+        <ul class="what"><li><strong>3-pin switch (use this):</strong> middle pin to GPIO33, one outer pin to 3V3, the other outer pin to GND. GPIO33 is always joined to 3.3 V or to 0 V, so no resistor is needed. ON reads 1.</li>
+        <li><strong>2-pin switch:</strong> one pin to GPIO33, the other to GND, and a 10 kΩ resistor from GPIO33 to 3V3. Here ON reads 0.</li></ul>
+        <p>You need 3 more male-female jumper wires. Try all three wirings below, including what happens with no resistor.</p>`,
+      mount: mountSwWire,
+      after: `<div class="callout info"><strong>Good to know: choosing an input pin</strong>GPIO33 is a safe choice. Avoid GPIO2 (the built-in LED), GPIO0, 5, 12 and 15 (they decide how the ESP32 starts), TX0 and RX0 (used for uploading) and GPIO32 (the LED). GPIO34 to 39 work as inputs, but they have no internal pull-up or pull-down resistors.</div>` },
+    { id: "t81", group: "tasks", title: "Task 8.1: monitor the switch", toc: "8.1 Serial Monitor",
+      intro: `<ol class="what" type="a"><li>Wire the toggle switch to GPIO33 as above.</li>
+        <li>In TUNIOT, read GPIO33 every 200 ms. When the switch is ON, turn on the built-in LED (GPIO2) and the external LED (GPIO32). When it is OFF, turn both off.</li>
+        <li>Print <code>Switch ON</code> or <code>Switch OFF</code> on the Serial Monitor (115200 baud), <strong>only when the state changes</strong>.</li></ol>
+        <p><strong>Check:</strong> flip the switch 5 times. Both LEDs follow it, and the Serial Monitor shows exactly one line per flip.</p>`,
+      mount: mountT81 },
+    { id: "t82", group: "tasks", title: "Task 8.2: show the switch on your phone by Bluetooth", toc: "8.2 Bluetooth",
+      intro: `<ol class="what" type="a"><li>Use the Bluetooth name <code>ESP32_YourName</code>. Send <code>ON</code> or <code>OFF</code> (print on new line) when the switch changes, and again every 2 s, so the app catches up after it connects. The LEDs still follow the switch.</li>
+        <li>In MIT App Inventor, add a label, a Clock and the receiving block below to your Lesson 3 app, so it shows the switch state.</li></ol>
+        <p><strong>Check:</strong> the app shows the new state within 1 s of flipping the switch. (Android phone needed, as in Lessons 2 and 3.)</p>`,
+      mount: mountT82 },
+    { id: "t83", group: "tasks", title: "Task 8.3: show the switch on a web page", toc: "8.3 Wi-Fi",
+      intro: `<ol class="what" type="a"><li>Change the Lesson 4 web server so the page shows <code>Switch: ON/OFF</code> and <code>LEDs: ON/OFF</code>. The LEDs still follow the switch.</li>
+        <li>Add <code>&lt;meta http-equiv='refresh' content='1'&gt;</code> in the page's Head, so the browser reloads the page every second.</li></ol>
+        <p><strong>Check:</strong> the page updates within 2 s of flipping the switch.</p>`,
+      mount: mountT83,
+      after: `<div class="callout info"><strong>Good to know</strong>Read the switch <em>before</em> the <em>Wait Connection</em> block. That block leaves the loop early when no browser is asking, so anything after it only runs when the page is loaded.</div>` },
+    { id: "demo", group: "tasks", title: "Demo task: your own blink pattern", toc: "Demo task",
+      intro: `<p>This is the task you build <strong>on your own</strong> and show in the lab. It uses everything from Lessons 1 to 4 and tasks 8.1 to 8.3, but there is no worked solution here. Your blink times and switch pin come from your matric number, so everyone's program is a little different.</p>
+        <p class="small-note">Plan first: write the steps as a short flowchart before you build the blocks.</p>`,
+      mount: mountDemo }
   ];
 
   /* =====================================================================
@@ -1267,6 +1765,8 @@ Answer: send the web page back`;
     { q: "What does the ListPicker show when you tap it?", opts: ["The paired Bluetooth devices", "The Wi-Fi networks nearby", "The LED's state", "The ESP32's IP address"], a: 0, why: "Its BeforePicking block sets its Elements to <code>BluetoothClient1.AddressesAndNames</code>." },
     { q: "In Lesson 4, how do you find the address to type into the browser?", opts: ["Read the IP address on the Serial Monitor", "It's printed on the ESP32 board", "Use the Bluetooth name", "It's always 192.168.4.1"], a: 0, why: "The router gives the ESP32 an IP address when it joins, and the program prints it on the Serial Monitor." },
     { q: "Which way round does the external LED go?", opts: ["Long leg (anode) to GPIO32, short leg towards GND", "Long leg to GND", "Either way works", "Both legs to GPIO32"], a: 0, why: "Current flows from anode (long leg) to cathode (short leg). Reversed, it stays off." },
+    { q: "A 2-pin switch is wired from GPIO33 to GND with no resistor. With the switch OFF, what does GPIO33 read?", opts: ["0 and 1 at random (a floating input)", "Always 1", "Always 0", "The ESP32 resets"], a: 0, why: "Nothing sets the voltage on an open input, so it picks up noise. A pull-up resistor or a 3-pin switch fixes it." },
+    { q: "Your switch web page only changes when you reload it. What makes it update by itself?", opts: ["A refresh tag in the page head", "A faster delay in the loop", "A bigger resistor", "Pairing by Bluetooth"], a: 0, why: "The ESP32 can't push a change to the browser. <code>&lt;meta http-equiv='refresh' content='1'&gt;</code> makes the browser ask again every second." },
     { q: "The Serial Monitor shows random symbols. What do you check first?", opts: ["The baud rate matches Serial.begin() (115200)", "The LED's direction", "The Bluetooth name", "The capacitor's value"], a: 0, why: "Both sides of a serial link must use the same baud rate, or the characters come out garbled." }
   ];
 
@@ -1316,7 +1816,8 @@ Answer: send the web page back`;
       { key: "l1", list: "#l1List", toc: "#l1Toc" },
       { key: "l2", list: "#l2List", toc: "#l2Toc" },
       { key: "l3", list: "#l3List", toc: "#l3Toc" },
-      { key: "l4", list: "#l4List", toc: "#l4Toc" }
+      { key: "l4", list: "#l4List", toc: "#l4Toc" },
+      { key: "tasks", list: "#tasksList", toc: "#tasksToc" }
     ],
     exercises, exList: "#exList", exerciseCarousel: true
   });
