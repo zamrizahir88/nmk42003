@@ -1,10 +1,11 @@
-/* NMK42003 Assistant: the chat button and panel on every page. Uses the tokens in style.css. */
+/* Ask Dr. Zamri (the AI study helper): the chat button and panel on every page. Uses the tokens in style.css. */
 
 .chat .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 .chat-fab { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 70; display: inline-flex; align-items: center; gap: 8px; height: 52px; padding: 0 18px 0 14px; border: 0; border-radius: 26px; background: var(--ink); color: var(--paper); font: 600 1rem var(--sans); cursor: pointer; box-shadow: 0 8px 22px rgba(21, 36, 58, .28); }
 .chat-fab:hover { background: var(--teal); color: #fff; }
 :root[data-theme="dark"] .chat-fab:hover { color: #0e1720; }
 .chat.open .chat-fab { display: none; }
+@media (max-width: 560px) { .chat-fab-n { display: none; } }
 /* the back-to-top button moves up to make room */
 .to-top { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
 @media (min-width: 821px) { .chat-fab { right: 24px; bottom: 24px; } .to-top { right: 28px; bottom: 90px; } }

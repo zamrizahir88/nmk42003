@@ -1,4 +1,4 @@
-/* NMK42003 Assistant: a chat panel on every page.
+/* Ask Dr. Zamri: the course's AI study helper, a chat panel on every page.
    Messages go to a small proxy (a Cloudflare Worker that holds the API key), which passes them to the
    language model. The page sends its own instructions, a short course brief built from data.js, and the
    page and section the student is on. Nothing is stored on a server: the chat lives in this browser tab.
@@ -23,12 +23,14 @@
   const countOne = () => { try { localStorage.setItem(DAY_KEY, JSON.stringify({ d: today(), n: usedToday() + 1 })); } catch (e) { /* private mode */ } };
 
   /* ---------- What the assistant is told ---------- */
-  const RULES = `You are the NMK42003 Assistant, a study helper on the course website of ${COURSE.code} ${COURSE.name} (${COURSE.university}, ${COURSE.session}). The students are undergraduates in electronic engineering technology.
+  const RULES = `You are "Ask Dr. Zamri", the AI study helper on Ts. Dr. Mohd Zamri's course website for ${COURSE.code} ${COURSE.name} (${COURSE.university}, ${COURSE.session}). The students are undergraduates in electronic engineering technology.
+
+You are an AI assistant set up by the lecturer, not Dr. Zamri himself. If a student asks, say so plainly, and never claim to be him or to speak for him on marks or decisions.
 
 How to help:
 - Explain ideas from this course simply and correctly: instrumentation, measurement error, the ESP32, transducers and sensors, signal conditioning, data conversion, calibration, data acquisition, IoT. Use short worked examples with different numbers from the student's own question.
 - For an exercise, quiz question, Pre-Lab Check question or Lab Task: guide with hints and the method, one step at a time. Never give the final numerical answer, never say which quiz option is right, and never write the blocks or code for a Lab Task. If asked directly, say kindly that you can only guide, then give the next hint.
-- Use the course facts below for dates, weeks and marks. If something is not in them, say you don't know and point to the lecturer or URLearn. Never invent dates, marks, deadlines, links or rules.
+- Use the course facts below for dates, weeks and marks. The CURRENT WEEK line at the end tells you which week it is now: never work it out yourself. If something is not in them, say you don't know and point to the lecturer or URLearn. Never invent dates, marks, deadlines, links or rules.
 - Don't give phone numbers or enrolment keys. For personal, medical or official matters, point to the lecturer.
 - If you are not sure, say so. If a question is not about this course or about studying, say briefly that you only help with NMK42003.
 - Reply in the language the student writes in (English or Malay). Keep it short: at most about 120 words unless the student asks for more.
@@ -54,7 +56,13 @@ ${weeks}`;
     const page = (document.querySelector("h1") || {}).textContent || document.title;
     let sec = "";
     document.querySelectorAll("main h2, main h3").forEach((h) => { if (h.getBoundingClientRect().top < innerHeight * 0.5 && h.offsetParent) sec = h.textContent; });
-    return `The student is on the page "${page.trim()}"${sec ? `, at the section "${sec.trim()}"` : ""}. Today is ${today()} (Malaysia time).`;
+    // work out the week here: the model is poor at date arithmetic
+    const utc = (iso) => { const [y, m, d] = iso.split("-").map(Number); return Date.UTC(y, m - 1, d); };
+    const days = Math.floor((utc(today()) - utc(COURSE.semesterStart)) / 86400000), wk = Math.floor(days / 7) + 1, last = (COURSE.weeks || []).length;
+    const when = days < 0 ? `CURRENT WEEK: none. The semester has not started: Week 1 (W1) begins in ${-days} day${days === -1 ? "" : "s"}. So nothing is due "this week"; say that first, then name the first item that will be due and its week.`
+      : wk <= last ? `CURRENT WEEK: W${wk}. "This week" means W${wk} only: answer from the W${wk} line, and if it lists nothing due, say so, then name the next item due and its week.`
+      : `CURRENT WEEK: none. The semester's weeks are over.`;
+    return `The student is on the page "${page.trim()}"${sec ? `, at the section "${sec.trim()}"` : ""}. Today is ${today()} (Malaysia time). ${when}`;
   }
 
   /* ---------- Suggested first questions, by page ---------- */
@@ -83,11 +91,11 @@ ${weeks}`;
   /* ---------- The panel ---------- */
   const root = document.createElement("div");
   root.className = "chat";
-  root.innerHTML = `<button type="button" class="chat-fab" aria-expanded="false" aria-controls="chatPanel" aria-label="Open the NMK42003 Assistant">
+  root.innerHTML = `<button type="button" class="chat-fab" aria-expanded="false" aria-controls="chatPanel" aria-label="Open Ask Dr. Zamri, the AI study helper">
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M9 11h.01M12 11h.01M15 11h.01"/></svg>
-      <span class="chat-fab-t">Ask</span></button>
-    <section class="chat-panel" id="chatPanel" role="dialog" aria-label="NMK42003 Assistant" hidden>
-      <header class="chat-head"><div><strong>NMK42003 Assistant</strong><small>An AI study helper. It can be wrong: check the notes.</small></div>
+      <span class="chat-fab-t">Ask<span class="chat-fab-n"> Dr. Zamri</span></span></button>
+    <section class="chat-panel" id="chatPanel" role="dialog" aria-label="Ask Dr. Zamri, the AI study helper" hidden>
+      <header class="chat-head"><div><strong>Ask Dr. Zamri</strong><small>An AI study helper. It can be wrong: check the notes.</small></div>
         <button type="button" class="chat-x" data-new title="Start a new chat" aria-label="Start a new chat">↺</button>
         <button type="button" class="chat-x" data-close aria-label="Close the assistant">✕</button></header>
       <div class="chat-log" role="log" aria-live="polite" tabindex="0"></div>
@@ -104,9 +112,9 @@ ${weeks}`;
   let hist = ses.get(HIST_KEY, []), busy = false, lastSent = 0;
   if (!Array.isArray(hist)) hist = [];
 
-  const bubble = (role, html, cls = "") => `<div class="chat-msg ${role} ${cls}"><span class="vh">${role === "user" ? "You" : "Assistant"}: </span>${html}</div>`;
+  const bubble = (role, html, cls = "") => `<div class="chat-msg ${role} ${cls}"><span class="vh">${role === "user" ? "You" : "Ask Dr. Zamri"}: </span>${html}</div>`;
   function paint() {
-    log.innerHTML = bubble("bot", `<p>Hi! I'm the course's AI study helper. Ask me about this page, a topic you find hard, or what is coming up this week.</p><p>For exercises, quizzes and Lab Tasks I give hints, not answers.</p>`) +
+    log.innerHTML = bubble("bot", `<p>Hi! I'm Ask Dr. Zamri, the AI study helper for this course. Ask me about this page, a topic you find hard, or what is coming up this week.</p><p>For exercises, quizzes and Lab Tasks I give hints, not answers.</p>`) +
       hist.map((h) => bubble(h.role === "user" ? "user" : "bot", h.role === "user" ? `<p>${esc(h.text)}</p>` : fmt(h.text), h.err ? "err" : "")).join("") +
       (hist.length ? "" : `<div class="chat-chips">${starters().map((q) => `<button type="button" class="chat-chip">${esc(q)}</button>`).join("")}</div>`) +
       (busy ? `<div class="chat-msg bot typing" aria-label="The assistant is writing"><span></span><span></span><span></span></div>` : "");
@@ -115,7 +123,7 @@ ${weeks}`;
   function setOpen(open, focus) {
     panel.hidden = !open;
     fab.setAttribute("aria-expanded", open);
-    fab.setAttribute("aria-label", open ? "Close the NMK42003 Assistant" : "Open the NMK42003 Assistant");
+    fab.setAttribute("aria-label", open ? "Close Ask Dr. Zamri" : "Open Ask Dr. Zamri, the AI study helper");
     root.classList.toggle("open", open);
     ses.set(OPEN_KEY, open);
     if (open) { paint(); if (focus) input.focus(); } else if (focus) fab.focus();
