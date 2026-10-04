@@ -1,0 +1,189 @@
+/* NMK42003 Lab 3 virtual lab: the RC522 reader, the cards, the 16 × 4 LCD, the wiring trainer and the merge exercise.
+   Builds on style.css, lab.css, lab1.css (board, blocks, phone, quiz, step bar) and lab2.css (flow strip, tables, plan, print). */
+
+.bk.lcd { --c: #2c7da0; }
+.scene .tt.inv, .scene .small.inv { fill: #fff; }
+
+/* ---------- The 16 × 4 LCD ---------- */
+.lcd16 { display: block; width: 100%; max-width: 440px; height: auto; margin: 0 auto; }
+.lcd-pcb { fill: #1d6b3a; stroke: #124825; stroke-width: 2; }
+.lcd-bz { fill: #20262b; }
+.lcd-scr { fill: #14306e; }
+.lcd-scr.on { fill: #1f4fd8; }
+.lcd-cell { fill: #cfe0ff; }
+.lcd-ch { fill: #fff; font: 700 19px ui-monospace, "Cascadia Code", Consolas, monospace; }
+
+/* ---------- The RC522 module and the cards ---------- */
+.rc-pcb { fill: #1c56b8; stroke: #0f3b85; stroke-width: 2; }
+.rc.dead .rc-pcb { fill: #5b6470; stroke: #2b3640; }
+.rc-coil { fill: none; stroke: #9dc3ff; stroke-width: 2.4; }
+.rc-chip { fill: #0e1419; }
+.rc-hd { fill: #0e1419; }
+.rc-led { fill: #5a2320; }
+.rc-led.on { fill: #ff4a3d; filter: drop-shadow(0 0 5px #ff4a3d); }
+.scene .rc-t { fill: #fff; font: 700 11px var(--sans); letter-spacing: .04em; }
+.scene .rc-pl { fill: #fff; font: 600 10.5px var(--sans); }
+.tg-card { fill: #fdfdfb; stroke: #9aa5ae; stroke-width: 1.6; }
+.tg-t { fill: #5d6b77; font: 700 12px var(--sans); letter-spacing: .06em; }
+.tg-fob { fill: #2f6fd0; stroke: #1b4a94; stroke-width: 1.6; }
+.tg-hole { fill: var(--surface); stroke: #1b4a94; stroke-width: 1.6; }
+.tg-tag { fill: #f3f1e7; stroke: #9aa5ae; stroke-width: 1.6; }
+.tg-ring { fill: none; stroke: #c9a227; stroke-width: 2.4; stroke-dasharray: 5 3; }
+
+/* ---------- Benches and jumper wires ---------- */
+.scene.bench3, .scene.wiring { min-width: 580px; max-width: 860px; margin: 0 auto; }
+.jw { fill: none; stroke-width: 3.2; stroke-linecap: round; opacity: .92; }
+.jw.r { stroke: #d93a2b; } .jw.k { stroke: #2b3640; } .jw.y { stroke: #e0a800; } .jw.o { stroke: #e8741a; }
+.jw.b { stroke: #2f7de0; } .jw.g { stroke: #2e9e4a; } .jw.v { stroke: #8a4fc7; }
+:root[data-theme="dark"] .jw.k { stroke: #9aa5ae; }
+.jw.live { stroke-dasharray: 10 6; animation: dash .7s linear infinite; }
+.rf circle { fill: none; stroke: var(--amber); stroke-width: 2.5; opacity: 0; }
+.rf.on circle { animation: rf-ring 1s ease-out infinite; }
+.rf.on circle:nth-child(2) { animation-delay: .2s; }
+.rf.on circle:nth-child(3) { animation-delay: .4s; }
+@keyframes rf-ring { 0% { opacity: .9; } 100% { opacity: 0; } }
+.tagmove { transition: transform .5s ease; }
+.scene .bench-cap { font-weight: 600; fill: var(--ink-2); }
+@media (prefers-reduced-motion: reduce) { .jw.live, .rf.on circle { animation: none; } .rf.on circle { opacity: .7; } .tagmove { transition: none; } }
+.bp { fill: #11181f; }
+.scene .bp-l { fill: var(--ink); font: 600 11px var(--sans); }
+.scene .burn-t { fill: var(--danger); font: 700 14px var(--sans); }
+
+/* card buttons */
+.tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
+.tag-btn { display: grid; justify-items: center; gap: 2px; width: 108px; padding: 8px 6px; font: 500 .85rem var(--sans); color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); cursor: pointer; }
+.tag-btn svg { width: 74px; height: 52px; }
+.tag-btn:hover { border-color: var(--teal); background: var(--teal-soft); }
+.rd-ctl { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 18px; margin: 4px 0 8px; }
+.rd-ctl .chips-row { margin: 4px 0; }
+.rd-bench .scene-box, .sh-bench .scene-box { margin-top: 4px; }
+
+/* ---------- How RFID works ---------- */
+.scene.how { min-width: 600px; max-width: 860px; margin: 0 auto; }
+.how-ring { fill: none; stroke: var(--amber); stroke-width: 2.5; }
+.how-ant { fill: none; stroke: #c9a227; stroke-width: 2; stroke-dasharray: 6 3; }
+.how-chip { fill: #5d6b77; }
+.how-chip.on { fill: #ffb020; filter: drop-shadow(0 0 6px #ffb020); }
+.how-esp { fill: #1c2a36; }
+.scene .how-uid { fill: #86f09a; font: 700 13px ui-monospace, Consolas, monospace; }
+.how-spi { fill: none; stroke: var(--rule); stroke-width: 2.4; stroke-dasharray: 4 6; }
+.how-spi.on { stroke: var(--teal); animation: dash .6s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .how-spi.on { animation: none; } }
+
+/* ---------- NFC Tools on the phone ---------- */
+.nfc-app { display: flex; flex-direction: column; height: 100%; }
+.app-bar.nfc { background: #37474f; }
+.nfc-tabs { display: flex; background: #455a64; color: #cfd8dc; font-size: .78rem; font-weight: 600; }
+.nfc-tabs span { flex: 1; text-align: center; padding: 8px 0; border-bottom: 3px solid transparent; }
+.nfc-tabs .on { color: #fff; border-bottom-color: #ffb300; }
+.nfc-body { flex: 1; overflow-y: auto; padding: 12px; display: grid; align-content: start; justify-items: center; gap: 8px; }
+.nfc-msg { margin: 6px 0 0; font-weight: 600; text-align: center; }
+.nfc-sub { margin: 0; font-size: .85rem; color: var(--scr-ink-2); text-align: center; }
+.nfc-wave { width: 96px; height: 96px; margin-top: 40px; border-radius: 50%; border: 3px solid #ffb300; box-shadow: 0 0 0 10px rgba(255, 179, 0, .25), 0 0 0 22px rgba(255, 179, 0, .12); animation: nfc-pulse .9s ease-in-out infinite; }
+.nfc-wave.idle { animation-duration: 2.4s; opacity: .7; }
+@keyframes nfc-pulse { 50% { transform: scale(1.12); } }
+@media (prefers-reduced-motion: reduce) { .nfc-wave { animation: none; } }
+.nfc-list { width: 100%; margin: 0; display: grid; gap: 6px; }
+.nfc-list div { background: var(--scr-2); border-radius: 8px; padding: 7px 10px; }
+.nfc-list dt { font-size: .72rem; font-weight: 600; color: var(--scr-ink-2); }
+.nfc-list dd { margin: 0; font-size: .88rem; overflow-wrap: anywhere; }
+.nfc-uid { font: 700 1rem ui-monospace, Consolas, monospace !important; color: #c25e00; }
+:root[data-theme="dark"] .nfc-uid { color: #ffb300; }
+
+/* ---------- Why this lesson uses code ---------- */
+.why-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 12px; }
+.why-card { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 14px 16px; min-width: 0; }
+.why-card.wide { grid-column: 1 / -1; }
+.why-card h4 { font-family: var(--serif); font-size: 1.08rem; margin: 0 0 6px; }
+.why-card p { margin: 0 0 10px; color: var(--ink-2); max-width: var(--measure); }
+.why-blocks { display: grid; gap: 6px; justify-items: start; }
+.why-b { border: 2px solid transparent; border-radius: 8px; background: none; padding: 3px; cursor: pointer; }
+.why-b[aria-pressed="true"] { border-color: var(--amber); }
+.why-code { display: flex; align-items: center; gap: 8px; margin: 12px 0 0 !important; }
+.why-arrow { font-size: 1.3rem; color: var(--amber); }
+.why-code code { font: 600 .95rem ui-monospace, Consolas, monospace; background: #0f1b24; color: #d7e3ea; border-radius: 6px; padding: 6px 12px; overflow-wrap: anywhere; }
+.why-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
+.why-list li { display: flex; gap: 8px; align-items: baseline; color: var(--ink-2); }
+.why-list .yes span { color: var(--teal); font-weight: 700; }
+.why-list .no { color: var(--danger); font-weight: 600; }
+.why-steps { list-style: none; padding: 0; margin: 0 0 8px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); gap: 8px; }
+.why-steps li { display: flex; gap: 10px; align-items: center; background: var(--teal-soft); border-radius: var(--r-sm); padding: 8px 12px; font-weight: 500; }
+.why-steps .ls-n { flex: none; }
+
+/* ---------- Wiring trainer ---------- */
+.wr-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 900px) { .wr-grid { grid-template-columns: minmax(0, 1fr); } }
+.wr-grid > * { min-width: 0; }
+.wr-grid .scene-box { margin: 0; }
+.wr-side { display: grid; gap: 10px; }
+.wr-form { display: grid; gap: 6px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 10px 12px; }
+.wr-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 8px; align-items: center; }
+.wr-row label { display: grid; line-height: 1.25; }
+.wr-row label span { font-size: .78rem; color: var(--ink-3); }
+.wr-row select, .mg-pick select { font: inherit; font-size: 16px; min-height: 40px; padding: 0 8px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); max-width: 100%; }
+.wr-out .callout { margin: 0; }
+.wr-out ul { margin: 6px 0 0; padding-left: 1.2em; }
+.wr-out li { margin-bottom: 4px; }
+
+/* ---------- Library Manager and the code in pieces ---------- */
+.libm { max-width: 620px; border: 1px solid var(--rule); border-radius: var(--r-md); overflow: hidden; background: var(--scr); color: var(--scr-ink); margin: 6px 0 10px; }
+.libm-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 12px; background: var(--scr-2); font-weight: 600; font-size: .9rem; }
+.libm-q { font-weight: 400; background: var(--scr); border: 1px solid var(--rule); border-radius: 4px; padding: 2px 10px; }
+.libm-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; }
+.libm-item small { display: block; color: var(--scr-ink-2); font-size: .82rem; }
+.pc-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 14px; align-items: start; }
+@media (max-width: 900px) { .pc-grid { grid-template-columns: minmax(0, 1fr); } }
+.pc-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.pc-b { --c: #555; display: grid; gap: 2px; width: 100%; text-align: left; font: inherit; padding: 9px 12px; border: 1px solid var(--rule); border-left: 6px solid var(--c); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); cursor: pointer; }
+.pc-b span { font-size: .86rem; color: var(--ink-2); }
+.pc-b:hover { border-color: var(--c); }
+.pc-b[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 14%, var(--surface)); border-color: var(--c); }
+.pc-b.c0 { --c: #a2447a; } .pc-b.c1 { --c: #b3873a; } .pc-b.c2 { --c: #2f9384; } .pc-b.c3 { --c: #4b77a5; } .pc-b.c4 { --c: #b0613f; } .pc-b.c5 { --c: #5153a0; }
+.pc-code { margin: 0; position: sticky; top: 120px; }
+.pc-code pre { max-height: 460px; overflow: auto; }
+.pc-code .code-head { padding: 8px 14px; }
+.pc-s { display: block; border-left: 4px solid transparent; margin: 0 -14px; padding: 0 14px 0 10px; transition: background .15s; }
+.pc-s.on { background: rgba(255, 176, 32, .22); border-left-color: #ffb020; }
+@media (max-width: 900px) { .pc-code { position: static; } }
+
+/* ---------- LCD studio ---------- */
+.lc-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; margin-bottom: 12px; }
+@media (max-width: 860px) { .lc-grid { grid-template-columns: minmax(0, 1fr); } }
+.lc-grid > * { min-width: 0; }
+.lc-form { display: grid; gap: 6px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 10px 12px; }
+.lc-row { display: grid; grid-template-columns: 3.6em minmax(0, 1fr) 3.2em; gap: 8px; align-items: center; }
+.lc-row label { font-size: .9rem; font-weight: 500; }
+.lc-row input { font: 16px ui-monospace, Consolas, monospace; height: 40px; padding: 0 10px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); min-width: 0; }
+.lc-n { font-size: .8rem; color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums; }
+.lc-n.bad { color: var(--amber); font-weight: 700; }
+.lc-left .chips-row { margin: 10px 0 6px; }
+.lc-con { max-width: 420px; margin: 0; }
+.lc-con output { font-weight: 600; color: var(--teal); }
+.lc-right .pv-read { margin-top: 10px; min-height: 0; }
+
+/* ---------- Merge exercise ---------- */
+.mg-list { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 8px; counter-reset: mg; }
+.mg-item { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--ink-3); border-radius: var(--r-md); padding: 10px 12px; }
+@media (max-width: 760px) { .mg-item { grid-template-columns: minmax(0, 1fr); gap: 6px; } }
+.mg-item.ok { border-left-color: var(--teal); }
+.mg-item.no { border-left-color: var(--danger); }
+.mg-code { min-width: 0; }
+.mg-from { display: inline-block; font-size: .72rem; font-weight: 600; color: var(--ink-3); background: var(--grid); border-radius: 999px; padding: 1px 9px; margin-bottom: 4px; }
+.mg-code pre { margin: 0; overflow-x: auto; font: 13px/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; background: #0f1b24; color: #d7e3ea; border-radius: 6px; padding: 8px 10px; }
+.mg-pick { display: grid; gap: 4px; min-width: 0; }
+.mg-fb { margin: 0; font-size: .86rem; color: var(--ink-2); }
+.mg-fb:empty { display: none; }
+.mg-item.no .mg-fb { color: var(--danger); }
+.mg-out:focus { outline: none; }
+.mg-out .callout { margin: 12px 0 0; }
+
+/* ---------- LCD beside the card buttons ---------- */
+.sh-grid { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); gap: 16px; align-items: start; margin: 8px 0; }
+@media (max-width: 860px) { .sh-grid { grid-template-columns: minmax(0, 1fr); } }
+.sh-grid > * { min-width: 0; }
+.sh-side { display: grid; gap: 6px; justify-items: start; }
+.sh-side .pv-read { margin: 0; min-height: 0; }
+.dk-led.blue { transition: fill .1s; }
+.led-ind { display: flex; align-items: center; gap: 8px; margin: 0; font-size: .95rem; color: var(--ink-2); }
+.led-dot { width: 18px; height: 18px; border-radius: 50%; background: #1d2c4a; border: 2px solid #4a5a6e; flex: none; }
+.led-dot.on { background: #4ea3ff; border-color: #bfe0ff; box-shadow: 0 0 12px 3px #4ea3ff; }

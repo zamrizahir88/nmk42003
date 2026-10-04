@@ -239,7 +239,3 @@ details.fold[open] details.fold:not([open]) .fold-h::after { content: "Show ▾"
 @keyframes tk-warn { 50% { background: #ff5a3c; color: #fff; } }
 @media (prefers-reduced-motion: reduce) { .ai-switch.tk-st.warn, .web h2.tk-st.warn .tk-led { animation: none; } }
 .br-bar.ph .br-url { font-size: .85rem; }
-
-/* ---------- Step bar: a tick on each part that has been done ---------- */
-.lab-nav.steps a.ok::after { content: "✓"; position: absolute; top: -7px; right: -5px; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; background: var(--teal); color: var(--surface); font-size: 10px; font-weight: 700; line-height: 1; box-shadow: 0 0 0 2px var(--paper); }
-.lab-nav.steps .wrap { padding-top: 8px; }

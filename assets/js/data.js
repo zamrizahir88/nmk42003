@@ -119,7 +119,8 @@ const COURSE = {
       summary: "Power and program the ESP32, blink its LED, upload over Wi-Fi (OTA), and switch LEDs from a phone by Bluetooth, an MIT App Inventor app and a web page." },
     { no: 2, title: "Lab 2: Transduction and Conversion Calibration", weeks: "Week 4", openEnded: true, page: "lab-2.html",
       summary: "Turn a potentiometer into an angle sensor: power it safely, read the ESP32's ADC, calibrate it against a protractor with a straight-line fit, and show the angle on a phone and a web page." },
-    { no: 3, title: "Lab 3: Smart Sensors", weeks: "Week 6", openEnded: true },
+    { no: 3, title: "Lab 3: Smart Sensors", weeks: "Week 6", openEnded: true, page: "lab-3.html",
+      summary: "Read RFID cards with a phone and with an RC522 reader on the ESP32, show text on an I2C 16 × 4 LCD, and merge the two into a standalone card reader and a security system." },
     { no: 4, title: "Lab 4: Local Data Acquisition (DAQ)", weeks: "Week 11", openEnded: false },
     { no: 5, title: "Lab 5: Cloud Storage and IoT Instrumentation", weeks: "Week 13", openEnded: false }
   ],

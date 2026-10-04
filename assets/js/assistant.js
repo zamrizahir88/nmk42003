@@ -68,6 +68,7 @@ ${weeks}`;
   /* ---------- Suggested first questions, by page ---------- */
   function starters() {
     const p = location.pathname;
+    if (/lab-3/.test(p)) return ["How does an RFID card work with no battery?", "Why does the RC522 need code, not blocks?", "My LCD is blank: what should I check?"];
     if (/lab-2/.test(p)) return ["Why must VP stay below 3.3 V?", "What do m and c mean?", "Why does my ADC count jump about?"];
     if (/lab-1/.test(p)) return ["Why do I need the capacitor on EN?", "My upload fails: what should I check?", "How do I find the ESP32's IP address?"];
     if (/chapter-(\d)/.test(p)) return ["Summarise this chapter in 5 points", "Give me a practice question", "Explain the section I'm on"];

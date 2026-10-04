@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lab 1: Introduction (Software &amp; Hardware) | NMK42003 Instrumentation</title>
-  <meta name="description" content="Virtual lab for NMK42003 Instrumentation Lab 1: power and program the ESP32, blink its LED, upload over the air, and switch LEDs from a phone by Bluetooth, an MIT App Inventor app and a Wi-Fi web page.">
+  <title>Lab 3: Smart Sensors | NMK42003 Instrumentation</title>
+  <meta name="description" content="Virtual lab for NMK42003 Instrumentation Lab 3: read an RFID card with a phone and with an RC522 reader on the ESP32, show text on an I2C 16 by 4 LCD, merge the two programs into a standalone RFID display, and rehearse a security system.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
@@ -12,6 +12,8 @@
   <link rel="stylesheet" href="assets/css/assistant.css?v=2610066">
   <link rel="stylesheet" href="assets/css/lab.css?v=2610066">
   <link rel="stylesheet" href="assets/css/lab1.css?v=2610066">
+  <link rel="stylesheet" href="assets/css/lab2.css?v=2610066">
+  <link rel="stylesheet" href="assets/css/lab3.css?v=2610066">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0b6e6e">
   <link rel="apple-touch-icon" href="assets/img/icon-180.png">
@@ -55,23 +57,23 @@
   <main id="main">
     <div class="wrap chapter-hero">
       <a class="crumb" href="labs.html">Back to all labs</a>
-      <div class="chapter-no">Lab 1 · Virtual lab</div>
-      <h1 id="chTitle">Introduction (Software &amp; Hardware)</h1>
+      <div class="chapter-no">Lab 3 · Virtual lab</div>
+      <h1 id="chTitle">Smart Sensors</h1>
+      <p class="lab-sub">An RFID Card Reader with an LCD Display</p>
       <div class="topic-meta" id="chMeta"></div>
       <div class="authors" id="chAuthors"></div>
-      <p class="lab-lead">Try the whole of Lab 1 here before you come to the lab. You'll power and program the ESP32, blink its built-in LED, upload a program over Wi-Fi, and then switch LEDs from a phone in three ways: a Bluetooth terminal, your own MIT App Inventor app and a web page.</p>
+      <p class="lab-lead">Plan and rehearse the whole of Lab 3 here before you come to the lab. You'll read RFID cards with a phone and with an RC522 reader, show text on an LCD, and join the two into a standalone card reader.</p>
       <div class="goals">
         <h2>Objectives</h2>
         <ul>
-          <li>power and program the ESP32, by cable and over the air (OTA)</li>
-          <li>switch the built-in LED on and off from a mobile phone by Bluetooth</li>
-          <li>build a simple phone app with MIT App Inventor</li>
-          <li>switch an external LED on and off over Wi-Fi from a web browser</li>
-          <li>read a switch and monitor its condition on the Serial Monitor, a phone and a web page</li>
+          <li>obtain the UID of an RFID card or tag with an NFC-enabled mobile phone</li>
+          <li>interface the ESP32 to the RFID RC522 module</li>
+          <li>connect the ESP32 to a 16 × 4 LCD through an I2C I/O expander</li>
+          <li>assemble a standalone ESP32-based RFID card reader</li>
         </ul>
       </div>
-      <p class="lab-how">This is a simulation: nothing here talks to a real board. Everything follows the lab sheet, so in the lab you'll do the same steps on the real ESP32. Where the page asks for your name, it uses it the way the lab sheet does (in the Bluetooth name and the Serial Monitor).</p>
-      <p class="gate-note" id="gateNote"><span aria-hidden="true">🔒</span> <span>The <strong>Lab Task</strong> unlocks when you pass the <a href="#exercises">Pre-Lab Check</a> quiz with at least <strong>7 out of 10</strong>.</span></p>
+      <p class="lab-how">This is a simulation: nothing here talks to a real board or a real card. The virtual cards on this device have their own UIDs, different from everyone else's. In the lab you'll do the same steps on the real hardware, with your own cards.</p>
+      <p class="gate-note" id="gateNote"><span aria-hidden="true">🔒</span> <span>The <strong>Lab Task</strong> and <strong>My Lab Plan</strong> unlock when you pass the <a href="#exercises">Pre-Lab Check</a> quiz with at least <strong>7 out of 10</strong>.</span></p>
       <div class="name-box" id="nameBox"></div>
       <noscript><div class="callout warn"><strong>JavaScript is off</strong>The virtual lab on this page needs JavaScript. Turn it on, or use the lab sheet on URLearn.</div></noscript>
     </div>
@@ -79,14 +81,13 @@
     <nav class="lab-nav steps" aria-label="Lab sections">
       <div class="wrap">
         <a href="#kit" title="Before You Start"><span class="sb-s" aria-hidden="true">Start</span><span class="sb-l">Before You Start</span></a>
-        <a href="#l1" title="Lesson 1: Blink"><span class="sb-s" aria-hidden="true">1</span><span class="sb-l">Lesson 1: Blink</span></a>
-        <a href="#l2" title="Lesson 2: Bluetooth"><span class="sb-s" aria-hidden="true">2</span><span class="sb-l">Lesson 2: Bluetooth</span></a>
-        <a href="#l3" title="Lesson 3: App Inventor"><span class="sb-s" aria-hidden="true">3</span><span class="sb-l">Lesson 3: App Inventor</span></a>
-        <a href="#l4" title="Lesson 4: Wi-Fi"><span class="sb-s" aria-hidden="true">4</span><span class="sb-l">Lesson 4: Wi-Fi</span></a>
-        <a href="#l5" title="Lesson 5: Switch"><span class="sb-s" aria-hidden="true">5</span><span class="sb-l">Lesson 5: Switch</span></a>
+        <a href="#l1" title="Lesson 1: Phone"><span class="sb-s" aria-hidden="true">1</span><span class="sb-l">Lesson 1: Phone</span></a>
+        <a href="#l2" title="Lesson 2: RC522"><span class="sb-s" aria-hidden="true">2</span><span class="sb-l">Lesson 2: RC522</span></a>
+        <a href="#l3" title="Lesson 3: LCD"><span class="sb-s" aria-hidden="true">3</span><span class="sb-l">Lesson 3: LCD</span></a>
+        <a href="#l4" title="Lesson 4: RFID Display"><span class="sb-s" aria-hidden="true">4</span><span class="sb-l">Lesson 4: RFID Display</span></a>
         <a href="#exercises" title="Pre-Lab Check"><span class="sb-s" aria-hidden="true">Check</span><span class="sb-l">Pre-Lab Check</span></a>
         <a href="#labtask" id="taskNav" title="Lab Task (locked)"><span class="sb-s" aria-hidden="true">Task</span><span class="sb-l">Lab Task</span><span class="sb-k"> 🔒<span class="vh"> locked</span></span></a>
-        <a href="#review" title="Lab 1 Review"><span class="sb-s" aria-hidden="true">Review</span><span class="sb-l">Lab 1 Review</span></a>
+        <a href="#review" title="Lab 3 Review"><span class="sb-s" aria-hidden="true">Review</span><span class="sb-l">Lab 3 Review</span></a>
       </div>
       <p class="sb-cap" aria-hidden="true"></p>
     </nav>
@@ -95,7 +96,7 @@
       <div class="wrap">
         <div class="group-head">
           <h2 id="kit-h">Before You Start</h2>
-          <p>The equipment, the software and the basic ESP32 circuit.</p>
+          <p>The equipment, the order of the work, and how an RFID card is read.</p>
           <ul class="toc-chips" id="kitToc"></ul>
         </div>
         <div id="kitList"></div>
@@ -105,9 +106,8 @@
     <section class="lab-group" id="l1" aria-labelledby="l1-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="l1-h">Lesson 1: Blink the Built-in LED</h2>
-          <p>Build the blocks in TUNIOT, then upload the code in two ways: by USB cable and over Wi-Fi.</p>
-          <ul class="toc-chips" id="l1Toc"></ul>
+          <h2 id="l1-h">Lesson 1: Read a Card with a Phone</h2>
+          <p>Use an NFC phone to read a card's type and serial number, the UID.</p>
         </div>
         <div id="l1List"></div>
       </div>
@@ -116,8 +116,8 @@
     <section class="lab-group" id="l2" aria-labelledby="l2-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="l2-h">Lesson 2: Control the LED with a Bluetooth Terminal</h2>
-          <p>The ESP32 becomes a Bluetooth device with your name. You type ON or OFF on your phone.</p>
+          <h2 id="l2-h">Lesson 2: The RC522 Reader</h2>
+          <p>Wire the RC522 to the ESP32, and read the same UID with a program of your own.</p>
           <ul class="toc-chips" id="l2Toc"></ul>
         </div>
         <div id="l2List"></div>
@@ -127,8 +127,8 @@
     <section class="lab-group" id="l3" aria-labelledby="l3-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="l3-h">Lesson 3: Control the LED with Your Own App</h2>
-          <p>Design a phone app with MIT App Inventor that sends ON and OFF to the same ESP32 program.</p>
+          <h2 id="l3-h">Lesson 3: The I2C LCD</h2>
+          <p>Connect a 16 × 4 LCD with four wires, and show your name and matric number on it.</p>
           <ul class="toc-chips" id="l3Toc"></ul>
         </div>
         <div id="l3List"></div>
@@ -138,22 +138,11 @@
     <section class="lab-group" id="l4" aria-labelledby="l4-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="l4-h">Lesson 4: Control an External LED over Wi-Fi</h2>
-          <p>Wire an LED to GPIO32, and let the ESP32 serve a web page with ON and OFF buttons.</p>
+          <h2 id="l4-h">Lesson 4: The RFID Display System</h2>
+          <p>Merge the two programs into one: a standalone reader that shows each card's UID on the LCD.</p>
           <ul class="toc-chips" id="l4Toc"></ul>
         </div>
         <div id="l4List"></div>
-      </div>
-    </section>
-
-    <section class="lab-group" id="l5" aria-labelledby="l5-h">
-      <div class="wrap">
-        <div class="group-head">
-          <h2 id="l5-h">Lesson 5: Monitor the Switch Condition</h2>
-          <p>Add a toggle switch, read its condition, and monitor it in three ways: on the Serial Monitor, on a phone via Bluetooth and on a web page.</p>
-          <ul class="toc-chips" id="l5Toc"></ul>
-        </div>
-        <div id="l5List"></div>
       </div>
     </section>
 
@@ -171,13 +160,13 @@
       <div class="wrap">
         <div class="group-head">
           <h2 id="labtask-h">Lab Task</h2>
-          <p>The task you build on your own and demonstrate in the lab.</p>
+          <p>The task you build on your own and demonstrate in the lab, and the plan you bring with you.</p>
         </div>
         <div class="lock-card" id="taskLock" role="region" aria-labelledby="lock-h">
           <div class="lock-ico" aria-hidden="true">🔒</div>
           <div>
             <h3 id="lock-h">Complete the Pre-Lab Check First</h3>
-            <p>Score at least <strong>7 out of 10</strong> in the Pre-Lab Check quiz to unlock the Lab Task.</p>
+            <p>Score at least <strong>7 out of 10</strong> in the Pre-Lab Check quiz to unlock the Lab Task and My Lab Plan.</p>
             <a class="btn" href="#exercises">Go to the Pre-Lab Check</a>
           </div>
         </div>
@@ -188,8 +177,8 @@
     <section class="lab-group" id="review" aria-labelledby="review-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="review-h">Lab 1 Review</h2>
-          <p>Four exercises that bring the whole lab together: timing, the LED resistor, web requests and Bluetooth messages. Type or choose your answers and press <strong>Check answers</strong>. Each wrong try unlocks a hint, and when all your answers are correct the full working appears. Swipe left or right, or use the arrows, to move between exercises.</p>
+          <h2 id="review-h">Lab 3 Review</h2>
+          <p>Four exercises that bring the whole lab together: reading a UID, counting cards, planning the display and the two buses. Type or choose your answers and press <strong>Check answers</strong>. Each wrong try unlocks a hint, and when all your answers are correct the full working appears. Swipe left or right, or use the arrows, to move between exercises.</p>
         </div>
         <div id="exList"></div>
         <nav class="pager" aria-label="Labs" id="chPager"></nav>
@@ -203,6 +192,7 @@
   <script src="assets/js/main.js?v=2610066"></script>
   <script src="assets/js/assistant.js?v=2610066" defer></script>
   <script src="assets/js/lab.js?v=2610066"></script>
-  <script src="assets/js/lab1.js?v=2610066"></script>
+  <script src="assets/js/labkit.js?v=2610066"></script>
+  <script src="assets/js/lab3.js?v=2610066"></script>
 </body>
 </html>

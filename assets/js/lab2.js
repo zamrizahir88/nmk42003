@@ -62,16 +62,6 @@
   // The line the simulation itself would find (used where a lesson needs an angle before the student has fitted one)
   const BOOK = linFit(ANGLES.map((a) => [readAdc(a, { quiet: true }), a]));
 
-  /* ---------- Progress: a tick on the step bar once a part's main job has been done on this device ---------- */
-  const DONE_KEY = "nmk-lab2-done", DONE = store.get(DONE_KEY, {}) || {};
-  const paintTicks = () => document.querySelectorAll(".lab-nav.steps a").forEach((a) => {
-    const on = !!DONE[a.getAttribute("href").slice(1)];
-    if (a.classList.contains("ok") === on) return;
-    a.classList.toggle("ok", on);
-    if (on) a.insertAdjacentHTML("beforeend", `<span class="vh"> (done)</span>`);
-  });
-  const done = (k) => { if (DONE[k]) return; DONE[k] = 1; store.set(DONE_KEY, DONE); paintTicks(); };
-
   /* ---------- Table 1 (saved on this device) and the student's own m and c ---------- */
   const CAL_KEY = "nmk-lab2-cal", MC_KEY = "nmk-lab2-mc";
   let CAL = (() => {
@@ -354,7 +344,6 @@
       html(gauge, drawGauge(vw, live() && !floating));
       // the five steps: each is ticked when done, and the first one still to do is highlighted
       const ok = [S.saw, S.saw && Math.abs(vs - 3.3) < 0.051, S.gnd, S.conn, S.conn && S.lo <= 10 && S.hi >= 170 && Math.abs(vs - 3.3) < 0.051], next = ok.indexOf(false);
-      if (bench && next < 0) done("l1");
       html(stepsEl, PW_STEPS.map((t, i) => `<li class="${ok[i] ? "done" : i === next ? "now" : ""}"><span class="ps-n" aria-hidden="true">${ok[i] ? "✓" : i + 1}</span><span>${t}${ok[i] ? `<span class="vh"> (done)</span>` : ""}</span></li>`).join(""));
       // a damaged pin stops everything: the message and the way out go to the top of the panel
       alertEl.hidden = !S.dead; status.hidden = S.dead;
@@ -440,11 +429,8 @@
         <li><strong>Computational.</strong> The program turns the count back into degrees with an equation. Finding that equation is the <strong>calibration</strong>, and it is what this lab is about.</li>
       </ol>`;
     const host = $(".chain-host", el), read = $(".pv-read", el);
-    let seen = false; // not on the first, still drawing: only once the knob has been moved
-    setTimeout(() => { seen = true; }, 1500);
     const draw = (t) => {
       host.innerHTML = chainSvg((t / 10) * 180);
-      if (t >= 9.9 && seen) done("l2");
       read.innerHTML = `The ESP32 never sees the angle itself: it only gets the count, and has to work back to the angle.`;
     };
     player($(".pv-pl", el), el, { dur: 10, loop: false, draw, still: 4, label: "Knob position" });
@@ -527,11 +513,8 @@ void loop()
       <div class="task-sim"><div class="rd-rig"></div>
         <div class="task-side">${serialBox()}<p class="pv-read"></p></div></div>`;
     const log = logBox($(".serial", el)), read = $(".pv-read", el);
-    let lo = 180, hi = 0;
     const tick = (print) => {
       const a = rig.st.angle, v = 3.3 * frac(a, swap), n = readAdc(a, { swap });
-      lo = Math.min(lo, a); hi = Math.max(hi, a);
-      if (hi - lo >= 120) done("l3");
       rig.upd({ r1: `VP = ${f2(v)} V`, r2: `ADC count: ${n}`, meter: `${f2(v)} V` });
       if (print) log.add(String(n));
       read.innerHTML = swap
@@ -564,7 +547,6 @@ void loop()
       body.innerHTML = ANGLES.map((a) => `<tr class="${a === cur ? "cur" : ""}"><th scope="row">${a}</th><td class="${CAL[a] === undefined ? "empty" : ""}">${CAL[a] === undefined ? "not recorded" : CAL[a]}</td>
         <td><button type="button" class="row-go" data-a="${a}" aria-label="Turn the knob to ${a} degrees">${a === cur ? "●" : "set"}</button></td></tr>`).join("");
       recBtn.textContent = CAL[cur] === undefined ? `Record ${cur}°` : `Record ${cur}° again`;
-      if (count() === ANGLES.length) done("l4");
       read.innerHTML = (msg ? msg + " " : "") + (count() === ANGLES.length
         ? `<span class="ok-t">✓ Table 1 is complete: 19 readings.</span> Go on to <a href="#l5">Lesson 5</a>.`
         : `<strong>${count()} of ${ANGLES.length}</strong> angles recorded. The knob clicks round in 10° steps here.`);
@@ -640,7 +622,6 @@ void loop()
     };
     calListeners.push(draw);
     draw();
-    if ("IntersectionObserver" in window) new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting) && calPts().length === ANGLES.length) done("l5"); }, { threshold: 0.3 }).observe(el);
   }
 
   /* =====================================================================
@@ -694,7 +675,6 @@ void loop()
       if (!MC) { errEl.innerHTML = `<p class="small-note">Enter m and c above to see the error at each angle.</p>`; return; }
       const rows = [0, 30, 60, 90, 120, 150, 180].map((a) => { const n = readAdc(a, { quiet: true }), s = MC.m * n + MC.c; return [a, n, s, s - a]; });
       const worst = Math.max(...rows.map((r) => Math.abs(r[3])));
-      if (worst <= 5) done("l6");
       errEl.innerHTML = `<div class="cal-box wide"><table class="cal-table"><caption>The displayed angle against the true angle</caption>
           <thead><tr><th scope="col">True angle (°)</th><th scope="col">ADC count</th><th scope="col">Displayed angle (°)</th><th scope="col">Error (°)</th></tr></thead>
           <tbody>${rows.map(([a, n, s, e]) => `<tr><th scope="row">${a}</th><td>${n}</td><td>${f1(s)}</td><td class="${Math.abs(e) > 5 ? "bad" : ""}">${num(Number(e.toFixed(1)), 3)}</td></tr>`).join("")}</tbody></table></div>
@@ -733,7 +713,6 @@ void loop()
   /* =====================================================================
      LESSON 7: display the angle wirelessly (Bluetooth, then a web page)
      ===================================================================== */
-  const tried = {};
   const noMc = () => (MC ? "" : `<p class="small-note">You haven't entered m and c in <a href="#apply">Lesson 6</a> yet, so this page uses the simulation's own line for now.</p>`);
   const btBlocks = () =>
     bk("root", "Setup", bk("var", `Declare ${bf("ADC")} as long Value ${bn(0)}`) + bk("var", `Declare ${bf("Angle")} as float Value ${bn(0)}`) +
@@ -803,7 +782,6 @@ void loop()
         if (!b.dataset.pick) { render(); return; }
         status = "Connecting…"; render(); await sleep(800);
         connected = true; status = "BT is now connected"; render();
-        tried.bt = 1; if (tried.web) done("l7");
         read.innerHTML = `Connected. A new angle arrives every second (the <em>Delay 1000</em> block). Turn the knob and watch the phone follow.`;
       }
     });
@@ -895,7 +873,7 @@ void loop()
     };
     const rig = makeRig($(".wb-rig", el), { state: { angle: 120, r1: "", r2: "" } });
     const tick = () => { const n = readAdc(rig.st.angle); rig.upd({ r1: `ADC count: ${n}`, r2: `Angle: ${f1(shown(n))}°` }); return shown(n); };
-    const load = () => { loads++; page = tick(); loaded = true; render(); tried.web = 1; if (tried.bt) done("l7"); };
+    const load = () => { loads++; page = tick(); loaded = true; render(); };
     every(el, 1000, () => { if (loaded && auto) load(); else tick(); });
     el.addEventListener("submit", (e) => {
       if (!e.target.matches("[data-go]")) return;
@@ -1238,14 +1216,6 @@ void loop()
   GATE.mount($("#quizBox"));
   GATE.setLock(GATE.passed());
   LabKit.stepCaption();
-  const poll = () => {
-    if (GATE.passed()) done("exercises");
-    if (PLAN.power && PLAN.wireless) done("labtask");
-    const solved = store.get("nmk-solved", []);
-    if (exercises.every((x) => solved.includes(x.id))) done("review");
-  };
-  poll(); paintTicks();
-  setInterval(poll, 1500);
   // A link straight to a locked part lands on the lock notice instead
   if (!GATE.passed() && /^#(task|plan)$/.test(location.hash)) setTimeout(() => $("#labtask").scrollIntoView(), 0);
 })();
