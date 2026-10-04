@@ -340,3 +340,12 @@ table.stats-table { min-width: 520px; }
 .plot.mid { max-width: 640px; }
 .plot .band-e { fill: var(--amber-soft); stroke: var(--amber); stroke-width: 1.5; }
 @media (max-width: 560px) { .strip-box, .bode { overflow-x: auto; -webkit-overflow-scrolling: touch; } .strip-box .plot, .plot.mid { min-width: 440px; } }
+.std-ex { background: var(--teal-soft); border-radius: var(--r-sm); padding: 8px 12px; }
+.std-link { margin: 0 0 8px !important; }
+.std-link a { font-weight: 600; overflow-wrap: anywhere; }
+.std-chain ol { list-style: none; padding: 0; margin: 14px 0 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 0; }
+.std-chain li { font-size: .88rem; font-weight: 500; padding: 5px 12px; border: 1px solid var(--rule); border-radius: 999px; background: var(--surface); color: var(--ink-2); }
+.std-chain li + li { margin-left: 22px; position: relative; }
+.std-chain li + li::before { content: "→"; position: absolute; left: -18px; top: 50%; transform: translateY(-50%); color: var(--ink-3); }
+.std-chain li.on { background: var(--teal); border-color: var(--teal); color: var(--surface); }
+.std-chain li.me { border-style: dashed; }

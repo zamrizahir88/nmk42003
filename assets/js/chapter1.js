@@ -470,11 +470,28 @@
   /* =====================================================================
      Standards pyramid
      ===================================================================== */
+  // One example runs through all four levels: the volt, from the BIPM down to the multimeter on the bench.
   const STANDARDS = [
-    { k: "intl", name: "International standards", who: "Defined by international agreement and maintained by the International Bureau of Weights and Measures (BIPM) at Sèvres, near Paris.", use: "The most accurate standards that current science and technology can achieve. Countries compare their national standards against them.", ex: "Since 2019, SI units such as the kilogram are defined by fixed constants of nature instead of physical objects, and realised with instruments such as the Kibble balance." },
-    { k: "primary", name: "Primary standards", who: "Kept by each country's national standards laboratory. In Malaysia this is the National Metrology Institute of Malaysia (NMIM) in Sepang, Selangor. It is a unit of SIRIM Berhad, and the National Measurement System Act 2007 makes it responsible for keeping the national measurement standards.", use: "Used to calibrate and certify secondary standards. Not used outside the national laboratory. In Malaysia, calibration laboratories send their secondary standards to NMIM.", ex: "A national voltage standard used to certify the reference voltmeters of calibration labs." },
-    { k: "secondary", name: "Secondary standards", who: "Held by industrial measurement and calibration laboratories. Each industry has its own.", use: "The lab's main reference. It is sent to the national laboratory from time to time for calibration, and comes back with a certificate that links its accuracy to the primary standard.", ex: "A calibration lab's reference resistors, sent for recalibration every year." },
-    { k: "working", name: "Working standards", who: "Used on the lab bench and the factory floor.", use: "Used every day to check and calibrate lab instruments for accuracy and performance.", ex: "A resistor manufacturer checks the values of the resistors it produces against a working standard." }
+    { k: "intl", name: "International standards", short: "BIPM",
+      who: "Defined by international agreement and maintained by the International Bureau of Weights and Measures (BIPM) at Sèvres, near Paris.",
+      use: "The most accurate standards that current science and technology can achieve. Countries compare their national standards against them.",
+      ex: "The volt is defined from fixed constants of nature and reproduced with a Josephson voltage standard. The BIPM compares the Josephson standards of different countries, so one volt is the same everywhere.",
+      link: ["https://www.bipm.org/", "BIPM"] },
+    { k: "primary", name: "Primary standards", short: "NMIM",
+      who: "Kept by each country's national standards laboratory. In Malaysia this is the National Metrology Institute of Malaysia (NMIM) in Sepang, Selangor. It is a unit of SIRIM Berhad, and the National Measurement System Act 2007 makes it responsible for keeping the national measurement standards.",
+      use: "Used to calibrate and certify secondary standards. Not used outside the national laboratory.",
+      ex: "NMIM keeps Malaysia's national voltage standard: a Josephson voltage system that reproduces the volt at 1 V and 10 V. Calibration laboratories send their reference voltage standards here.",
+      link: ["https://www.nmim.gov.my/", "NMIM"] },
+    { k: "secondary", name: "Secondary standards", short: "Calibration lab",
+      who: "Held by industrial measurement and calibration laboratories. In Malaysia these laboratories are accredited by the Department of Standards Malaysia under the SAMM scheme (ISO/IEC 17025).",
+      use: "The lab's main reference. It is sent to the national laboratory from time to time for calibration, and comes back with a certificate that links its accuracy to the primary standard.",
+      ex: "A calibration laboratory's reference voltage standard (a very stable 10 V source). It goes to NMIM for calibration at set intervals and returns with a certificate.",
+      link: ["https://www.jsm.gov.my/accreditation/resources-accreditation/laboratories-samm", "Department of Standards Malaysia: accredited laboratories (SAMM)"] },
+    { k: "working", name: "Working standards", short: "Working standard",
+      who: "Used on the lab bench and the factory floor. There is no single body at this level: each organisation keeps its own.",
+      use: "Used every day to check and calibrate lab instruments for accuracy and performance.",
+      ex: "The calibrator or reference meter in a factory or university lab. It is checked against the calibration lab's secondary standard, then used day to day to check ordinary instruments, including the multimeter on your bench.",
+      link: ["https://www.bipm.org/documents/20126/42177518/BIPM-OIML-ILAC-ISO_joint_declaration_2011.pdf/9f828dc6-bf36-f68c-b6d5-027c63dab9a9", "Joint declaration on metrological traceability (BIPM, OIML, ILAC, ISO), PDF"] }
   ];
   function mountStandards(el) {
     let cur = 1;
@@ -482,8 +499,10 @@
     const halfW = (y) => 78 + (y - top) * 0.47;
     el.innerHTML = `<div class="std-grid">
         <figure class="diagram"><div class="std-svg"></div><figcaption>Select a level. Accuracy is highest at the top; the number of standards grows towards the bottom.</figcaption></figure>
-        <div><div class="std-detail" aria-live="polite"></div><button type="button" class="btn ghost" data-trace>Follow a calibration down the chain</button></div>
-      </div>`;
+        <div><div class="std-detail" aria-live="polite"></div><button type="button" class="btn ghost" data-trace>Follow the volt down the chain</button></div>
+      </div>
+      <div class="std-chain" aria-live="polite"></div>
+      <p class="widget-lead std-q"><strong>Traceability:</strong> your multimeter was checked against a working standard, which was checked against a secondary standard, which was calibrated by NMIM, whose standard is compared with the BIPM. Because that chain is unbroken, 5.00 V on your meter means the same as 5.00 V anywhere in the world.</p>`;
     let timer = 0;
     el.querySelector("[data-trace]").addEventListener("click", () => {
       clearInterval(timer); cur = 0; draw();
@@ -502,7 +521,9 @@
       s += `</svg>`;
       el.querySelector(".std-svg").innerHTML = s;
       const st = STANDARDS[cur];
-      el.querySelector(".std-detail").innerHTML = `<h4>${st.name}</h4><p><strong>Who keeps it:</strong> ${st.who}</p><p><strong>What it's for:</strong> ${st.use}</p><p class="std-ex"><strong>Example:</strong> ${st.ex}</p>
+      el.querySelector(".std-chain").innerHTML = `<ol>${STANDARDS.map((x, i) => `<li class="${i === cur ? "on" : ""}">${x.short}</li>`).join("")}<li class="me">Your multimeter</li></ol>`;
+      el.querySelector(".std-detail").innerHTML = `<h4>${st.name}</h4><p><strong>Who keeps it:</strong> ${st.who}</p><p><strong>What it's for:</strong> ${st.use}</p><p class="std-ex"><strong>In our example (the volt):</strong> ${st.ex}</p>
+        <p class="std-link"><a href="${st.link[0]}" target="_blank" rel="noopener">Official website: ${st.link[1]} ↗</a></p>
         ${cur > 0 ? `<p class="std-trace">Calibrated against the <strong>${STANDARDS[cur - 1].name.toLowerCase()}</strong> above it. This unbroken chain of calibrations is called <em>traceability</em>.</p>` : `<p class="std-trace">The top of the chain: every calibration below traces back to here.</p>`}`;
     };
     el.addEventListener("click", (e) => { const g = e.target.closest(".lvl"); if (g) { cur = +g.dataset.i; draw(); el.querySelector(`.lvl[data-i="${cur}"]`).focus(); } });
@@ -1187,7 +1208,7 @@
 
     /* ---------------- Standards ---------------- */
     { id: "standards", group: "standards", title: "The Hierarchy of Standards", toc: "Four Categories",
-      intro: `<p>A <strong>standard</strong> is a known, accurate measure of a physical quantity. Other measurements get their values by comparison with it. There are four categories, each calibrated against the one above.</p>`,
+      intro: `<p>A <strong>standard</strong> is a known, accurate measure of a physical quantity. Other measurements get their values by comparison with it. There are four categories, each calibrated against the one above.</p><p>One question runs through all four: <strong>how do you know that 5.00 V on your multimeter is really 5 V?</strong> Select each level to follow the volt from the top of the chain down to your bench.</p>`,
       mount: mountStandards,
       after: `<div class="callout info"><strong>Good to know</strong><strong>BIPM</strong> stands for <em>Bureau International des Poids et Mesures</em>, French for the International Bureau of Weights and Measures. It is at Sèvres, just outside Paris.</div>` },
 
