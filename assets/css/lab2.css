@@ -1,0 +1,177 @@
+/* NMK42003 Lab 2 virtual lab: the potentiometer bench, the measurement chain, Table 1, the fit and the lab plan.
+   Builds on style.css, lab.css and lab1.css (board, blocks, phone, quiz, step bar). */
+
+.lab-sub { font-family: var(--serif); font-size: 1.15rem; color: var(--ink-2); margin: 4px 0 0; }
+.explain-p { color: var(--ink-2); max-width: var(--measure); margin: 0 0 10px; }
+.bk-inl.pin { --c: #b3873a; }
+.bk-inl.math { --c: #5b67a5; }
+
+/* ---------- The bench: protractor, potentiometer, wires, supply, meter ---------- */
+.scene.rig { min-width: 560px; max-width: 820px; margin: 0 auto; }
+.rig-box { margin-bottom: 4px; }
+.rig-knob { max-width: 560px; margin: 6px 0 10px; }
+.rig-knob output { font-weight: 600; color: var(--teal); }
+.rig-live { display: none; margin: 2px 0 0; font: 600 .9rem ui-monospace, Consolas, monospace; color: var(--teal); }
+@media (max-width: 640px) { .rig-live { display: block; } }
+.pr-card { fill: #fbfaf5; stroke: #c9c4b4; }
+:root[data-theme="dark"] .pr-card { fill: #d9d6cb; stroke: #a8a394; }
+.scene .prot { fill: color-mix(in srgb, var(--teal-soft) 55%, #ffffff); stroke: #5d6b77; stroke-width: 1.2; }
+:root[data-theme="dark"] .scene .prot { fill: #c5dcd9; }
+.scene .tick { stroke: #5d6b77; stroke-width: 1; }
+.scene .tick.big { stroke: #1c2a36; stroke-width: 1.6; }
+.scene .pr-n { fill: #1c2a36; font: 600 11px var(--sans); }
+.pot-body { fill: #2f6fb5; stroke: #1d4a7c; stroke-width: 2; }
+.scene .knob { fill: var(--metal); stroke: #2b3640; stroke-width: 1.6; }
+.scene .pointer { stroke: #d93a2b; stroke-width: 4; stroke-linecap: round; }
+.prot-hit { fill: transparent; cursor: grab; touch-action: none; }
+.prot-hit:active { cursor: grabbing; }
+.wire-c { fill: none; stroke: var(--surface); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+.wire.k { stroke: #2b3640; }
+:root[data-theme="dark"] .wire.k { stroke: #8a96a1; }
+.wire.open { stroke: var(--ink-3); stroke-width: 2.4; stroke-dasharray: 5 6; }
+.scene .open-t { fill: var(--amber); font: 600 12px var(--sans); }
+.sup.off .wire { stroke-dasharray: 3 8; opacity: .45; }
+.join { fill: #2b3640; }
+:root[data-theme="dark"] .join { fill: #8a96a1; }
+.psu-b, .mm-b { fill: #3a434b; stroke: #1f272e; stroke-width: 1.5; }
+.mm-b { fill: #c98a12; stroke: #8a5d08; }
+.psu-k { fill: #c9d1d8; stroke: #6d7a86; stroke-width: 1.5; }
+.psu-m { stroke: #2b3640; stroke-width: 2.5; stroke-linecap: round; }
+.psu-t { stroke: #11181f; stroke-width: 1.5; }
+.psu-t.p { fill: #d93a2b; }
+.psu-t.n { fill: #11181f; stroke: #8a96a1; }
+.scene .psu-l { fill: #fff; font: 700 15px var(--sans); }
+.scene .psu-l.sm { font: 600 11.5px var(--sans); }
+.scene .psu-l.dim { font-weight: 400; opacity: .8; }
+.scene .mm-t { fill: #1c2a36; font: 700 12px var(--sans); }
+.scene .mm-t.sm { font: 500 10.5px var(--sans); }
+.scene .rd-l, .scene .rd-v { font-size: 12.5px; }
+.burn-x { stroke: #ff4a3d; stroke-width: 3.5; stroke-linecap: round; fill: none; }
+.scene .burn-t { fill: var(--danger); font: 700 13px var(--sans); }
+.smoke { fill: #9aa5ae; opacity: 0; animation: smoke 1.8s ease-out infinite; }
+.smoke.s2 { animation-delay: .5s; }
+.smoke.s3 { animation-delay: 1s; }
+@keyframes smoke { 0% { opacity: .75; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-34px); } }
+@media (prefers-reduced-motion: reduce) { .smoke { animation: none; opacity: .5; } }
+
+/* ---------- The lab at a glance ---------- */
+.flow { list-style: none; padding: 0; margin: 8px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 10px; }
+.flow a { display: grid; gap: 2px; height: 100%; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 10px 12px; color: var(--ink); text-decoration: none; transition: border-color .2s, background .2s; }
+.flow a:hover { border-color: var(--teal); }
+.flow li.on a { border-color: var(--teal); background: var(--teal-soft); }
+.fl-n { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--grid); font-weight: 600; font-size: .9rem; margin-bottom: 4px; }
+.flow li.on .fl-n { background: var(--teal); color: var(--surface); }
+.flow small { color: var(--ink-2); font-size: .85rem; line-height: 1.35; }
+@media (prefers-reduced-motion: reduce) { .flow a { transition: none; } }
+
+/* ---------- Power bench ---------- */
+.pw-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 900px) { .pw-grid { grid-template-columns: minmax(0, 1fr); } }
+.pw-grid > * { min-width: 0; }
+.pw-side { display: grid; gap: 10px; justify-items: start; }
+.pw-side > * { max-width: 100%; }
+.pw-bench { width: 100%; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 12px 14px; }
+.pw-bench[hidden] { display: none; }
+.pw-bench .slider-field output { font-weight: 600; color: var(--teal); }
+.pw-side .chips-row { margin: 0; }
+.pw-bench .chips-row { margin-bottom: 10px; }
+.pw-status { width: 100%; min-height: 7.5em; }
+.pw-status .callout { margin: 0; }
+.task-sim .scene-box { margin-top: 0; }
+
+/* ---------- Measurement chain ---------- */
+.scene.chain { min-width: 640px; max-width: 900px; margin: 0 auto; }
+.ch-box { fill: var(--paper); stroke: var(--rule); stroke-width: 1.4; }
+.scene .ch-k { fill: var(--teal); font: 600 12.5px var(--sans); }
+.scene .ch-s { fill: var(--ink-2); font: 12px var(--sans); }
+.scene .ch-v { fill: var(--ink); font: 600 15px var(--sans); }
+.scene .ch-big { fill: var(--ink); font: 700 26px var(--serif); }
+.scene .ch-bits { fill: var(--teal); font: 600 12.5px ui-monospace, Consolas, monospace; }
+.ch-arrow { stroke: var(--amber); stroke-width: 2.5; stroke-dasharray: 3 3; animation: dash .6s linear infinite; fill: none; }
+.ch-head { fill: var(--amber); }
+.ch-trk { fill: var(--grid); stroke: var(--ink-3); }
+.ch-fill { fill: var(--teal); }
+.ch-wip { fill: none; stroke: var(--danger); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+@media (prefers-reduced-motion: reduce) { .ch-arrow { animation: none; } }
+.chain-list { margin-top: 6px; }
+
+/* ---------- Plots ---------- */
+.plot-box { max-width: 620px; margin: 12px 0; }
+.plot-box figcaption .key { margin-left: 6px; }
+.plot-box figcaption .key:first-child { margin-left: 0; }
+.plot .cal-pt { fill: var(--danger); stroke: var(--surface); stroke-width: 1.5; }
+.plot .stem { stroke: var(--danger); stroke-width: 1.5; opacity: .6; }
+.fit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 12px; align-items: start; }
+.fit-grid .plot-box { margin: 0; max-width: none; }
+.fit-eq { display: grid; gap: 2px; background: var(--teal-soft); border: 2px solid var(--teal); border-radius: var(--r-md); padding: 12px 16px; margin: 0 0 12px; max-width: 720px; }
+.fit-l { font-size: .82rem; font-weight: 600; color: var(--teal); }
+.fit-eq strong { font-family: var(--serif); font-size: 1.35rem; overflow-wrap: anywhere; }
+.fit-s { font-size: .9rem; color: var(--ink-2); }
+
+/* ---------- Table 1 and the error table ---------- */
+.cl-side { width: 100%; }
+.cl-side .chips-row { margin: 0; }
+.cal-box { width: 100%; max-height: 330px; overflow: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); }
+.cal-box.wide { max-height: none; max-width: 620px; }
+.cal-box:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+table.cal-table { width: 100%; border-collapse: collapse; font-size: .92rem; font-variant-numeric: tabular-nums; }
+.cal-table caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+.cal-table thead th { position: sticky; top: 0; background: var(--surface); text-align: left; font-weight: 500; color: var(--ink-3); font-size: .8rem; padding: 8px 12px; border-bottom: 1px solid var(--rule); }
+.cal-table td, .cal-table tbody th { padding: 5px 12px; border-bottom: 1px solid var(--grid); text-align: left; font-weight: 400; }
+.cal-table tbody th { font-weight: 600; }
+.cal-table td.empty { color: var(--ink-3); }
+.cal-table td.bad { color: var(--amber); font-weight: 600; }
+.cal-table tr.cur { background: var(--teal-soft); }
+.row-go { font: inherit; font-size: .8rem; min-width: 44px; min-height: 30px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink-2); cursor: pointer; }
+.row-go:hover { border-color: var(--teal); color: var(--teal); }
+tr.cur .row-go { border-color: var(--teal); color: var(--teal); }
+
+/* ---------- m and c, and the task rehearsal form ---------- */
+.mc-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 12px 16px; margin: 8px 0 12px; max-width: 820px; }
+.mc-f { display: grid; gap: 4px; }
+.mc-f label { font-size: .9rem; font-weight: 500; }
+.mc-f .hint { font-weight: 400; color: var(--ink-3); font-size: .8rem; }
+.mc-f input { font: inherit; height: 40px; width: 9.5em; max-width: 100%; padding: 0 10px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); }
+.tk-form .mc-f input { width: 7em; }
+@media (max-width: 860px) { .mc-f input { font-size: 16px; height: 44px; } }
+.mc-note { flex-basis: 100%; margin: 0; font-size: .92rem; color: var(--ink-2); }
+.ai-angle { min-width: 190px; font-variant-numeric: tabular-nums; }
+.ai-angle.on { background: #cfe5ff; }
+.task-card.wide { grid-column: 1 / -1; }
+.tk-band { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 6px 8px; }
+.tk-warn { fill: var(--amber-soft); stroke: var(--amber); }
+.tk-ok { fill: var(--teal); }
+.tk-mk { fill: var(--danger); }
+.tk-ml { stroke: var(--danger); stroke-width: 2; }
+
+/* ---------- My Lab Plan ---------- */
+.plan { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 12px; margin: 8px 0 14px; }
+.plan-card { background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--teal); border-radius: var(--r-md); padding: 12px 16px; min-width: 0; }
+.plan-card.wide { grid-column: 1 / -1; }
+.plan-card h4 { font-family: var(--serif); font-size: 1.05rem; margin: 0 0 8px; }
+.plan-card label { font-size: .93rem; color: var(--ink-2); }
+.pl-opts { display: grid; gap: 6px; }
+.pl-opt { display: flex; gap: 10px; align-items: flex-start; padding: 9px 12px; min-height: 44px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); cursor: pointer; color: var(--ink) !important; }
+.pl-opt input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--teal); flex: none; }
+.pl-opt:has(input:checked) { border-color: var(--teal); background: var(--teal-soft); }
+.plan-card textarea { display: block; width: 100%; margin-top: 6px; font: inherit; font-size: 16px; padding: 8px 10px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); resize: vertical; }
+.plan-list { list-style: none; padding: 0; margin: 0 0 6px; display: grid; gap: 4px; color: var(--ink-2); }
+.plan-list strong { color: var(--ink); overflow-wrap: anywhere; }
+.wf-row { align-items: center; }
+
+/* ---------- The printed plan: only the sheet prints ---------- */
+#printSheet { display: none; }
+@media print {
+  html.print-plan body > *:not(#printSheet) { display: none !important; }
+  html.print-plan #printSheet { display: block; color: #000; background: #fff; font: 10.5pt/1.4 "IBM Plex Sans", Arial, sans-serif; }
+  #printSheet h1 { font: 600 15pt "IBM Plex Serif", Georgia, serif; margin: 0 0 4pt; }
+  #printSheet h2 { font: 600 11.5pt "IBM Plex Serif", Georgia, serif; margin: 9pt 0 3pt; border-bottom: 1px solid #999; }
+  #printSheet p { margin: 3pt 0; }
+  #printSheet table { border-collapse: collapse; width: 100%; font-size: 9.5pt; }
+  #printSheet th, #printSheet td { border: 1px solid #777; padding: 1.5pt 6pt; text-align: left; height: 13pt; }
+  #printSheet .ps-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; align-items: start; }
+  #printSheet .ps-notes { border: 1px solid #777; min-height: 60pt; padding: 4pt 6pt; white-space: pre-wrap; }
+  #printSheet .ps-h { font-weight: 600; }
+  #printSheet .ps-acc td { height: 16pt; }
+  @page { size: A4; margin: 14mm; }
+}

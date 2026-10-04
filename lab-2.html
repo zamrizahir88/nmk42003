@@ -3,14 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lab 1: Introduction (Software &amp; Hardware) | NMK42003 Instrumentation</title>
-  <meta name="description" content="Virtual lab for NMK42003 Instrumentation Lab 1: power and program the ESP32, blink its LED, upload over the air, and switch LEDs from a phone by Bluetooth, an MIT App Inventor app and a Wi-Fi web page.">
+  <title>Lab 2: Transduction and Conversion Calibration | NMK42003 Instrumentation</title>
+  <meta name="description" content="Virtual lab for NMK42003 Instrumentation Lab 2: turn a potentiometer into an angle sensor with the ESP32. Power it safely, read the ADC count, collect calibration data, fit a straight line, and show the angle on a phone by Bluetooth and on a web page.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/style.css?v=2610061">
   <link rel="stylesheet" href="assets/css/lab.css?v=2610061">
   <link rel="stylesheet" href="assets/css/lab1.css?v=2610061">
+  <link rel="stylesheet" href="assets/css/lab2.css?v=2610061">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0b6e6e">
   <link rel="apple-touch-icon" href="assets/img/icon-180.png">
@@ -54,23 +55,22 @@
   <main id="main">
     <div class="wrap chapter-hero">
       <a class="crumb" href="labs.html">Back to all labs</a>
-      <div class="chapter-no">Lab 1 · Virtual lab</div>
-      <h1 id="chTitle">Introduction (Software &amp; Hardware)</h1>
+      <div class="chapter-no">Lab 2 · Virtual lab</div>
+      <h1 id="chTitle">Transduction and Conversion Calibration</h1>
+      <p class="lab-sub">Analog Angular Sensor Calibration and Wireless Display</p>
       <div class="topic-meta" id="chMeta"></div>
       <div class="authors" id="chAuthors"></div>
-      <p class="lab-lead">Try the whole of Lab 1 here before you come to the lab. You'll power and program the ESP32, blink its built-in LED, upload a program over Wi-Fi, and then switch LEDs from a phone in three ways: a Bluetooth terminal, your own MIT App Inventor app and a web page.</p>
+      <p class="lab-lead">Plan and rehearse the whole of Lab 2 here before you come to the lab. You'll turn a potentiometer into an angle sensor: power it safely, read it with the ESP32, calibrate it against a protractor, and show the angle on a phone and on a web page.</p>
       <div class="goals">
         <h2>Objectives</h2>
         <ul>
-          <li>power and program the ESP32, by cable and over the air (OTA)</li>
-          <li>switch the built-in LED on and off from a mobile phone by Bluetooth</li>
-          <li>build a simple phone app with MIT App Inventor</li>
-          <li>switch an external LED on and off over Wi-Fi from a web browser</li>
-          <li>read a switch and monitor its condition on the Serial Monitor, a phone and a web page</li>
+          <li>obtain the calibration data of an angular sensor: the angle and the ADC count</li>
+          <li>plot the angle against the ADC count and fit a first-order polynomial (a straight line)</li>
+          <li>display the calibrated angle on a mobile phone and in a web browser</li>
         </ul>
       </div>
-      <p class="lab-how">This is a simulation: nothing here talks to a real board. Everything follows the lab sheet, so in the lab you'll do the same steps on the real ESP32. Where the page asks for your name, it uses it the way the lab sheet does (in the Bluetooth name and the Serial Monitor).</p>
-      <p class="gate-note" id="gateNote"><span aria-hidden="true">🔒</span> <span>The <strong>Lab Task</strong> unlocks when you pass the <a href="#exercises">Pre-Lab Check</a> quiz with at least <strong>7 out of 10</strong>.</span></p>
+      <p class="lab-how">This is a simulation: nothing here talks to a real board. The virtual potentiometer on this device is a little different from everyone else's, so your m and c are your own. In the lab you'll do the same steps on the real ESP32, and your real numbers will be different again.</p>
+      <p class="gate-note" id="gateNote"><span aria-hidden="true">🔒</span> <span>The <strong>Lab Task</strong> and <strong>My Lab Plan</strong> unlock when you pass the <a href="#exercises">Pre-Lab Check</a> quiz with at least <strong>7 out of 10</strong>.</span></p>
       <div class="name-box" id="nameBox"></div>
       <noscript><div class="callout warn"><strong>JavaScript is off</strong>The virtual lab on this page needs JavaScript. Turn it on, or use the lab sheet on URLearn.</div></noscript>
     </div>
@@ -78,14 +78,16 @@
     <nav class="lab-nav steps" aria-label="Lab sections">
       <div class="wrap">
         <a href="#kit" title="Before You Start"><span class="sb-s" aria-hidden="true">Start</span><span class="sb-l">Before You Start</span></a>
-        <a href="#l1" title="Lesson 1: Blink"><span class="sb-s" aria-hidden="true">1</span><span class="sb-l">Lesson 1: Blink</span></a>
-        <a href="#l2" title="Lesson 2: Bluetooth"><span class="sb-s" aria-hidden="true">2</span><span class="sb-l">Lesson 2: Bluetooth</span></a>
-        <a href="#l3" title="Lesson 3: App Inventor"><span class="sb-s" aria-hidden="true">3</span><span class="sb-l">Lesson 3: App Inventor</span></a>
-        <a href="#l4" title="Lesson 4: Wi-Fi"><span class="sb-s" aria-hidden="true">4</span><span class="sb-l">Lesson 4: Wi-Fi</span></a>
-        <a href="#l5" title="Lesson 5: Switch"><span class="sb-s" aria-hidden="true">5</span><span class="sb-l">Lesson 5: Switch</span></a>
+        <a href="#l1" title="Lesson 1: Power"><span class="sb-s" aria-hidden="true">1</span><span class="sb-l">Lesson 1: Power</span></a>
+        <a href="#l2" title="Lesson 2: Angle to Number"><span class="sb-s" aria-hidden="true">2</span><span class="sb-l">Lesson 2: Angle to Number</span></a>
+        <a href="#l3" title="Lesson 3: Read"><span class="sb-s" aria-hidden="true">3</span><span class="sb-l">Lesson 3: Read</span></a>
+        <a href="#l4" title="Lesson 4: Collect"><span class="sb-s" aria-hidden="true">4</span><span class="sb-l">Lesson 4: Collect</span></a>
+        <a href="#l5" title="Lesson 5: Fit"><span class="sb-s" aria-hidden="true">5</span><span class="sb-l">Lesson 5: Fit</span></a>
+        <a href="#l6" title="Lesson 6: Apply"><span class="sb-s" aria-hidden="true">6</span><span class="sb-l">Lesson 6: Apply</span></a>
+        <a href="#l7" title="Lesson 7: Display"><span class="sb-s" aria-hidden="true">7</span><span class="sb-l">Lesson 7: Display</span></a>
         <a href="#exercises" title="Pre-Lab Check"><span class="sb-s" aria-hidden="true">Check</span><span class="sb-l">Pre-Lab Check</span></a>
         <a href="#labtask" id="taskNav" title="Lab Task (locked)"><span class="sb-s" aria-hidden="true">Task</span><span class="sb-l">Lab Task</span><span class="sb-k"> 🔒<span class="vh"> locked</span></span></a>
-        <a href="#review" title="Lab 1 Review"><span class="sb-s" aria-hidden="true">Review</span><span class="sb-l">Lab 1 Review</span></a>
+        <a href="#review" title="Lab 2 Review"><span class="sb-s" aria-hidden="true">Review</span><span class="sb-l">Lab 2 Review</span></a>
       </div>
       <p class="sb-cap" aria-hidden="true"></p>
     </nav>
@@ -94,7 +96,7 @@
       <div class="wrap">
         <div class="group-head">
           <h2 id="kit-h">Before You Start</h2>
-          <p>The equipment, the software and the basic ESP32 circuit.</p>
+          <p>The equipment, the software and the order of the work.</p>
           <ul class="toc-chips" id="kitToc"></ul>
         </div>
         <div id="kitList"></div>
@@ -104,8 +106,8 @@
     <section class="lab-group" id="l1" aria-labelledby="l1-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="l1-h">Lesson 1: Blink the Built-in LED</h2>
-          <p>Build the blocks in TUNIOT, then upload the code in two ways: by USB cable and over Wi-Fi.</p>
+          <h2 id="l1-h">Lesson 1: Power the Sensor Safely</h2>
+          <p>Wire the potentiometer to the ESP32, then make sure it never gets more than 3.3 V.</p>
           <ul class="toc-chips" id="l1Toc"></ul>
         </div>
         <div id="l1List"></div>
@@ -115,8 +117,8 @@
     <section class="lab-group" id="l2" aria-labelledby="l2-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="l2-h">Lesson 2: Control the LED with a Bluetooth Terminal</h2>
-          <p>The ESP32 becomes a Bluetooth device with your name. You type ON or OFF on your phone.</p>
+          <h2 id="l2-h">Lesson 2: From Angle to Number</h2>
+          <p>How an angle becomes a voltage, and how the ESP32 turns that voltage into a number.</p>
           <ul class="toc-chips" id="l2Toc"></ul>
         </div>
         <div id="l2List"></div>
@@ -126,8 +128,8 @@
     <section class="lab-group" id="l3" aria-labelledby="l3-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="l3-h">Lesson 3: Control the LED with Your Own App</h2>
-          <p>Design a phone app with MIT App Inventor that sends ON and OFF to the same ESP32 program.</p>
+          <h2 id="l3-h">Lesson 3: Read the ADC Count</h2>
+          <p>Build the blocks that read the sensor, and watch the raw count on the Serial Monitor.</p>
           <ul class="toc-chips" id="l3Toc"></ul>
         </div>
         <div id="l3List"></div>
@@ -137,9 +139,8 @@
     <section class="lab-group" id="l4" aria-labelledby="l4-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="l4-h">Lesson 4: Control an External LED over Wi-Fi</h2>
-          <p>Wire an LED to GPIO32, and let the ESP32 serve a web page with ON and OFF buttons.</p>
-          <ul class="toc-chips" id="l4Toc"></ul>
+          <h2 id="l4-h">Lesson 4: Collect the Calibration Data</h2>
+          <p>Set known angles on the protractor and record the count at each one.</p>
         </div>
         <div id="l4List"></div>
       </div>
@@ -148,11 +149,31 @@
     <section class="lab-group" id="l5" aria-labelledby="l5-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="l5-h">Lesson 5: Monitor the Switch Condition</h2>
-          <p>Add a toggle switch, read its condition, and monitor it in three ways: on the Serial Monitor, on a phone via Bluetooth and on a web page.</p>
-          <ul class="toc-chips" id="l5Toc"></ul>
+          <h2 id="l5-h">Lesson 5: Plot and Fit the Line</h2>
+          <p>Turn Table 1 into a graph and a straight-line equation.</p>
         </div>
         <div id="l5List"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="l6" aria-labelledby="l6-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="l6-h">Lesson 6: Use the Equation</h2>
+          <p>Put your m and c into the program, so the ESP32 shows degrees instead of counts.</p>
+        </div>
+        <div id="l6List"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="l7" aria-labelledby="l7-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="l7-h">Lesson 7: Display the Angle Wirelessly</h2>
+          <p>Send the calibrated angle to a phone by Bluetooth, and show it on a web page over Wi-Fi.</p>
+          <ul class="toc-chips" id="l7Toc"></ul>
+        </div>
+        <div id="l7List"></div>
       </div>
     </section>
 
@@ -170,13 +191,13 @@
       <div class="wrap">
         <div class="group-head">
           <h2 id="labtask-h">Lab Task</h2>
-          <p>The task you build on your own and demonstrate in the lab.</p>
+          <p>The task you build on your own and demonstrate in the lab, and the plan you bring with you.</p>
         </div>
         <div class="lock-card" id="taskLock" role="region" aria-labelledby="lock-h">
           <div class="lock-ico" aria-hidden="true">🔒</div>
           <div>
             <h3 id="lock-h">Complete the Pre-Lab Check First</h3>
-            <p>Score at least <strong>7 out of 10</strong> in the Pre-Lab Check quiz to unlock the Lab Task.</p>
+            <p>Score at least <strong>7 out of 10</strong> in the Pre-Lab Check quiz to unlock the Lab Task and My Lab Plan.</p>
             <a class="btn" href="#exercises">Go to the Pre-Lab Check</a>
           </div>
         </div>
@@ -187,8 +208,8 @@
     <section class="lab-group" id="review" aria-labelledby="review-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="review-h">Lab 1 Review</h2>
-          <p>Four exercises that bring the whole lab together: timing, the LED resistor, web requests and Bluetooth messages. Type or choose your answers and press <strong>Check answers</strong>. Each wrong try unlocks a hint, and when all your answers are correct the full working appears. Swipe left or right, or use the arrows, to move between exercises.</p>
+          <h2 id="review-h">Lab 2 Review</h2>
+          <p>Four exercises that bring the whole lab together: the ADC count, the calibration line, using the equation and the error of a reading. Type or choose your answers and press <strong>Check answers</strong>. Each wrong try unlocks a hint, and when all your answers are correct the full working appears. Swipe left or right, or use the arrows, to move between exercises.</p>
         </div>
         <div id="exList"></div>
         <nav class="pager" aria-label="Labs" id="chPager"></nav>
@@ -201,6 +222,7 @@
   <script src="assets/js/data.js?v=2610061"></script>
   <script src="assets/js/main.js?v=2610061"></script>
   <script src="assets/js/lab.js?v=2610061"></script>
-  <script src="assets/js/lab1.js?v=2610061"></script>
+  <script src="assets/js/labkit.js?v=2610061"></script>
+  <script src="assets/js/lab2.js?v=2610061"></script>
 </body>
 </html>

@@ -331,7 +331,7 @@ void loop()
       mount: mountSteps },
     { id: "vlab", group: "lab", title: "Calibrate a Sensor, Step by Step", toc: "Virtual Lab",
       intro: `<p>Two sensors from the textbook. On the <strong>potentiometer</strong> tab, a pointer on the shaft turns over a protractor (the reference) and the wiper voltage goes to the ESP32's ADC on GPIO36. On the <strong>water level</strong> tab, a two-wire capacitive sensor stands in a bottle with a ruler (the reference); the 555 timer's frequency goes to GPIO14.</p>
-        <p>Set a known value, <strong>record</strong> the reading, repeat, then <strong>fit</strong> and watch the ESP32 show real units. This is also good practice before the potentiometer lab.</p>`,
+        <p>Set a known value, <strong>record</strong> the reading, repeat, then <strong>fit</strong> and watch the ESP32 show real units. This is also good practice before the potentiometer lab: the full version is the <a href="lab-2.html">Lab 2 virtual lab</a>.</p>`,
       mount: mountLab },
     { id: "system", group: "whole", title: "Why Calibrate the Whole System?", toc: "The ESP32's ADC",
       intro: `<p>In theory the ESP32's 12-bit ADC turns 0 to 3.3 V into 0 to 4095, so V = 3.3 × ADC ÷ 4095. In practice, a 2.5 V supply may be shown as about 2.36 V, and the ADC is not linear near 0 V and near 3.3 V. The power supply itself may not be calibrated either.</p>
