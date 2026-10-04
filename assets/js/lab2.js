@@ -124,22 +124,26 @@
     } else {
       s += wire("r", `M164,244V258H${PX}V${PY}`, pg.r) + wire("k", `M136,244V290H${GX}V${GY}`, pg.k);
     }
-    s += wire("y", `M150,244V272H300V338H654V70H${VPX}V${VPY}`, pg.y);
+    s += `<g class="${o.hot ? "vp-wire hot" : "vp-wire"}">` + wire("y", `M150,244V272H300V338H654V70H${VPX}V${VPY}`, pg.y) + `</g>`;
+    if (o.hot) s += `<circle class="vp-hot" cx="${VPX}" cy="${VPY}" r="9"/>`;
     if (o.led !== undefined) {
       s += `<path class="wire r thin" d="M${LX},${LY}V88"/><path class="led-dome rig-led${o.led ? " on" : ""}" d="M${LX - 11},88V76a11,11 0 0 1 22,0V88Z"/>` + T(LX + 16, 58, "LED (GPIO32)", "start", "wl sm");
     }
     if (o.dead) {
-      s += `<g class="burn"><circle class="smoke" cx="${VPX}" cy="${VPY - 6}" r="6"/><circle class="smoke s2" cx="${VPX + 5}" cy="${VPY - 4}" r="5"/><circle class="smoke s3" cx="${VPX - 5}" cy="${VPY - 4}" r="4"/>` +
-        `<path class="burn-x" d="M${VPX - 7},${VPY - 7}l14,14m0,-14l-14,14"/></g>` + T(VPX - 16, BY - 8, "VP damaged", "end", "burn-t");
+      const puff = [[0, 9, 0], [7, 8, .35], [-7, 7, .7], [3, 10, 1.05], [-4, 8, 1.4]];
+      s += `<g class="burn">${puff.map(([dx, r, d]) => `<circle class="smoke" cx="${VPX + dx}" cy="${VPY - 6}" r="${r}" style="animation-delay:${d}s"/>`).join("")}` +
+        `<circle class="burn-pin" cx="${VPX}" cy="${VPY}" r="8"/><path class="burn-x" d="M${VPX - 6},${VPY - 6}l12,12m0,-12l-12,12"/>` +
+        (o.zap ? `<path class="spark" d="M${VPX},${VPY - 26}l6,16l17,-5l-11,13l13,11l-17,1l-1,17l-9,-14l-13,10l5,-16l-16,-6l16,-6l-6,-15l13,9z"/>` : "") + `</g>`;
+      s += `<g class="dead-banner"><rect x="22" y="14" width="328" height="40" rx="8"/>${T(186, 40, "⚡ VP PIN DAMAGED", "middle", "db-t")}</g>`;
     }
     if (o.r1 !== undefined) {
-      s += `<g class="rd"><rect x="372" y="12" width="148" height="50" rx="6"/>${T(382, 32, esc(o.r1), "start", "rd-l rig-r1")}${T(382, 52, esc(o.r2 || ""), "start", "rd-v hi rig-r2")}</g>`;
+      s += `<g class="rd${o.dead ? " dead" : o.hot ? " hot" : ""}"><rect x="372" y="12" width="148" height="50" rx="6"/>${T(382, 32, esc(o.r1), "start", "rd-l rig-r1")}${T(382, 52, esc(o.r2 || ""), "start", "rd-v hi rig-r2")}</g>`;
     }
     if (o.meter !== undefined) {
       s += `<g class="mm"><rect class="mm-b" x="14" y="256" width="112" height="82" rx="8"/><rect class="lcd" x="24" y="266" width="92" height="30" rx="4"/>` +
         T(70, 287, esc(o.meter), "middle", "lcdt rig-meter") + T(70, 314, "Multimeter", "middle", "mm-t") + T(70, 329, esc(o.meterOn || "wiper to GND"), "middle", "mm-t sm rig-meter-on") + `</g>`;
     }
-    return `<svg class="scene rig" viewBox="0 0 ${VW} ${VH}" role="img" aria-label="${esc(o.aria || `Potentiometer on a protractor, wired to the ESP32. The pointer is at ${Math.round(o.angle)} degrees.`)}">${s}</svg>`;
+    return `<svg class="scene rig${o.zap ? " zap" : ""}" viewBox="0 0 ${VW} ${VH}" role="img" aria-label="${esc(o.aria || `Potentiometer on a protractor, wired to the ESP32. The pointer is at ${Math.round(o.angle)} degrees.`)}">${s}</svg>`;
   }
 
   /* An interactive bench: drag the pointer or use the slider. The drawing is built once per wiring
@@ -166,6 +170,7 @@
       // on a phone the readout box may be scrolled out of view, so the same values are repeated under the slider
       const lv = [st.r1, st.r2].filter(Boolean).join(" · ");
       if (liveEl.textContent !== lv) liveEl.textContent = lv;
+      liveEl.classList.toggle("bad", !!st.dead);
     };
     const build = () => { box.innerHTML = rigSvg(st); paint(); };
     const setAngle = (a, quiet) => {
@@ -241,8 +246,12 @@
     el.innerHTML = `<ol class="flow">${FLOW.map(([h, n, t, d]) => `<li><a href="#${h}"><span class="fl-n" aria-hidden="true">${n}</span><strong>${t}</strong><small>${d}</small></a></li>`).join("")}</ol>`;
     if (reduceMotion) return;
     const items = [...el.querySelectorAll("li")];
-    let i = -1;
-    every(el, 1400, () => { i = (i + 1) % items.length; items.forEach((x, k) => x.classList.toggle("on", k === i)); });
+    // one pass through the stages when the strip comes into view, then it rests
+    let i = -1, id = 0;
+    const run = () => { id = every(el, 1100, () => { i++; items.forEach((x, k) => x.classList.toggle("on", k === i)); if (i >= items.length) clearInterval(id); }); };
+    if (!("IntersectionObserver" in window)) return run();
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); run(); } }, { threshold: 0.4 });
+    io.observe(el);
   }
 
   /* =====================================================================
@@ -251,7 +260,7 @@
   function mountWiring(el) {
     el.innerHTML = `<figure class="scene-box rig-box"><div class="scene-scroll"><div class="rig-svg"></div></div>
         <figcaption>The potentiometer on the printed protractor, and its three wires to the ESP32. VP is GPIO36.<span class="swipe"> Swipe sideways to see all of it.</span></figcaption></figure>
-      <div class="pv-pl"></div><p class="pv-read"></p>`;
+      <div class="pv-pl"></div><p class="small-note">The animation plays once. Press the replay button to watch it again, or drag the slider to go through it at your own speed.</p><p class="pv-read"></p>`;
     const box = $(".rig-svg", el), read = $(".pv-read", el);
     const seg = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
     const draw = (t) => {
@@ -265,71 +274,104 @@
         : t < 9.5 ? `<strong>4. Yellow wire.</strong> The middle pin (the wiper) goes to <strong>VP</strong>. VP is GPIO36, one of the ESP32's analog inputs.`
         : `<strong>5. Turn the knob.</strong> The wiper voltage follows the angle, and the ESP32 turns that voltage into a number: the ADC count.`;
     };
-    player($(".pv-pl", el), el, { dur: 13, hold: 1.2, draw, still: 11.2, label: "Wiring the potentiometer" });
+    player($(".pv-pl", el), el, { dur: 13, loop: false, draw, still: 11.2, label: "Wiring the potentiometer" });
   }
 
   // The power bench: the 3V3 pin can't be set wrong; a bench supply can. Find out what happens.
+  const PW_STEPS = ["Put the meter on the supply", "Set it so the meter reads 3.30 V", "Join the supply − to the ESP32 GND", "Connect the supply", "Turn the knob from 0° to 180° and watch VP"];
   function mountPower(el) {
-    const S = { src: "pin", set: 5, gnd: true, conn: false, dead: false, probe: "wiper" };
+    const S = { src: "pin", set: 5, gnd: false, conn: false, dead: false, probe: "wiper", saw: false, lo: 180, hi: 0 };
     el.innerHTML = `${chips("Supply for the potentiometer", [["pin", "ESP32 3V3 pin"], ["bench", "Bench power supply"]], "pin")}
       <div class="pw-grid"><div class="pw-rig"></div>
         <div class="pw-side">
-          <div class="pw-bench" hidden>
-            <div class="slider-field"><label for="pwV">Supply voltage knob: <output>5.0 V</output> <span class="hint">shown on the supply's display</span></label>
-              <input type="range" id="pwV" min="0" max="12" step="0.1" value="5"></div>
-            ${chips("Common ground", [["1", "Supply − joined to ESP32 GND"], ["0", "Not joined"]], "1")}
-            <div class="wf-row"><button type="button" class="btn" data-conn>Connect the supply</button></div>
+          <div class="pw-alert" role="alert" hidden></div>
+          <div class="pw-ctl">
+            <div class="pw-bench" hidden>
+              <ol class="pw-steps" aria-label="Steps for a bench power supply"></ol>
+              <div class="slider-field"><label for="pwV">Supply voltage knob: <output>5.0 V</output> <span class="hint">shown on the supply's display</span></label>
+                <input type="range" id="pwV" min="0" max="12" step="0.1" value="5"></div>
+              ${chips("Common ground", [["1", "Supply − joined to ESP32 GND"], ["0", "Not joined"]], "0")}
+              <div class="wf-row"><button type="button" class="btn" data-conn>Connect the supply</button></div>
+            </div>
+            ${chips("Multimeter probes", [["wiper", "Meter on the wiper"], ["supply", "Meter on the supply"]], "wiper")}
+            <div class="pw-gauge"></div>
           </div>
-          ${chips("Multimeter probes", [["wiper", "Meter on the wiper"], ["supply", "Meter on the supply"]], "wiper")}
           <div class="pw-status" aria-live="polite"></div>
-          <button type="button" class="btn ghost" data-new hidden>Replace the board</button>
         </div></div>`;
-    const benchEl = $(".pw-bench", el), status = $(".pw-status", el), connBtn = $("[data-conn]", el), newBtn = $("[data-new]", el), vOut = $(".pw-bench output", el);
+    const benchEl = $(".pw-bench", el), status = $(".pw-status", el), alertEl = $(".pw-alert", el), ctl = $(".pw-ctl", el);
+    const connBtn = $("[data-conn]", el), vOut = $(".pw-bench output", el), stepsEl = $(".pw-steps", el), gauge = $(".pw-gauge", el);
     // The supply's own display reads 0.1 V low: only the meter shows the true voltage
     const actual = () => (S.src === "pin" ? 3.3 : S.set > 0 ? S.set + 0.1 : 0);
     const live = () => S.src === "pin" || S.conn;
     const note = (type, title, html) => `<div class="callout ${type}"><strong>${title}</strong>${html}</div>`;
+    const html = (node, h) => { if (node.dataset.h !== h) { node.dataset.h = h; node.innerHTML = h; } };
+    // The voltage on VP against the pin's limits: safe up to 3.3 V, at risk up to 3.6 V, damaged beyond
+    const drawGauge = (v, on) => {
+      const W = 300, X = (x) => 14 + (clamp(x, 0, 5) / 5) * (W - 28);
+      return `<svg class="plot pw-g" viewBox="0 0 ${W} 64" role="img" aria-label="Voltage on VP: ${on ? f2(v) + " volts" : "nothing connected"}. Safe up to 3.3 volts, damaged above 3.6 volts.">
+        ${T(14, 12, "Voltage on VP", "start", "axl")}${T(W - 14, 12, on ? `${f2(v)} V${v > 5 ? " (off the scale)" : ""}` : "not connected", "end", `axl g-v${v > 3.6 ? " bad" : v > 3.3 ? " hot" : ""}`)}
+        <rect class="g-ok" x="${X(0)}" y="22" width="${X(3.3) - X(0)}" height="14"/><rect class="g-hot" x="${X(3.3)}" y="22" width="${X(3.6) - X(3.3)}" height="14"/><rect class="g-bad" x="${X(3.6)}" y="22" width="${X(5) - X(3.6)}" height="14"/>
+        ${[0, 1, 2].map((x) => T(X(x), 52, x, "middle", "axis")).join("")}${T(X(3.3), 52, "3.3", "end", "axis")}${T(X(3.6) + 2, 52, "3.6", "start", "axis")}${T(X(5), 52, "5 V", "end", "axis")}
+        ${on ? `<path class="tk-mk" d="M${f1(X(v))},20l-5,-7h10z"/><line class="tk-ml" x1="${f1(X(v))}" x2="${f1(X(v))}" y1="20" y2="38"/>` : ""}</svg>`;
+    };
     let lastKey = "";
     const update = () => {
-      const a = rig.st.angle, vs = actual(), vw = live() ? vs * frac(a) : 0, floating = S.src === "bench" && S.conn && !S.gnd;
+      const a = rig.st.angle, vs = actual(), bench = S.src === "bench", floating = bench && S.conn && !S.gnd, vw = live() ? vs * frac(a) : 0;
+      const wasDead = S.dead;
       if (live() && !floating && vw > 3.6) S.dead = true;
-      const key = [S.src, S.conn, S.gnd, S.dead].join();
-      if (key !== lastKey) { lastKey = key; rig.set({ src: S.src, conn: S.conn, gnd: S.gnd, dead: S.dead }); }
+      const hot = !S.dead && live() && !floating && vw > 3.3;
+      if (bench && S.probe === "supply") S.saw = true;
+      if (bench && S.conn && !floating && !S.dead) { S.lo = Math.min(S.lo, a); S.hi = Math.max(S.hi, a); }
+      const key = [S.src, S.conn, S.gnd, S.dead, hot].join();
+      if (key !== lastKey) { lastKey = key; rig.set({ src: S.src, conn: S.conn, gnd: S.gnd, dead: S.dead, hot, zap: S.dead && !wasDead }); }
       const count = S.dead ? "----" : !live() ? Math.round(Math.random() * 300) : floating ? Math.round(Math.random() * 4095) : readAdc(a, { vs });
       rig.upd({
-        r1: !live() ? "VP: not connected" : floating ? "VP: no reference" : `VP = ${f2(vw)} V`, r2: `ADC count: ${count}`,
+        r1: !live() ? "VP: not connected" : floating ? "VP: no reference" : `VP = ${f2(vw)} V`, r2: S.dead ? "VP DAMAGED" : `ADC count: ${count}`,
         meter: `${f2(S.probe === "supply" ? vs : floating ? 0 : vw)} V`, meterOn: S.probe === "supply" ? "supply + to −" : "wiper to GND", psu: `${f1(S.set)} V`
       });
-      benchEl.hidden = S.src !== "bench"; newBtn.hidden = !S.dead;
-      connBtn.textContent = S.conn ? "Disconnect the supply" : "Connect the supply"; connBtn.disabled = S.dead;
+      benchEl.hidden = !bench;
+      connBtn.textContent = S.conn ? "Disconnect the supply" : "Connect the supply";
       vOut.textContent = `${f1(S.set)} V`;
-      status.innerHTML = S.dead
-        ? note("warn", "The VP pin is damaged", `The wiper reached more than 3.6 V, the most an ESP32 pin can take. The ADC no longer gives a reading. A real pin may survive a short overvoltage, but you can't count on it: treat <strong>3.3 V</strong> as the limit. Press <em>Replace the board</em> and try again.`)
-        : S.src === "pin"
+      html(gauge, drawGauge(vw, live() && !floating));
+      // the five steps: each is ticked when done, and the first one still to do is highlighted
+      const ok = [S.saw, S.saw && Math.abs(vs - 3.3) < 0.051, S.gnd, S.conn, S.conn && S.lo <= 10 && S.hi >= 170 && Math.abs(vs - 3.3) < 0.051], next = ok.indexOf(false);
+      html(stepsEl, PW_STEPS.map((t, i) => `<li class="${ok[i] ? "done" : i === next ? "now" : ""}"><span class="ps-n" aria-hidden="true">${ok[i] ? "✓" : i + 1}</span><span>${t}${ok[i] ? `<span class="vh"> (done)</span>` : ""}</span></li>`).join(""));
+      // a damaged pin stops everything: the message and the way out go to the top of the panel
+      alertEl.hidden = !S.dead; status.hidden = S.dead;
+      ctl.classList.toggle("locked", S.dead); ctl.inert = S.dead;
+      html(alertEl, S.dead ? `<p class="pa-h"><span aria-hidden="true">⚡</span> The VP Pin Is Damaged</p>
+        <p>The wiper reached more than <strong>3.6 V</strong>, the most an ESP32 pin can take, so the ADC no longer gives a reading. A real pin may survive a short overvoltage, but you can't count on it: treat <strong>3.3 V</strong> as the limit.</p>
+        <button type="button" class="btn" data-new>Replace the board and try again</button>` : "");
+      html(status, S.dead ? "" : !bench
           ? note("info", "✓ Safe", `The 3V3 pin is always 3.3 V: the board's regulator makes it from the 5 V on the USB cable, so it can't be set wrong. The wiper is at ${f2(vw)} V.`)
         : !S.conn
           ? (S.probe === "supply"
-            ? (Math.abs(vs - 3.3) < 0.051 ? note("info", "✓ The meter reads 3.30 V", `The supply is ready to connect. Notice its own display shows ${f1(S.set)} V: displays can be a little off, so trust the meter.`)
+            ? (Math.abs(vs - 3.3) < 0.051 ? note("info", "✓ The meter reads 3.30 V", `The supply is ready. Notice its own display shows ${f1(S.set)} V: displays can be a little off, so trust the meter.`)
               : vs > 3.3 ? note("warn", `The meter reads ${f2(vs)} V: too high`, `Turn the knob down until the <strong>meter</strong> reads 3.30 V. Don't connect it yet.`)
               : note("note", `The meter reads ${f2(vs)} V`, ` Turn the knob up until the <strong>meter</strong> reads 3.30 V.`))
-            : note("note", "The supply is not connected", ` Somebody left it at ${f1(S.set)} V. Put the meter on the supply, set it so the meter reads <strong>3.30 V</strong>, then connect it. Or connect it as it is and see what happens.`))
+            : note("note", "The supply is not connected", ` Somebody left it at ${f1(S.set)} V. Follow the five steps above. Or connect it as it is, turn the knob, and see what happens.`))
         : floating
           ? note("warn", "No common ground", `The supply's − terminal isn't joined to the ESP32's GND, so the ESP32 has nothing to measure the wiper voltage against. The count jumps about at random. Join the grounds.`)
-        : vw > 3.3
-          ? note("warn", `The wiper is at ${f2(vw)} V: above 3.3 V`, `The ADC can't count any higher, so the reading is stuck at 4095. A little more (above 3.6 V) and the pin is damaged.`)
+        : hot
+          ? note("warn", `Danger: the wiper is at ${f2(vw)} V`, `That is above 3.3 V. The ADC can't count any higher, so the reading is stuck at 4095. A little more (above 3.6 V) and the pin is damaged.`)
         : vs > 3.351
-          ? note("warn", `The supply is at ${f2(vs)} V: too high`, `At this angle the wiper is only at ${f2(vw)} V, so nothing looks wrong yet. Turn the knob towards 180° and watch the VP voltage.`)
+          ? note("warn", `The supply is at ${f2(vs)} V: too high`, `At this angle the wiper is only at ${f2(vw)} V, so nothing looks wrong yet. Turn the knob towards 180° and watch the marker climb.`)
         : vs < 3
           ? note("note", `The supply is at ${f2(vs)} V`, ` It works and it is safe, but the count now uses a smaller part of the ADC's range, so each degree is fewer counts. Use 3.30 V.`)
-          : note("info", "✓ Safe", `The supply gives ${f2(vs)} V and its ground is joined to the ESP32's. The wiper is at ${f2(vw)} V, and the highest it can reach is ${f2(vs * frac(180))} V.`);
+          : note("info", next < 0 ? "✓ All five steps done" : "✓ Safe", `The supply gives ${f2(vs)} V and its ground is joined to the ESP32's. The wiper is at ${f2(vw)} V, and the highest it can reach is ${f2(vs * frac(180))} V.`));
     };
+    const fresh = () => { S.saw = S.probe === "supply"; S.lo = 180; S.hi = 0; };
     const rig = makeRig($(".pw-rig", el), { state: { angle: 60, r1: "", r2: "", meter: "", psu: "" }, onAngle: () => update() });
-    wireChips($(row("Supply for the potentiometer"), el), (v) => { S.src = v; S.conn = false; update(); });
+    wireChips($(row("Supply for the potentiometer"), el), (v) => { S.src = v; S.conn = false; fresh(); update(); });
     wireChips($(row("Common ground"), el), (v) => { S.gnd = v === "1"; update(); });
     wireChips($(row("Multimeter probes"), el), (v) => { S.probe = v; update(); });
     $("#pwV", el).addEventListener("input", (e) => { S.set = +e.target.value; update(); });
-    connBtn.addEventListener("click", () => { S.conn = !S.conn; update(); });
-    newBtn.addEventListener("click", () => { S.dead = false; S.conn = false; update(); connBtn.focus(); });
+    connBtn.addEventListener("click", () => { S.conn = !S.conn; if (!S.conn) { S.lo = 180; S.hi = 0; } update(); });
+    alertEl.addEventListener("click", (e) => {
+      if (!e.target.closest("[data-new]")) return;
+      S.dead = false; S.conn = false; fresh(); update();
+      (S.src === "bench" ? connBtn : $(".chip-btn", el)).focus();
+    });
     every(el, 700, update);
     update();
   }
@@ -366,7 +408,7 @@
   function mountChain(el) {
     el.innerHTML = `<figure class="scene-box"><div class="scene-scroll"><div class="chain-host"></div></div>
         <figcaption>The four stages of the measurement, with live values as the knob turns.<span class="swipe"> Swipe sideways to see all of it.</span></figcaption></figure>
-      <div class="pv-pl"></div><p class="pv-read"></p>
+      <div class="pv-pl"></div><p class="small-note">The knob turns once from 0° to 180°. Press the replay button to see it again, or drag the slider to turn the knob yourself.</p><p class="pv-read"></p>
       <ol class="what chain-list">
         <li><strong>Mechanical.</strong> You turn the shaft: the quantity being measured is an angle.</li>
         <li><strong>Electrical.</strong> The potentiometer is a voltage divider. Its wiper slides along a resistive track, so the wiper voltage is a fraction of 3.3 V that depends on the angle. This is the <strong>transduction</strong>: a mechanical quantity becomes an electrical one.</li>
@@ -375,11 +417,10 @@
       </ol>`;
     const host = $(".chain-host", el), read = $(".pv-read", el);
     const draw = (t) => {
-      const angle = 90 - 90 * Math.cos((t / 12) * Math.PI * 2);
-      host.innerHTML = chainSvg(angle);
-      read.innerHTML = `Drag the slider to set the knob. The ESP32 never sees the angle itself: it only gets the count, and has to work back to the angle.`;
+      host.innerHTML = chainSvg((t / 10) * 180);
+      read.innerHTML = `The ESP32 never sees the angle itself: it only gets the count, and has to work back to the angle.`;
     };
-    player($(".pv-pl", el), el, { dur: 12, hold: 0, draw, still: 3.4, label: "Knob position" });
+    player($(".pv-pl", el), el, { dur: 10, loop: false, draw, still: 4, label: "Knob position" });
   }
 
   // The ADC curve: the ideal straight line against what a typical ESP32 really reports
@@ -967,11 +1008,11 @@ void loop()
       intro: `<p>The ESP32 itself is powered by the USB cable, as in Lab 1. The potentiometer needs its own 3.3 V, and you can get it in two ways:</p>
         <ul class="what"><li><strong>The ESP32's 3V3 pin.</strong> The simplest way: nothing to set.</li>
         <li><strong>A bench power supply.</strong> Set it to 3.3 V, check it with the multimeter <em>before</em> you connect it, and join its − terminal to the ESP32's GND.</li></ul>
-        <p>Try both here. With the bench supply, see what happens when the voltage is too high, and when the grounds aren't joined. Nothing real can break on this page.</p>`,
+        <p>Try both here. With the bench supply, follow the five steps, then break the rules on purpose: leave the voltage too high, or leave the grounds apart. Nothing real can break on this page.</p>`,
       mount: mountPower },
 
     { id: "chain", group: "l2", title: "The Measurement Chain", toc: "The Chain",
-      intro: `<p>Between the knob and the number on your screen, the measurement changes form three times. Play the animation, or drag its slider to turn the knob yourself.</p>`,
+      intro: `<p>Between the knob and the number on your screen, the measurement changes form three times.</p>`,
       mount: mountChain },
     { id: "adc", group: "l2", title: "How the ADC Counts", toc: "The ADC",
       intro: `<p>The ESP32's ADC has 12 bits, so it reports one of 2<sup>12</sup> = 4096 numbers, from 0 to 4095, for a voltage from 0 to 3.3 V. An ideal ADC would follow <span class="formula">count = V<sub>in</sub> / 3.3 V × 4095</span></p>

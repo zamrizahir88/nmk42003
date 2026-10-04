@@ -393,7 +393,7 @@ ol.refs li { padding: 8px 0 8px 4px; font-family: var(--serif); }
 @media (max-width: 760px) { .readout.strip { grid-template-columns: minmax(0, 1fr); } .readout.strip .ro-b { border-left: 0; padding-left: 0; border-top: 1px solid var(--rule); padding-top: 12px; } }
 
 /* Menu cards */
-.menu-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.menu-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 @media (max-width: 900px) { .menu-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .menu-cards { grid-template-columns: minmax(0, 1fr); } }
 .mcard {

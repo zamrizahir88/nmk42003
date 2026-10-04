@@ -214,11 +214,10 @@
     const built = COURSE.topics.filter((t) => t.page).length;
     const pills = `<span class="mc-pills">${COURSE.topics.map((t) => `<span class="pill${t.page ? " on" : ""}" title="Chapter ${t.no}">${t.no}</span>`).join("")}</span>`;
     const cards = [
-      { i: "book", t: "Chapters", d: "Interactive lecture notes with animations, calculators with step-by-step working, and exercises for every chapter.", b: `${COURSE.topics.length} chapters · ${built} interactive`, h: "chapters.html", wide: true, extra: pills },
+      { i: "book", t: "Chapters", d: "Interactive lecture notes with animations, calculators with step-by-step working, and exercises for every chapter.", b: `${COURSE.topics.length} chapters · ${built} interactive`, h: "chapters.html", extra: pills },
       { i: "cal", t: "Weekly Schedule", d: "Topics, labs and assessments for every week of the semester.", b: `${TOTAL_WEEKS} weeks`, h: "schedule.html" },
       { i: "chart", t: "Assessment and Outcomes", d: "How your grade is made up, and the course outcomes.", b: `${COURSE.assessment.length} parts · ${COURSE.outcomes.length} outcomes`, h: "assessment.html" },
-      { i: "flask", t: "Laboratory Experiments", d: "The lab experiments and the weeks they run in, with virtual labs to try before you come to the lab.", b: `${COURSE.labs.length} labs · ${COURSE.labs.filter((l) => l.page).length} virtual`, h: "labs.html#labs" },
-      { i: "refs", t: "References", d: "Textbooks and reference books for the course.", b: `${COURSE.references.length} books`, h: "labs.html#refs" }
+      { i: "flask", t: "Laboratory Experiments", d: "The lab experiments and the weeks they run in, with virtual labs to try before you come to the lab.", b: `${COURSE.labs.length} labs · ${COURSE.labs.filter((l) => l.page).length} virtual`, h: "labs.html#labs" }
     ];
     $("#menuCards").innerHTML = cards.map((c) => `
       <a class="mcard${c.wide ? " wide" : ""}" href="${esc(c.h)}">
@@ -541,7 +540,7 @@
     ).join("");
   }
 
-  /* ---------- Labs, references, team ---------- */
+  /* ---------- Labs, team ---------- */
   function renderLabs() {
     // A lab with a virtual lab page becomes a link card; the others stay plain rows.
     $("#labList").innerHTML = COURSE.labs.map((l) => l.page
@@ -551,7 +550,6 @@
           <span class="ll-go">Open the virtual lab <span aria-hidden="true">→</span></span></a></li>`
       : `<li><span>${esc(l.title)}${l.openEnded ? '<span class="oe">Open-ended</span>' : ""}</span><span class="muted">${esc(l.weeks)}</span></li>`
     ).join("");
-    $("#refList").innerHTML = COURSE.references.map((r) => `<li>${esc(r)}</li>`).join("");
   }
 
   function renderTeam() {
