@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  const { esc, num, F, step, stepsHtml, reduceMotion, store, chips, wireChips, codeBlock, fold, player, poly, axes, svg, dot } = Lab;
+  const { esc, num, step, stepsHtml, reduceMotion, store, chips, wireChips, codeBlock, fold, player, poly, axes, svg, dot } = Lab;
   const { $, T, sleep, clamp, every, W_, pinXY, board, serialBox, phoneFrame, bf, bs, bn, inl, bk, ws, HEAD } = LabKit;
 
   const IP = "192.168.43.45", MAC = "08:3A:F2:6C:1D:94";
@@ -62,6 +62,16 @@
   // The line the simulation itself would find (used where a lesson needs an angle before the student has fitted one)
   const BOOK = linFit(ANGLES.map((a) => [readAdc(a, { quiet: true }), a]));
 
+  /* ---------- Progress: a tick on the step bar once a part's main job has been done on this device ---------- */
+  const DONE_KEY = "nmk-lab2-done", DONE = store.get(DONE_KEY, {}) || {};
+  const paintTicks = () => document.querySelectorAll(".lab-nav.steps a").forEach((a) => {
+    const on = !!DONE[a.getAttribute("href").slice(1)];
+    if (a.classList.contains("ok") === on) return;
+    a.classList.toggle("ok", on);
+    if (on) a.insertAdjacentHTML("beforeend", `<span class="vh"> (done)</span>`);
+  });
+  const done = (k) => { if (DONE[k]) return; DONE[k] = 1; store.set(DONE_KEY, DONE); paintTicks(); };
+
   /* ---------- Table 1 (saved on this device) and the student's own m and c ---------- */
   const CAL_KEY = "nmk-lab2-cal", MC_KEY = "nmk-lab2-mc";
   let CAL = (() => {
@@ -88,6 +98,8 @@
   const VW = 670, VH = 350, RX = 150, RY = 200, RR = 108, BX = 372, BY = 96, BK = 0.74;
   const [VPX, VPY] = pinXY(BX, BY, BK, "top", "VP"), [GX, GY] = pinXY(BX, BY, BK, "bot", "GND");
   const [PX, PY] = pinXY(BX, BY, BK, "bot", "3V3"), [LX, LY] = pinXY(BX, BY, BK, "top", "D32");
+  const KX = 616, KY = 238; // the bench supply's voltage knob: 0 V to 12 V over three-quarters of a turn
+  const knobDeg = (v) => ((v || 0) / 12) * 270 - 135;
   const polar = (a, r) => [RX + r * Math.cos((a * Math.PI) / 180), RY - r * Math.sin((a * Math.PI) / 180)];
   const dash = (p) => (p >= 1 ? "" : ` pathLength="1" stroke-dasharray="1" stroke-dashoffset="${(1 - p).toFixed(3)}"`);
   // A jumper wire with a pale casing, so a wire crossing another reads as passing over it
@@ -115,7 +127,7 @@
     s += T(VPX + 7, VPY - 10, "VP", "start", "wl sm") + T(PX - 6, 204, "3V3", "end", "wl sm") + T(GX + 6, 204, "GND", "start", "wl sm");
     if (bench) {
       s += `<g class="psu"><rect class="psu-b" x="470" y="208" width="170" height="112" rx="8"/><rect class="lcd" x="500" y="220" width="92" height="34" rx="4"/>` +
-        T(546, 244, esc(o.psu || ""), "middle", "lcdt rig-psu") + `<circle class="psu-k" cx="618" cy="237" r="14"/><line class="psu-m" x1="618" y1="237" x2="618" y2="226"/>` +
+        T(546, 244, esc(o.psu || ""), "middle", "lcdt rig-psu") + `<circle class="psu-k" cx="${KX}" cy="${KY}" r="18"/><line class="psu-m rig-psuk" x1="${KX}" y1="${KY}" x2="${KX}" y2="${KY - 14}" transform="rotate(${knobDeg(o.setV)} ${KX} ${KY})"/><circle class="psu-hit" cx="${KX}" cy="${KY}" r="26"/>` +
         `<circle class="psu-t p" cx="470" cy="246" r="7"/><circle class="psu-t n" cx="470" cy="290" r="7"/>` + T(484, 251, "+", "start", "psu-l") + T(484, 295, "−", "start", "psu-l") +
         T(566, 290, "Bench power supply", "middle", "psu-l sm") + T(566, 306, bench && o.conn ? "output connected" : "output not connected", "middle", "psu-l sm dim") + `</g>`;
       s += `<g class="sup${off}">` + wire("r", "M164,244V258H452V246H470", pg.r) + wire("k", "M136,244V290H470", pg.k) + `</g>`;
@@ -143,12 +155,16 @@
       s += `<g class="mm"><rect class="mm-b" x="14" y="256" width="112" height="82" rx="8"/><rect class="lcd" x="24" y="266" width="92" height="30" rx="4"/>` +
         T(70, 287, esc(o.meter), "middle", "lcdt rig-meter") + T(70, 314, "Multimeter", "middle", "mm-t") + T(70, 329, esc(o.meterOn || "wiper to GND"), "middle", "mm-t sm rig-meter-on") + `</g>`;
     }
+    if (o.probe) { // dashed outlines mark where the meter's probes can go; tap one to measure there
+      const zone = (name, shape) => `<g class="probe-zone${o.probe === name ? " on" : ""}" data-probe="${name}">${shape}</g>`;
+      s += zone("wiper", `<circle cx="150" cy="239" r="13"/>`) + zone("supply", bench ? `<rect x="455" y="232" width="30" height="72" rx="9"/>` : `<circle cx="${PX}" cy="${PY}" r="11"/>`);
+    }
     return `<svg class="scene rig${o.zap ? " zap" : ""}" viewBox="0 0 ${VW} ${VH}" role="img" aria-label="${esc(o.aria || `Potentiometer on a protractor, wired to the ESP32. The pointer is at ${Math.round(o.angle)} degrees.`)}">${s}</svg>`;
   }
 
   /* An interactive bench: drag the pointer or use the slider. The drawing is built once per wiring
      change; the pointer, the readouts and the LED are then updated in place.
-     makeRig(host, { snap, caption, state, onAngle }) → { st, set(patch), upd(patch), setAngle(a) } */
+     makeRig(host, { snap, caption, state, onAngle, onSupply, onProbe }) → { st, set(patch), upd(patch), setAngle(a) } */
   let RIG_N = 0;
   function makeRig(host, o = {}) {
     const id = `rig${++RIG_N}`, snap = o.snap || 1;
@@ -164,8 +180,9 @@
       const [x, y] = polar(st.angle, RR - 6), p = q(".rig-ptr");
       if (p) { p.setAttribute("x2", f1(x)); p.setAttribute("y2", f1(y)); }
       txt(".rig-r1", st.r1); txt(".rig-r2", st.r2); txt(".rig-meter", st.meter); txt(".rig-meter-on", st.meterOn); txt(".rig-psu", st.psu);
-      const led = q(".rig-led");
+      const led = q(".rig-led"), kn = q(".rig-psuk");
       if (led) led.classList.toggle("on", !!st.led);
+      if (kn) kn.setAttribute("transform", `rotate(${knobDeg(st.setV)} ${KX} ${KY})`);
       out.textContent = `${st.angle}°`;
       // on a phone the readout box may be scrolled out of view, so the same values are repeated under the slider
       const lv = [st.r1, st.r2].filter(Boolean).join(" · ");
@@ -181,20 +198,23 @@
     };
     slider.addEventListener("input", () => setAngle(+slider.value));
     // Drag on the protractor: the angle from the centre of the potentiometer to the pointer
-    let drag = false;
-    const toAngle = (e) => {
-      const r = box.querySelector("svg").getBoundingClientRect();
-      const x = ((e.clientX - r.left) / r.width) * VW - RX, y = RY - ((e.clientY - r.top) / r.height) * VH;
-      return y < 0 ? (x < 0 ? 180 : 0) : (Math.atan2(y, x) * 180) / Math.PI;
-    };
+    let drag = "";
+    const at = (e, cx, cy) => { const r = box.querySelector("svg").getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * VW - cx, cy - ((e.clientY - r.top) / r.height) * VH]; };
+    const toAngle = (e) => { const [x, y] = at(e, RX, RY); return y < 0 ? (x < 0 ? 180 : 0) : (Math.atan2(y, x) * 180) / Math.PI; };
+    // the supply knob: straight up is the middle of its travel
+    const toVolts = (e) => { const [x, y] = at(e, KX, KY); return Math.round(((clamp((Math.atan2(x, y) * 180) / Math.PI, -135, 135) + 135) / 270) * 120) / 10; };
+    const move = (e) => { if (drag === "pot") setAngle(toAngle(e)); else if (drag === "psu" && o.onSupply) o.onSupply(toVolts(e)); };
     box.addEventListener("pointerdown", (e) => {
-      if (!e.target.closest(".prot-hit")) return;
-      e.preventDefault(); drag = true;
+      const zone = e.target.closest("[data-probe]");
+      if (zone) { if (o.onProbe) o.onProbe(zone.dataset.probe); return; }
+      drag = e.target.closest(".prot-hit") ? "pot" : e.target.closest(".psu-hit") ? "psu" : "";
+      if (!drag) return;
+      e.preventDefault();
       try { box.setPointerCapture(e.pointerId); } catch (err) { /* older browsers */ }
-      setAngle(toAngle(e));
+      move(e);
     });
-    box.addEventListener("pointermove", (e) => { if (drag) setAngle(toAngle(e)); });
-    ["pointerup", "pointercancel"].forEach((ev) => box.addEventListener(ev, () => { drag = false; }));
+    box.addEventListener("pointermove", move);
+    ["pointerup", "pointercancel"].forEach((ev) => box.addEventListener(ev, () => { drag = ""; }));
     build();
     return { st, setAngle, set(patch) { Object.assign(st, patch); build(); }, upd(patch) { Object.assign(st, patch); paint(); } };
   }
@@ -282,7 +302,7 @@
   function mountPower(el) {
     const S = { src: "pin", set: 5, gnd: false, conn: false, dead: false, probe: "wiper", saw: false, lo: 180, hi: 0 };
     el.innerHTML = `${chips("Supply for the potentiometer", [["pin", "ESP32 3V3 pin"], ["bench", "Bench power supply"]], "pin")}
-      <div class="pw-grid"><div class="pw-rig"></div>
+      <div class="pw-grid"><div class="pw-left"><div class="pw-rig"></div><div class="pw-gauge"></div></div>
         <div class="pw-side">
           <div class="pw-alert" role="alert" hidden></div>
           <div class="pw-ctl">
@@ -294,7 +314,6 @@
               <div class="wf-row"><button type="button" class="btn" data-conn>Connect the supply</button></div>
             </div>
             ${chips("Multimeter probes", [["wiper", "Meter on the wiper"], ["supply", "Meter on the supply"]], "wiper")}
-            <div class="pw-gauge"></div>
           </div>
           <div class="pw-status" aria-live="polite"></div>
         </div></div>`;
@@ -307,7 +326,7 @@
     const html = (node, h) => { if (node.dataset.h !== h) { node.dataset.h = h; node.innerHTML = h; } };
     // The voltage on VP against the pin's limits: safe up to 3.3 V, at risk up to 3.6 V, damaged beyond
     const drawGauge = (v, on) => {
-      const W = 300, X = (x) => 14 + (clamp(x, 0, 5) / 5) * (W - 28);
+      const W = 520, X = (x) => 14 + (clamp(x, 0, 5) / 5) * (W - 28);
       return `<svg class="plot pw-g" viewBox="0 0 ${W} 64" role="img" aria-label="Voltage on VP: ${on ? f2(v) + " volts" : "nothing connected"}. Safe up to 3.3 volts, damaged above 3.6 volts.">
         ${T(14, 12, "Voltage on VP", "start", "axl")}${T(W - 14, 12, on ? `${f2(v)} V${v > 5 ? " (off the scale)" : ""}` : "not connected", "end", `axl g-v${v > 3.6 ? " bad" : v > 3.3 ? " hot" : ""}`)}
         <rect class="g-ok" x="${X(0)}" y="22" width="${X(3.3) - X(0)}" height="14"/><rect class="g-hot" x="${X(3.3)}" y="22" width="${X(3.6) - X(3.3)}" height="14"/><rect class="g-bad" x="${X(3.6)}" y="22" width="${X(5) - X(3.6)}" height="14"/>
@@ -322,12 +341,12 @@
       const hot = !S.dead && live() && !floating && vw > 3.3;
       if (bench && S.probe === "supply") S.saw = true;
       if (bench && S.conn && !floating && !S.dead) { S.lo = Math.min(S.lo, a); S.hi = Math.max(S.hi, a); }
-      const key = [S.src, S.conn, S.gnd, S.dead, hot].join();
-      if (key !== lastKey) { lastKey = key; rig.set({ src: S.src, conn: S.conn, gnd: S.gnd, dead: S.dead, hot, zap: S.dead && !wasDead }); }
+      const key = [S.src, S.conn, S.gnd, S.dead, hot, S.probe].join();
+      if (key !== lastKey) { lastKey = key; rig.set({ src: S.src, conn: S.conn, gnd: S.gnd, dead: S.dead, hot, probe: S.probe, setV: S.set, zap: S.dead && !wasDead }); }
       const count = S.dead ? "----" : !live() ? Math.round(Math.random() * 300) : floating ? Math.round(Math.random() * 4095) : readAdc(a, { vs });
       rig.upd({
         r1: !live() ? "VP: not connected" : floating ? "VP: no reference" : `VP = ${f2(vw)} V`, r2: S.dead ? "VP DAMAGED" : `ADC count: ${count}`,
-        meter: `${f2(S.probe === "supply" ? vs : floating ? 0 : vw)} V`, meterOn: S.probe === "supply" ? "supply + to −" : "wiper to GND", psu: `${f1(S.set)} V`
+        meter: `${f2(S.probe === "supply" ? vs : floating ? 0 : vw)} V`, meterOn: S.probe === "supply" ? (bench ? "supply + to −" : "3V3 to GND") : "wiper to GND", psu: `${f1(S.set)} V`, setV: S.set
       });
       benchEl.hidden = !bench;
       connBtn.textContent = S.conn ? "Disconnect the supply" : "Connect the supply";
@@ -335,6 +354,7 @@
       html(gauge, drawGauge(vw, live() && !floating));
       // the five steps: each is ticked when done, and the first one still to do is highlighted
       const ok = [S.saw, S.saw && Math.abs(vs - 3.3) < 0.051, S.gnd, S.conn, S.conn && S.lo <= 10 && S.hi >= 170 && Math.abs(vs - 3.3) < 0.051], next = ok.indexOf(false);
+      if (bench && next < 0) done("l1");
       html(stepsEl, PW_STEPS.map((t, i) => `<li class="${ok[i] ? "done" : i === next ? "now" : ""}"><span class="ps-n" aria-hidden="true">${ok[i] ? "✓" : i + 1}</span><span>${t}${ok[i] ? `<span class="vh"> (done)</span>` : ""}</span></li>`).join(""));
       // a damaged pin stops everything: the message and the way out go to the top of the panel
       alertEl.hidden = !S.dead; status.hidden = S.dead;
@@ -361,11 +381,15 @@
           : note("info", next < 0 ? "✓ All five steps done" : "✓ Safe", `The supply gives ${f2(vs)} V and its ground is joined to the ESP32's. The wiper is at ${f2(vw)} V, and the highest it can reach is ${f2(vs * frac(180))} V.`));
     };
     const fresh = () => { S.saw = S.probe === "supply"; S.lo = 180; S.hi = 0; };
-    const rig = makeRig($(".pw-rig", el), { state: { angle: 60, r1: "", r2: "", meter: "", psu: "" }, onAngle: () => update() });
+    const vIn = $("#pwV", el), probeRow = $(row("Multimeter probes"), el);
+    const setProbe = (v) => { S.probe = v; probeRow.querySelectorAll(".chip-btn").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === v)); update(); };
+    const rig = makeRig($(".pw-rig", el), { state: { angle: 60, r1: "", r2: "", meter: "", psu: "", probe: "wiper", setV: S.set }, onAngle: () => update(),
+      onSupply: (v) => { if (S.dead) return; S.set = v; vIn.value = v; update(); }, onProbe: (v) => { if (!S.dead) setProbe(v); },
+      caption: "Drag the red pointer, turn the knob on the bench supply, and tap a dashed outline to put the meter there." });
     wireChips($(row("Supply for the potentiometer"), el), (v) => { S.src = v; S.conn = false; fresh(); update(); });
     wireChips($(row("Common ground"), el), (v) => { S.gnd = v === "1"; update(); });
-    wireChips($(row("Multimeter probes"), el), (v) => { S.probe = v; update(); });
-    $("#pwV", el).addEventListener("input", (e) => { S.set = +e.target.value; update(); });
+    wireChips(probeRow, setProbe);
+    vIn.addEventListener("input", () => { S.set = +vIn.value; update(); });
     connBtn.addEventListener("click", () => { S.conn = !S.conn; if (!S.conn) { S.lo = 180; S.hi = 0; } update(); });
     alertEl.addEventListener("click", (e) => {
       if (!e.target.closest("[data-new]")) return;
@@ -416,8 +440,11 @@
         <li><strong>Computational.</strong> The program turns the count back into degrees with an equation. Finding that equation is the <strong>calibration</strong>, and it is what this lab is about.</li>
       </ol>`;
     const host = $(".chain-host", el), read = $(".pv-read", el);
+    let seen = false; // not on the first, still drawing: only once the knob has been moved
+    setTimeout(() => { seen = true; }, 1500);
     const draw = (t) => {
       host.innerHTML = chainSvg((t / 10) * 180);
+      if (t >= 9.9 && seen) done("l2");
       read.innerHTML = `The ESP32 never sees the angle itself: it only gets the count, and has to work back to the angle.`;
     };
     player($(".pv-pl", el), el, { dur: 10, loop: false, draw, still: 4, label: "Knob position" });
@@ -432,6 +459,31 @@
     el.innerHTML = `<figure class="scene-box plot-box">${svg(A.W, A.H, `ADC count against voltage: the ideal straight line and a typical ESP32. At ${f2(v.Vin)} volts the ideal count is ${Math.round(res.ideal)} and the typical count is ${Math.round(res.real)}.`,
       A.s + poly(ideal, "trace-in") + poly(real, "trace-a") + dot(A.X(v.Vin), A.Y(res.real)))}
       <figcaption><span class="key input"></span> ideal ADC <span class="key"></span> a typical ESP32. The red dot is your voltage.</figcaption></figure>`;
+  }
+
+  function mountAdc(el) {
+    el.innerHTML = fold("The ADC Explorer", `<p class="explain-p">The ESP32's ADC has 12 bits, so it reports one of 2<sup>12</sup> = 4096 numbers, from 0 to 4095, for a voltage from 0 to 3.3 V. An ideal ADC would follow <span class="formula">count = V<sub>in</sub> / 3.3 V × 4095</span></p>
+        <p class="explain-p">Change the voltage and compare the ideal count with what a typical ESP32 reports.</p>
+        <div class="slider-field adc-in"><label for="adcV">Voltage on VP: <output></output></label><input type="range" id="adcV" min="0.05" max="3.3" step="0.01" value="1.65"></div>
+        <p class="result fold-result" aria-live="polite"></p><div class="adc-plot"></div>
+        ${fold("Step-by-Step Working", `<ol class="steps"></ol>`)}`);
+    const inp = $("#adcV", el), out = $(".adc-in output", el), panel = $("details", el);
+    const draw = () => {
+      const Vin = +inp.value, ideal = (Vin / 3.3) * 4095, real = adcOf(Vin), d = Math.round(real) - Math.round(ideal);
+      out.textContent = `${f2(Vin)} V`;
+      $(".result", el).textContent = `Ideal count ${Math.round(ideal)}. A typical ESP32 reports about ${Math.round(real)}.`;
+      $(".steps", el).innerHTML = stepsHtml([
+        step("The size of one count (the resolution)", "ΔV = 3.3 V / 4095", "3.3 / 4095", "ΔV = 0.000806 V = <strong>0.806 mV</strong>"),
+        step("Ideal count", "count = V<sub>in</sub> / 3.3 V × 4095", `${f2(Vin)} / 3.3 × 4095`, `count = ${num(ideal, 5)} → <strong>${Math.round(ideal)}</strong>`),
+        step("What a typical ESP32 reports", "", "from its measured curve (the solid line in the graph)", `count ≈ <strong>${Math.round(real)}</strong>, which is ${d === 0 ? "the same as the ideal" : `${Math.abs(d)} counts ${d < 0 ? "below" : "above"} the ideal`}`)
+      ]);
+      adcPlot($(".adc-plot", el), { ideal, real }, { Vin });
+    };
+    inp.addEventListener("input", draw);
+    // a link to this section opens the panel
+    document.addEventListener("click", (e) => { if (e.target.closest('a[href="#adc"]')) panel.open = true; });
+    if (location.hash === "#adc") panel.open = true;
+    draw();
   }
 
   /* =====================================================================
@@ -475,8 +527,11 @@ void loop()
       <div class="task-sim"><div class="rd-rig"></div>
         <div class="task-side">${serialBox()}<p class="pv-read"></p></div></div>`;
     const log = logBox($(".serial", el)), read = $(".pv-read", el);
+    let lo = 180, hi = 0;
     const tick = (print) => {
       const a = rig.st.angle, v = 3.3 * frac(a, swap), n = readAdc(a, { swap });
+      lo = Math.min(lo, a); hi = Math.max(hi, a);
+      if (hi - lo >= 120) done("l3");
       rig.upd({ r1: `VP = ${f2(v)} V`, r2: `ADC count: ${n}`, meter: `${f2(v)} V` });
       if (print) log.add(String(n));
       read.innerHTML = swap
@@ -503,15 +558,16 @@ void loop()
             <thead><tr><th scope="col">Angle (°)</th><th scope="col">ADC count</th><th scope="col"><span class="vh">Go to this angle</span></th></tr></thead><tbody></tbody></table></div>
         </div></div>`;
     const body = $("tbody", el), read = $(".cl-read", el), recBtn = $("[data-rec]", el);
-    const done = () => ANGLES.filter((a) => CAL[a] !== undefined).length;
+    const count = () => ANGLES.filter((a) => CAL[a] !== undefined).length;
     const paint = (msg) => {
       const cur = rig.st.angle;
       body.innerHTML = ANGLES.map((a) => `<tr class="${a === cur ? "cur" : ""}"><th scope="row">${a}</th><td class="${CAL[a] === undefined ? "empty" : ""}">${CAL[a] === undefined ? "not recorded" : CAL[a]}</td>
         <td><button type="button" class="row-go" data-a="${a}" aria-label="Turn the knob to ${a} degrees">${a === cur ? "●" : "set"}</button></td></tr>`).join("");
       recBtn.textContent = CAL[cur] === undefined ? `Record ${cur}°` : `Record ${cur}° again`;
-      read.innerHTML = (msg ? msg + " " : "") + (done() === ANGLES.length
+      if (count() === ANGLES.length) done("l4");
+      read.innerHTML = (msg ? msg + " " : "") + (count() === ANGLES.length
         ? `<span class="ok-t">✓ Table 1 is complete: 19 readings.</span> Go on to <a href="#l5">Lesson 5</a>.`
-        : `<strong>${done()} of ${ANGLES.length}</strong> angles recorded. The knob clicks round in 10° steps here.`);
+        : `<strong>${count()} of ${ANGLES.length}</strong> angles recorded. The knob clicks round in 10° steps here.`);
     };
     const rig = makeRig($(".cl-rig", el), { snap: 10, state: { angle: 0, r1: "", r2: "" }, onAngle: () => { live(); paint(); },
       caption: "Set each angle from 0° to 180° in 10° steps, and record the count each time." });
@@ -584,6 +640,7 @@ void loop()
     };
     calListeners.push(draw);
     draw();
+    if ("IntersectionObserver" in window) new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting) && calPts().length === ANGLES.length) done("l5"); }, { threshold: 0.3 }).observe(el);
   }
 
   /* =====================================================================
@@ -637,6 +694,7 @@ void loop()
       if (!MC) { errEl.innerHTML = `<p class="small-note">Enter m and c above to see the error at each angle.</p>`; return; }
       const rows = [0, 30, 60, 90, 120, 150, 180].map((a) => { const n = readAdc(a, { quiet: true }), s = MC.m * n + MC.c; return [a, n, s, s - a]; });
       const worst = Math.max(...rows.map((r) => Math.abs(r[3])));
+      if (worst <= 5) done("l6");
       errEl.innerHTML = `<div class="cal-box wide"><table class="cal-table"><caption>The displayed angle against the true angle</caption>
           <thead><tr><th scope="col">True angle (°)</th><th scope="col">ADC count</th><th scope="col">Displayed angle (°)</th><th scope="col">Error (°)</th></tr></thead>
           <tbody>${rows.map(([a, n, s, e]) => `<tr><th scope="row">${a}</th><td>${n}</td><td>${f1(s)}</td><td class="${Math.abs(e) > 5 ? "bad" : ""}">${num(Number(e.toFixed(1)), 3)}</td></tr>`).join("")}</tbody></table></div>
@@ -675,6 +733,7 @@ void loop()
   /* =====================================================================
      LESSON 7: display the angle wirelessly (Bluetooth, then a web page)
      ===================================================================== */
+  const tried = {};
   const noMc = () => (MC ? "" : `<p class="small-note">You haven't entered m and c in <a href="#apply">Lesson 6</a> yet, so this page uses the simulation's own line for now.</p>`);
   const btBlocks = () =>
     bk("root", "Setup", bk("var", `Declare ${bf("ADC")} as long Value ${bn(0)}`) + bk("var", `Declare ${bf("Angle")} as float Value ${bn(0)}`) +
@@ -744,6 +803,7 @@ void loop()
         if (!b.dataset.pick) { render(); return; }
         status = "Connecting…"; render(); await sleep(800);
         connected = true; status = "BT is now connected"; render();
+        tried.bt = 1; if (tried.web) done("l7");
         read.innerHTML = `Connected. A new angle arrives every second (the <em>Delay 1000</em> block). Turn the knob and watch the phone follow.`;
       }
     });
@@ -835,7 +895,7 @@ void loop()
     };
     const rig = makeRig($(".wb-rig", el), { state: { angle: 120, r1: "", r2: "" } });
     const tick = () => { const n = readAdc(rig.st.angle); rig.upd({ r1: `ADC count: ${n}`, r2: `Angle: ${f1(shown(n))}°` }); return shown(n); };
-    const load = () => { loads++; page = tick(); loaded = true; render(); };
+    const load = () => { loads++; page = tick(); loaded = true; render(); tried.web = 1; if (tried.bt) done("l7"); };
     every(el, 1000, () => { if (loaded && auto) load(); else tick(); });
     el.addEventListener("submit", (e) => {
       if (!e.target.matches("[data-go]")) return;
@@ -860,12 +920,15 @@ void loop()
      LAB TASK: the brief, a rehearsal bench and the printable plan
      ===================================================================== */
   const TASK_KEY = "nmk-lab2-task", PLAN_KEY = "nmk-lab2-plan";
+  const PLAN = Object.assign({ power: "", wireless: "", notes: "" }, store.get(PLAN_KEY, {})), planListeners = [];
+  const planChanged = () => { store.set(PLAN_KEY, PLAN); planListeners.forEach((f) => f()); };
   function mountTask(el) {
     const V = Object.assign({ lo: 50, hi: 100, on: 300, off: 300 }, store.get(TASK_KEY, {}));
+    let mode = PLAN.wireless === "wifi" ? "wifi" : "bt";
     el.innerHTML = `<div class="demo-grid">
         <div class="task-card wide"><h4>Requirements</h4><ol>
           <li><strong>Calibrate</strong> your own potentiometer on the real hardware: your own Table 1, graph and equation.</li>
-          <li><strong>Display</strong> the calibrated angle on the Serial Monitor and on <strong>one</strong> wireless display of your choice: a phone app via Bluetooth (<code>ESP32_YourName</code>), or a web page through your hotspot (<code>YourName_wifi</code>).</li>
+          <li><strong>Display</strong> the calibrated angle on the Serial Monitor and on <strong>one</strong> wireless display of your choice: a phone app via Bluetooth (<code>ESP32_YourName</code>), or a web page through your hotspot (<code>YourName_wifi</code>). The wireless display shows the <strong>angle</strong> and the <strong>LED status</strong>.</li>
           <li><strong>Warning LED.</strong> On the lab day your lecturer gives your group an <strong>angle range</strong>, for example 50° to 100°. While the angle is inside the range, the LED on GPIO32 stays off. When the angle is <strong>below the lower limit or above the upper limit</strong>, the LED blinks.</li>
           <li><strong>You choose</strong> the blink on-time and off-time, and say why.</li>
           <li><strong>Accuracy.</strong> At three angles your lecturer picks, the displayed angle is within <strong>±5°</strong> of the protractor.</li></ol></div>
@@ -879,16 +942,17 @@ void loop()
           <li>a short reflection on the accuracy you reached and the sources of error.</li></ol></div>
       </div>
       <h4 class="sub-h">Rehearse It: What the Finished Task Should Do</h4>
-      <p class="explain-p">Type any range and blink times, then turn the knob. This bench shows the <strong>behaviour</strong> you have to build. The blocks are for you to work out.</p>
+      <p class="explain-p">Type any range and blink times, choose your wireless display, then turn the knob. This bench shows the <strong>behaviour</strong> you have to build. The blocks are for you to work out.</p>
       <form class="mc-form tk-form" novalidate>
         <div class="mc-f"><label for="tkLo">Lower limit <span class="hint">°</span></label><input id="tkLo" type="number" min="0" max="180" step="1" inputmode="numeric" value="${V.lo}"></div>
         <div class="mc-f"><label for="tkHi">Upper limit <span class="hint">°</span></label><input id="tkHi" type="number" min="0" max="180" step="1" inputmode="numeric" value="${V.hi}"></div>
         <div class="mc-f"><label for="tkOn">LED on-time <span class="hint">ms</span></label><input id="tkOn" type="number" min="50" max="5000" step="50" inputmode="numeric" value="${V.on}"></div>
         <div class="mc-f"><label for="tkOff">LED off-time <span class="hint">ms</span></label><input id="tkOff" type="number" min="50" max="5000" step="50" inputmode="numeric" value="${V.off}"></div>
         <p class="mc-note" aria-live="polite"></p></form>
-      <div class="task-sim"><div class="tk-rig"></div>
-        <div class="task-side"><div class="tk-band"></div><p class="pv-read tk-read" aria-live="polite"></p><div class="mc-warn"></div></div></div>`;
-    const noteEl = $(".tk-form .mc-note", el), read = $(".tk-read", el), band = $(".tk-band", el);
+      ${chips("Wireless display", [["bt", "Phone app via Bluetooth"], ["wifi", "Web page via Wi-Fi"]], mode)}
+      <div class="sim-grid"><div class="sim-phone">${phoneFrame("Your wireless display")}</div>
+        <div class="sim-side"><div class="tk-rig"></div><div class="tk-band"></div><p class="pv-read tk-read" aria-live="polite"></p><div class="mc-warn"></div></div></div>`;
+    const noteEl = $(".tk-form .mc-note", el), read = $(".tk-read", el), band = $(".tk-band", el), screen = $(".ph-screen", el), modeRow = $(row("Wireless display"), el);
     let ok = true, lastState = "";
     const rig = makeRig($(".tk-rig", el), { state: { angle: 75, r1: "", r2: "", led: false } });
     const readForm = () => {
@@ -909,28 +973,54 @@ void loop()
         ${[0, V.lo, V.hi, 180].map((a) => T(f1(X(a)), 46, a + "°", "middle", "axis")).join("")}
         ${s === undefined ? "" : `<path class="tk-mk" d="M${f1(X(s))},10l-5,-8h10z"/><line class="tk-ml" x1="${f1(X(s))}" x2="${f1(X(s))}" y1="10" y2="32"/>`}</svg>`;
     };
+    // the phone: an app screen (Bluetooth) or a browser page (Wi-Fi), already connected and showing live values
+    const paintPhone = () => {
+      screen.innerHTML = mode === "bt"
+        ? `<div class="ai-app"><div class="app-bar ai">Screen1</div><div class="ai-body">
+            <div class="ai-title">Angle Monitor</div><div class="ai-status">BT is now connected</div>
+            <div class="ai-switch ai-angle on"><span class="tk-ang"></span></div><div class="ai-switch tk-st"><span class="tk-led"></span></div>
+            <div class="ai-by">Created by ${esc(who())}</div></div></div>`
+        : `<div class="br-bar ph"><span class="br-url">${IP}</span></div>
+           <div class="br-view"><div class="web"><h1>Angle Monitor</h1><h2 class="tk-ang"></h2><h2 class="tk-st"><span class="tk-led"></span></h2><p class="web-note">This page reloads every second.</p></div></div>`;
+      phoneTxt = "";
+    };
+    let phoneTxt = "";
+    const setPhone = (s, out) => {
+      const a = mode === "bt" ? `Angle: ${s.toFixed(1)} °` : `Angle: ${s.toFixed(1)} deg`, t = a + out;
+      if (t === phoneTxt) return;
+      phoneTxt = t;
+      const ang = $(".tk-ang", screen), led = $(".tk-led", screen), st = $(".tk-st", screen);
+      if (!ang) return;
+      ang.textContent = a; led.textContent = `LED status: ${out ? "BLINKING" : "OFF"}`; st.classList.toggle("warn", out);
+    };
     let n = readAdc(rig.st.angle), slow = 0;
     every(el, 50, () => {
-      if (++slow % 6 === 0) n = readAdc(rig.st.angle); // the program reads the sensor a few times a second
+      const beat = ++slow % 6 === 0; // the program reads the sensor a few times a second
+      if (beat) n = readAdc(rig.st.angle);
       const s = shown(n), out = ok && (s < V.lo || s > V.hi), led = out && Date.now() % (V.on + V.off) < V.on;
       rig.upd({ r1: `Angle: ${f1(s)}°`, r2: !ok ? "check the values" : out ? "LED: blinking" : "LED: off", led });
+      if (mode === "bt" ? beat : slow % 20 === 0 || !phoneTxt) setPhone(s, out); // the app follows at once, the web page once a second
       const state = `${out}|${Math.round(s)}`;
       if (state === lastState) return;
       lastState = state; paintBand(s);
       read.innerHTML = !ok ? "Fix the values above." : out
-        ? `<span class="warn-t">Outside the range.</span> The displayed angle ${f1(s)}° is ${s < V.lo ? `below ${V.lo}°` : `above ${V.hi}°`}, so the LED blinks: ${V.on} ms on, ${V.off} ms off.`
+        ? `<span class="warn-t">Outside the range.</span> The displayed angle ${f1(s)}° is ${s < V.lo ? `below ${V.lo}°` : `above ${V.hi}°`}, so the LED blinks (${V.on} ms on, ${V.off} ms off) and the ${mode === "bt" ? "app" : "web page"} reports it.`
         : `<span class="ok-t">Inside the range.</span> ${f1(s)}° is between ${V.lo}° and ${V.hi}°, so the LED stays off.`;
     });
     el.querySelector(".tk-form").addEventListener("submit", (e) => e.preventDefault());
     el.querySelector(".tk-form").addEventListener("input", readForm);
+    const setMode = (v) => { mode = v; modeRow.querySelectorAll(".chip-btn").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === v)); paintPhone(); lastState = ""; };
+    wireChips(modeRow, (v) => { setMode(v); PLAN.wireless = v; planChanged(); });
+    planListeners.push(() => { if (PLAN.wireless && PLAN.wireless !== mode) setMode(PLAN.wireless); });
+    ME.on(paintPhone);
     const warn = () => { $(".mc-warn", el).innerHTML = noMc(); };
     mcListeners.push(warn);
-    warn(); readForm();
+    warn(); paintPhone(); readForm();
   }
 
   // My Lab Plan: what the student decides before the lab, with the simulation's results, on one printed page.
   function mountPlan(el) {
-    const P = Object.assign({ power: "", wireless: "", notes: "" }, store.get(PLAN_KEY, {}));
+    const P = PLAN;
     const radio = (name, v, label) => `<label class="pl-opt"><input type="radio" name="${name}" value="${v}"${P[name] === v ? " checked" : ""}><span>${label}</span></label>`;
     el.innerHTML = `<div class="plan">
         <div class="plan-card"><h4>1. How Will You Power the Potentiometer?</h4>
@@ -955,8 +1045,9 @@ void loop()
     el.addEventListener("input", (e) => {
       if (e.target.name === "power" || e.target.name === "wireless") P[e.target.name] = e.target.value;
       if (e.target.id === "planNotes") P.notes = e.target.value;
-      store.set(PLAN_KEY, P);
+      planChanged();
     });
+    planListeners.push(() => { el.querySelectorAll('input[type="radio"]').forEach((r) => { r.checked = P[r.name] === r.value; }); });
     $("[data-print]", el).addEventListener("click", () => printPlan(P));
     calListeners.push(paint); mcListeners.push(paint);
     paint();
@@ -1015,22 +1106,9 @@ void loop()
       intro: `<p>Between the knob and the number on your screen, the measurement changes form three times.</p>`,
       mount: mountChain },
     { id: "adc", group: "l2", title: "How the ADC Counts", toc: "The ADC",
-      intro: `<p>The ESP32's ADC has 12 bits, so it reports one of 2<sup>12</sup> = 4096 numbers, from 0 to 4095, for a voltage from 0 to 3.3 V. An ideal ADC would follow <span class="formula">count = V<sub>in</sub> / 3.3 V × 4095</span></p>
-        <p>Change the voltage and compare the ideal count with what a typical ESP32 reports.</p>`,
-      inputs: [F("Vin", "num", 1.65, "0 to 3.3 V", { unit: "V", positive: true, label: "V<sub>in</sub>", name: "The voltage", slider: { min: 0.05, max: 3.3, step: 0.01 },
-        validate: (x) => (x > 3.3 ? "Keep the voltage on VP at 3.3 V or below." : "") })],
-      compute: (v) => {
-        const ideal = (v.Vin / 3.3) * 4095, real = adcOf(v.Vin), d = Math.round(real) - Math.round(ideal);
-        return { ideal, real,
-          sum: `Ideal count ${Math.round(ideal)}. A typical ESP32 reports about ${Math.round(real)}.`,
-          steps: [
-            step("The size of one count (the resolution)", "ΔV = 3.3 V / 4095", "3.3 / 4095", "ΔV = 0.000806 V = <strong>0.806 mV</strong>"),
-            step("Ideal count", "count = V<sub>in</sub> / 3.3 V × 4095", `${num(v.Vin)} / 3.3 × 4095`, `count = ${num(ideal, 5)} → <strong>${Math.round(ideal)}</strong>`),
-            step("What a typical ESP32 reports", "", "from its measured curve (the solid line below)", `count ≈ <strong>${Math.round(real)}</strong>, which is ${d === 0 ? "the same as the ideal" : `${Math.abs(d)} counts ${d < 0 ? "below" : "above"} the ideal`}`)
-          ],
-          notes: [{ type: "info", title: "Good to know: why you calibrate", html: "The real ADC reads nothing until about 0.14 V, runs a little below the ideal line, and reaches 4095 before 3.3 V. Every board is slightly different, and so is every potentiometer. So instead of trusting the ideal formula, you <strong>measure</strong> the count at known angles and fit your own line." }] };
-      },
-      render: adcPlot },
+      intro: `<p><strong>Extra reading.</strong> Open this if you'd like to see how the ESP32 turns a voltage into a count. You can do the lab without it.</p>`,
+      mount: mountAdc,
+      after: `<div class="callout info"><strong>Good to know: why you calibrate</strong>A real ADC reads nothing until about 0.14 V, runs a little below the ideal line, and reaches 4095 before 3.3 V. Every board is slightly different, and so is every potentiometer. So instead of trusting an ideal formula, you <strong>measure</strong> the count at known angles and fit your own line.</div>` },
 
     { id: "readblocks", group: "l3", title: "The Blocks and Code", toc: "Blocks and Code",
       intro: `<p>Before you can calibrate, you need the raw number. In TUNIOT, build a program that reads VP and prints the count. Upload it as in Lab 1.</p>`,
@@ -1160,6 +1238,14 @@ void loop()
   GATE.mount($("#quizBox"));
   GATE.setLock(GATE.passed());
   LabKit.stepCaption();
+  const poll = () => {
+    if (GATE.passed()) done("exercises");
+    if (PLAN.power && PLAN.wireless) done("labtask");
+    const solved = store.get("nmk-solved", []);
+    if (exercises.every((x) => solved.includes(x.id))) done("review");
+  };
+  poll(); paintTicks();
+  setInterval(poll, 1500);
   // A link straight to a locked part lands on the lock notice instead
   if (!GATE.passed() && /^#(task|plan)$/.test(location.hash)) setTimeout(() => $("#labtask").scrollIntoView(), 0);
 })();

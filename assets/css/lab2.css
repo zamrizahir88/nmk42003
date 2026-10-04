@@ -35,8 +35,11 @@
 :root[data-theme="dark"] .join { fill: #8a96a1; }
 .psu-b, .mm-b { fill: #3a434b; stroke: #1f272e; stroke-width: 1.5; }
 .mm-b { fill: #c98a12; stroke: #8a5d08; }
-.psu-k { fill: #c9d1d8; stroke: #6d7a86; stroke-width: 1.5; }
-.psu-m { stroke: #2b3640; stroke-width: 2.5; stroke-linecap: round; }
+.psu-k { fill: #c9d1d8; stroke: #6d7a86; stroke-width: 2; }
+.psu-hit { fill: transparent; cursor: grab; touch-action: none; }
+.psu-hit:active { cursor: grabbing; }
+.psu-hit:hover { stroke: var(--amber); stroke-width: 2; stroke-dasharray: 4 4; }
+.psu-m { stroke: #d93a2b; stroke-width: 3.5; stroke-linecap: round; }
 .psu-t { stroke: #11181f; stroke-width: 1.5; }
 .psu-t.p { fill: #d93a2b; }
 .psu-t.n { fill: #11181f; stroke: #8a96a1; }
@@ -85,6 +88,12 @@
 .pw-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 14px; align-items: start; }
 @media (max-width: 900px) { .pw-grid { grid-template-columns: minmax(0, 1fr); } }
 .pw-grid > * { min-width: 0; }
+.pw-left .rig-knob { margin-bottom: 8px; }
+.probe-zone { cursor: pointer; }
+.probe-zone > * { fill: transparent; stroke: #b3257a; stroke-width: 2; stroke-dasharray: 4 4; }
+.probe-zone:hover > * { fill: color-mix(in srgb, #b3257a 15%, transparent); }
+.probe-zone.on > * { stroke-dasharray: none; stroke-width: 2.6; fill: color-mix(in srgb, #b3257a 22%, transparent); }
+:root[data-theme="dark"] .probe-zone > * { stroke: #f08cc4; }
 .pw-side { display: grid; gap: 10px; }
 .pw-side > * { min-width: 0; }
 .pw-ctl { display: grid; gap: 10px; justify-items: start; transition: opacity .2s; }
@@ -102,7 +111,7 @@
 .pw-steps li.now .ps-n { background: var(--amber); color: var(--surface); }
 .pw-steps li.done { color: var(--ink-3); }
 .pw-steps li.done .ps-n { background: var(--teal); color: var(--surface); }
-.pw-gauge { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 6px 8px; }
+.pw-gauge { width: 100%; max-width: 560px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 6px 8px; }
 .g-ok { fill: var(--teal); }
 .g-hot { fill: #e0a800; }
 .g-bad { fill: #c0271b; }
@@ -211,5 +220,26 @@ tr.cur .row-go { border-color: var(--teal); color: var(--teal); }
   #printSheet .ps-notes { border: 1px solid #777; min-height: 60pt; padding: 4pt 6pt; white-space: pre-wrap; }
   #printSheet .ps-h { font-weight: 600; }
   #printSheet .ps-acc td { height: 16pt; }
-  @page { size: A4; margin: 14mm; }
+  #printSheet h2, #printSheet table, #printSheet .ps-notes { break-inside: avoid; }
+  #printSheet h2 { break-after: avoid; }
+  @page { size: A4; margin: 25.4mm; }
 }
+
+/* ---------- A collapsed panel inside a collapsed panel keeps its own Show / Hide label ---------- */
+details.fold[open] details.fold:not([open]) .fold-h::after { content: "Show ▾"; }
+.fold-body details.fold { margin-top: 12px; }
+.adc-in { max-width: 520px; }
+.adc-in output { font-weight: 600; color: var(--teal); }
+
+/* ---------- Lab Task rehearsal: the wireless display ---------- */
+.tk-st { transition: background .15s; }
+.ai-switch.tk-st { background: #bdbdbd; font-size: 1rem; }
+.ai-switch.tk-st.warn { background: #ffb020; animation: tk-warn .7s steps(2, jump-none) infinite; }
+.web h2.tk-st.warn .tk-led { background: #ffb020; padding: 0 6px; animation: tk-warn .7s steps(2, jump-none) infinite; }
+@keyframes tk-warn { 50% { background: #ff5a3c; color: #fff; } }
+@media (prefers-reduced-motion: reduce) { .ai-switch.tk-st.warn, .web h2.tk-st.warn .tk-led { animation: none; } }
+.br-bar.ph .br-url { font-size: .85rem; }
+
+/* ---------- Step bar: a tick on each part that has been done ---------- */
+.lab-nav.steps a.ok::after { content: "✓"; position: absolute; top: -7px; right: -5px; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; background: var(--teal); color: var(--surface); font-size: 10px; font-weight: 700; line-height: 1; box-shadow: 0 0 0 2px var(--paper); }
+.lab-nav.steps .wrap { padding-top: 8px; }
