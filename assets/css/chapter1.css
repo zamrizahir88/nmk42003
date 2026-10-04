@@ -211,3 +211,132 @@ table.stats-table { min-width: 520px; }
   .bridge-ctl { padding: 12px; }
   .lcd-num { font-size: 1.8rem; }
 }
+
+/* ======== Animated scenes: IoT, control loop, classification demos, error types ======== */
+.pal-l { font-size: .88rem; color: var(--ink-2); margin-right: 4px; }
+.btn.sm { min-height: 36px; padding: 6px 12px; font-size: .88rem; }
+.strip-box { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 6px 8px 0; margin: 8px 0; max-width: 620px; }
+.warn-t { color: var(--amber); font-weight: 600; }
+.ok-t { color: var(--teal); font-weight: 600; }
+
+/* IoT scene */
+.iot-box { max-width: 900px; }
+.iot-scene { min-width: 640px; }
+.iot-scene text { font: 12px var(--sans); fill: var(--ink-2); }
+.io-zone { fill: var(--paper); stroke: var(--rule); stroke-width: 1.4; }
+.io-zone.meas { stroke: var(--teal); stroke-width: 2; }
+.iot-scene .io-h { font: 600 12.5px var(--serif); fill: var(--ink); }
+.iot-scene .io-s { font-size: 10.5px; fill: var(--ink-3); }
+.iot-scene .io-s.stale { fill: var(--amber); font-weight: 600; }
+.iot-scene .io-b { font-weight: 600; fill: var(--ink); }
+.iot-scene .io-v { font: 700 13px ui-monospace, Consolas, monospace; fill: var(--teal); }
+.iot-scene .io-v.bad, .iot-scene .io-bad { fill: var(--danger); font-weight: 700; }
+.io-badge { fill: var(--surface); stroke: var(--rule); stroke-width: 1.4; }
+.io-badge.on { fill: var(--teal-soft); stroke: var(--teal); }
+.io-link { fill: none; stroke: var(--teal); stroke-width: 2; stroke-dasharray: 3 6; opacity: .7; }
+.io-link.cmd { stroke: var(--amber); }
+.io-tower { fill: none; stroke: var(--ink-2); stroke-width: 2.2; stroke-linecap: round; }
+.io-node { fill: var(--teal); }
+.io-cloud { fill: var(--surface); stroke: var(--ink-2); stroke-width: 2; }
+.io-cut path { stroke: var(--danger); stroke-width: 4; stroke-linecap: round; }
+.io-dash { fill: var(--surface); stroke: var(--rule); stroke-width: 1.4; }
+.iot-scene .io-big { font: 700 26px var(--serif); fill: var(--ink); }
+.io-bar { fill: var(--grid); }
+.io-barv { fill: var(--teal); }
+.io-lim { stroke: var(--amber); stroke-width: 2.5; }
+.io-spark { fill: none; stroke: var(--teal); stroke-width: 2; stroke-linejoin: round; }
+.io-axis { stroke: var(--rule); }
+.io-dec { fill: var(--grid); }
+.io-dec.on { fill: var(--amber-soft); stroke: var(--amber); }
+.iot-scene .io-d { font-weight: 600; font-size: 11.5px; fill: var(--ink); }
+.iot-scene .io-rule { font-size: 11px; font-style: italic; }
+.io-pk rect { fill: var(--teal); stroke: var(--surface); stroke-width: 2; }
+.io-pk .cmd rect { fill: var(--amber); }
+.iot-scene .io-pk text { fill: #fff; font: 700 10.5px var(--sans); }
+.hot { cursor: pointer; }
+.hot:focus { outline: none; }
+.hot:hover > rect:first-child, .hot:hover .io-cloud, .hot:hover .io-tower { stroke: var(--teal); }
+.hot.sel > rect:first-child, .hot.sel .io-cloud, .hot.sel .io-tower { stroke: var(--amber); stroke-width: 2.6; }
+.hot:focus-visible > rect:first-child, .hot:focus-visible .io-cloud, .hot:focus-visible .io-tower { stroke: var(--focus); stroke-width: 3; }
+.io-sky { fill: var(--sky); }
+.io-plant { fill: none; stroke: #2e9e4a; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.io-probe { fill: var(--teal); }
+.io-probe-w { stroke: var(--ink-2); stroke-width: 2; fill: none; }
+.io-dev { fill: var(--surface); stroke: var(--ink-2); stroke-width: 2; }
+.io-pipe { fill: none; stroke: var(--ink-2); stroke-width: 4; }
+.io-drops circle { fill: var(--water); animation: io-drop .7s linear infinite; }
+.io-drops circle:nth-child(2) { animation-delay: .2s; }
+.io-drops circle:nth-child(3) { animation-delay: .4s; }
+@keyframes io-drop { from { transform: translateY(-8px); opacity: 1; } to { transform: translateY(10px); opacity: .2; } }
+.io-band { fill: var(--ink-3); }
+.io-heart { fill: var(--danger); transform-box: fill-box; transform-origin: center; animation: io-beat .8s ease-in-out infinite; }
+@keyframes io-beat { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.25); } }
+.io-scr { fill: var(--teal-soft); }
+.io-scr.alert { fill: var(--danger); }
+.iot-scene .io-alert { fill: #fff; font: 700 20px var(--sans); }
+.io-house { fill: var(--surface); stroke: var(--ink-2); stroke-width: 2; }
+.io-roof { fill: none; stroke: var(--ink-2); stroke-width: 3; stroke-linejoin: round; }
+.io-therm { fill: var(--surface); stroke: var(--ink-2); stroke-width: 1.5; }
+.io-merc { fill: var(--danger); }
+.io-fan path { fill: var(--teal); }
+.io-fan.spin { animation: io-spin .6s linear infinite; transform-origin: 0 0; }
+@keyframes io-spin { to { transform: rotate(360deg); } }
+.io-road { fill: var(--road); }
+.io-bin { fill: var(--surface); stroke: var(--ink-2); stroke-width: 2; }
+.io-fill { fill: var(--ink-3); }
+.io-lid { fill: var(--ink-2); }
+.io-wheel { fill: var(--ink); }
+.io-truck.go { animation: io-truck 1.6s ease-out forwards; }
+@keyframes io-truck { to { transform: translateX(-48px); } }
+@media (prefers-reduced-motion: reduce) { .io-drops circle, .io-heart, .io-fan.spin { animation: none; } .io-truck.go { animation: none; transform: translateX(-48px); } }
+.iot-ctl { display: grid; gap: 8px; max-width: 620px; margin: 10px 0; justify-items: start; }
+.iot-ctl .slider-field { width: 100%; margin: 0; }
+.iot-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.iot-row .chips-row { margin: 0; }
+.iot-info:empty { display: none; }
+.iot-info { margin: 8px 0; max-width: 820px; }
+.iot-words { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 10px; margin: 12px 0 4px; }
+.iot-words > div { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 12px 14px; }
+.iot-words > div:first-child { border-color: var(--teal); }
+.iot-words h4 { font-family: var(--serif); font-size: 1rem; margin: 0 0 4px; }
+.iot-words p { font-size: .93rem; color: var(--ink-2); margin: 0 0 6px; }
+
+/* running control loop */
+.blocks .lv { fill: var(--teal); font: 600 12px var(--sans); }
+.loop-path { stroke: none; }
+.loop-dot { fill: var(--amber); stroke: var(--surface); stroke-width: 2; }
+.loop-dot.meas { fill: var(--teal); }
+.loop-ctl { display: grid; gap: 8px; max-width: 620px; margin: 4px 0 8px; }
+.loop-ctl .slider-field { margin: 0; }
+
+/* classification demos */
+.class-demo { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 12px 14px; max-width: 760px; }
+.class-demo .slider-field { max-width: 480px; }
+.scene.demo { max-width: 620px; margin: 0 auto; }
+.d-face { fill: var(--paper); stroke: var(--ink-3); stroke-width: 1.5; }
+.d-tick { stroke: var(--ink-2); stroke-width: 1.6; fill: none; }
+.scene .d-num { font-size: 11px; fill: var(--ink-2); }
+.d-needle { stroke: var(--danger); stroke-width: 3; stroke-linecap: round; fill: none; }
+.d-hub { fill: var(--ink); }
+.scene .d-lab { font-weight: 600; font-size: 12.5px; fill: var(--ink); }
+.d-wt { fill: var(--metal); stroke: var(--ink-2); stroke-width: 1.5; }
+.d-wt.known { fill: var(--teal-soft); stroke: var(--teal); }
+.scene .d-wtt { font: 600 11px var(--sans); fill: var(--ink); }
+.d-beam { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; }
+.d-lcd { fill: var(--lcd); }
+.scene .d-lcdt { fill: var(--lcd-t); font: 700 30px ui-monospace, Consolas, monospace; }
+.scene .d-lcdt.sm { font-size: 18px; }
+.d-trace { fill: none; stroke: var(--teal); stroke-width: 2; stroke-linejoin: round; }
+.dm-btns { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.class-demo .pv-read { min-height: 0; margin: 8px 0 0; }
+
+/* error types and calculator visuals */
+.errd .btn { margin: 0 0 4px; }
+.errd-plot { max-width: 640px; }
+.plot .rect-nom { fill: none; stroke: var(--teal); stroke-width: 2.4; }
+.plot .rect-min { fill: var(--surface); stroke: var(--amber); stroke-width: 1; stroke-dasharray: 4 3; }
+.plot .pointer-m { stroke: var(--danger); stroke-width: 3; stroke-linecap: round; }
+.std-grid [data-trace] { margin-top: 10px; }
+.plot.mid { max-width: 640px; }
+.plot .band-e { fill: var(--amber-soft); stroke: var(--amber); stroke-width: 1.5; }
+@media (max-width: 560px) { .strip-box, .bode { overflow-x: auto; -webkit-overflow-scrolling: touch; } .strip-box .plot, .plot.mid { min-width: 440px; } }

@@ -5,7 +5,7 @@
 (function () {
   "use strict";
 
-  const { esc, num, withUnit, PN, F, step, stepsHtml, notesHtml, MINUS, reduceMotion, chips, wireChips, quiz } = Lab;
+  const { $, esc, num, withUnit, PN, F, step, stepsHtml, notesHtml, MINUS, reduceMotion, chips, wireChips, quiz, fold, player } = Lab;
   const fx = (x, d = 2) => (x < 0 && Math.abs(x) >= 0.5 * 10 ** -d ? MINUS : "") + Math.abs(x).toFixed(d);
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const sum = (a) => a.reduce((s, x) => s + x, 0);
@@ -148,7 +148,7 @@
         </div>
       </div>
       <div class="challenge-box" hidden></div>
-      <div class="working"><h4>Step-by-Step Working</h4><p class="result" aria-live="polite"></p><ol class="steps"></ol></div>`;
+      <p class="result fold-result" aria-live="polite"></p>${fold("Step-by-Step Working", `<ol class="steps"></ol>`)}`;
 
     const q = (s) => el.querySelector(s), meter = q(".meter"), chBox = q(".challenge-box");
     const inputs = el.querySelectorAll("[data-f]");
@@ -482,8 +482,13 @@
     const halfW = (y) => 78 + (y - top) * 0.47;
     el.innerHTML = `<div class="std-grid">
         <figure class="diagram"><div class="std-svg"></div><figcaption>Select a level. Accuracy is highest at the top; the number of standards grows towards the bottom.</figcaption></figure>
-        <div class="std-detail" aria-live="polite"></div>
+        <div><div class="std-detail" aria-live="polite"></div><button type="button" class="btn ghost" data-trace>Follow a calibration down the chain</button></div>
       </div>`;
+    let timer = 0;
+    el.querySelector("[data-trace]").addEventListener("click", () => {
+      clearInterval(timer); cur = 0; draw();
+      timer = setInterval(() => { if (cur >= 3 || !el.isConnected) return clearInterval(timer); cur++; draw(); }, reduceMotion ? 1800 : 1300);
+    });
     const draw = () => {
       let s = `<svg viewBox="0 0 ${W + 60} ${H}" class="ckt pyramid" role="group" aria-label="Hierarchy of standards">`;
       s += `<defs><marker id="arrS" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" class="ah-ink"/></marker></defs>`;
@@ -550,7 +555,7 @@
       </div>
       <figure class="diagram plot-box"><div class="st-plot"></div><figcaption><span class="key digital"></span> Readings &nbsp; <span class="key analog"></span> Mean x̄ &nbsp; <span class="key band"></span> x̄ ± σ (sample)</figcaption></figure>
       <div class="table-wrap st-table"></div>
-      <div class="working"><h4>Step-by-Step Working</h4><p class="result" aria-live="polite"></p><ol class="steps"></ol></div>`;
+      <p class="result fold-result" aria-live="polite"></p>${fold("Step-by-Step Working", `<ol class="steps"></ol>`)}`;
     const ta = el.querySelector("#st-data"), unitEl = el.querySelector("#st-unit"), err = el.querySelector("#st-err");
     const draw = () => {
       const xs = parseData(ta.value), u = unitEl.value.trim();
@@ -724,52 +729,378 @@
   ];
 
   /* =====================================================================
+     Animated scenes: IoT, control loop, classification demos, error types
+     ===================================================================== */
+  const TX = (x, y, t, a = "middle", c = "") => `<text x="${x}" y="${y}" text-anchor="${a}"${c ? ` class="${c}"` : ""}>${t}</text>`;
+  // Call fn(dt) every frame while el is on screen and the tab is visible.
+  function animate(el, fn) {
+    let seen = false, raf = 0, last = 0;
+    const tick = (now) => { raf = 0; if (!seen || document.hidden) return; const dt = Math.min(0.1, (now - last) / 1000); last = now; fn(dt); raf = requestAnimationFrame(tick); };
+    const kick = () => { if (!raf && seen && !document.hidden) { last = performance.now(); raf = requestAnimationFrame(tick); } };
+    if ("IntersectionObserver" in window) new IntersectionObserver((es) => { seen = es[es.length - 1].isIntersecting; kick(); }, { threshold: 0.15 }).observe(el);
+    else { seen = true; kick(); }
+    document.addEventListener("visibilitychange", kick);
+  }
+
+  /* ---------------- IoT scene ---------------- */
+  const IOT_SCENE = {
+    farm: { q: "soil moisture", unit: "%", min: 0, max: 100, start: 55, limit: 35, below: true, bias: 15, actName: "Water pump", onTxt: "ON: watering", offTxt: "OFF",
+      node: "LoRa gateway", link: "LoRa radio", rule: "If moisture is below 35% → pump ON",
+      info: { sensor: "A soil-moisture probe in the field. It turns the wetness of the soil into an electrical signal.", act: "A valve and water pump. The system switches it; nobody has to walk to the field.", node: "A long-range radio (such as LoRa) carries the reading a few kilometres to a gateway.", cloud: "The gateway passes the data over the internet to a cloud server, which stores it.", dash: "The farmer sees soil moisture on a dashboard. A rule opens the valve when the soil is too dry." } },
+    health: { q: "heart rate", unit: " bpm", min: 40, max: 160, start: 72, limit: 120, below: false, bias: -20, actName: "Alert to doctor", onTxt: "SENT: check patient", offTxt: "none",
+      node: "Patient's phone", link: "Bluetooth", rule: "If heart rate is above 120 bpm → alert the doctor",
+      info: { sensor: "A wearable sensor on the wrist. It measures heart rate (and blood oxygen) with light.", act: "An alert on the doctor's phone and the patient's wearable. Here the action is a warning to a person.", node: "Bluetooth carries the reading the short distance to the patient's phone.", cloud: "The phone sends the data by mobile data to a cloud server.", dash: "The doctor sees the trend on a dashboard. An alert is sent when a reading goes out of range." } },
+    home: { q: "room temperature", unit: " °C", min: 18, max: 40, start: 27, limit: 30, below: false, bias: -3, actName: "Fan (smart plug)", onTxt: "ON: cooling", offTxt: "OFF",
+      node: "Home hub and router", link: "Wi-Fi", rule: "If the room is above 30 °C → fan ON",
+      info: { sensor: "A temperature sensor in the room (door and motion sensors work the same way).", act: "A smart plug that switches the fan. Lights and other devices can be switched too.", node: "Wi-Fi or Zigbee carries the reading to the home hub and router.", cloud: "The router sends the data over the internet to the cloud service.", dash: "A phone app shows the home and controls the devices. Rules act automatically." } },
+    waste: { q: "bin fill level", unit: "%", min: 0, max: 100, start: 40, limit: 80, below: false, bias: -20, actName: "Collection truck", onTxt: "SENT to this bin", offTxt: "waiting",
+      node: "Cellular tower", link: "NB-IoT", rule: "If the bin is above 80% full → send a truck",
+      info: { sensor: "An ultrasonic sensor under the lid. It measures the distance to the rubbish, so it knows how full the bin is.", act: "A collection truck. The system gives it the shortest route to the full bins.", node: "A low-power cellular link (such as NB-IoT) reaches the nearest mobile tower.", cloud: "The mobile network passes the data to the council's server.", dash: "A map shows which bins are full, so trucks only go where they are needed." } }
+  };
+  // Pictures for the "things" zone (x 14 to 222, y 84 to 206)
+  const IOT_ART = {
+    farm: (v, on) => { const dark = Math.round(40 + (v / 100) * 30);
+      return `<rect class="io-sky" x="14" y="84" width="208" height="78"/><rect x="14" y="162" width="208" height="44" fill="hsl(28 45% ${72 - dark}%)"/>
+        <path class="io-plant" d="M70,162V128M70,140c-14,-2 -18,-12 -18,-18c12,0 18,8 18,18M70,132c12,-2 16,-10 16,-16c-10,0 -16,6 -16,16"/>
+        <rect class="io-probe" x="112" y="140" width="10" height="46" rx="2"/><path class="io-probe-w" d="M117,140V118"/>${TX(117, 112, "sensor", "middle", "io-s")}
+        <rect class="io-dev" x="160" y="132" width="40" height="30" rx="4"/><path class="io-pipe" d="M160,150H140V162"/>${TX(180, 126, "pump", "middle", "io-s")}
+        ${on ? `<g class="io-drops"><circle cx="140" cy="170" r="3"/><circle cx="134" cy="180" r="3"/><circle cx="146" cy="184" r="3"/></g>` : ""}`; },
+    health: (v, on) => `<rect class="io-sky" x="14" y="84" width="208" height="122"/>
+        <rect class="io-dev" x="58" y="118" width="58" height="58" rx="12"/><rect class="io-band" x="74" y="96" width="26" height="22"/><rect class="io-band" x="74" y="176" width="26" height="22"/>
+        <path class="io-heart" style="animation-duration:${(60 / v).toFixed(2)}s" d="M87,160c-14,-10 -16,-20 -8,-24c5,-2 8,2 8,4c0,-2 3,-6 8,-4c8,4 6,14 -8,24z"/>${TX(87, 110, "", "middle")}
+        ${TX(87, 192, "", "middle")}${TX(150, 112, "wearable", "middle", "io-s")}
+        <rect class="io-dev" x="160" y="126" width="34" height="56" rx="6"/><rect class="io-scr${on ? " alert" : ""}" x="164" y="134" width="26" height="38" rx="2"/>${on ? TX(177, 159, "!", "middle", "io-alert") : ""}${TX(177, 198, "doctor", "middle", "io-s")}`,
+    home: (v, on) => `<rect class="io-sky" x="14" y="84" width="208" height="122"/>
+        <path class="io-house" d="M34,200V140L96,100L158,140V200Z"/><path class="io-roof" d="M26,144L96,96L166,144"/>
+        <rect class="io-therm" x="66" y="150" width="8" height="34" rx="4"/><rect class="io-merc" x="68" y="${184 - ((v - 18) / 22) * 30}" width="4" height="${((v - 18) / 22) * 30}"/><circle class="io-merc" cx="70" cy="186" r="6"/>${TX(70, 144, "sensor", "middle", "io-s")}
+        <g transform="translate(124 168)"><circle class="io-dev" r="20"/><g class="io-fan${on ? " spin" : ""}"><path d="M0,0C-4,-14 6,-18 8,-12C10,-6 4,-2 0,0ZM0,0C14,-4 18,6 12,8C6,10 2,4 0,0ZM0,0C4,14 -6,18 -8,12C-10,6 -4,2 0,0ZM0,0C-14,4 -18,-6 -12,-8C-6,-10 -2,-4 0,0Z"/></g></g>${TX(186, 172, "fan", "middle", "io-s")}`,
+    waste: (v, on) => `<rect class="io-sky" x="14" y="84" width="208" height="100"/><rect class="io-road" x="14" y="184" width="208" height="22"/>
+        <path class="io-bin" d="M40,116H92L88,184H44Z"/><rect class="io-fill" x="${44 + (1 - v / 100) * 0}" y="${182 - (v / 100) * 62}" width="44" height="${(v / 100) * 62}" opacity=".85"/><rect class="io-lid" x="36" y="108" width="60" height="8" rx="3"/>
+        <circle class="io-probe" cx="66" cy="120" r="4"/>${TX(66, 102, "sensor", "middle", "io-s")}
+        <g class="io-truck${on ? " go" : ""}"><rect class="io-dev" x="150" y="150" width="46" height="26" rx="3"/><rect class="io-dev" x="196" y="158" width="18" height="18" rx="3"/><circle class="io-wheel" cx="162" cy="180" r="6"/><circle cx="204" cy="180" r="6" class="io-wheel"/></g>`
+  };
+  const IOT_DATA = "M216,58C250,58 262,120 300,120H420C460,120 470,100 506,100";
+  const IOT_CMD = "M506,206C470,206 460,214 420,214H300C262,214 250,232 216,232";
+
+  function mountIot(el) {
+    let k = "farm", C = IOT_SCENE[k], val = C.start, cut = false, biased = false, recv = null, hist = [], actOn = false, decided = false, age = 0, part = null, packets = [], auto = 0, told = "";
+    el.innerHTML = `${chips("IoT example", Object.entries(IOT).map(([key, v]) => [key, v.label]), "farm")}
+      <figure class="scene-box iot-box"><div class="scene-scroll"><div class="iot-svg"></div></div>
+        <figcaption>Tap the sensor, the actuator, the link, the cloud or the dashboard to see what each one does.<span class="swipe"> Swipe sideways to see all of it.</span></figcaption></figure>
+      <div class="iot-ctl">
+        <div class="slider-field"><label for="iotVal"></label><input id="iotVal" type="range"></div>
+        <div class="iot-row"><span class="pal-l">Link:</span>${chips("Link", [["ok", "Connected"], ["cut", "Cut the link"]], "ok")}</div>
+        <div class="iot-row"><span class="pal-l">Sensor:</span><span class="iot-bias"></span></div>
+        <button type="button" class="btn" data-send>Send a reading now</button>
+      </div>
+      <p class="pv-read iot-read" aria-live="polite"></p>
+      <div class="iot-info" aria-live="polite"></div>
+      <div class="iot-words"><div><h4>Connected Things</h4><p data-p="things"></p><span class="iot-tag">Measurement: this course</span></div><div><h4>Connectivity and Infrastructure</h4><p data-p="conn"></p></div><div><h4>Analytics and Applications</h4><p data-p="app"></p></div></div>`;
+    const host = $(".iot-svg", el), read = $(".iot-read", el), info = $(".iot-info", el), slider = $("#iotVal", el), biasBox = $(".iot-bias", el);
+    const fmt = (v) => `${Math.round(v)}${C.unit}`;
+    const sensed = () => clamp(val + (biased ? C.bias : 0), C.min, C.max);
+    const wants = (v) => (C.below ? v < C.limit : v > C.limit);
+    const hot = (p, inner, label) => `<g class="hot${part === p ? " sel" : ""}" data-part="${p}" tabindex="0" role="button" aria-label="${label}">${inner}</g>`;
+    const draw = () => {
+      const s = sensed(), gx = 520, gw = 170, X = (v) => gx + ((v - C.min) / (C.max - C.min)) * gw;
+      let g = `<rect class="io-zone meas" x="6" y="6" width="224" height="258" rx="10"/><rect class="io-zone" x="246" y="6" width="232" height="258" rx="10"/><rect class="io-zone" x="494" y="6" width="220" height="258" rx="10"/>`;
+      g += TX(118, 26, "Connected Things", "middle", "io-h") + TX(362, 26, "Connectivity and Infrastructure", "middle", "io-h") + TX(604, 26, "Analytics and Applications", "middle", "io-h");
+      g += IOT_ART[k](val, actOn);
+      g += hot("sensor", `<rect class="io-badge" x="20" y="44" width="196" height="28" rx="6"/>${TX(30, 63, "Sensor reads", "start", "io-b")}${TX(206, 63, fmt(s), "end", `io-v${biased ? " bad" : ""}`)}`, "Sensor");
+      g += hot("act", `<rect class="io-badge${actOn ? " on" : ""}" x="20" y="218" width="196" height="28" rx="6"/>${TX(30, 237, C.actName, "start", "io-b")}${TX(206, 237, actOn ? C.onTxt : C.offTxt, "end", "io-v")}`, C.actName);
+      g += `<path class="io-link" d="${IOT_DATA}"/><path class="io-link cmd" d="${IOT_CMD}"/>`;
+      g += hot("node", `<path class="io-tower" d="M300,172V128M286,172H314M290,138a14,14 0 0 1 20,0M284,130a22,22 0 0 1 32,0"/><circle class="io-node" cx="300" cy="148" r="7"/>${TX(300, 196, C.node, "middle", "io-s")}${TX(258, 84, C.link, "start", "io-s")}`, C.node);
+      g += hot("cloud", `<path class="io-cloud" d="M392,166h56a16,16 0 0 0 2,-32a24,24 0 0 0 -46,-6a18,18 0 0 0 -12,38z"/>${TX(420, 154, "cloud", "middle", "io-b")}${TX(420, 196, "internet and servers", "middle", "io-s")}`, "Cloud");
+      if (cut) g += `<g class="io-cut"><path d="M350,134l20,24M370,134l-20,24"/></g>${TX(360, 112, "link cut", "middle", "io-bad")}`;
+      // dashboard
+      let dash = `<rect class="io-dash" x="506" y="44" width="198" height="178" rx="8"/>${TX(516, 62, "Dashboard", "start", "io-b")}${TX(694, 62, recv === null ? "no data yet" : age < 1 ? "updated now" : `updated ${Math.round(age)} s ago`, "end", `io-s${age > 8 ? " stale" : ""}`)}`;
+      dash += TX(516, 96, recv === null ? "--" : fmt(recv), "start", "io-big") + TX(694, 96, C.q, "end", "io-s");
+      dash += `<rect class="io-bar" x="${gx}" y="106" width="${gw}" height="10" rx="5"/>${recv === null ? "" : `<rect class="io-barv" x="${gx}" y="106" width="${Math.max(2, X(recv) - gx)}" height="10" rx="5"/>`}<line class="io-lim" x1="${X(C.limit)}" x2="${X(C.limit)}" y1="101" y2="121"/>${TX(X(C.limit), 132, "limit", "middle", "io-s")}`;
+      if (hist.length > 1) { const pts = hist.map((v, i) => `${(gx + (i / 11) * gw).toFixed(1)},${(176 - ((v - C.min) / (C.max - C.min)) * 34).toFixed(1)}`).join(" "); dash += `<polyline class="io-spark" points="${pts}"/>`; }
+      dash += `<line class="io-axis" x1="${gx}" x2="${gx + gw}" y1="178" y2="178"/>`;
+      dash += `<rect class="io-dec${decided ? " on" : ""}" x="516" y="188" width="178" height="24" rx="12"/>${TX(605, 204, decided ? `Decision: ${C.actName} ${C.onTxt.split(":")[0]}` : "Decision: no action", "middle", "io-d")}`;
+      g += hot("dash", dash, "Dashboard and rule");
+      g += TX(604, 244, C.rule, "middle", "io-rule");
+      g += `<g class="io-pk"></g>`;
+      const focused = document.activeElement && document.activeElement.closest && host.contains(document.activeElement) ? document.activeElement.dataset.part : null;
+      host.innerHTML = `<svg class="scene iot-scene" viewBox="0 0 720 270" role="group" aria-label="An IoT system in three parts: connected things, connectivity and infrastructure, analytics and applications">${g}</svg>`;
+      if (focused) { const f = host.querySelector(`[data-part="${focused}"]`); if (f) f.focus(); }
+      drawPackets();
+    };
+    const drawPackets = () => {
+      const layer = host.querySelector(".io-pk");
+      if (!layer) return;
+      layer.innerHTML = packets.map((p) => `<g transform="translate(${p.x.toFixed(1)} ${p.y.toFixed(1)})" class="${p.cmd ? "cmd" : ""}"><rect x="-22" y="-10" width="44" height="20" rx="10"/>${TX(0, 4, p.label)}</g>`).join("");
+    };
+    // hidden copies of the two routes, used to place the packets along them
+    const meter = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    meter.setAttribute("width", "0"); meter.setAttribute("height", "0"); meter.setAttribute("aria-hidden", "true"); meter.style.position = "absolute";
+    meter.innerHTML = `<path d="${IOT_DATA}"/><path d="${IOT_CMD}"/>`;
+    el.appendChild(meter);
+    const PD = meter.children[0], PC = meter.children[1], LD = PD.getTotalLength(), LC = PC.getTotalLength();
+    const say = (t) => { told = t; read.innerHTML = t; };
+    const arrive = (p) => {
+      if (p.cmd) { actOn = p.on; say(`The command reached the ${C.actName.toLowerCase()}: <strong>${actOn ? C.onTxt : C.offTxt}</strong>. The loop is complete: measure, send, decide, act.`); draw(); return; }
+      recv = p.v; age = 0; hist.push(p.v); if (hist.length > 12) hist.shift();
+      const want = wants(p.v), wrong = biased && want !== wants(val);
+      decided = want;
+      let t = `The dashboard received <strong>${fmt(p.v)}</strong>. Rule checked: ${want ? `<strong>${C.actName} ${C.onTxt.split(":")[0]}</strong>` : "no action needed"}.`;
+      if (wrong) t += ` <span class="warn-t">But the real ${C.q} is ${fmt(val)}: the sensor is wrong, so the decision is wrong.</span> No IoT system is better than its data.`;
+      say(t);
+      if (want !== actOn) send(true, want);
+      draw();
+    };
+    const send = (cmd, on) => {
+      if (reduceMotion) { arrive(cmd ? { cmd, on } : { v: sensed() }); return; }
+      packets.push(cmd ? { cmd: true, on, s: 0, label: on ? "ON" : "OFF", x: 506, y: 206 } : { v: sensed(), s: 0, label: fmt(sensed()), x: 216, y: 58 });
+    };
+    const sendReading = () => {
+      if (cut && reduceMotion) { say(`<span class="warn-t">The link is cut.</span> The reading can't reach the cloud, so the dashboard shows old data.`); return; }
+      send(false);
+      if (!reduceMotion) say(`The sensor measures ${fmt(sensed())} and sends it: by ${C.link} to the ${C.node.toLowerCase()}, then through the internet to the cloud.`);
+    };
+    animate(el, (dt) => {
+      age += dt; auto += dt;
+      if (auto > 4 && !packets.length) { auto = 0; sendReading(); }
+      let changed = false;
+      packets.forEach((p) => {
+        const L = p.cmd ? LC : LD, P = p.cmd ? PC : PD;
+        p.s += dt * 190;
+        // a cut link stops packets between the gateway and the cloud
+        const stopAt = p.cmd ? L * 0.42 : L * 0.5;
+        if (cut && p.s >= stopAt) { p.dead = true; changed = true; say(`<span class="warn-t">The link is cut.</span> ${p.cmd ? `The command never reaches the ${C.actName.toLowerCase()}.` : "The reading never reaches the cloud, so the dashboard shows old data and nothing is decided."}`); return; }
+        if (p.s >= L) { p.dead = true; changed = true; arrive(p); return; }
+        const pt = P.getPointAtLength(p.s); p.x = pt.x; p.y = pt.y;
+      });
+      packets = packets.filter((p) => !p.dead);
+      if (changed || Math.floor(age) !== Math.floor(age - dt)) draw(); else drawPackets();
+    });
+    const setExample = (key) => {
+      k = key; C = IOT_SCENE[k]; val = C.start; recv = null; hist = []; actOn = false; decided = false; age = 0; packets = []; part = null; biased = false; auto = 3;
+      slider.min = C.min; slider.max = C.max; slider.step = 1; slider.value = val;
+      $('label[for="iotVal"]', el).innerHTML = `Real ${C.q}: <strong class="iot-val">${fmt(val)}</strong>`;
+      biasBox.innerHTML = chips("Sensor", [["ok", "Accurate"], ["bad", `Reads ${Math.abs(C.bias)}${C.unit} too ${C.bias > 0 ? "high" : "low"}`]], "ok");
+      wireChips(biasBox.querySelector(".chips-row"), (v) => { biased = v === "bad"; draw(); say(biased ? `The sensor now reads ${Math.abs(C.bias)}${C.unit} too ${C.bias > 0 ? "high" : "low"}. Move the real value past the limit and watch what the system decides.` : "The sensor is accurate again."); });
+      ["things", "conn", "app"].forEach((p) => { el.querySelector(`[data-p="${p}"]`).textContent = IOT[k][p]; });
+      info.innerHTML = "";
+      say(`Move the slider to change the real ${C.q}. A reading is sent every few seconds, or press the button.`);
+      draw();
+    };
+    const rows = el.querySelectorAll(".chips-row");
+    wireChips(rows[0], setExample);
+    wireChips(rows[1], (v) => { cut = v === "cut"; draw(); say(cut ? "The link is cut. Send a reading and see where it stops." : "The link is connected again."); });
+    slider.addEventListener("input", () => { val = +slider.value; $(".iot-val", el).textContent = fmt(val); draw(); });
+    $("[data-send]", el).addEventListener("click", () => { auto = 0; sendReading(); });
+    const pick = (g) => { part = g.dataset.part; const names = { sensor: "Sensor", act: C.actName, node: `${C.node} (${C.link})`, cloud: "Cloud", dash: "Dashboard and rule" }; info.innerHTML = `<div class="callout info"><strong>${names[part]}</strong>${C.info[part]}</div>`; draw(); };
+    host.addEventListener("click", (e) => { const g = e.target.closest(".hot"); if (g) pick(g); });
+    host.addEventListener("keydown", (e) => { const g = e.target.closest(".hot"); if (g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); pick(g); } });
+    setExample("farm");
+  }
+
+  /* ---------------- Feedback control loop, running ---------------- */
+  const LOOP_SVG = BLOCK_SVG.replace("</svg>", `
+      <text class="lv" data-v="sp" x="38" y="92" text-anchor="middle"></text>
+      <text class="lv" data-v="err" x="147" y="40" text-anchor="middle"></text>
+      <text class="lv" data-v="u" x="340" y="112" text-anchor="middle"></text>
+      <text class="lv" data-v="room" x="468" y="112" text-anchor="middle"></text>
+      <text class="lv meas" data-v="sens" x="492" y="222" text-anchor="middle"></text>
+      <path class="loop-path" d="M68,70H580V180H118V90" fill="none"/>
+      <circle class="loop-dot" r="6" cx="68" cy="70"/></svg>`);
+  function mountLoop(el) {
+    let sp = 24, T = 30, door = false, bias = 0, integ = 0, u = 0, s = 0, hist = [], acc = 0;
+    el.innerHTML = `${chips("Highlight", [["both", "Both parts"], ["meas", "Measurement part"], ["ctrl", "Control part"]], "both")}
+      <figure class="diagram blocks-fig" data-show="both"><div class="ckt-wrap">${LOOP_SVG}</div>
+        <figcaption>A room cooled by an air-conditioner. The values update as the loop runs. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
+      <div class="loop-ctl">
+        <div class="slider-field"><label for="loopSp">Set point: <strong class="loop-spv">24 °C</strong></label><input id="loopSp" type="range" min="18" max="30" step="1" value="24"></div>
+        <div class="iot-row"><span class="pal-l">Disturbance:</span>${chips("Door", [["0", "Door closed"], ["1", "Open the door (hot air comes in)"]], "0")}</div>
+        <div class="iot-row"><span class="pal-l">Sensor:</span>${chips("Sensor", [["0", "Accurate"], ["2", "Reads 2 °C too high"]], "0")}</div>
+      </div>
+      <div class="strip-box loop-plot"></div>
+      <p class="pv-read loop-read" aria-live="polite"></p>
+      <div class="defs">
+        <div><dt>Metrology</dt><dd>The science of measurement, both theory and practice: finding the amount of a quantity by comparing it with accepted standards.</dd></div>
+        <div><dt>Instrument</dt><dd>A device for finding the value or size of a quantity or variable.</dd></div>
+        <div><dt>Electronic instrument</dt><dd>An instrument that uses electrical or electronic principles to measure.</dd></div>
+      </div>
+      <h4 class="sub-h">Why Measure Electronically?</h4>
+      <ul class="ticks"><li><strong>High sensitivity and little loading.</strong> Amplifiers boost tiny signals, and their high input impedance draws almost no power from what is being measured.</li><li><strong>Remote monitoring.</strong> An electrical signal can be sent by wire or radio and read far away.</li></ul>`;
+    const svgEl = $("svg", el), q = (v) => svgEl.querySelector(`[data-v="${v}"]`), dot = $(".loop-dot", el), path = $(".loop-path", el), L = path.getTotalLength();
+    const plot = $(".loop-plot", el), read = $(".loop-read", el);
+    if (reduceMotion) dot.style.display = "none";
+    const paint = () => {
+      const meas = T + bias, err = meas - sp;
+      q("sp").textContent = `${sp} °C`;
+      q("err").textContent = Math.abs(err) < 0.05 ? "error 0.0" : `error ${err > 0 ? "+" : MINUS}${Math.abs(err).toFixed(1)}`;
+      q("u").textContent = `cooling ${Math.round(u * 100)}%`;
+      q("room").textContent = `room ${T.toFixed(1)} °C`;
+      q("sens").textContent = `reads ${meas.toFixed(1)} °C`;
+      const W = 470, H = 110, l = 40, r = 10, top = 10, bot = 84, X = (i) => l + (i / 119) * (W - l - r), Y = (v) => top + (1 - (v - 16) / 22) * (bot - top);
+      let g = "";
+      [20, 25, 30, 35].forEach((v) => { g += `<line class="gl" x1="${l}" x2="${W - r}" y1="${Y(v)}" y2="${Y(v)}"/>${TX(l - 6, Y(v) + 4, v, "end", "axis")}`; });
+      g += `<line class="ref" x1="${l}" x2="${W - r}" y1="${Y(sp)}" y2="${Y(sp)}"/>${TX(W - r - 2, Y(sp) - 4, "set point", "end", "reflab")}`;
+      if (hist.length > 1) g += `<polyline class="trace-a" points="${hist.map((v, i) => `${X(i + 120 - hist.length).toFixed(1)},${Y(clamp(v, 16, 38)).toFixed(1)}`).join(" ")}"/>`;
+      g += TX(W - r, H - 6, "last 30 s: real room temperature (°C)", "end", "axis");
+      plot.innerHTML = `<svg class="plot" viewBox="0 0 ${W} ${H}" role="img" aria-label="Room temperature over the last 30 seconds: now ${T.toFixed(1)} degrees, set point ${sp} degrees">${g}</svg>`;
+      const settled = Math.abs(err) < 0.3;
+      read.innerHTML = bias
+        ? `The sensor reads 2 °C too high. The controller only knows the <strong>measured</strong> value, so it brings that to ${sp} °C, and the real room ends up at about <strong>${(sp - bias).toFixed(0)} °C</strong>. A control system is only as good as its measurement.`
+        : settled ? `The measured value matches the set point, so the error is about 0. The controller holds the cooling at ${Math.round(u * 100)}% to cancel the heat coming in${door ? " through the open door" : ""}.`
+        : `The sensor measures the room, the controller compares it with the set point (error ${err >= 0 ? "+" : MINUS}${Math.abs(err).toFixed(1)} °C) and drives the air-conditioner ${err > 0 ? "harder" : "less"}.`;
+    };
+    const stepSim = (dt) => {
+      const amb = door ? 37 : 31, meas = T + bias, err = meas - sp;
+      integ = clamp(integ + err * dt * 0.06, 0, 1);
+      u = clamp(0.35 * err + integ, 0, 1);
+      T += ((amb - T) / 14 - u * 1.3) * dt;
+    };
+    animate(el, (dt) => {
+      for (let i = 0; i < 2; i++) stepSim(dt);      // run the room at twice real speed
+      s = (s + dt * 260) % L;
+      const pt = path.getPointAtLength(s); dot.setAttribute("cx", pt.x); dot.setAttribute("cy", pt.y);
+      dot.classList.toggle("meas", s > L * 0.43);
+      acc += dt;
+      if (acc >= 0.25) { acc = 0; hist.push(T); if (hist.length > 120) hist.shift(); paint(); }
+    });
+    const rows = el.querySelectorAll(".chips-row");
+    wireChips(rows[0], (v) => { $(".blocks-fig", el).dataset.show = v; });
+    wireChips(rows[1], (v) => { door = v === "1"; });
+    wireChips(rows[2], (v) => { bias = +v; });
+    $("#loopSp", el).addEventListener("input", (e) => { sp = +e.target.value; $(".loop-spv", el).textContent = `${sp} °C`; paint(); });
+    // settle before first paint so the page doesn't open mid-transient
+    for (let i = 0; i < 600; i++) stepSim(0.1);
+    hist = Array(40).fill(T);
+    paint();
+  }
+
+  /* ---------------- Classification demos (one per tab) ---------------- */
+  const dial = (cx, cy, r, frac, ticks, label) => {
+    const a = (f) => Math.PI * (1 - f), px = (f, rr) => [cx + rr * Math.cos(a(f)), cy - rr * Math.sin(a(f))];
+    let s = `<path class="d-face" d="M${cx - r},${cy}A${r},${r} 0 0 1 ${cx + r},${cy}Z"/>`;
+    ticks.forEach(([f, t]) => { const [x1, y1] = px(f, r - 8), [x2, y2] = px(f, r), [tx, ty] = px(f, r + 13); s += `<line class="d-tick" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>${t !== "" ? TX(tx.toFixed(1), (ty + (f === 0 || f === 1 ? 0 : 4)).toFixed(1), t, f < 0.2 ? "end" : f > 0.8 ? "start" : "middle", "d-num") : ""}`; });
+    const [nx, ny] = px(clamp(frac, 0, 1), r - 12);
+    return s + `<line class="d-needle" x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}"/><circle class="d-hub" cx="${cx}" cy="${cy}" r="5"/>${TX(cx, cy + 24, label, "middle", "d-lab")}`;
+  };
+  const DEMOS = {
+    principle(el) {
+      el.innerHTML = `<div class="slider-field"><label for="dmI">Current through both instruments: <strong class="dm-v"></strong></label><input id="dmI" type="range" min="0" max="2" step="0.05" value="1"></div><div class="dm-svg"></div><p class="pv-read dm-read"></p>`;
+      const draw = () => {
+        const I = +$("#dmI", el).value, K = 1, th = Math.atan(I / K), deg = (th * 180) / Math.PI;
+        $(".dm-v", el).textContent = `${I.toFixed(2)} A`;
+        const none = [0, 0.25, 0.5, 0.75, 1].map((f) => [f, ""]);
+        $(".dm-svg", el).innerHTML = `<svg class="scene demo" viewBox="0 0 520 170" role="img" aria-label="An absolute instrument and a secondary instrument measuring the same current">
+          ${dial(140, 124, 82, deg / 90, [[0, "0°"], [0.5, "45°"], [1, "90°"]].concat(none.slice(1, 2), none.slice(3, 4)), "Absolute: tangent galvanometer")}
+          ${dial(384, 124, 82, I / 2, [[0, "0"], [0.25, "0.5"], [0.5, "1"], [0.75, "1.5"], [1, "2 A"]], "Secondary: ammeter")}</svg>`;
+        $(".dm-read", el).innerHTML = `<strong>Absolute:</strong> the needle turns ${deg.toFixed(1)}°, and the current is worked out from the instrument's own constants: I = K tan θ = ${K} × tan ${deg.toFixed(1)}° = <strong>${I.toFixed(2)} A</strong>. No calibration is needed. <strong>Secondary:</strong> you just read <strong>${I.toFixed(2)} A</strong> from the scale, but that scale had to be calibrated against a standard first.`;
+      };
+      $("#dmI", el).addEventListener("input", draw); draw();
+    },
+    technique(el) {
+      let unknown = 370, known = 0;
+      el.innerHTML = `<div class="dm-svg"></div><div class="dm-btns" role="group" aria-label="Change the known weights">${[-100, -10, -1, 1, 10, 100].map((d) => `<button type="button" class="btn ghost sm" data-d="${d}">${d > 0 ? "+" : MINUS}${Math.abs(d)} g</button>`).join("")}<button type="button" class="btn sm" data-new>New unknown</button></div><p class="pv-read dm-read" aria-live="polite"></p>`;
+      const draw = () => {
+        const diff = unknown - known, tilt = clamp(diff / 12, -14, 14), spring = Math.round(unknown / 10) * 10;
+        const rot = `rotate(${-tilt} 380 70)`;
+        $(".dm-svg", el).innerHTML = `<svg class="scene demo" viewBox="0 0 520 190" role="img" aria-label="A spring balance (deflection) and a beam balance (null). The beam is ${diff === 0 ? "balanced" : "not balanced"}.">
+          ${TX(120, 18, "Deflection: spring balance", "middle", "d-lab")}<rect class="d-face" x="96" y="28" width="48" height="110" rx="6"/>
+          ${[0, 1, 2, 3, 4, 5].map((i) => `<line class="d-tick" x1="100" x2="112" y1="${40 + i * 18}" y2="${40 + i * 18}"/>${TX(128, 44 + i * 18, i * 100, "middle", "d-num")}`).join("")}
+          <path class="d-needle" d="M96,${40 + (unknown / 500) * 90}h20"/><path class="d-tick" d="M120,138v${10 + (unknown / 500) * 8}"/><rect class="d-wt" x="104" y="${148 + (unknown / 500) * 8}" width="32" height="24" rx="3"/>${TX(120, 165 + (unknown / 500) * 8, "?", "middle", "d-wtt")}
+          ${TX(380, 18, "Null: beam balance", "middle", "d-lab")}<path class="d-tick" d="M380,70V150M350,150h60"/>
+          <g transform="${rot}"><path class="d-beam" d="M280,70H480"/><path class="d-tick" d="M290,70v34M470,70v34"/><rect class="d-wt" x="270" y="104" width="40" height="26" rx="3"/>${TX(290, 122, "?", "middle", "d-wtt")}<rect class="d-wt known" x="446" y="104" width="48" height="26" rx="3"/>${TX(470, 122, `${known} g`, "middle", "d-wtt")}</g>
+          <path class="d-needle" d="M380,70l${(tilt * 1.6).toFixed(1)},-34"/><path class="d-tick" d="M372,34h16"/>${TX(380, 28, "0", "middle", "d-num")}</svg>`;
+        $(".dm-read", el).innerHTML = `<strong>Deflection:</strong> the spring stretches and the pointer shows about <strong>${spring} g</strong> straight away: quick, but only as good as the scale. <strong>Null:</strong> ` +
+          (diff === 0 ? `<span class="ok-t">balanced! The pointer is at 0, so the unknown equals the known weights: exactly ${known} g.</span>` : `add or remove known weights until the pointer is at 0. The ${diff > 0 ? "unknown side is heavier" : "known side is heavier"}.`);
+      };
+      el.addEventListener("click", (e) => {
+        const b = e.target.closest("button"); if (!b) return;
+        if (b.hasAttribute("data-new")) { unknown = 100 + Math.floor(Math.random() * 380); known = 0; }
+        else known = clamp(known + +b.dataset.d, 0, 600);
+        draw();
+      });
+      draw();
+    },
+    signal(el) {
+      el.innerHTML = `<div class="slider-field"><label for="dmV">Voltage being measured: <strong class="dm-v"></strong></label><input id="dmV" type="range" min="0" max="10" step="0.01" value="6.37"></div><div class="dm-svg"></div><p class="pv-read dm-read"></p>`;
+      const draw = () => {
+        const v = +$("#dmV", el).value, dg = Math.round(v * 10) / 10;
+        $(".dm-v", el).textContent = `${v.toFixed(2)} V`;
+        $(".dm-svg", el).innerHTML = `<svg class="scene demo" viewBox="0 0 520 170" role="img" aria-label="An analog pointer meter and a digital meter reading the same voltage">
+          ${dial(140, 124, 82, v / 10, [[0, "0"], [0.2, "2"], [0.4, "4"], [0.6, "6"], [0.8, "8"], [1, "10 V"]], "Analog: pointer")}
+          <rect class="d-lcd" x="300" y="50" width="180" height="70" rx="8"/>${TX(468, 100, `${dg.toFixed(1)} V`, "end", "d-lcdt")}${TX(390, 142, "Digital: steps of 0.1 V", "middle", "d-lab")}</svg>`;
+        $(".dm-read", el).innerHTML = `The pointer can rest <strong>anywhere</strong> on the scale, so it follows every small change. The digital display can only show steps of 0.1 V, so ${v.toFixed(2)} V appears as <strong>${dg.toFixed(1)} V</strong>. Move the slider slowly and watch which one changes first.`;
+      };
+      $("#dmV", el).addEventListener("input", draw); draw();
+    },
+    function(el) {
+      el.innerHTML = `<div class="dm-svg"></div><div class="pv-pl"></div><p class="pv-read dm-read">The same signal (the power a house is using) goes to three instruments. <strong>Indicating</strong> shows the value now. <strong>Recording</strong> keeps its history. <strong>Integrating</strong> adds it up: power × time = energy in kWh.</p>`;
+      const P = (t) => 1.6 + 1.1 * Math.sin(t * 0.9) + 0.5 * Math.sin(t * 2.3 + 1);
+      const draw = (t) => {
+        const N = 80, pts = [];
+        let e = 0;
+        for (let i = 0; i <= N; i++) { const tt = (t * i) / N; pts.push(`${(206 + (tt / 12) * 150).toFixed(1)},${(120 - (P(tt) / 3.5) * 70).toFixed(1)}`); if (i) e += (P(tt) * t) / N; }
+        $(".dm-svg", el).innerHTML = `<svg class="scene demo" viewBox="0 0 520 170" role="img" aria-label="Indicating, recording and integrating instruments fed by the same signal">
+          ${dial(100, 124, 66, P(t) / 3.5, [[0, "0"], [0.286, "1"], [0.571, "2"], [0.857, "3 kW"]], "Indicating")}
+          <rect class="d-face" x="200" y="40" width="162" height="88" rx="4"/><polyline class="d-trace" points="${pts.join(" ")}"/>${TX(281, 148, "Recording", "middle", "d-lab")}
+          <rect class="d-lcd" x="392" y="62" width="116" height="44" rx="6"/>${TX(500, 92, `${(e / 3).toFixed(2)} kWh`, "end", "d-lcdt sm")}${TX(450, 148, "Integrating", "middle", "d-lab")}</svg>`;
+      };
+      player($(".pv-pl", el), el, { dur: 12, hold: 1.5, draw, still: 8, label: "Time", clock: (t) => `${(t / 3).toFixed(1)} h` });
+    }
+  };
+
+  /* ---------------- Types of error: take readings ---------------- */
+  function mountErrDemo(el) {
+    let type = "random", xs = [], seed = 11;
+    const TRUE = 50;
+    el.innerHTML = `${chips("Type of error", [["gross", "Gross error"], ["sys", "Systematic error"], ["random", "Random error"]], "random")}
+      <button type="button" class="btn" data-take>Take 10 readings</button><div class="strip-box errd-plot"></div><p class="pv-read errd-read" aria-live="polite"></p>`;
+    const take = () => {
+      const r = rng(seed++);
+      xs = Array.from({ length: 10 }, () => TRUE + gauss(r) * (type === "random" ? 0.9 : 0.25) + (type === "sys" ? 2.2 : 0));
+      if (type === "gross") xs[2 + Math.floor(r() * 6)] = TRUE + (r() < 0.5 ? 7.6 : -6.8);
+      draw();
+    };
+    const draw = () => {
+      const W = 520, H = 120, l = 20, r = 20, X = (v) => l + ((v - 40) / 20) * (W - l - r), mean = sum(xs) / xs.length;
+      let g = `<line class="ax" x1="${l}" x2="${W - r}" y1="80" y2="80"/>`;
+      for (let v = 40; v <= 60; v += 2) g += `<line class="gl" x1="${X(v)}" x2="${X(v)}" y1="74" y2="86"/>${TX(X(v), 102, v, "middle", "axis")}`;
+      g += `<line class="ref" x1="${X(TRUE)}" x2="${X(TRUE)}" y1="16" y2="80"/>${TX(X(TRUE), 12, "true value 50.0 V", "middle", "reflab")}`;
+      g += `<line class="meanline" x1="${X(mean)}" x2="${X(mean)}" y1="30" y2="80"/>${TX(X(mean) + (mean >= TRUE ? 6 : -6), 40, `mean ${mean.toFixed(2)}`, mean >= TRUE ? "start" : "end", "mklab")}`;
+      xs.forEach((v, i) => { g += `<circle class="shot" cx="${X(clamp(v, 40, 60)).toFixed(1)}" cy="${68 - (i % 3) * 9}" r="5"/>`; });
+      $(".errd-plot", el).innerHTML = `<svg class="plot" viewBox="0 0 ${W} ${H}" role="img" aria-label="Ten readings of a 50 volt source on a number line; their mean is ${mean.toFixed(2)} volts">${g}</svg>`;
+      $(".errd-read", el).innerHTML = type === "gross" ? `<strong>Gross error.</strong> Nine readings agree, but one is far away: someone misread the scale or wrote the number down wrongly. It drags the mean to ${mean.toFixed(2)} V. Spot it, discard it and repeat the reading. Care and a second observer prevent it.`
+        : type === "sys" ? `<strong>Systematic error.</strong> Every reading is shifted the same way, so the mean (${mean.toFixed(2)} V) is off by about ${(mean - TRUE).toFixed(1)} V. Taking more readings does <strong>not</strong> help. Calibrate the instrument or apply a correction.`
+        : `<strong>Random error.</strong> The readings scatter above and below the true value, so they largely cancel: the mean is ${mean.toFixed(2)} V. Taking more readings and averaging <strong>does</strong> help.`;
+    };
+    wireChips($(".chips-row", el), (v) => { type = v; take(); });
+    $("[data-take]", el).addEventListener("click", take);
+    take();
+  }
+
+  /* =====================================================================
      Sections
      ===================================================================== */
   const SECTIONS = [
     /* ---------------- Basics ---------------- */
     { id: "iot", group: "basics", title: "Instrumentation in the Internet of Things", toc: "IoT",
       intro: `<p>The <strong>Internet of Things (IoT)</strong> is a system of connected devices, machines and objects, each with a unique identifier (UID), that share data over a network without needing a person to pass it on. Every IoT system has three parts. Choose an example to see what each part does.</p>`,
-      mount(el) {
-        el.innerHTML = `${chips("IoT example", Object.entries(IOT).map(([k, v]) => [k, v.label]), "farm")}
-          <div class="iot-flow">
-            <div class="iot-card meas-card"><div class="iot-icon">${ICON.sensor}</div><h4>Connected Things</h4><p class="iot-role">Sensors measure, actuators act.</p><p class="iot-ex" data-p="things"></p><span class="iot-tag">Measurement: this course</span></div>
-            <div class="iot-arrow" aria-hidden="true"></div>
-            <div class="iot-card"><div class="iot-icon">${ICON.cloud}</div><h4>Connectivity and Infrastructure</h4><p class="iot-role">Carries the data: radio links, gateways, the internet, cloud servers.</p><p class="iot-ex" data-p="conn"></p></div>
-            <div class="iot-arrow" aria-hidden="true"></div>
-            <div class="iot-card"><div class="iot-icon">${ICON.chart}</div><h4>Analytics and Applications</h4><p class="iot-role">Turns data into information, decisions and actions.</p><p class="iot-ex" data-p="app"></p></div>
-          </div>`;
-        const set = (k) => ["things", "conn", "app"].forEach((p) => { el.querySelector(`[data-p="${p}"]`).textContent = IOT[k][p]; });
-        wireChips(el.querySelector(".chips-row"), set);
-        set("farm");
-      },
+      mount: mountIot,
       after: `<div class="callout info"><strong>Where instrumentation fits</strong>No IoT system is better than its data. The sensors and the circuits that condition, convert and transmit their signals are electronic instrumentation, and that is what this course is about.</div>` },
 
     { id: "what", group: "basics", title: "What Is Instrumentation?", toc: "Measurement vs Control",
       intro: `<p><strong>Instrumentation</strong> is the branch of engineering that deals with <strong>measurement and control</strong>. In a feedback control system, the measurement part tells the control part what is really happening. This course concentrates on the measurement part. Use the buttons to highlight each part.</p>`,
-      mount(el) {
-        el.innerHTML = `${chips("Highlight", [["both", "Both parts"], ["meas", "Measurement part"], ["ctrl", "Control part"]], "both")}
-          <figure class="diagram blocks-fig" data-show="both"><div class="ckt-wrap">${BLOCK_SVG}</div>
-            <figcaption>Feedback control system. <span class="swipe">Swipe sideways to see the whole diagram.</span></figcaption></figure>
-          <div class="defs">
-            <div><dt>Metrology</dt><dd>The science of measurement, both theory and practice: finding the amount of a quantity by comparing it with accepted standards.</dd></div>
-            <div><dt>Instrument</dt><dd>A device for finding the value or size of a quantity or variable.</dd></div>
-            <div><dt>Electronic instrument</dt><dd>An instrument that uses electrical or electronic principles to measure.</dd></div>
-          </div>
-          <h4 class="sub-h">Why Measure Electronically?</h4>
-          <ul class="ticks"><li><strong>High sensitivity and little loading.</strong> Amplifiers boost tiny signals, and their high input impedance draws almost no power from what is being measured.</li><li><strong>Remote monitoring.</strong> An electrical signal can be sent by wire or radio and read far away.</li></ul>`;
-        wireChips(el.querySelector(".chips-row"), (k) => { el.querySelector(".blocks-fig").dataset.show = k; });
-      } },
+      mount: mountLoop },
 
     /* ---------------- Classification ---------------- */
     { id: "classes", group: "classify", title: "Four Ways to Classify an Instrument", toc: "Four Classifications",
-      intro: `<p>The same instrument can be described in four different ways. Choose a tab.</p>`,
+      intro: `<p>The same instrument can be described in four different ways. Choose a tab, read the two cards, then try the demo under them.</p>`,
       mount(el) {
         el.innerHTML = `<div class="tabs" role="tablist" aria-label="Ways to classify instruments">${CLASSES.map((c, i) => `<button type="button" role="tab" id="tab-${c.k}" aria-controls="panel-${c.k}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}">${String.fromCharCode(97 + i)}) ${c.tab}</button>`).join("")}</div>
           ${CLASSES.map((c, i) => `<div class="tabpanel" role="tabpanel" id="panel-${c.k}" aria-labelledby="tab-${c.k}"${i ? " hidden" : ""}>
             <p class="panel-intro">${c.intro}</p>
             <div class="class-cards">${c.items.map((it) => `<article class="class-card">${photo(it.photo)}<div><h4>${it.name}</h4><p>${it.text}</p><p class="class-ex"><strong>Examples:</strong> ${it.ex}</p></div></article>`).join("")}</div>
+            <h4 class="sub-h">See the Difference</h4><div class="class-demo" data-demo="${c.k}"></div>
           </div>`).join("")}`;
+        el.querySelectorAll(".class-demo").forEach((d) => DEMOS[d.dataset.demo](d));
         const tabs = [...el.querySelectorAll('[role="tab"]')];
         const select = (t) => {
           tabs.forEach((x) => { const on = x === t; x.setAttribute("aria-selected", on); x.tabIndex = on ? 0 : -1; el.querySelector(`#${x.getAttribute("aria-controls")}`).hidden = !on; });
@@ -829,7 +1160,19 @@
         return { sum: `Sensitivity S = ${num(S)} ${u}`, steps: [
           step("Sensitivity", "S = Δoutput / Δinput", `= ${num(v.dOut)} ${v.outU} / ${num(v.dIn)} ${v.inU}`, `S = ${num(S)} ${u}`),
           step("What it means", "", "", `Every 1 ${v.inU} change at the input moves the output by ${num(Math.abs(S))} ${v.outU}. A larger S means a more sensitive instrument.`)
-        ], notes: [] };
+        ], notes: [], S };
+      },
+      render(host, res, v) {
+        if (!res) { host.innerHTML = ""; return; }
+        const W = 560, H = 230, l = 56, r = 16, t = 14, b = 40, xm = Math.abs(v.dIn) * 1.25, ym = Math.abs(v.dOut) * 2.6;
+        const X = (x) => l + (x / xm) * (W - l - r), Y = (y) => t + (1 - y / ym) * (H - t - b), S = Math.abs(res.S), dx = Math.abs(v.dIn), dy = Math.abs(v.dOut);
+        let g = `<path class="ax" d="M${l},${t}V${H - b}H${W - r}"/>`;
+        for (let k = 1; k <= 4; k++) g += `<line class="gl" x1="${X((xm * k) / 4)}" x2="${X((xm * k) / 4)}" y1="${t}" y2="${H - b}"/><text class="axis" x="${X((xm * k) / 4)}" y="${H - b + 15}" text-anchor="middle">${num((xm * k) / 4, 3)}</text><line class="gl" x1="${l}" x2="${W - r}" y1="${Y((ym * k) / 4)}" y2="${Y((ym * k) / 4)}"/><text class="axis" x="${l - 6}" y="${Y((ym * k) / 4) + 4}" text-anchor="end">${num((ym * k) / 4, 3)}</text>`;
+        g += `<line class="trace-in" x1="${X(0)}" y1="${Y(0)}" x2="${X(Math.min(xm, ym / (2 * S)))}" y2="${Y(Math.min(ym, 2 * S * xm))}"/><text class="mklab" x="${X(Math.min(xm, ym / (2 * S))) - 6}" y="${Y(Math.min(ym, 2 * S * xm)) + 14}" text-anchor="end">twice as sensitive</text>`;
+        g += `<line class="trace-a" x1="${X(0)}" y1="${Y(0)}" x2="${X(xm)}" y2="${Y(S * xm)}"/>`;
+        g += `<path class="slope" d="M${X(0)},${Y(0)}H${X(dx)}V${Y(dy)}"/><circle class="pt" cx="${X(dx)}" cy="${Y(dy)}" r="6"/><text class="ptlab" x="${X(dx) - 10}" y="${Y(dy) - 8}" text-anchor="end">S = ${num(S)} ${v.outU}/${v.inU}</text>`;
+        g += `<text class="axl" x="${(l + W - r) / 2}" y="${H - 6}" text-anchor="middle">change in input (${v.inU})</text><text class="axl" transform="translate(14 ${(t + H - b) / 2}) rotate(-90)" text-anchor="middle">change in output (${v.outU})</text>`;
+        host.innerHTML = `<div class="bode"><h4>Sensitivity Is the Slope</h4><svg viewBox="0 0 ${W} ${H}" class="plot mid" role="img" aria-label="Output against input. The slope of the line is the sensitivity, ${num(S)} ${v.outU} per ${v.inU}. A steeper dashed line shows a sensor twice as sensitive.">${g}</svg><p class="bode-cap">The steeper the line, the more the output moves for the same change at the input. The dashed line is a sensor twice as sensitive.</p></div>`;
       } },
 
     { id: "dynamic", group: "chars", title: "Dynamic Characteristics", toc: "Dynamic",
@@ -915,7 +1258,12 @@
         s += `<path class="trace-a" d="${d}"/>`;
         if (v.Vm <= xmax) { const pp = (v.acc * v.FS) / v.Vm; s += `<circle class="pt" cx="${X(v.Vm)}" cy="${Y(pp)}" r="6"/><text class="ptlab" x="${X(v.Vm) + (v.Vm > xmax * 0.6 ? -10 : 10)}" y="${Y(pp) - 10}" text-anchor="${v.Vm > xmax * 0.6 ? "end" : "start"}">${num(v.Vm)} V: ${num(pp, 3)}%</text>`; }
         s += `</svg>`;
-        host.innerHTML = `<div class="bode"><h4>Limiting Error Across the Range</h4>${s}<p class="bode-cap">The percentage error is smallest at full scale and grows rapidly as the reading gets smaller.</p></div>`;
+        const sx = (x) => 40 + (Math.min(x, v.FS) / v.FS) * 520, dVs = (v.acc / 100) * v.FS, lo = Math.max(0, v.Vm - dVs), hi = Math.min(v.FS, v.Vm + dVs);
+        let m = `<line class="ax" x1="40" x2="560" y1="60" y2="60"/>`;
+        for (let k = 0; k <= 10; k++) m += `<line class="ax" x1="${40 + k * 52}" x2="${40 + k * 52}" y1="${k % 5 ? 52 : 46}" y2="60"/>${k % 5 ? "" : `<text class="axis" x="${40 + k * 52}" y="78" text-anchor="middle">${num((v.FS * k) / 10, 3)} V</text>`}`;
+        if (v.Vm <= v.FS) m += `<rect class="band-e" x="${sx(lo)}" y="34" width="${Math.max(2, sx(hi) - sx(lo))}" height="26"/><path class="pointer-m" d="M${sx(v.Vm)},60V22"/><circle class="pt" cx="${sx(v.Vm)}" cy="22" r="5"/><text class="ptlab" x="${sx(v.Vm)}" y="12" text-anchor="${v.Vm > v.FS * 0.7 ? "end" : v.Vm < v.FS * 0.3 ? "start" : "middle"}">${num(v.Vm)} V ± ${num(dVs)} V</text>`;
+        const scale = `<svg viewBox="0 0 600 88" class="plot mid" role="img" aria-label="Meter scale from 0 to ${num(v.FS)} volts with the pointer at ${num(v.Vm)} volts and a band of plus or minus ${num(dVs)} volts">${m}</svg><p class="bode-cap">The shaded band (± ${num(dVs)} V) is the same width everywhere on the scale. Next to a small reading it is a large fraction; near full scale it is a small one.</p>`;
+        host.innerHTML = `<div class="bode"><h4>The Error Band on the Meter Scale</h4>${scale}</div><div class="bode"><h4>Limiting Error Across the Range</h4>${s}<p class="bode-cap">The percentage error is smallest at full scale and grows rapidly as the reading gets smaller.</p></div>`;
       } },
 
     { id: "combine", group: "errors", title: "Combining Limiting Errors", toc: "Combining Errors",
@@ -933,7 +1281,20 @@
           step("Limiting error of a product", "%error<sub>P</sub> = %error<sub>V</sub> + %error<sub>I</sub>", `= ${num(v.eV)}% + ${num(v.eI)}%`, `%error<sub>P</sub> = ${num(eP)}%`),
           step("As an absolute error", "dP = %error<sub>P</sub> × P", `= ${num(eP / 100)} × ${num(P)} W`, `P = ${num(P)} W ± ${num(dP)} W`),
           step("Why adding works", "Worst case: both readings high", `P<sub>max</sub> = ${num(v.V * (1 + v.eV / 100))} V × ${num((v.I / 1000) * (1 + v.eI / 100))} A = ${num(worst)} W`, `${num(((worst - P) / P) * 100)}% above P, almost exactly ${num(eP)}%. The tiny difference is the product of the two small errors, which is ignored.`)
-        ] };
+        ], P, eP };
+      },
+      render(host, res, v) {
+        if (!res) { host.innerHTML = ""; return; }
+        // The power is the area of a V × I rectangle. The errors are drawn 6 times larger so they can be seen.
+        const W = 560, H = 250, x0 = 70, y0 = 200, w = 300, h = 130, k = 6, ex = Math.min(120, w * (v.eV / 100) * k), ey = Math.min(60, h * (v.eI / 100) * k);
+        const g = `<path class="ax" d="M${x0},${y0 - h - ey - 16}V${y0}H${x0 + w + ex + 30}"/>
+          <rect class="band" x="${x0}" y="${y0 - h - ey}" width="${w + ex}" height="${h + ey}"/><rect class="rect-min" x="${x0}" y="${y0 - h + ey}" width="${Math.max(2, w - ex)}" height="${Math.max(2, h - ey)}"/>
+          <rect class="rect-nom" x="${x0}" y="${y0 - h}" width="${w}" height="${h}"/>
+          <text class="mklab" x="${x0 + w / 2}" y="${y0 - h / 2 + 5}" text-anchor="middle">P = V × I = ${num(res.P)} W</text>
+          <text class="axis" x="${x0 + w}" y="${y0 + 16}" text-anchor="middle">V = ${num(v.V)} V</text><text class="ptlab" x="${x0 + w + ex / 2}" y="${y0 + 32}" text-anchor="middle">± ${num(v.eV)}%</text>
+          <text class="axis" x="${x0 - 8}" y="${y0 - h + 4}" text-anchor="end">I = ${num(v.I)} mA</text><text class="ptlab" x="${x0 - 8}" y="${y0 - h - ey / 2 - 4}" text-anchor="end">± ${num(v.eI)}%</text>
+          <text class="reflab" x="${x0 + w + ex + 8}" y="${y0 - h - ey + 14}">largest area:</text><text class="reflab" x="${x0 + w + ex + 8}" y="${y0 - h - ey + 30}">+${num(res.eP)}%</text>`;
+        host.innerHTML = `<div class="bode"><h4>Power as an Area</h4><svg viewBox="0 0 ${W} ${H}" class="plot mid" role="img" aria-label="Power drawn as the area of a rectangle with sides V and I. The shaded border shows how the two errors together change the area by about ${num(res.eP)} percent.">${g}</svg><p class="bode-cap">Power is the area of a rectangle with sides V and I. A small error on each side adds a strip on each edge, so the area changes by the <strong>sum</strong> of the two percentages. (The strips are drawn 6 times larger than they really are.)</p></div>`;
       } },
 
     { id: "sigfig", group: "errors", title: "Significant Figures", toc: "Significant Figures",
@@ -988,7 +1349,9 @@
             <li><strong>Environmental:</strong> external conditions such as temperature, humidity, air pressure or magnetic fields. Reduce them with air-conditioning, sealed components and magnetic shields.</li>
             <li><strong>Observational:</strong> introduced by the observer, mainly parallax and estimation errors when reading a scale.</li></ul></div>
           <div class="err-card"><h4>3. Random Errors</h4><p>Small, unpredictable variations that remain after gross and systematic errors are removed. Readings scatter above and below the true value, so they can't be corrected one at a time. They are handled with statistics: take many readings and use the mean and standard deviation (next section).</p></div>
-        </div><h4 class="sub-h">Parallax: The Classic Observational Error</h4><div class="parallax-box"></div><h4 class="sub-h">Check Yourself: Which Type of Error?</h4><div class="err-quiz"></div>`;
+        </div><h4 class="sub-h">See Each Type in the Readings</h4><p class="widget-lead">A 50.0 V source is measured ten times. Choose a type of error and take the readings.</p><div class="errd"></div>
+        <h4 class="sub-h">Parallax: The Classic Observational Error</h4><div class="parallax-box"></div><h4 class="sub-h">Check Yourself: Which Type of Error?</h4><div class="err-quiz"></div>`;
+        mountErrDemo(el.querySelector(".errd"));
         mountParallax(el.querySelector(".parallax-box"));
         quiz(el.querySelector(".err-quiz"), ERR_QUIZ.map((x) => Object.assign({ opts: ERR_OPTS }, x)));
       } },
@@ -1066,6 +1429,8 @@
       { key: "errors", list: "#errorsList", toc: "#errorsToc" },
       { key: "stats", list: "#statsList" }
     ],
-    exercises: EXERCISES
+    exercises: EXERCISES,
+    collapseWorking: true,
+    exerciseCarousel: true
   });
 })();
