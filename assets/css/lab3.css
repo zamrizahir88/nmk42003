@@ -46,7 +46,7 @@
 .scene .bench-cap { font-weight: 600; fill: var(--ink-2); }
 @media (prefers-reduced-motion: reduce) { .jw.live, .rf.on circle { animation: none; } .rf.on circle { opacity: .7; } .tagmove { transition: none; } }
 .bp { fill: #11181f; }
-.scene .bp-l { fill: var(--ink); font: 600 11px var(--sans); }
+.scene .bp-l { fill: #fff; font: 600 11px var(--sans); }
 .scene .burn-t { fill: var(--danger); font: 700 14px var(--sans); }
 
 /* card buttons */

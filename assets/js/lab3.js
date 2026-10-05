@@ -278,7 +278,7 @@
   /* A wiring trainer: choose where each pin of a module goes, then check. Wrong wiring shows what would
      happen on the real bench. cfg: { mod, pins: [[name, role]], opts: [[espPin, label]], right: { name: espPin },
      judge(got) → { state: "ok" | "warn" | "bad" | "dead", title, html }, caption } */
-  const lcdPin = (name) => [236, 96 + ["GND", "VCC", "SDA", "SCL"].indexOf(name) * 26];
+  const lcdPin = (name) => [276, 96 + ["GND", "VCC", "SDA", "SCL"].indexOf(name) * 26];
   function mountWire(el, cfg) {
     const got = {};
     let res = null;
@@ -293,7 +293,7 @@
       const st = res ? res.state : "", used = cfg.pins.map(([p]) => got[p]).filter(Boolean);
       let s = cfg.mod === "rc" ? rc522G(16, 60, { power: st === "ok", dead: st === "dead" })
         : lcdSvg(st === "ok" || st === "warn" ? ["", "", "", ""] : [], { light: st === "ok" || st === "warn", contrast: 0.5 }).replace("<svg ", `<svg x="14" y="70" width="200" height="87" `) +
-          `<rect class="bp" x="222" y="80" width="28" height="112" rx="4"/>` + ["GND", "VCC", "SDA", "SCL"].map((p) => { const [px, py] = lcdPin(p); return `<circle class="dk-pin" cx="${px}" cy="${py}" r="4"/>` + T(px - 16, py + 4, p, "end", "bp-l"); }).join("") + T(114, 180, "16 × 4 LCD and its I2C backpack", "middle", "small");
+          `<rect class="bp" x="222" y="80" width="68" height="112" rx="4"/>` + ["GND", "VCC", "SDA", "SCL"].map((p) => { const [px, py] = lcdPin(p); return `<circle class="dk-pin" cx="${px}" cy="${py}" r="4"/>` + T(px - 12, py + 4, p, "end", "bp-l"); }).join("") + T(152, 214, "16 × 4 LCD and its I2C backpack", "middle", "small");
       s += board(BX, BY, { pwr: true, hi: used });
       cfg.pins.forEach(([p]) => { if (!got[p]) return; const [px, py] = cfg.mod === "rc" ? rcPin(16, 60, p) : lcdPin(p); s += jumper(px, py, got[p], `${WIRE_COL[p]}${st === "ok" && !/GND|VCC|3\.3V/.test(p) ? " live" : ""}`); });
       if (st === "dead") s += `<g class="burn">${[[0, 9, 0], [8, 8, .4], [-8, 7, .8]].map(([dx, r, d]) => `<circle class="smoke" cx="${90 + dx}" cy="70" r="${r}" style="animation-delay:${d}s"/>`).join("")}</g>` + T(98, 48, "MODULE DAMAGED", "middle", "burn-t");
