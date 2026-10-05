@@ -1216,6 +1216,28 @@ void loop()
   GATE.mount($("#quizBox"));
   GATE.setLock(GATE.passed());
   LabKit.stepCaption();
+  LabKit.stepsBox("l1", { sheet: "Lesson 1", steps: [
+    ["Fix the variable resistor at the centre of the protractor, with a pointer on its shaft", "#wiring"],
+    ["Wire it: outer pins to 3.3 V and GND, the middle pin (wiper) to VP", "#wiring"],
+    ["Choose the 3.3 V supply. With a DC power supply: measure 3.3 V, join the grounds, then connect", "#power"],
+    ["Never let the voltage on VP go above 3.3 V", "#power"]] });
+  LabKit.stepsBox("l2", { note: "Reading only: this part explains what happens between the knob and the number. There is nothing to do on the bench, and it is not a lesson in the lab sheet." });
+  LabKit.stepsBox("l3", { sheet: "Lesson 2", steps: [
+    ["Build the blocks in TUNIOT to read VP and print the ADC count", "#readblocks"], ["Download the code, open it in the Arduino IDE and upload it", "#readblocks"],
+    ["Open the Serial Monitor at 115200 baud and turn the knob from 0° to 180°", "#readrun"], ["Measure the wiper voltage with the multimeter at several angles", "#readrun"]] });
+  LabKit.stepsBox("l4", { sheet: "Lesson 3", steps: [
+    ["Set the pointer to 0°, wait for a steady reading, and record the count in Table 1", "#collect"], ["Repeat every 10° up to 180°", "#collect"],
+    ["Take several readings at each angle and record the average", "#collect"], ["Don't move the protractor or the variable resistor until Table 1 is complete", "#collect"]] });
+  LabKit.stepsBox("l5", { sheet: "Lesson 4", steps: [
+    ["In Excel, plot a scatter chart: ADC count on the x-axis, angle on the y-axis", "#fit"], ["Add a linear trendline, and show its equation and R² on the chart", "#fit"],
+    ["Read m and c from the equation Angle = m × ADC + c", "#fit"], ["Label both axes with units and give the chart a title", "#fit"]] });
+  LabKit.stepsBox("l6", { sheet: "Lesson 5", steps: [
+    ["Add the equation to the blocks, with your own m and c", "#apply"], ["Upload, and read the angle on the Serial Monitor", "#apply"],
+    ["Set several angles and compare the displayed angle with the protractor", "#apply"]] });
+  LabKit.stepsBox("l7", { sheet: "Lesson 6", steps: [
+    ["Change the blocks to send the angle by Bluetooth, named ESP32_YourName", "#bt"], ["Pair the phone and show the angle in a Bluetooth terminal or your own app", "#bt"],
+    ["Make a 2.4 GHz hotspot on the phone, named YourName_wifi", "#web"], ["Change the blocks so the ESP32 joins the hotspot and serves a web page; get its IP address from the Serial Monitor", "#web"],
+    ["Open the IP address in the phone's browser and turn the knob", "#web"]] });
   // A link straight to a locked part lands on the lock notice instead
   if (!GATE.passed() && /^#(task|plan)$/.test(location.hash)) setTimeout(() => $("#labtask").scrollIntoView(), 0);
 })();

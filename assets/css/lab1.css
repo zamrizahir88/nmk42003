@@ -502,3 +502,13 @@ button.set-dev:hover { border-color: #2f7de0; }
 @keyframes pq-in-r { from { transform: translateX(28px); opacity: .2; } }
 @keyframes pq-in-l { from { transform: translateX(-28px); opacity: .2; } }
 @media (prefers-reduced-motion: reduce) { .pq-card.in-r, .pq-card.in-l { animation: none; } }
+
+/* ---------- Steps for This Lesson (the lab sheet's steps, linked to the page) ---------- */
+.steps-box { background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--teal); border-radius: var(--r-md); padding: 12px 18px 12px 16px; margin: 16px 0 0; max-width: 820px; }
+.steps-box h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; font-size: 1.05rem; margin: 0 0 6px; }
+.sx-sheet { font: 500 .78rem var(--sans); color: var(--ink-3); background: var(--grid); border-radius: 999px; padding: 1px 10px; }
+.steps-box ol { margin: 0; padding-left: 1.6em; list-style: lower-alpha; display: grid; gap: 3px; }
+.steps-box li::marker { font-weight: 600; color: var(--teal); }
+.steps-box li a { color: var(--ink); text-decoration: none; border-bottom: 1px dotted var(--ink-3); }
+.steps-box li a:hover { color: var(--teal); border-bottom-color: var(--teal); }
+.steps-box p { margin: 0; color: var(--ink-2); }

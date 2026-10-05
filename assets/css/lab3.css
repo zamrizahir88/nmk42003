@@ -187,3 +187,7 @@
 .led-ind { display: flex; align-items: center; gap: 8px; margin: 0; font-size: .95rem; color: var(--ink-2); }
 .led-dot { width: 18px; height: 18px; border-radius: 50%; background: #1d2c4a; border: 2px solid #4a5a6e; flex: none; }
 .led-dot.on { background: #4ea3ff; border-color: #bfe0ff; box-shadow: 0 0 12px 3px #4ea3ff; }
+.lc-blocks .bk-ws { min-height: 0; }
+.lc-left .ide { margin: 10px 0; }
+.lc-left .ide-o { height: 132px; }
+.lib-read { min-height: 0; }

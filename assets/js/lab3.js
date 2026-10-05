@@ -447,39 +447,116 @@ void loop()
 {
 
 }`;
-  function mountLcd(el) {
+  /* Lesson 3 is one job in steps, so its three widgets share this state:
+     the text and address in the program, whether the library is installed, and what was last uploaded. */
+  const LCDS = (() => {
     const saved = store.get(LCD_KEY, null);
-    let rows = Array.isArray(saved) && saved.length === 4 ? saved.map(cleanRow) : ["Name 1", "Matric 1", "Name 2", "Matric 2"], addr = "0x27", contrast = 0.6;
+    return { rows: Array.isArray(saved) && saved.length === 4 ? saved.map(cleanRow) : ["Name 1", "Matric 1", "Name 2", "Matric 2"], addr: "0x27", lib: false, up: null, on: [] };
+  })();
+  const lcdChanged = () => LCDS.on.forEach((f) => f());
+
+  // Step b: the library TUNIOT's code needs before the Arduino IDE can compile it
+  function mountLcdLib(el) {
+    el.innerHTML = `<ol class="what"><li>In the Arduino IDE choose <em>Sketch → Include Library → Manage Libraries…</em> and wait for the Library Manager to open.</li>
+        <li>Search for <strong>LiquidCrystal I2C</strong> and install the one <strong>by Marco Schwartz</strong>. Try it here:</li></ol>
+      <div class="libm" role="group" aria-label="Library Manager"><div class="libm-bar"><span>Library Manager</span><span class="libm-q">LiquidCrystal I2C</span></div>
+        <div class="libm-item"><div><strong>LiquidCrystal I2C</strong> by Marco Schwartz<small>A library for I2C LCD displays.</small></div>
+          <button type="button" class="btn sm" data-lib>Install</button></div></div>
+      <p class="pv-read lib-read" aria-live="polite"></p>
+      ${fold("If You Skip This Step: The Error You Will See", `<p>The Arduino IDE stops while compiling, with:</p>
+        <p><code>fatal error: LiquidCrystal_I2C.h: No such file or directory</code></p>
+        <p>It means the IDE can't find the library. Install it as above, then compile again. Nothing is wrong with your blocks or your wiring.</p>
+        <p class="small-note">The IDE's example menu may list this library under <em>INCOMPATIBLE</em>, and may print a warning that it is written for another kind of board. With the ESP32 it still compiles and works: the warning can be ignored.</p>`)}`;
+    const btn = $("[data-lib]", el), read = $(".lib-read", el);
+    const paint = () => {
+      btn.textContent = LCDS.lib ? "✓ Installed" : "Install"; btn.classList.toggle("ghost", LCDS.lib);
+      read.innerHTML = LCDS.lib ? `<span class="ok-t">✓ Installed.</span> You do this once on each computer. The Arduino IDE can now compile any program that uses the I2C LCD.`
+        : `TUNIOT only <em>writes</em> the code. Its first lines say <code>#include &lt;LiquidCrystal_I2C.h&gt;</code>, which tells the Arduino IDE to use this library, so the library has to be on your computer before you compile.`;
+    };
+    btn.addEventListener("click", () => { LCDS.lib = !LCDS.lib; paint(); lcdChanged(); });
+    paint();
+  }
+
+  // Steps c and d: the blocks in TUNIOT, and the code they turn into
+  function mountLcdBlocks(el) {
     el.innerHTML = `<div class="lc-grid"><div class="lc-left">
           <form class="lc-form" novalidate>${[0, 1, 2, 3].map((i) => `<div class="lc-row"><label for="lcR${i}">Row ${i}</label><input id="lcR${i}" type="text" maxlength="20" autocomplete="off" spellcheck="false" data-r="${i}"><span class="lc-n" aria-live="off"></span></div>`).join("")}</form>
           <p class="small-note">Type your own names and matric numbers. A row holds 16 characters: anything longer is cut off on the display.</p>
-          ${chips("Address in the program", [["0x27", "Address 0x27"], ["0x3F", "Address 0x3F"]], "0x27")}
+          ${chips("Address in the setup block", [["0x27", "Address 0x27"], ["0x3F", "Address 0x3F"]], LCDS.addr)}
+        </div>
+        <div class="lc-right"><div class="lc-blocks"></div></div></div>
+      <h4 class="sub-h">Take the Code into the Arduino IDE</h4>
+      <ol class="what"><li>In TUNIOT, get the Arduino code for your blocks (download it, or copy it).</li>
+        <li>Open it in the Arduino IDE, or paste it into a new sketch (<em>File → New</em>).</li>
+        <li>The code should match the listing below, with your own text in it.</li></ol>
+      <div class="lc-code"></div>
+      <p class="small-note">TUNIOT may name a few blocks slightly differently. What matters is that your Arduino code does the same.</p>`;
+    const draw = () => {
+      el.querySelectorAll(".lc-row").forEach((r, i) => { const n = LCDS.rows[i].length, s = $(".lc-n", r); s.textContent = `${n}/16`; s.classList.toggle("bad", n > 16); });
+      $(".lc-blocks", el).innerHTML = ws(lcdBlocks(LCDS.rows, LCDS.addr), "TUNIOT blocks: show four rows of text on the I2C LCD");
+      $(".lc-code", el).innerHTML = codeBlock(lcdCode(LCDS.rows, LCDS.addr), "lcd_name.ino (from TUNIOT)");
+    };
+    el.querySelectorAll("input[data-r]").forEach((inp) => { inp.value = LCDS.rows[+inp.dataset.r]; });
+    el.querySelector(".lc-form").addEventListener("submit", (e) => e.preventDefault());
+    el.querySelector(".lc-form").addEventListener("input", (e) => {
+      const i = +e.target.dataset.r; LCDS.rows[i] = cleanRow(e.target.value);
+      if (e.target.value !== LCDS.rows[i]) e.target.value = LCDS.rows[i];
+      store.set(LCD_KEY, LCDS.rows); draw(); lcdChanged();
+    });
+    wireChips($(".chips-row", el), (v) => { LCDS.addr = v; draw(); lcdChanged(); });
+    draw();
+  }
+
+  // Steps e and f: compile and upload, then look at the LCD
+  function mountLcdTry(el) {
+    let contrast = 0.6, busy = false;
+    el.innerHTML = `<div class="lc-grid"><div class="lc-left">
+          <ol class="what"><li>In the Arduino IDE, check <em>Tools → Board</em> (ESP32 Dev Module) and <em>Tools → Port</em> (the COM port of your board), as in Lab 1.</li>
+            <li>Press <strong>Upload</strong>. The IDE compiles the code first, then sends it to the ESP32.</li></ol>
+          <div class="wf-row"><button type="button" class="btn" data-up>Compile and upload</button><span class="upl-state" aria-live="polite"></span></div>
+          <div class="ide"><div class="ide-h">Arduino IDE · Output</div><pre class="ide-o" role="log">Press the button to compile your code and send it to the ESP32.</pre></div>
           <div class="slider-field lc-con"><label for="lcCon">Contrast screw on the backpack: <output></output></label><input type="range" id="lcCon" min="0" max="100" step="1" value="60"></div>
         </div>
         <div class="lc-right"><div class="lc-lcd"></div><p class="pv-read lc-read" aria-live="polite"></p></div></div>
-      <div class="lc-code"></div>
       ${fold("Not Sure of the Address? Run an I2C Scanner", `<p>Every I2C device has an address. Most LCD backpacks are at <code>0x27</code>, and some at <code>0x3F</code>. The Arduino IDE has an example that tries every address and prints the ones that answer: <em>File → Examples → Wire → WireScan</em> (or search for "I2C scanner"). For the backpack in this simulation it prints:</p>
         <div class="serial"><div class="serial-h">Serial Monitor · 115200 baud</div><pre class="serial-o">Scanning...\nI2C device found at address 0x27\ndone</pre></div>`)}`;
-    const lcdEl = $(".lc-lcd", el), read = $(".lc-read", el), codeEl = $(".lc-code", el), conOut = $(".lc-con output", el);
-    const draw = (code) => {
-      const off = addr !== "0x27";
-      lcdEl.innerHTML = lcdSvg(rows, { contrast, off });
-      el.querySelectorAll(".lc-row").forEach((r, i) => { const n = rows[i].length, s = $(".lc-n", r); s.textContent = `${n}/16`; s.classList.toggle("bad", n > 16); });
+    const lcdEl = $(".lc-lcd", el), read = $(".lc-read", el), ide = $(".ide-o", el), state = $(".upl-state", el), conOut = $(".lc-con output", el), upBtn = $("[data-up]", el);
+    const draw = () => {
+      const up = LCDS.up, off = !up || up.addr !== "0x27";
+      lcdEl.innerHTML = lcdSvg(up ? up.rows : [], { contrast, off });
       conOut.textContent = contrast < 0.3 ? "too low" : contrast > 0.8 ? "too high" : "good";
-      read.innerHTML = off ? `<span class="warn-t">The backlight is on, but there is no text.</span> The program is talking to address 0x3F, and this backpack is at 0x27, so nothing answers. Use the scanner below to find the right address.`
+      const stale = up && (up.addr !== LCDS.addr || up.rows.join("\n") !== LCDS.rows.join("\n"));
+      read.innerHTML = (!up ? `The backlight is on, but the LCD shows nothing yet: no program has been uploaded.`
+        : off ? `<span class="warn-t">The backlight is on, but there is no text.</span> The program talks to address ${up.addr}, and this backpack is at 0x27, so nothing answers. Change the address in the setup block, then upload again. The scanner below finds the right address.`
         : contrast < 0.3 ? `<span class="warn-t">The LCD looks blank.</span> The program is running, but the contrast is too low to see the characters. Turn the small blue screw on the backpack. A "dead" LCD is very often just this.`
         : contrast > 0.8 ? `<span class="warn-t">Every character is a solid block.</span> The contrast is too high. Turn the screw back.`
-        : rows.some((r) => r.length > 16) ? `<span class="warn-t">One row is longer than 16 characters</span>, so its end is cut off.`
-        : `<span class="ok-t">✓ The LCD shows your text.</span> <code>setCursor(column, row)</code> counts from 0: the top row is row 0, and the first character is column 0.`;
-      if (code) codeEl.innerHTML = `<div class="bc-grid"><div>${ws(lcdBlocks(rows, addr), "TUNIOT blocks: show four rows of text on the I2C LCD")}</div><div>${codeBlock(lcdCode(rows, addr), "lcd_name.ino (from TUNIOT)")}</div></div>
-        <p class="small-note">TUNIOT may name a few blocks slightly differently. What matters is that your Arduino code does the same. Install the <strong>LiquidCrystal I2C</strong> library (by Marco Schwartz) from the Library Manager before you compile.</p>`;
+        : up.rows.some((r) => r.length > 16) ? `<span class="warn-t">One row is longer than 16 characters</span>, so its end is cut off.`
+        : `<span class="ok-t">✓ The LCD shows your text.</span> <code>setCursor(column, row)</code> counts from 0: the top row is row 0, and the first character is column 0.`) +
+        (stale ? ` <span class="warn-t">Your blocks have changed since the last upload: upload again to see them on the LCD.</span>` : "");
     };
-    el.querySelectorAll("input[data-r]").forEach((inp) => { inp.value = rows[+inp.dataset.r]; });
-    el.querySelector(".lc-form").addEventListener("submit", (e) => e.preventDefault());
-    el.querySelector(".lc-form").addEventListener("input", (e) => { const i = +e.target.dataset.r; rows[i] = cleanRow(e.target.value); if (e.target.value !== rows[i]) e.target.value = rows[i]; store.set(LCD_KEY, rows); draw(true); });
-    wireChips($(".chips-row", el), (v) => { addr = v; draw(true); });
-    $("#lcCon", el).addEventListener("input", (e) => { contrast = +e.target.value / 100; draw(false); });
-    draw(true);
+    const out = (t) => { ide.textContent += t + "\n"; ide.scrollTop = ide.scrollHeight; };
+    upBtn.addEventListener("click", async () => {
+      if (busy) return;
+      busy = true; upBtn.disabled = true; ide.textContent = ""; state.textContent = "Compiling…";
+      out("Compiling sketch…"); await sleep(700);
+      if (!LCDS.lib) {
+        out("lcd_name.ino:2:10: fatal error: LiquidCrystal_I2C.h: No such file or directory");
+        out("    2 | #include <LiquidCrystal_I2C.h>"); out("compilation terminated."); out("exit status 1");
+        state.innerHTML = `<span class="warn-t">Compiling failed.</span> The library is missing: <a href="#lcdlib">install LiquidCrystal I2C</a> first, then try again.`;
+      } else {
+        out("Sketch uses 283,417 bytes (21%) of program storage space."); await sleep(300);
+        out("Connecting...."); await sleep(500);
+        for (const p of [25, 50, 75, 100]) { out(`Writing at 0x000${(1 + p / 25).toString(16)}0000… (${p} %)`); await sleep(220); }
+        out("Hash of data verified."); out("Hard resetting via RTS pin…");
+        LCDS.up = { rows: LCDS.rows.slice(), addr: LCDS.addr };
+        state.innerHTML = `<span class="ok-t">✓ Done uploading.</span> Look at the LCD.`;
+        draw();
+      }
+      busy = false; upBtn.disabled = false;
+    });
+    $("#lcCon", el).addEventListener("input", (e) => { contrast = +e.target.value / 100; draw(); });
+    LCDS.on.push(draw);
+    draw();
   }
 
   /* =====================================================================
@@ -791,9 +868,15 @@ void lcd_print_uid() {
       intro: `<p>A bare 16 × 4 LCD needs more than ten wires. The <strong>I2C I/O expander</strong> on its back cuts that to four: power, ground and the two wires of the <strong>I2C bus</strong>, SDA (data) and SCL (clock).</p>`,
       mount: (el) => mountWire(el, LCD_CFG),
       after: `<div class="callout info"><strong>Good to know: 5 V here, but 3.3 V for the RC522</strong>The LCD needs 5 V to be bright enough to read, so it is powered from VIN. Its backpack then pulls the two I2C wires up towards 5 V through resistors. Those resistors keep the current tiny, which is why this is commonly done with the ESP32. The careful way is a small <em>logic level shifter</em> between the two. Never connect 5 V <em>straight</em> to an ESP32 pin.</div>` },
-    { id: "lcd", group: "l3", title: "Show Your Name on the LCD", toc: "Blocks and Try It",
-      intro: `<p>TUNIOT has blocks for the I2C LCD, so this program is built from blocks. Set the LCD up with its address and size, then for each line set the cursor and print. Type your own text: the blocks, the code and the display follow.</p>`,
-      mount: mountLcd },
+    { id: "lcdlib", group: "l3", title: "Install the LiquidCrystal I2C Library", toc: "Library",
+      intro: `<p>TUNIOT's LCD blocks produce code that uses a library called <strong>LiquidCrystal I2C</strong>. The Arduino IDE does not come with it, so install it before you compile. You do this once on each computer.</p>`,
+      mount: mountLcdLib },
+    { id: "lcd", group: "l3", title: "Build the Blocks in TUNIOT", toc: "Blocks and Code",
+      intro: `<p>TUNIOT has blocks for the I2C LCD. In Setup, start the LCD with its address and size, then for each line set the cursor and print. Type your own text here: the blocks and the code follow.</p>`,
+      mount: mountLcdBlocks },
+    { id: "lcdtry", group: "l3", title: "Upload It and Check the LCD", toc: "Upload and Check",
+      intro: `<p>Now compile the code in the Arduino IDE and upload it. Try it here: if you skipped the library, you will see what the IDE says.</p>`,
+      mount: mountLcdTry },
 
     { id: "merge", group: "l4", title: "Merge the Two Programs", toc: "Merge",
       intro: `<p>You have two working programs: the RC522 sketch from Lesson 2 and TUNIOT's LCD code from Lesson 3. An ESP32 runs one program at a time, so they must become <strong>one sketch</strong>, with one <code>setup()</code> and one <code>loop()</code>.</p>
@@ -897,6 +980,20 @@ void lcd_print_uid() {
   GATE.mount($("#quizBox"));
   GATE.setLock(GATE.passed());
   LabKit.stepCaption();
+  LabKit.stepsBox("l1", { sheet: "Lesson 1", steps: [
+    ["Install the NFC Tools application on an Android phone with NFC", "#phone"], ["Switch the phone's NFC on", "#phone"],
+    ["Scan each card and record its tag type and UID", "#phone"]] });
+  LabKit.stepsBox("l2", { sheet: "Lesson 2", steps: [
+    ["Wire the RC522 to the ESP32: 3.3 V only, and GND to GND", "#rcwire"], ["Install the MFRC522 library in the Arduino IDE", "#rccode"],
+    ["Enter the RC522 sketch in the Arduino IDE", "#rccode"], ["Choose the board and port, then compile and upload", "#rccode"],
+    ["Open the Serial Monitor, scan each card, and compare the UID with Lesson 1", "#read"]] });
+  LabKit.stepsBox("l3", { sheet: "Lesson 3", steps: [
+    ["Wire the LCD to the ESP32", "#lcdwire"], ["Install the LiquidCrystal I2C library (by Marco Schwartz) in the Arduino IDE", "#lcdlib"],
+    ["Build the LCD blocks in TUNIOT, with your name and matric number", "#lcd"], ["Take TUNIOT's code into the Arduino IDE", "#lcd"],
+    ["Choose the board and port, then compile and upload", "#lcdtry"], ["Check the LCD: adjust the contrast, and check the I2C address", "#lcdtry"]] });
+  LabKit.stepsBox("l4", { sheet: "Lesson 4", steps: [
+    ["Keep both circuits (RC522 and LCD) connected to the ESP32", "#show"], ["Merge the RC522 sketch and the LCD code into one sketch", "#merge"],
+    ["Put your name in the first line shown on the LCD", "#merge"], ["Upload the sketch and hold a card on the reader", "#show"]] });
   // A link straight to a locked part lands on the lock notice instead
   if (!GATE.passed() && /^#(task|plan)$/.test(location.hash)) setTimeout(() => $("#labtask").scrollIntoView(), 0);
 })();

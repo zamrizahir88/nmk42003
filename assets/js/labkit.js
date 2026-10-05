@@ -331,9 +331,22 @@
     paint();
   }
 
+  /* The steps of a lesson, in the order of the lab sheet. Each step links to the part of the page that covers it.
+     stepsBox("l3", { sheet: "Lesson 3", steps: [["Wire the LCD", "#lcdwire"], …] }), or { note } for a reading-only part. */
+  function stepsBox(group, o) {
+    const head = $(`#${group} .group-head`);
+    if (!head) return;
+    const box = document.createElement("div");
+    box.className = "steps-box";
+    box.innerHTML = `<h3>Steps for This Lesson${o.sheet ? ` <span class="sx-sheet">Lab sheet: ${o.sheet}</span>` : ""}</h3>` +
+      (o.steps ? `<ol>${o.steps.map(([t, h]) => `<li>${h ? `<a href="${h}">${t}</a>` : `<span>${t}</span>`}</li>`).join("")}</ol>` : `<p>${o.note}</p>`);
+    const toc = head.querySelector(".toc-chips");
+    if (toc) head.insertBefore(box, toc); else head.appendChild(box);
+  }
+
   window.LabKit = {
     $, T, sleep, clamp, every, W_, nameBox,
     TOP, BOT, pinXY, board, laptop, router, phoneIco, btMark, fly, serialBox, serialOut, phoneFrame,
-    bf, bs, bn, inl, bk, ws, HEAD, kit, gate, stepCaption
+    bf, bs, bn, inl, bk, ws, HEAD, kit, gate, stepCaption, stepsBox
   };
 })();
