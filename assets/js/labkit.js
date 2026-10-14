@@ -281,13 +281,15 @@
         else if (b.hasAttribute("data-submit")) {
           clearTimeout(timer);
           score = picks.filter((k) => k === 0).length;
+          const tries = (store.get(PASS_KEY + "-tries", 0) || 0) + 1;
+          store.set(PASS_KEY + "-tries", tries);
           set.forEach((_, i) => { if (picks[i] !== 0) tried[i].push(picks[i]); });
           state = "review";
           const firstWrong = set.findIndex((_, i) => picks[i] !== 0);
           cur = firstWrong >= 0 ? firstWrong : 0; dir = 0;
           if (score >= PASS_MARK) {
             const old = store.get(PASS_KEY, null);
-            if (!old || old.score < score) store.set(PASS_KEY, { score, date: new Date().toISOString().slice(0, 10) });
+            if (!old || old.score < score) store.set(PASS_KEY, { score, date: new Date().toISOString().slice(0, 10), first: !!(old && old.first) || tries === 1 });
             setLock(store.get(PASS_KEY, null) || { score });
           }
           draw();

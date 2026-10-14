@@ -22,6 +22,7 @@
   const EX_KEY = "nmk-ex-log", UID_KEY = "nmk-sync-uid";
   // progress kept in this browser that is not worth syncing
   const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-)/;
+  const SEM = (typeof COURSE !== "undefined" && (COURSE.semesterId || COURSE.session)) || "";
 
   firebase.initializeApp(CONFIG);
   const auth = firebase.auth(), db = firebase.firestore();
@@ -64,7 +65,14 @@
   async function push() {
     if (!canSync()) return;
     try {
-      await db.collection("progress").doc(state.user.uid).set({ keys: snapshot(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      const keys = snapshot();
+      await db.collection("progress").doc(state.user.uid).set({ keys, semester: SEM, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      if (window.NMKGame) {   // the small public summary for the progress board
+        const g = window.NMKGame.compute(keys), p = state.profile;
+        await db.collection("board").doc(state.user.uid).set({ nickname: p.nickname || "", role: p.role || "student", semester: SEM, xp: g.xp, level: g.level, levelNo: g.levelNo,
+          badges: g.badges.map((b) => b.id), streak: g.streak, solved: g.solved, lastActive: g.lastActive || null,
+          stops: Object.fromEntries(g.stops.filter((s) => s.total).map((s) => [s.label, s.pct])), updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      }
       await db.collection("users").doc(state.user.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() });
     } catch (e) { console.warn("NMK sync: could not save progress", e.code || e); }
   }
@@ -118,12 +126,12 @@
       const ref = db.collection("users").doc(u.uid), doc = await ref.get();
       if (doc.exists) state.profile = doc.data();
       else if (isAdmin(u.email)) {
-        state.profile = { email: u.email.toLowerCase(), name: u.displayName || "", nickname: "Dr. Zamri", status: "approved", role: "lecturer" };
+        state.profile = { email: u.email.toLowerCase(), name: u.displayName || "", nickname: "Dr. Zamri", status: "approved", role: "lecturer", semester: SEM };
         await ref.set(Object.assign({ createdAt: firebase.firestore.FieldValue.serverTimestamp() }, state.profile));
       } else { setup(u); }
     } catch (e) { console.warn("NMK account: could not load the profile", e.code || e); }
     paint(); changed();
-    if (canSync()) { pull(); db.collection("users").doc(u.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() }).catch(() => {}); }
+    if (canSync()) { pull(); queuePush(); db.collection("users").doc(u.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() }).catch(() => {}); }
   });
 
   /* ---------- First sign-in: privacy notice and a nickname ---------- */
@@ -149,7 +157,7 @@
       if (!/^[A-Za-z0-9_]{3,16}$/.test(nick)) { err.textContent = "Use 3 to 16 letters, numbers or underscores, with no spaces."; return; }
       if (!$("#accAgree", box).checked) { err.textContent = "Please tick the box to agree."; return; }
       try {
-        state.profile = { email: u.email.toLowerCase(), name: u.displayName || "", nickname: nick, status: "pending", role: "student" };
+        state.profile = { email: u.email.toLowerCase(), name: u.displayName || "", nickname: nick, status: "pending", role: "student", semester: SEM };
         await db.collection("users").doc(u.uid).set(Object.assign({ createdAt: firebase.firestore.FieldValue.serverTimestamp() }, state.profile));
         closeModal(); paint(); changed();
       } catch (ex) { err.textContent = `Could not save: ${ex.code || ex}. Please try again.`; }
@@ -196,6 +204,7 @@
     menu.innerHTML = `<div class="acc-who"><strong>${esc((p && p.nickname) || u.displayName || "")}</strong><span>${esc(u.email)}</span>
         <span class="acc-st ${p ? p.status : ""}">${p ? STATUS[p.status] || p.status : "Setting up…"}</span></div>
       ${p && p.status === "approved" ? `<p class="acc-note">Your progress is saved to your account and follows you to any device.</p>` : ""}
+      <a class="acc-item" href="board.html">My progress and the board</a>
       ${isAdmin(u.email) ? `<a class="acc-item" href="admin.html">Lecturer dashboard</a>` : ""}
       <button type="button" class="acc-item" data-out>Sign out</button>`;
     const r = btn.getBoundingClientRect();

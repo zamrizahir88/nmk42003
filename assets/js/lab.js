@@ -563,7 +563,7 @@
         if (answered) return;
         answered = true;
         const ok = +b.dataset.k === q.a;
-        if (ok) score++;
+        if (ok) { score++; document.dispatchEvent(new CustomEvent("nmk:quiz", { detail: { key: `${location.pathname.split("/").pop()}|${String(q.q).replace(/<[^>]+>/g, "").slice(0, 60)}` } })); }
         el.querySelectorAll(".quiz-opt").forEach((x) => { x.disabled = true; if (+x.dataset.k === q.a) x.classList.add("right"); });
         if (!ok) b.classList.add("wrong");
         el.querySelector(".quiz-fb").innerHTML = `<strong>${ok ? "✓ Correct." : "✗ Not quite."}</strong> ${q.why}`;

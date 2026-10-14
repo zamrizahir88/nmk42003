@@ -9,6 +9,9 @@ const COURSE = {
   code: "NMK42003",
   name: "Instrumentation",
   session: "Semester 1 2026/2027",
+  // Tags each student record and the progress board. Change it each semester: the board then starts fresh,
+  // and the lecturer dashboard keeps the old semesters as an archive.
+  semesterId: "2026/2027 Semester 1",
   faculty: "Faculty of Electronic Engineering & Technology",
   university: "Universiti Malaysia Perlis (UniMAP)",
   programme: "UR6523007 - Bachelor of Electronic Engineering Technology (Electronic Systems)",

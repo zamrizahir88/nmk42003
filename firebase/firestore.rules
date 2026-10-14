@@ -38,6 +38,14 @@ service cloud.firestore {
       allow delete: if isLecturer();
     }
 
+    // Progress board: one small public summary per student (nickname, level, XP, badges, last active).
+    // Approved students and lecturers may read the board; each approved student writes only their own entry.
+    match /board/{uid} {
+      allow read: if isLecturer() || approved();
+      allow write: if isSelf(uid) && (approved() || isLecturer());
+      allow delete: if isLecturer();
+    }
+
     // Everything else stays closed.
     match /{document=**} {
       allow read, write: if false;
