@@ -1,0 +1,110 @@
+/* NMK42003 attendance page: the student check-in and record, the lecturer's sessions, class list and report,
+   and the projector screen. Tables, tabs and dialogs reuse the dashboard styles in account.css. */
+#att .adm-scroll { position: relative; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.at-gap { margin-top: 32px; }
+.at-card { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 16px 18px; margin: 0 0 12px; }
+.at-card.open { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal) inset; }
+.at-card.warn { border-color: var(--amber); background: var(--amber-soft); }
+.at-card h2, .at-card h3 { margin-top: 0; }
+.at-card p:last-child { margin-bottom: 0; }
+.at-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
+.at-head h3 { margin: 0; }
+.at-live { font-size: .8rem; font-weight: 700; color: #fff; background: var(--teal); border-radius: 999px; padding: 2px 10px; }
+.at-count { font-weight: 700; color: var(--teal); font-variant-numeric: tabular-nums; }
+.at-done { font-weight: 500; color: var(--teal); }
+.at-form label { display: grid; gap: 2px; font-weight: 600; margin: 10px 0 6px; }
+.at-form label span { font-weight: 400; font-size: .85rem; color: var(--ink-3); }
+.at-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.at-key { font: 700 1.5rem ui-monospace, Consolas, monospace; letter-spacing: .25em; text-transform: uppercase; width: 9.5em; max-width: 100%; height: 52px; padding: 0 12px; border: 2px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); }
+.at-key:focus { border-color: var(--teal); outline: none; box-shadow: 0 0 0 3px var(--teal-soft); }
+.at-err { min-height: 1.2em; margin: 6px 0 0; font-size: .9rem; color: var(--danger); }
+.at-err:empty { min-height: 0; }
+
+/* statuses */
+.at-st { display: inline-block; font-size: .78rem; font-weight: 700; border-radius: 999px; padding: 2px 10px; white-space: nowrap; background: var(--grid); color: var(--ink-2); }
+.at-st.p { background: var(--teal-soft); color: var(--teal); }
+.at-st.l { background: var(--amber-soft); color: var(--amber); }
+.at-st.e { background: color-mix(in srgb, #4b7bd1 16%, var(--surface)); color: #3f6cc0; }
+.at-st.a { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--danger); }
+:root[data-theme="dark"] .at-st.e { color: #9dbaf0; }
+.at-sum { margin: 0 0 20px; }
+.at-sum h3 { margin: 0 0 6px; }
+.at-nums { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 8px; font-size: .92rem; color: var(--ink-2); }
+.at-nums strong { font-size: 1.15rem; color: var(--teal); }
+.at-nums .warn { color: var(--danger); font-weight: 600; }
+
+/* lecturer: sessions */
+.at-state { font-size: .78rem; font-weight: 600; border-radius: 999px; padding: 2px 10px; background: var(--grid); color: var(--ink-2); white-space: nowrap; }
+.at-state.open { background: var(--teal); color: #fff; }
+.at-state.closed { background: var(--teal-soft); color: var(--teal); }
+table.at-ses tr.today td { background: var(--amber-soft); }
+.at-n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.at-shead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 8px 16px; margin: 0 0 12px; }
+.at-shead h2 { margin: 0 0 4px; }
+.at-sub { font: 400 .85rem var(--sans); color: var(--ink-3); margin-left: 8px; }
+.at-fs { border: 0; padding: 0; margin: 8px 0; display: grid; gap: 6px; }
+.at-fs legend { font-weight: 600; margin-bottom: 4px; }
+.at-fs label, .at-late { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: .95rem; }
+.at-late { margin: 10px 0 4px; }
+.at-late input[type=number] { width: 4.5em; height: 34px; font: inherit; padding: 0 6px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); }
+.at-fs input[type=radio], .at-late input[type=checkbox] { width: 18px; height: 18px; }
+
+/* the key and QR code */
+.at-keyarea { margin: 12px 0; }
+.at-keybox { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; }
+.at-qr { background: #fff; padding: 10px; border-radius: 8px; line-height: 0; }
+.at-qr img, .at-qr canvas { display: block; }
+.at-kl { margin: 0; font-size: .85rem; font-weight: 600; color: var(--ink-3); text-transform: uppercase; letter-spacing: .08em; }
+.at-keyval { display: flex; gap: 6px; margin: 4px 0; }
+.at-keyval span { display: grid; place-items: center; width: 1.25em; height: 1.5em; font: 700 2.4rem ui-monospace, Consolas, monospace; color: var(--ink); background: var(--paper); border: 2px solid var(--teal); border-radius: 8px; }
+.at-kt { margin: 0 0 6px; font-weight: 600; color: var(--teal); font-variant-numeric: tabular-nums; }
+@media (max-width: 480px) { .at-keyval span { font-size: 1.7rem; } }
+
+/* take attendance */
+table.at-take td { vertical-align: middle; }
+.at-pick { display: inline-flex; gap: 4px; }
+.at-b { width: 38px; height: 38px; font: 700 .95rem var(--sans); border: 1px solid var(--rule); border-radius: 8px; background: var(--paper); color: var(--ink-2); cursor: pointer; }
+.at-b:hover { border-color: var(--ink-3); }
+.at-b:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.at-b[aria-pressed="true"].p { background: var(--teal); border-color: var(--teal); color: #fff; }
+.at-b[aria-pressed="true"].l { background: var(--amber); border-color: var(--amber); color: #fff; }
+.at-b[aria-pressed="true"].e { background: #3f6cc0; border-color: #3f6cc0; color: #fff; }
+.at-b[aria-pressed="true"].a { background: var(--danger); border-color: var(--danger); color: #fff; }
+.at-rm { width: 100%; min-width: 9em; height: 36px; font: inherit; font-size: .9rem; padding: 0 8px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); }
+
+/* class list */
+table.at-ros select, .at-grp { font: inherit; font-size: .9rem; height: 36px; padding: 0 6px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); }
+.at-grp { width: 4.5em; }
+table.at-ros tr.dropped td { opacity: .55; }
+.at-file { cursor: pointer; }
+
+/* dialogs */
+.at-dform { display: grid; gap: 10px; }
+.at-dform label { display: grid; gap: 4px; font-weight: 600; font-size: .92rem; }
+.at-dform input, .at-dform select { font: inherit; font-weight: 400; height: 40px; padding: 0 10px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); min-width: 0; }
+.at-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.at-three { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+@media (max-width: 520px) { .at-two, .at-three { grid-template-columns: minmax(0, 1fr); } }
+
+/* report */
+table.at-rep th, table.at-rep td { text-align: center; padding: 6px 6px; }
+table.at-rep th:first-child, table.at-rep td:first-child { text-align: left; min-width: 13em; position: sticky; left: 0; background: var(--surface); z-index: 1; }
+.at-c { font-weight: 700; font-size: .85rem; }
+.at-c.p { color: var(--teal); }
+.at-c.l { color: var(--amber); }
+.at-c.e { color: #3f6cc0; }
+.at-c.a { color: #fff; background: var(--danger); }
+.at-c.none { color: var(--ink-3); }
+.at-c.na { background: repeating-linear-gradient(45deg, transparent, transparent 4px, var(--grid) 4px, var(--grid) 5px); }
+.at-pct { font-weight: 700; }
+.at-abs.mid { background: var(--amber-soft); color: var(--amber); font-weight: 700; }
+.at-abs.hi { background: var(--danger); color: #fff; font-weight: 700; }
+
+/* the projector screen */
+body.at-show .page-hero, body.at-show .site-footer, body.at-show .chat-fab, body.at-show .to-top { display: none; }
+.at-proj { text-align: center; padding: 24px 0 40px; }
+.at-proj .at-pt { font-size: 1.3rem; line-height: 1.5; }
+.at-proj .at-keybox { justify-content: center; text-align: left; }
+.at-proj .at-keybox.big .at-keyval span { font-size: clamp(2.6rem, 7vw, 5.5rem); border-width: 3px; }
+.at-proj .at-pc { font: 700 1.6rem var(--sans); color: var(--teal); font-variant-numeric: tabular-nums; }

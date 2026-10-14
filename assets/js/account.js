@@ -17,7 +17,8 @@
     messagingSenderId: "190874137761",
     appId: "1:190874137761:web:aea3c43df6ee60dfedece0"
   };
-  const ADMINS = ["zamrizahir@unimap.edu.my"];          // keep in step with firebase/firestore.rules
+  const ADMINS = ["zamrizahir@unimap.edu.my", "hariyanti@unimap.edu.my"];          // keep in step with firebase/firestore.rules
+  const NICK = { "zamrizahir@unimap.edu.my": "Dr. Zamri", "hariyanti@unimap.edu.my": "Dr. Hariyanti" };
   const STUDENT_DOMAIN = "@studentmail.unimap.edu.my";
   const EX_KEY = "nmk-ex-log", UID_KEY = "nmk-sync-uid";
   // progress kept in this browser that is not worth syncing
@@ -124,29 +125,53 @@
     }
     try {
       const ref = db.collection("users").doc(u.uid), doc = await ref.get();
-      if (doc.exists) state.profile = doc.data();
-      else if (isAdmin(u.email)) {
-        state.profile = { email: u.email.toLowerCase(), name: u.displayName || "", nickname: "Dr. Zamri", status: "approved", role: "lecturer", semester: SEM };
+      const listed = isAdmin(u.email) ? false : await onList(u.email);
+      if (doc.exists) {
+        state.profile = doc.data();
+        // a student who asked before the class list was loaded is approved as soon as they are on it
+        if (state.profile.status === "pending" && listed) { await ref.update({ status: "approved", approvedBy: "class list" }); state.profile.status = "approved"; }
+      } else if (isAdmin(u.email)) {
+        state.profile = { email: u.email.toLowerCase(), name: u.displayName || "", nickname: NICK[u.email.toLowerCase()] || "Lecturer", status: "approved", role: "lecturer", semester: SEM };
         await ref.set(Object.assign({ createdAt: firebase.firestore.FieldValue.serverTimestamp() }, state.profile));
-      } else { setup(u); }
+      } else { setup(u, listed); }
     } catch (e) { console.warn("NMK account: could not load the profile", e.code || e); }
     paint(); changed();
-    if (canSync()) { pull(); queuePush(); db.collection("users").doc(u.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() }).catch(() => {}); }
+    if (canSync()) { pull(); queuePush(); loadAttendance(); db.collection("users").doc(u.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() }).catch(() => {}); }
   });
 
+  /* ---------- Attendance ---------- */
+  // Is this studentmail address on the NMK42003 class list (and not dropped)? Students on it are approved straight away.
+  async function onList(email) {
+    try { const r = await db.collection("roster").doc(String(email).toLowerCase()).get(); return r.exists && r.data().status === "active"; }
+    catch (e) { return false; }
+  }
+  // A student's own attendance records, kept in this browser as nmk-att for the course journey (XP and badges)
+  async function loadAttendance() {
+    if (!state.user || isAdmin(state.user.email)) return;
+    const em = state.user.email.toLowerCase();
+    try {
+      const [r, snap] = await Promise.all([db.collection("roster").doc(em).get(), db.collection("attendance").where("email", "==", em).get()]);
+      const recs = snap.docs.map((d) => d.data()).filter((x) => !x.semester || x.semester === SEM)
+        .map((x) => ({ t: x.title || "", k: x.kind || "", d: x.date || "", s: x.status })).sort((a, b) => (a.d < b.d ? -1 : 1));
+      const v = JSON.stringify({ section: r.exists ? r.data().section || "" : "", recs });
+      if (ls.get("nmk-att") !== v) { ls.set("nmk-att", v); document.dispatchEvent(new CustomEvent("nmk:store", { detail: "nmk-att" })); }
+    } catch (e) { console.warn("NMK attendance: could not load your records", e.code || e); }
+  }
+
   /* ---------- First sign-in: privacy notice and a nickname ---------- */
-  function setup(u) {
+  function setup(u, listed) {
     const box = modal(`<h2>Welcome to NMK42003</h2>
       <p>Signed in as <strong>${esc(u.email)}</strong>.</p>
       <div class="acc-privacy"><strong>What is saved, and who sees it</strong>
-        <p>When your account is approved, this site saves your name, your studentmail address, the nickname you choose, and your progress: the exercises you answer, your Pre-Lab Check results and your virtual lab work. It is kept in a Google Firebase database run by your lecturer, and is used only for this course.</p>
-        <p>Your lecturers can see all of it. Classmates will see only your nickname, level and badges on the course progress board. Nothing here counts towards your grade, and the site works fully without signing in.</p></div>
+        <p>When your account is approved, this site saves your name, your studentmail address, the nickname you choose, your progress (the exercises you answer, your Pre-Lab Check results and your virtual lab work) and your class attendance. It is kept in a Google Firebase database run by your lecturer, and is used only for this course.</p>
+        <p>Your lecturers can see all of it. Classmates will see only your nickname, level and badges on the course progress board, never your attendance. Nothing here counts towards your grade, and the site works fully without signing in.</p></div>
       <form class="acc-form" novalidate>
         <label for="accNick">Choose a nickname <span>3 to 16 letters or numbers. Classmates will see it.</span></label>
         <input id="accNick" type="text" maxlength="16" autocomplete="off" spellcheck="false" required>
         <label class="acc-ok"><input type="checkbox" id="accAgree"> I have read what is saved and agree.</label>
         <p class="acc-err" aria-live="polite"></p>
-        <div class="acc-row"><button type="submit" class="btn">Request access</button><button type="button" class="btn ghost" data-cancel>Cancel and sign out</button></div>
+        ${listed ? `<p class="acc-note">You are on the NMK42003 class list, so your account is approved straight away.</p>` : ""}
+        <div class="acc-row"><button type="submit" class="btn">${listed ? "Start" : "Request access"}</button><button type="button" class="btn ghost" data-cancel>Cancel and sign out</button></div>
       </form>`, false);
     const form = $(".acc-form", box), err = $(".acc-err", box);
     $("#accNick", box).focus();
@@ -157,9 +182,10 @@
       if (!/^[A-Za-z0-9_]{3,16}$/.test(nick)) { err.textContent = "Use 3 to 16 letters, numbers or underscores, with no spaces."; return; }
       if (!$("#accAgree", box).checked) { err.textContent = "Please tick the box to agree."; return; }
       try {
-        state.profile = { email: u.email.toLowerCase(), name: u.displayName || "", nickname: nick, status: "pending", role: "student", semester: SEM };
-        await db.collection("users").doc(u.uid).set(Object.assign({ createdAt: firebase.firestore.FieldValue.serverTimestamp() }, state.profile));
+        state.profile = { email: u.email.toLowerCase(), name: u.displayName || "", nickname: nick, status: listed ? "approved" : "pending", role: "student", semester: SEM };
+        await db.collection("users").doc(u.uid).set(Object.assign({ createdAt: firebase.firestore.FieldValue.serverTimestamp() }, state.profile, listed ? { approvedBy: "class list" } : {}));
         closeModal(); paint(); changed();
+        if (canSync()) { pull(); loadAttendance(); }
       } catch (ex) { err.textContent = `Could not save: ${ex.code || ex}. Please try again.`; }
     });
   }
@@ -205,6 +231,7 @@
         <span class="acc-st ${p ? p.status : ""}">${p ? STATUS[p.status] || p.status : "Setting up…"}</span></div>
       ${p && p.status === "approved" ? `<p class="acc-note">Your progress is saved to your account and follows you to any device.</p>` : ""}
       <a class="acc-item" href="board.html">My progress and the board</a>
+      <a class="acc-item" href="attendance.html">${isAdmin(u.email) ? "Attendance (lecturer)" : "Attendance"}</a>
       ${isAdmin(u.email) ? `<a class="acc-item" href="admin.html">Lecturer dashboard</a>` : ""}
       <button type="button" class="acc-item" data-out>Sign out</button>`;
     const r = btn.getBoundingClientRect();
@@ -237,5 +264,5 @@
 
   paint();
   // For admin.html and later pages: read-only access to the signed-in state and the database
-  window.NMKAccount = { db, auth, isAdmin, state, on: (f) => { listeners.push(f); if (state.ready) f(state); }, signIn };
+  window.NMKAccount = { db, auth, isAdmin, state, on: (f) => { listeners.push(f); if (state.ready) f(state); }, signIn, loadAttendance, SEM };
 })();

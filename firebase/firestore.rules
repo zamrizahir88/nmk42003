@@ -8,26 +8,35 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function email() { return request.auth.token.email.lower(); }
     function verified() { return signedIn() && request.auth.token.email_verified == true; }
-    function isLecturer() { return verified() && email() in ['zamrizahir@unimap.edu.my']; }
+    function isLecturer() { return verified() && email() in ['zamrizahir@unimap.edu.my', 'hariyanti@unimap.edu.my']; }
     function isStudentMail() { return verified() && email().matches('.*@studentmail[.]unimap[.]edu[.]my$'); }
     function isSelf(uid) { return signedIn() && request.auth.uid == uid; }
     function approved() {
       return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
     }
+    // on the NMK42003 class list, and not dropped
+    function onRoster() {
+      return verified() && exists(/databases/$(database)/documents/roster/$(email()))
+        && get(/databases/$(database)/documents/roster/$(email())).data.status == 'active';
+    }
 
     // One profile per account: name, email, nickname, status (pending / approved / rejected), role.
     match /users/{uid} {
       allow read: if isLecturer() || isSelf(uid);
-      // a student creates their own profile, always as "pending"; a lecturer may create their own as approved
+      // a student creates their own profile as "pending", or as "approved" when they are on the class list;
+      // a lecturer may create their own as approved
       allow create: if isSelf(uid) && request.resource.data.email == email() && (
-          (isStudentMail() && request.resource.data.status == 'pending' && request.resource.data.role == 'student')
+          (isStudentMail() && request.resource.data.role == 'student'
+            && (request.resource.data.status == 'pending' || (request.resource.data.status == 'approved' && onRoster())))
           || isLecturer());
-      // students may change their own profile, but never their status, role or email; lecturers may change anything
+      // students may change their own profile, but never their role or email, and their status only from
+      // pending to approved when they are on the class list; lecturers may change anything
       allow update: if isLecturer() || (isSelf(uid)
-          && request.resource.data.status == resource.data.status
           && request.resource.data.role == resource.data.role
-          && request.resource.data.email == resource.data.email);
+          && request.resource.data.email == resource.data.email
+          && (request.resource.data.status == resource.data.status
+              || (resource.data.status == 'pending' && request.resource.data.status == 'approved' && onRoster())));
       allow delete: if isLecturer();
     }
 
@@ -44,6 +53,53 @@ service cloud.firestore {
       allow read: if isLecturer() || approved();
       allow write: if isSelf(uid) && (approved() || isLecturer());
       allow delete: if isLecturer();
+    }
+
+    /* ---------------- Attendance ---------------- */
+
+    // The class list, one entry per studentmail address: name, matric, section, lab group, RPS.
+    // Lecturers only; each student may read their own entry.
+    match /roster/{em} {
+      allow read: if isLecturer() || (verified() && email() == em);
+      allow write: if isLecturer();
+    }
+
+    // Sessions (lectures and labs): anyone signed in may see them; only lecturers create, open and close them.
+    match /sessions/{sid} {
+      allow read: if signedIn();
+      allow write: if isLecturer();
+    }
+
+    // The security key of an open session: lecturers only. The rule below checks a student's key against it.
+    match /sessionKeys/{sid} {
+      allow read, write: if isLecturer();
+    }
+
+    // One record per student per session, with the id "<session id>_<studentmail address>".
+    match /attendance/{aid} {
+      allow read: if isLecturer() || (signedIn() && resource.data.email == email());
+      allow create: if isLecturer() || selfMark(aid);
+      allow update, delete: if isLecturer();
+    }
+
+    // A student marks their own attendance: the session must be open, they must be on the class list in that
+    // session's section, and they must give the current (or the previous) security key. Present, or Late when
+    // the lecturer switched on automatic Late for the session and its time has passed.
+    function selfMark(aid) {
+      let d = request.resource.data;
+      let s = get(/databases/$(database)/documents/sessions/$(d.session)).data;
+      let k = get(/databases/$(database)/documents/sessionKeys/$(d.session)).data;
+      let r = get(/databases/$(database)/documents/roster/$(email())).data;
+      let la = s.get('lateAfter', 0);
+      let late = la is int && la > 0 && request.time > s.openedAt + duration.value(la, 'm');
+      return verified()
+        && aid == d.session + '_' + email()
+        && d.keys().hasOnly(['session', 'email', 'status', 'by', 'at', 'key', 'semester', 'kind', 'date', 'title'])
+        && d.email == email() && d.by == 'self' && d.at == request.time
+        && s.state == 'open' && r.status == 'active' && (s.section == 'all' || s.section == r.section)
+        && (d.key == k.cur || d.key == k.prev)
+        && d.kind == s.kind && d.date == s.date && d.title == s.title && d.semester == s.semester
+        && ((late && d.status == 'L') || (!late && d.status == 'P'));
     }
 
     // Everything else stays closed.

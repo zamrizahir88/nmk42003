@@ -167,6 +167,7 @@ table.cmp { width: 100%; border-collapse: collapse; font-size: .93rem; min-width
 .btn:hover { background: var(--teal-strong); border-color: var(--teal-strong); }
 .btn.ghost { background: var(--surface); color: var(--teal); }
 .btn.ghost:hover { background: var(--teal-soft); }
+.btn.small { min-height: 34px; padding: 4px 12px; font-size: .88rem; }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn:disabled:hover { background: var(--surface); }
 .ex-status { font-size: .88rem; color: var(--ink-2); margin: 8px 0 0; }

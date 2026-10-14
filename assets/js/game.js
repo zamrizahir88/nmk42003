@@ -36,7 +36,12 @@
     { id: "calibrated", name: "Calibrated", icon: "📐", desc: "Lab 2: your equation is within ±5° at every angle" },
     { id: "card-reader", name: "Card Reader", icon: "💳", desc: "Lab 3: read all three cards with the RC522" },
     { id: "on-a-roll", name: "On a Roll", icon: "🔥", desc: "Made progress three weeks in a row" },
-    { id: "halfway", name: "Halfway", icon: "⛰️", desc: "Solved half of all the exercises" }
+    { id: "halfway", name: "Halfway", icon: "⛰️", desc: "Solved half of all the exercises" },
+    { id: "checked-in", name: "Checked In", icon: "🙋", desc: "Marked your first class attendance" },
+    { id: "lab-regular", name: "Lab Regular", icon: "🧪", desc: "Attended every lab session so far (at least two)" },
+    { id: "lecture-regular", name: "Lecture Regular", icon: "📚", desc: "Attended five lectures in a row" },
+    { id: "full-house", name: "Full House", icon: "🏠", desc: "No absences at all, from week 8 on" },
+    { id: "early-riser", name: "Early Riser", icon: "🌅", desc: "Attended a Thursday 9 AM lab" }
   ].concat(COURSE.labs.filter((l) => l.page).map((l) => ({ id: `lab${l.no}-ready`, name: `Lab ${l.no} Ready`, icon: "🔓", desc: `Passed the Lab ${l.no} Pre-Lab Check` })));
 
   // Lab 2's virtual sensor, to check the student's own equation (the same model as lab2.js)
@@ -76,6 +81,10 @@
     if (seen3.cardr && seen3.fobr && seen3.tagr) add(25, "Lab 3: all three cards read");
     if (parse(k["nmk-lab3-merge"], false)) add(25, "Lab 3: programs merged");
     Object.values(quiz).forEach((d) => { add(5, "Quiz question correct", d); });
+    // class attendance (the student's own records, loaded by account.js): 10 XP for each session attended
+    const att = parse(k["nmk-att"], null), recs = att && Array.isArray(att.recs) ? att.recs : [];
+    const here = (r) => r.s === "P" || r.s === "L";
+    recs.forEach((r) => { if (here(r)) add(10, `Attended ${r.t || (r.k === "lab" ? "a lab" : "a lecture")}`, r.d ? `${r.d}T12:00:00+08:00` : null); });
 
     const xp = items.reduce((s, i) => s + i.xp, 0);
     let li = 0; LEVELS.forEach(([t], i) => { if (xp >= t) li = i; });
@@ -92,6 +101,13 @@
     COURSE.labs.forEach((l) => { const p = parse(k[`nmk-lab${l.no}-prelab`], null); if (p && p.score >= 7) { earned.add(`lab${l.no}-ready`); if (p.first) earned.add("first-try"); } });
     if (lab2Calibrated(k)) earned.add("calibrated");
     if (seen3.cardr && seen3.fobr && seen3.tagr) earned.add("card-reader");
+    if (recs.some(here)) earned.add("checked-in");
+    const labs = recs.filter((r) => r.k === "lab"), lects = recs.filter((r) => r.k === "lecture");
+    if (labs.filter(here).length >= 2 && !labs.some((r) => r.s === "A")) earned.add("lab-regular");
+    let run = 0, best = 0; lects.forEach((r) => { if (here(r)) best = Math.max(best, ++run); else if (r.s === "A") run = 0; });
+    if (best >= 5) earned.add("lecture-regular");
+    if (weekOf(today()) >= 8 && recs.length >= 5 && !recs.some((r) => r.s === "A")) earned.add("full-house");
+    if (att && att.section === "thu" && labs.some(here)) earned.add("early-riser");
     if (streak >= 3) earned.add("on-a-roll");
     if (solved.length * 2 >= Object.keys(CATALOG).length) earned.add("halfway");
     return {
