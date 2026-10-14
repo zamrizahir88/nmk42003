@@ -12,7 +12,8 @@
 .rig-knob { max-width: 560px; margin: 6px 0 10px; }
 .rig-knob output { font-weight: 600; color: var(--teal); }
 .rig-live { display: none; margin: 2px 0 0; font: 600 .9rem ui-monospace, Consolas, monospace; color: var(--teal); }
-@media (max-width: 640px) { .rig-live { display: block; } }
+/* on a phone the bench is drawn tall (stacked), so it fits the screen with no sideways scrolling */
+.scene.rig.tall { min-width: 0; max-width: 440px; }
 .pr-card { fill: #fbfaf5; stroke: #c9c4b4; }
 :root[data-theme="dark"] .pr-card { fill: #d9d6cb; stroke: #a8a394; }
 .scene .prot { fill: color-mix(in srgb, var(--teal-soft) 55%, #ffffff); stroke: #5d6b77; stroke-width: 1.2; }
@@ -128,6 +129,8 @@
 
 /* ---------- Measurement chain ---------- */
 .scene.chain { min-width: 640px; max-width: 900px; margin: 0 auto; }
+.scene.chain.tall { min-width: 0; max-width: 440px; }
+.scene-box:has(.tall) .swipe { display: none; }
 .ch-box { fill: var(--paper); stroke: var(--rule); stroke-width: 1.4; }
 .scene .ch-k { fill: var(--teal); font: 600 12.5px var(--sans); }
 .scene .ch-s { fill: var(--ink-2); font: 12px var(--sans); }

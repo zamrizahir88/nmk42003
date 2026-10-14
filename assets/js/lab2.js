@@ -85,18 +85,27 @@
      and (when used) the bench power supply, the multimeter and the warning LED.
      o: { angle, src: "pin" | "bench", conn, gnd, dead, r1, r2, meter, meterOn, psu, led, prog: { r, k, y } }
      ===================================================================== */
-  const VW = 670, VH = 350, RX = 150, RY = 200, RR = 108, BX = 372, BY = 96, BK = 0.74;
-  const [VPX, VPY] = pinXY(BX, BY, BK, "top", "VP"), [GX, GY] = pinXY(BX, BY, BK, "bot", "GND");
-  const [PX, PY] = pinXY(BX, BY, BK, "bot", "3V3"), [LX, LY] = pinXY(BX, BY, BK, "top", "D32");
-  const KX = 616, KY = 238; // the bench supply's voltage knob: 0 V to 12 V over three-quarters of a turn
-  const knobDeg = (v) => ((v || 0) / 12) * 270 - 135;
-  const polar = (a, r) => [RX + r * Math.cos((a * Math.PI) / 180), RY - r * Math.sin((a * Math.PI) / 180)];
+  // Two layouts of the same bench: wide (side by side) and, on a phone, tall (stacked top to bottom)
+  const RR = 108, TALL = window.matchMedia("(max-width: 640px)");
+  function geo(tall) {
+    const g = tall ? { tall, VW: 380, RX: 190, RY: 200, BX: 24, BY: 320, BK: 0.92, KX: 200, KY: 500 }
+      : { tall, VW: 670, VH: 350, RX: 150, RY: 200, BX: 372, BY: 96, BK: 0.74, KX: 616, KY: 238 }; // KX, KY: the bench supply's voltage knob
+    [g.VPX, g.VPY] = pinXY(g.BX, g.BY, g.BK, "top", "VP"); [g.GX, g.GY] = pinXY(g.BX, g.BY, g.BK, "bot", "GND");
+    [g.PX, g.PY] = pinXY(g.BX, g.BY, g.BK, "bot", "3V3"); [g.LX, g.LY] = pinXY(g.BX, g.BY, g.BK, "top", "D32");
+    return g;
+  }
+  let G = geo(TALL.matches);
+  const RIGS = []; // every bench on the page redraws when the phone turns between portrait and landscape
+  TALL.addEventListener("change", () => { G = geo(TALL.matches); RIGS.forEach((b) => b()); });
+  const knobDeg = (v) => ((v || 0) / 12) * 270 - 135; // 0 V to 12 V over three-quarters of a turn
+  const polar = (a, r) => [G.RX + r * Math.cos((a * Math.PI) / 180), G.RY - r * Math.sin((a * Math.PI) / 180)];
   const dash = (p) => (p >= 1 ? "" : ` pathLength="1" stroke-dasharray="1" stroke-dashoffset="${(1 - p).toFixed(3)}"`);
   // A jumper wire with a pale casing, so a wire crossing another reads as passing over it
   const wire = (cls, d, p = 1) => (p <= 0 ? "" : `<path class="wire-c" d="${d}"${dash(p)}/><path class="wire ${cls}" d="${d}"${dash(p)}/>`);
 
   function protractor(angle) {
-    let s = `<rect class="pr-card" x="22" y="70" width="256" height="168" rx="6"/>`;
+    const { RX, RY } = G;
+    let s = `<rect class="pr-card" x="${RX - 128}" y="70" width="256" height="168" rx="6"/>`;
     s += `<path class="prot" d="M${RX - RR},${RY}A${RR},${RR} 0 0 1 ${RX + RR},${RY}Z"/>`;
     for (let a = 0; a <= 180; a += 5) {
       const big = a % 30 === 0, [x1, y1] = polar(a, RR - (big ? 14 : a % 10 === 0 ? 9 : 5)), [x2, y2] = polar(a, RR);
@@ -104,7 +113,7 @@
     }
     for (let a = 0; a <= 180; a += 30) { const [x, y] = polar(a, RR - 26); s += T(f1(x), f1(y + (a % 180 === 0 ? -5 : 4)), a, "middle", "pr-n"); }
     const [px, py] = polar(angle, RR - 6);
-    s += `<path class="leg" d="M136,222V244M150,226V244M164,222V244"/><circle class="pot-body" cx="${RX}" cy="${RY}" r="27"/>`;
+    s += `<path class="leg" d="M${RX - 14},222V244M${RX},226V244M${RX + 14},222V244"/><circle class="pot-body" cx="${RX}" cy="${RY}" r="27"/>`;
     s += `<line class="pointer rig-ptr" x1="${RX}" y1="${RY}" x2="${f1(px)}" y2="${f1(py)}"/><circle class="knob" cx="${RX}" cy="${RY}" r="11"/>`;
     s += `<path class="prot-hit" d="M${RX - RR - 12},${RY + 16}V${RY}A${RR + 12},${RR + 12} 0 0 1 ${RX + RR + 12},${RY}V${RY + 16}Z"/>`;
     return s;
@@ -112,44 +121,59 @@
 
   function rigSvg(o) {
     const bench = o.src === "bench", pg = o.prog || { r: 1, k: 1, y: 1 }, off = bench && !o.conn ? " off" : "";
+    const { tall, RX, BX, BY, BK, VPX, VPY, GX, GY, PX, PY, LX, LY, KX, KY, VW } = G;
+    const VH = tall ? (bench ? 600 : o.meter !== undefined ? 562 : 470) : G.VH;
+    const L = RX - 14, Rt = RX + 14; // the potentiometer's end legs: the GND side and the 3V3 side
     let s = protractor(o.angle);
     s += board(BX, BY, { k: BK, pwr: true, hi: ["t:VP", "b:GND", "b:3V3"].concat(o.led === undefined ? [] : ["t:D32"]) });
-    s += T(VPX + 7, VPY - 10, "VP", "start", "wl sm") + T(PX - 6, 204, "3V3", "end", "wl sm") + T(GX + 6, 204, "GND", "start", "wl sm");
+    s += T(VPX + 7, VPY - 10, "VP", "start", "wl sm") + (tall ? "" : T(PX - 6, 204, "3V3", "end", "wl sm") + T(GX + 6, 204, "GND", "start", "wl sm")); // tall: the board's own pin labels are enough
     if (bench) {
-      s += `<g class="psu"><rect class="psu-b" x="470" y="208" width="170" height="112" rx="8"/><rect class="lcd" x="500" y="220" width="92" height="34" rx="4"/>` +
-        T(546, 244, esc(o.psu || ""), "middle", "lcdt rig-psu") + `<circle class="psu-k" cx="${KX}" cy="${KY}" r="18"/><line class="psu-m rig-psuk" x1="${KX}" y1="${KY}" x2="${KX}" y2="${KY - 14}" transform="rotate(${knobDeg(o.setV)} ${KX} ${KY})"/><circle class="psu-hit" cx="${KX}" cy="${KY}" r="26"/>` +
-        `<circle class="psu-t p" cx="470" cy="246" r="7"/><circle class="psu-t n" cx="470" cy="290" r="7"/>` + T(484, 251, "+", "start", "psu-l") + T(484, 295, "−", "start", "psu-l") +
-        T(566, 290, "Bench power supply", "middle", "psu-l sm") + T(566, 306, bench && o.conn ? "output connected" : "output not connected", "middle", "psu-l sm dim") + `</g>`;
-      s += `<g class="sup${off}">` + wire("r", "M164,244V258H452V246H470", pg.r) + wire("k", "M136,244V290H470", pg.k) + `</g>`;
-      s += o.gnd ? wire("k", `M${GX},${GY}V290`) + `<circle class="join" cx="${GX}" cy="290" r="4"/>`
-        : `<path class="wire open" d="M${GX},${GY}V268"/>` + T(GX - 8, 240, "no GND link", "end", "open-t");
+      // wide: the supply on the right, terminals on its left side. tall: the supply at the bottom, terminals on its right side
+      const px = tall ? 172 : 470, py = tall ? 466 : 208, tx = tall ? px + 170 : px, lcdX = tall ? px + 58 : px + 30, mid = tall ? px + 85 : px + 96;
+      const tp = tall ? 504 : 246, tn = tall ? 548 : 290, ls = tall ? -12 : 14, la = tall ? "end" : "start";
+      s += `<g class="psu"><rect class="psu-b" x="${px}" y="${py}" width="170" height="112" rx="8"/><rect class="lcd" x="${lcdX}" y="${py + 12}" width="92" height="34" rx="4"/>` +
+        T(lcdX + 46, py + 36, esc(o.psu || ""), "middle", "lcdt rig-psu") + `<circle class="psu-k" cx="${KX}" cy="${KY}" r="18"/><line class="psu-m rig-psuk" x1="${KX}" y1="${KY}" x2="${KX}" y2="${KY - 14}" transform="rotate(${knobDeg(o.setV)} ${KX} ${KY})"/><circle class="psu-hit" cx="${KX}" cy="${KY}" r="26"/>` +
+        `<circle class="psu-t p" cx="${tx}" cy="${tp}" r="7"/><circle class="psu-t n" cx="${tx}" cy="${tn}" r="7"/>` + T(tx + ls, tp + 5, "+", la, "psu-l") + T(tx + ls, tn + 5, "−", la, "psu-l") +
+        T(mid, py + 82, "Bench power supply", "middle", "psu-l sm") + T(mid, py + 98, bench && o.conn ? "output connected" : "output not connected", "middle", "psu-l sm dim") + `</g>`;
+      s += `<g class="sup${off}">` + (tall
+        ? wire("r", `M${Rt},244V258H366V${tp}H${tx}`, pg.r) + wire("k", `M${L},244V266H12V590H366V${tn}H${tx}`, pg.k)
+        : wire("r", `M${Rt},244V258H452V246H${tx}`, pg.r) + wire("k", `M${L},244V290H${tx}`, pg.k)) + `</g>`;
+      const jx = tall ? 12 : GX, jy = tall ? 452 : 290;
+      s += o.gnd ? wire("k", tall ? `M${GX},${GY}V${jy}H${jx}` : `M${GX},${GY}V${jy}`) + `<circle class="join" cx="${jx}" cy="${jy}" r="4"/>`
+        : `<path class="wire open" d="M${GX},${GY}V${GY + (tall ? 22 : 46)}"/>` + (tall ? T(GX + 10, GY + 34, "no GND link", "start", "open-t") : T(GX - 8, 240, "no GND link", "end", "open-t"));
     } else {
-      s += wire("r", `M164,244V258H${PX}V${PY}`, pg.r) + wire("k", `M136,244V290H${GX}V${GY}`, pg.k);
+      s += tall ? wire("r", `M${Rt},244V258H366V440H${PX}V${PY}`, pg.r) + wire("k", `M${L},244V266H12V452H${GX}V${GY}`, pg.k)
+        : wire("r", `M${Rt},244V258H${PX}V${PY}`, pg.r) + wire("k", `M${L},244V290H${GX}V${GY}`, pg.k);
     }
-    s += `<g class="${o.hot ? "vp-wire hot" : "vp-wire"}">` + wire("y", `M150,244V272H300V338H654V70H${VPX}V${VPY}`, pg.y) + `</g>`;
+    s += `<g class="${o.hot ? "vp-wire hot" : "vp-wire"}">` + wire("y", tall ? `M${RX},244V280H${VPX}V${VPY}` : `M${RX},244V272H300V338H654V70H${VPX}V${VPY}`, pg.y) + `</g>`;
     if (o.hot) s += `<circle class="vp-hot" cx="${VPX}" cy="${VPY}" r="9"/>`;
     if (o.led !== undefined) {
-      s += `<path class="wire r thin" d="M${LX},${LY}V88"/><path class="led-dome rig-led${o.led ? " on" : ""}" d="M${LX - 11},88V76a11,11 0 0 1 22,0V88Z"/>` + T(LX + 16, 58, "LED (GPIO32)", "start", "wl sm");
+      const lb = tall ? LY - 16 : 88; // the bottom of the LED's dome
+      s += `<path class="wire r thin" d="M${LX},${LY}V${lb}"/><path class="led-dome rig-led${o.led ? " on" : ""}" d="M${LX - 11},${lb}V${lb - 12}a11,11 0 0 1 22,0V${lb}Z"/>` +
+        (tall ? T(LX - 18, lb - 4, "LED (GPIO32)", "end", "wl sm") : T(LX + 16, 58, "LED (GPIO32)", "start", "wl sm"));
     }
     if (o.dead) {
       const puff = [[0, 9, 0], [7, 8, .35], [-7, 7, .7], [3, 10, 1.05], [-4, 8, 1.4]];
       s += `<g class="burn">${puff.map(([dx, r, d]) => `<circle class="smoke" cx="${VPX + dx}" cy="${VPY - 6}" r="${r}" style="animation-delay:${d}s"/>`).join("")}` +
         `<circle class="burn-pin" cx="${VPX}" cy="${VPY}" r="8"/><path class="burn-x" d="M${VPX - 6},${VPY - 6}l12,12m0,-12l-12,12"/>` +
         (o.zap ? `<path class="spark" d="M${VPX},${VPY - 26}l6,16l17,-5l-11,13l13,11l-17,1l-1,17l-9,-14l-13,10l5,-16l-16,-6l16,-6l-6,-15l13,9z"/>` : "") + `</g>`;
-      s += `<g class="dead-banner"><rect x="22" y="14" width="328" height="40" rx="8"/>${T(186, 40, "⚡ VP PIN DAMAGED", "middle", "db-t")}</g>`;
+      const [dx, dy, dw] = tall ? [40, 78, 300] : [22, 14, 328];
+      s += `<g class="dead-banner"><rect x="${dx}" y="${dy}" width="${dw}" height="40" rx="8"/>${T(dx + dw / 2, dy + 26, "⚡ VP PIN DAMAGED", "middle", "db-t")}</g>`;
     }
     if (o.r1 !== undefined) {
-      s += `<g class="rd${o.dead ? " dead" : o.hot ? " hot" : ""}"><rect x="372" y="12" width="148" height="50" rx="6"/>${T(382, 32, esc(o.r1), "start", "rd-l rig-r1")}${T(382, 52, esc(o.r2 || ""), "start", "rd-v hi rig-r2")}</g>`;
+      const [rx, ry, rw] = tall ? [16, 8, 348] : [372, 12, 148];
+      s += `<g class="rd${o.dead ? " dead" : o.hot ? " hot" : ""}"><rect x="${rx}" y="${ry}" width="${rw}" height="50" rx="6"/>${T(rx + 10, ry + 20, esc(o.r1), "start", "rd-l rig-r1")}${T(rx + 10, ry + 40, esc(o.r2 || ""), "start", "rd-v hi rig-r2")}</g>`;
     }
     if (o.meter !== undefined) {
-      s += `<g class="mm"><rect class="mm-b" x="14" y="256" width="112" height="82" rx="8"/><rect class="lcd" x="24" y="266" width="92" height="30" rx="4"/>` +
-        T(70, 287, esc(o.meter), "middle", "lcdt rig-meter") + T(70, 314, "Multimeter", "middle", "mm-t") + T(70, 329, esc(o.meterOn || "wiper to GND"), "middle", "mm-t sm rig-meter-on") + `</g>`;
+      const [mx, my] = tall ? [24, 466] : [14, 256];
+      s += `<g class="mm"><rect class="mm-b" x="${mx}" y="${my}" width="112" height="82" rx="8"/><rect class="lcd" x="${mx + 10}" y="${my + 10}" width="92" height="30" rx="4"/>` +
+        T(mx + 56, my + 31, esc(o.meter), "middle", "lcdt rig-meter") + T(mx + 56, my + 58, "Multimeter", "middle", "mm-t") + T(mx + 56, my + 73, esc(o.meterOn || "wiper to GND"), "middle", "mm-t sm rig-meter-on") + `</g>`;
     }
     if (o.probe) { // dashed outlines mark where the meter's probes can go; tap one to measure there
       const zone = (name, shape) => `<g class="probe-zone${o.probe === name ? " on" : ""}" data-probe="${name}">${shape}</g>`;
-      s += zone("wiper", `<circle cx="150" cy="239" r="13"/>`) + zone("supply", bench ? `<rect x="455" y="232" width="30" height="72" rx="9"/>` : `<circle cx="${PX}" cy="${PY}" r="11"/>`);
+      s += zone("wiper", `<circle cx="${RX}" cy="239" r="13"/>`) + zone("supply", bench ? `<rect x="${tall ? 327 : 455}" y="${tall ? 490 : 232}" width="30" height="72" rx="9"/>` : `<circle cx="${PX}" cy="${PY}" r="11"/>`);
     }
-    return `<svg class="scene rig${o.zap ? " zap" : ""}" viewBox="0 0 ${VW} ${VH}" role="img" aria-label="${esc(o.aria || `Potentiometer on a protractor, wired to the ESP32. The pointer is at ${Math.round(o.angle)} degrees.`)}">${s}</svg>`;
+    return `<svg class="scene rig${tall ? " tall" : ""}${o.zap ? " zap" : ""}" viewBox="0 0 ${VW} ${VH}" role="img" aria-label="${esc(o.aria || `Potentiometer on a protractor, wired to the ESP32. The pointer is at ${Math.round(o.angle)} degrees.`)}">${s}</svg>`;
   }
 
   /* An interactive bench: drag the pointer or use the slider. The drawing is built once per wiring
@@ -172,7 +196,7 @@
       txt(".rig-r1", st.r1); txt(".rig-r2", st.r2); txt(".rig-meter", st.meter); txt(".rig-meter-on", st.meterOn); txt(".rig-psu", st.psu);
       const led = q(".rig-led"), kn = q(".rig-psuk");
       if (led) led.classList.toggle("on", !!st.led);
-      if (kn) kn.setAttribute("transform", `rotate(${knobDeg(st.setV)} ${KX} ${KY})`);
+      if (kn) kn.setAttribute("transform", `rotate(${knobDeg(st.setV)} ${G.KX} ${G.KY})`);
       out.textContent = `${st.angle}°`;
       // on a phone the readout box may be scrolled out of view, so the same values are repeated under the slider
       const lv = [st.r1, st.r2].filter(Boolean).join(" · ");
@@ -189,10 +213,10 @@
     slider.addEventListener("input", () => setAngle(+slider.value));
     // Drag on the protractor: the angle from the centre of the potentiometer to the pointer
     let drag = "";
-    const at = (e, cx, cy) => { const r = box.querySelector("svg").getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * VW - cx, cy - ((e.clientY - r.top) / r.height) * VH]; };
-    const toAngle = (e) => { const [x, y] = at(e, RX, RY); return y < 0 ? (x < 0 ? 180 : 0) : (Math.atan2(y, x) * 180) / Math.PI; };
+    const at = (e, cx, cy) => { const sv = box.querySelector("svg"), r = sv.getBoundingClientRect(), vb = sv.viewBox.baseVal; return [((e.clientX - r.left) / r.width) * vb.width - cx, cy - ((e.clientY - r.top) / r.height) * vb.height]; };
+    const toAngle = (e) => { const [x, y] = at(e, G.RX, G.RY); return y < 0 ? (x < 0 ? 180 : 0) : (Math.atan2(y, x) * 180) / Math.PI; };
     // the supply knob: straight up is the middle of its travel
-    const toVolts = (e) => { const [x, y] = at(e, KX, KY); return Math.round(((clamp((Math.atan2(x, y) * 180) / Math.PI, -135, 135) + 135) / 270) * 120) / 10; };
+    const toVolts = (e) => { const [x, y] = at(e, G.KX, G.KY); return Math.round(((clamp((Math.atan2(x, y) * 180) / Math.PI, -135, 135) + 135) / 270) * 120) / 10; };
     const move = (e) => { if (drag === "pot") setAngle(toAngle(e)); else if (drag === "psu" && o.onSupply) o.onSupply(toVolts(e)); };
     box.addEventListener("pointerdown", (e) => {
       const zone = e.target.closest("[data-probe]");
@@ -206,6 +230,7 @@
     box.addEventListener("pointermove", move);
     ["pointerup", "pointercancel"].forEach((ev) => box.addEventListener(ev, () => { drag = ""; }));
     build();
+    RIGS.push(build);
     return { st, setAngle, set(patch) { Object.assign(st, patch); build(); }, upd(patch) { Object.assign(st, patch); paint(); } };
   }
 
@@ -396,27 +421,39 @@
     const fr = frac(angle), v = 3.3 * fr, count = readAdc(angle, { quiet: true }), ang = BOOK.f(count);
     const bits = count.toString(2).padStart(12, "0").replace(/(.{4})/g, "$1 ").trim();
     const X = [10, 200, 390, 580], Wd = 170, kinds = ["Mechanical", "Electrical", "Digital", "Computational"];
+    // wide: four stages in a row. tall (phone): two rows of two, each stage's drawing moved as a group
+    const tall = TALL.matches, P = tall ? [[10, 30], [200, 30], [10, 210], [200, 210]] : X.map((x) => [x, 30]);
     let s = "";
-    X.forEach((x, i) => {
-      s += `<rect class="ch-box" x="${x}" y="30" width="${Wd}" height="140" rx="10"/>` + T(x + Wd / 2, 22, kinds[i], "middle", "ch-k");
-      if (i) s += `<path class="ch-arrow" d="M${x - 18},100h12"/><path class="ch-head" d="M${x - 8},94l7,6l-7,6z"/>`;
+    const g = [];
+    P.forEach(([x, y], i) => {
+      s += `<rect class="ch-box" x="${x}" y="${y}" width="${Wd}" height="140" rx="10"/>` + T(x + Wd / 2, y - 8, kinds[i], "middle", "ch-k");
+      const head = (hx, hy) => `<path class="ch-head" d="M${hx},${hy - 6}l7,6l-7,6z"/>`;
+      if (i && !(tall && i === 2)) s += `<path class="ch-arrow" d="M${x - 18},${y + 70}h12"/>` + head(x - 8, y + 70);
+      if (tall && i === 2) s += `<path class="ch-arrow" d="M285,172V186H150V200"/><path class="ch-head" d="M144,199l6,8l6,-8z"/>`;
     });
+    const parts = ["", "", "", ""];
+    let s0 = s; s = "";
     // 1. the angle
     const cx = 95, cy = 128, R = 62, p = (a, r) => [cx + r * Math.cos((a * Math.PI) / 180), cy - r * Math.sin((a * Math.PI) / 180)];
     s += `<path class="prot" d="M${cx - R},${cy}A${R},${R} 0 0 1 ${cx + R},${cy}Z"/>`;
     for (let a = 0; a <= 180; a += 30) { const [x1, y1] = p(a, R - 8), [x2, y2] = p(a, R); s += `<line class="tick big" x1="${f1(x1)}" y1="${f1(y1)}" x2="${f1(x2)}" y2="${f1(y2)}"/>`; }
     const [px, py] = p(angle, R - 4);
     s += `<line class="pointer" x1="${cx}" y1="${cy}" x2="${f1(px)}" y2="${f1(py)}"/><circle class="knob" cx="${cx}" cy="${cy}" r="7"/>` + T(cx, 156, `angle = ${Math.round(angle)}°`, "middle", "ch-v");
+    parts[0] = s; s = "";
     // 2. the potentiometer as a voltage divider
     const wy = 150 - 100 * fr;
     s += `<rect class="ch-trk" x="232" y="50" width="12" height="100" rx="3"/><rect class="ch-fill" x="232" y="${f1(wy)}" width="12" height="${f1(150 - wy)}" rx="3"/>` +
       T(238, 44, "3.3 V", "middle", "ch-s") + T(238, 164, "GND", "middle", "ch-s");
     s += `<path class="ch-wip" d="M266,${f1(wy)}h-18m6,-5l-6,5l6,5"/>` + T(274, 86, "wiper voltage", "start", "ch-s") + T(274, 108, `${f2(v)} V`, "start", "ch-v") + T(274, 128, `3.3 V × ${f2(fr)}`, "start", "ch-s");
+    parts[1] = s; s = "";
     // 3. the ADC
     s += T(475, 62, "ADC count", "middle", "ch-s") + T(475, 98, count, "middle", "ch-big") + T(475, 124, bits, "middle", "ch-bits") + T(475, 148, "12 bits: 0 to 4095", "middle", "ch-s");
+    parts[2] = s; s = "";
     // 4. the program
     s += T(665, 62, "Angle = m × ADC + c", "middle", "ch-s") + T(665, 98, `${f1(ang)}°`, "middle", "ch-big") + T(665, 124, `m = ${num(BOOK.m, 4)}`, "middle", "ch-s") + T(665, 142, `c = ${num(BOOK.c, 4)}`, "middle", "ch-s");
-    return `<svg class="scene chain" viewBox="0 0 760 178" role="img" aria-label="The measurement chain: the angle ${Math.round(angle)} degrees becomes a wiper voltage of ${f2(v)} volts, the ADC turns it into the count ${count}, and the program calculates ${f1(ang)} degrees.">${s}</svg>`;
+    parts[3] = s;
+    s = s0 + parts.map((t, i) => (tall ? `<g transform="translate(${P[i][0] - X[i]} ${P[i][1] - 30})">${t}</g>` : t)).join("");
+    return `<svg class="scene chain${tall ? " tall" : ""}" viewBox="0 0 ${tall ? "380 358" : "760 178"}" role="img" aria-label="The measurement chain: the angle ${Math.round(angle)} degrees becomes a wiper voltage of ${f2(v)} volts, the ADC turns it into the count ${count}, and the program calculates ${f1(ang)} degrees.">${s}</svg>`;
   }
   function mountChain(el) {
     el.innerHTML = `<figure class="scene-box"><div class="scene-scroll"><div class="chain-host"></div></div>
@@ -434,6 +471,7 @@
       read.innerHTML = `The ESP32 never sees the angle itself: it only gets the count, and has to work back to the angle.`;
     };
     player($(".pv-pl", el), el, { dur: 10, loop: false, draw, still: 4, label: "Knob position" });
+    TALL.addEventListener("change", () => { const r = $(".pl-s", el); draw(r ? (+r.value / 1000) * 10 : 4); });
   }
 
   // The ADC curve: the ideal straight line against what a typical ESP32 really reports

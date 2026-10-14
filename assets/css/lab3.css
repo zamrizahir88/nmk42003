@@ -32,6 +32,7 @@
 
 /* ---------- Benches and jumper wires ---------- */
 .scene.bench3, .scene.wiring { min-width: 580px; max-width: 860px; margin: 0 auto; }
+.scene.bench3.tall, .scene.wiring.tall { min-width: 0; max-width: 460px; }
 .jw { fill: none; stroke-width: 3.2; stroke-linecap: round; opacity: .92; }
 .jw.r { stroke: #d93a2b; } .jw.k { stroke: #2b3640; } .jw.y { stroke: #e0a800; } .jw.o { stroke: #e8741a; }
 .jw.b { stroke: #2f7de0; } .jw.g { stroke: #2e9e4a; } .jw.v { stroke: #8a4fc7; }
@@ -60,6 +61,7 @@
 
 /* ---------- How RFID works ---------- */
 .scene.how { min-width: 600px; max-width: 860px; margin: 0 auto; }
+.scene.how.tall { min-width: 0; max-width: 440px; }
 .how-ring { fill: none; stroke: var(--amber); stroke-width: 2.5; }
 .how-ant { fill: none; stroke: #c9a227; stroke-width: 2; stroke-dasharray: 6 3; }
 .how-chip { fill: #5d6b77; }

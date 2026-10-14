@@ -208,6 +208,11 @@
     paint();
   }
 
+  // On a phone the bench drawings are laid out tall (stacked) so they fit the screen without sideways scrolling
+  const TALL = window.matchMedia("(max-width: 640px)"), REDRAW = [];
+  TALL.addEventListener("change", () => REDRAW.forEach((f) => f()));
+  const plPos = (el, dur, still) => { const r = $(".pl-s", el); return r ? (+r.value / 1000) * dur : still; };
+
   // Figure 1: the basic circuit, animated: plug in, power LED, the EN capacitor, choose the port.
   function mountBasic(el) {
     el.innerHTML = `<figure class="scene-box"><div class="scene-scroll"><div class="basic-scene"></div></div>
@@ -227,15 +232,17 @@
       s += `<g class="${capHi ? "glow" : ""}"><path class="w cap-w" d="M${enX - 50},60V44M${enX - 62},44h24M${enX - 62},36h24M${enX - 50},36V18"/></g>`;
       s += T(enX - 68, 45, "C1 0.47 µF", "end", `cap-l${capHi ? " on" : ""}`);
       s += T(enX + 6, 100, "EN", "start", "wl") + T(gX + 6, 100, "GND", "start", "wl");
-      s += laptop(10, 116, T(65, 150, port ? "Port: COM3" : pwr ? "USB connected" : "", "middle", "lap-t"));
-      s += `<path class="cable" d="M112,196C128,196 ${px - 20},${by + 60} ${px},${by + 60}"/><rect class="plug" x="${px}" y="${by + 50}" width="24" height="20" rx="3"/>`;
-      sc.innerHTML = `<svg class="scene basic" viewBox="0 0 545 256" role="img" aria-label="ESP32 board connected by USB to a laptop, with a 0.47 microfarad capacitor between EN and GND${pwr ? "; the red power LED is on" : ""}">${s}</svg>`;
+      const tl = TALL.matches, [lx, ly] = tl ? [210, 290] : [10, 116];
+      s += laptop(lx, ly, T(lx + 55, ly + 34, port ? "Port: COM3" : pwr ? "USB connected" : "", "middle", "lap-t"));
+      s += `<path class="cable" d="${tl ? `M${lx + 20},${ly}C${lx + 20},${ly - 50} ${px - 30},${by + 60} ${px},${by + 60}` : `M112,196C128,196 ${px - 20},${by + 60} ${px},${by + 60}`}"/><rect class="plug" x="${px}" y="${by + 50}" width="24" height="20" rx="3"/>`;
+      sc.innerHTML = `<svg class="scene basic${tl ? " tall" : ""}" viewBox="${tl ? "130 0 415 390" : "0 0 545 256"}" role="img" aria-label="ESP32 board connected by USB to a laptop, with a 0.47 microfarad capacitor between EN and GND${pwr ? "; the red power LED is on" : ""}">${s}</svg>`;
       read.innerHTML = t < 1.4 ? `<strong>1. Plug in.</strong> Connect the micro-USB cable from the PC to the ESP32.`
         : t < 3.4 ? `<strong>2. Power.</strong> The red power LED lights. The board takes 5 V from USB and its regulator makes the 3.3 V the ESP32 runs on.`
         : t < 6.2 ? `<strong>3. The capacitor.</strong> The 0.47 µF capacitor goes between <strong>EN</strong> and <strong>GND</strong>. It lets the Arduino IDE switch the board into programming mode by itself, so you don't need to press any buttons (automatic mode).`
         : `<strong>4. Choose the port.</strong> The board appears on the PC as a COM port. In the Arduino IDE choose the ESP32 board (ESP32 Dev Module or DOIT ESP32 DEVKIT V1) and that port under <em>Tools</em>.`;
     };
     player($(".pv-pl", el), el, { dur: 9, hold: 1.5, draw, still: 5, label: "Setting up the circuit" });
+    REDRAW.push(() => draw(plPos(el, 9, 5)));
   }
 
   // Why the capacitor helps: simplified timing of BOOT (GPIO0) and EN during an upload.
@@ -497,14 +504,14 @@ ${body}
     const sceneEl = $(".ota-scene", el), panel = $(".stp-panel", el);
     const links = () => ({ cable: cur === 3, wifiLap: cur >= 5, wifiEsp: cur >= 4 && done.cable });
     const drawScene = () => {
-      const L = links(), bx = 330, by = 108, k = 0.5;
-      let s = laptop(14, 70, T(69, 104, cur === 0 || cur === 1 || cur === 2 ? "Arduino IDE" : cur === 3 ? "Uploading…" : cur === 4 ? "Serial Monitor" : IP, "middle", "lap-t"));
-      s += router(210, 34, L.wifiLap || L.wifiEsp);
-      s += `<path class="cable${L.cable ? " flow" : " dim"}" d="M124,148C200,190 280,138 ${bx - 6},138"/>`;
-      s += `<path id="otaA" class="rf-link${L.wifiLap ? " on" : ""}" d="M112,76Q160,30 208,48"/><path id="otaB" class="rf-link${L.wifiEsp ? " on" : ""}" d="M292,48Q370,40 ${bx + 128},${by - 2}"/>`;
+      const tl = TALL.matches, L = links(), [bx, by] = tl ? [64, 230] : [330, 108], k = tl ? 0.7 : 0.5, ly = tl ? 40 : 70, [rx, ry] = tl ? [270, 62] : [210, 34];
+      let s = laptop(14, ly, T(69, ly + 34, cur === 0 || cur === 1 || cur === 2 ? "Arduino IDE" : cur === 3 ? "Uploading…" : cur === 4 ? "Serial Monitor" : IP, "middle", "lap-t"));
+      s += router(rx, ry, L.wifiLap || L.wifiEsp);
+      s += `<path class="cable${L.cable ? " flow" : " dim"}" d="${tl ? `M124,${ly + 78}C150,200 20,${by + k * 60} ${bx - 6},${by + k * 60}` : `M124,148C200,190 280,138 ${bx - 6},138`}"/>`;
+      s += `<path id="otaA" class="rf-link${L.wifiLap ? " on" : ""}" d="M112,${ly + 6}Q${tl ? "190,8" : "160,30"} ${rx - 2},${ry + 14}"/><path id="otaB" class="rf-link${L.wifiEsp ? " on" : ""}" d="M${rx + 82},${ry + 14}Q${tl ? `372,${by - 20}` : "370,40"} ${bx + k * 256},${by - 2}"/>`;
       s += board(bx, by, { k, pwr: true, led: ledOn });
-      s += T(bx + 90, by + 82, "ESP32", "middle", "small");
-      sceneEl.innerHTML = `<svg class="scene ota" viewBox="0 0 520 200" role="img" aria-label="Laptop, Wi-Fi router and ESP32. ${L.cable ? "The USB cable is in use." : ""}${L.wifiLap || L.wifiEsp ? " Wi-Fi links are active." : ""}">${s}</svg>`;
+      s += T(bx + k * 180, by + k * 164, "ESP32", "middle", "small");
+      sceneEl.innerHTML = `<svg class="scene ota${tl ? " tall" : ""}" viewBox="${tl ? "0 0 380 350" : "0 0 520 200"}" role="img" aria-label="Laptop, Wi-Fi router and ESP32. ${L.cable ? "The USB cable is in use." : ""}${L.wifiLap || L.wifiEsp ? " Wi-Fi links are active." : ""}">${s}</svg>`;
     };
     const panels = [
       () => `<h4>1. Export the Blink Program as a Binary File</h4>
@@ -613,6 +620,7 @@ const char* password = "********";`, "OTAWebUpdater.ino (top of the sketch)");
       $(".ota-code", panel).innerHTML = otaCode();
     });
     show(0);
+    REDRAW.push(drawScene);
   }
 
   /* =====================================================================
@@ -953,7 +961,7 @@ ${on ? "digitalWrite(2, HIGH): LED on" : off ? "digitalWrite(2, LOW): LED off" :
       s += T(lx + 22, 24, rev ? "long leg (+) on the resistor side" : "long leg (+), anode", "start", "bb-t") + T(lx - 22, 24, rev ? "" : "short leg (−), cathode", "end", "bb-t");
       if (on) s += `<path class="current" d="M${dX},${dY}V66H${lx + 8}V36M${lx - 8},40V66H${gX}V${gY}"/>`;
       s += T(dX + 6, 124, "D32 (GPIO32)", "start", "wl") + T(gX + 6, 124, "GND", "start", "wl") + T((rL + rR) / 2, 92, "resistor", "middle", "bb-t");
-      sc.innerHTML = `<svg class="scene wire-svg" viewBox="0 0 520 262" role="img" aria-label="External LED and resistor on a breadboard wired to GPIO32 and GND. The LED is ${on ? "lit" : "off"}.">${s}</svg>`;
+      sc.innerHTML = `<svg class="scene wire-svg${TALL.matches ? " tall" : ""}" viewBox="${TALL.matches ? "70 0 380 262" : "0 0 520 262"}" role="img" aria-label="External LED and resistor on a breadboard wired to GPIO32 and GND. The LED is ${on ? "lit" : "off"}.">${s}</svg>`;
       read.innerHTML = on ? `<strong>The LED is lit.</strong> Current flows from GPIO32 (3.3 V) through the LED, from its long leg to its short leg, then through the resistor to GND.`
         : !high ? `<strong>The LED is off.</strong> GPIO32 is at 0 V, the same as GND, so no current flows.`
         : `<strong>The LED stays off.</strong> An LED only conducts one way, from anode (long leg) to cathode (short leg). Turn it round. (A reversed LED isn't damaged at 3.3 V.)`;
@@ -962,6 +970,7 @@ ${on ? "digitalWrite(2, HIGH): LED on" : off ? "digitalWrite(2, LOW): LED off" :
     wireChips(rows[0], (v) => { high = v === "1"; draw(); });
     wireChips(rows[1], (v) => { rev = v === "1"; draw(); });
     draw();
+    REDRAW.push(draw);
   }
 
   const E12 = [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2];
@@ -1190,11 +1199,15 @@ Answer: send the web page back`;
     s += `<path class="wire r" d="M${dX},${dY}V112H473V84"/><path class="leg" d="M473,84V70M457,84V72"/><path class="wire g thin" d="M457,84H440V30"/><rect class="res-body" x="435" y="40" width="10" height="28" rx="3"/>`;
     s += `<path class="led-dome${o.led32 ? " on" : ""}" d="M452,72V58a13,13 0 0 1 26,0V72Z"/>`;
     s += T(cX - 4, 136, "GPIO33", "end", "wl sm") + T(dX + 4, 136, "GPIO32", "start", "wl sm");
-    const rd = o.read === null || o.read === undefined ? "?" : o.read;
-    s += `<g class="rd"><rect x="2" y="56" width="104" height="44" rx="6"/>${T(54, 74, "digitalRead(33)", "middle", "rd-l")}${T(54, 93, rd === "?" ? "?" : `${rd} (${rd ? "HIGH" : "LOW"})`, "middle", `rd-v${rd === 1 ? " hi" : ""}`)}</g>`;
-    if (o.phone) s += phoneIco(20, 170, "phone") + `<path id="${o.phone}" class="rf-link${o.link ? " on" : ""}" d="M${BX + 256},${BY + 30}C${BX + 200},${BY - 30} 90,${BY - 10} 64,${BY + 40}"/>`;
-    return `<svg class="scene bench" viewBox="0 -12 520 312" role="img" aria-label="Breadboard with a toggle switch on GPIO33 and an LED on GPIO32. The switch is ${o.on ? "ON" : "OFF"}; GPIO33 reads ${rd === "?" ? "a random value (floating)" : rd ? "HIGH" : "LOW"}.">${s}</svg>`;
+    const rd = o.read === null || o.read === undefined ? "?" : o.read, tl = TALL.matches, [qx, qy] = tl ? [130, 304] : [2, 56];
+    s += `<g class="rd"><rect x="${qx}" y="${qy}" width="104" height="44" rx="6"/>${T(qx + 52, qy + 18, "digitalRead(33)", "middle", "rd-l")}${T(qx + 52, qy + 37, rd === "?" ? "?" : `${rd} (${rd ? "HIGH" : "LOW"})`, "middle", `rd-v${rd === 1 ? " hi" : ""}`)}</g>`;
+    if (o.phone) s += tl ? phoneIco(400, 296, "phone") + `<path id="${o.phone}" class="rf-link${o.link ? " on" : ""}" d="M${BX + 256},${BY + 30}C${BX + 300},${BY + 80} 430,${BY + 100} 421,${BY + 144}"/>`
+      : phoneIco(20, 170, "phone") + `<path id="${o.phone}" class="rf-link${o.link ? " on" : ""}" d="M${BX + 256},${BY + 30}C${BX + 200},${BY - 30} 90,${BY - 10} 64,${BY + 40}"/>`;
+    return `<svg class="scene bench${tl ? " tall" : ""}" data-o='${JSON.stringify(o).replace(/'/g, "&#39;")}' viewBox="${tl ? `100 -12 400 ${o.phone ? 412 : 362}` : "0 -12 520 312"}" role="img" aria-label="Breadboard with a toggle switch on GPIO33 and an LED on GPIO32. The switch is ${o.on ? "ON" : "OFF"}; GPIO33 reads ${rd === "?" ? "a random value (floating)" : rd ? "HIGH" : "LOW"}.">${s}</svg>`;
   }
+  // every switch bench on the page is redrawn from the options it was drawn with
+  REDRAW.push(() => document.querySelectorAll("svg.scene.bench[data-o]").forEach((g) => { g.outerHTML = bench(JSON.parse(g.dataset.o)); }));
+
   // Click or press Enter/Space on the drawn switch, or the button next to it
   function wireSwitch(el, flip) {
     el.addEventListener("click", (e) => { if (e.target.closest(".sw") || e.target.closest("[data-flip]")) flip(); });

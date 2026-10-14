@@ -47,8 +47,8 @@ html { scroll-padding-top: 124px; }
 
 /* ---------- Circuit diagram ---------- */
 .diagram { margin: 0; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 12px 12px 8px; }
-/* keep the diagram in view while editing a long list of inputs */
-@media (min-width: 861px) { .diagram { position: sticky; top: 124px; } }
+/* keep the diagram in view while editing a long list of inputs beside it (only in the two-column calculator grid) */
+@media (min-width: 861px) { .c-grid > .diagram { position: sticky; top: 124px; } }
 .ckt-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .ckt { display: block; width: 100%; height: auto; }
 @media (max-width: 560px) { .ckt { min-width: 440px; } }

@@ -512,3 +512,7 @@ button.set-dev:hover { border-color: #2f7de0; }
 .steps-box li a { color: var(--ink); text-decoration: none; border-bottom: 1px dotted var(--ink-3); }
 .steps-box li a:hover { color: var(--teal); border-bottom-color: var(--teal); }
 .steps-box p { margin: 0; color: var(--ink-2); }
+
+/* On a phone the bench drawings are drawn tall (stacked), so they fit the screen with no sideways scrolling */
+.scene.basic.tall, .scene.ota.tall, .scene.wire-svg.tall, .scene.bench.tall { min-width: 0; max-width: 460px; }
+.scene-box:has(.tall) .swipe { display: none; }

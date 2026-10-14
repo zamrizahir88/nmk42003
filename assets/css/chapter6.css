@@ -67,3 +67,4 @@
 .scene .trace-a { fill: none; stroke: var(--teal); stroke-width: 2.4; stroke-linejoin: round; }
 .scene .trace-d { fill: none; stroke: var(--amber); stroke-width: 2.4; stroke-linejoin: round; }
 .scene .word { font-size: 11px; }
+.scene.r2r { max-width: 700px; margin: 0 auto; display: block; }

@@ -84,23 +84,37 @@
 
   /* The reader bench: RC522 wired to the ESP32, and a card that moves onto the reader when tapped.
      readerBench(host) → { tap(k, far) → Promise<boolean read>, led(on), busy } */
-  const BX = 320, BY = 96;
+  // Two layouts: wide (module beside the board) and, on a phone, tall (module above the board)
+  const TALL = window.matchMedia("(max-width: 640px)");
+  let G = {};
+  const geo = () => { G = TALL.matches ? { tall: true, BX: 38, BY: 262, BK: 0.9, VW: 400, MX: 16, MY: 16 } : { tall: false, BX: 320, BY: 96, BK: 1, VW: 700, MX: 16, MY: 60 }; };
+  geo();
+  const REDRAW = []; // drawings to rebuild when a phone turns between portrait and landscape
+  TALL.addEventListener("change", () => { geo(); REDRAW.forEach((f) => f()); });
   const RC_MAP = { SDA: "b:D5", SCK: "b:D18", MOSI: "b:D23", MISO: "b:D19", GND: "b:GND", RST: "t:D27", "3.3V": "b:3V3" };
   const LCD_MAP = { GND: "t:GND", VCC: "t:VIN", SDA: "b:D21", SCL: "b:D22" };
   const WIRE_COL = { SDA: "y", SCK: "o", MOSI: "b", MISO: "g", GND: "k", RST: "v", "3.3V": "r", VCC: "r", SCL: "o" };
-  const espXY = (id) => pinXY(BX, BY, 1, id[0] === "t" ? "top" : "bot", id.slice(2));
+  const espXY = (id) => pinXY(G.BX, G.BY, G.BK, id[0] === "t" ? "top" : "bot", id.slice(2));
   // a jumper leaves the module, swings above or below the board, and comes down onto its pin
-  const jumper = (sx, sy, id, cls) => { const [ex, ey] = espXY(id), up = id[0] === "t"; return `<path class="jw ${cls}" d="M${sx},${sy}C${sx + 70},${up ? 12 : 336} ${f1(ex)},${ey + (up ? -110 : 120)} ${f1(ex)},${f1(ey)}"/>`; };
+  // tall: square runs in lanes beside and under the board, so the wires don't cross it (i = the wire's lane)
+  const jumper = (sx, sy, id, cls, i = 0) => { const [ex, ey] = espXY(id), up = id[0] === "t";
+    if (G.tall) return `<path class="jw ${cls}" d="${up ? `M${sx},${sy}H${sx + 14 + i * 5}V${G.BY - 10 - i * 5}H${f1(ex)}V${f1(ey)}` : `M${sx},${sy}H${366 + i * 4}V${G.BY + 124 + i * 6}H${f1(ex)}V${f1(ey)}`}"/>`;
+    return `<path class="jw ${cls}" d="M${sx},${sy}C${sx + 70},${up ? 12 : 336} ${f1(ex)},${ey + (up ? -110 : 120)} ${f1(ex)},${f1(ey)}"/>`; };
   function readerBench(host, o = {}) {
-    const RX = 16, RY = 60, cx = RX + 64, cy = RY + 99, rest = [596, 290];
-    let s = rc522G(RX, RY, { power: true });
-    s += board(BX, BY, { pwr: true, hi: Object.values(RC_MAP) });
-    Object.keys(RC_MAP).forEach((p) => { const [px, py] = rcPin(RX, RY, p); s += jumper(px, py, RC_MAP[p], WIRE_COL[p]); });
-    s += `<g class="rf">${[26, 44, 62].map((r) => `<circle cx="${cx}" cy="${cy}" r="${r}"/>`).join("")}</g>`;
-    s += T(rest[0], rest[1] + 50, "", "middle", "small bench-cap") + `<g class="tagmove" style="transform:translate(${rest[0]}px,${rest[1]}px)"></g>`;
-    host.innerHTML = `<figure class="scene-box"><div class="scene-scroll"><svg class="scene bench3" viewBox="0 0 700 340" role="img" aria-label="RC522 reader wired to the ESP32, with a card beside it">${s}</svg></div>
-      <figcaption>${o.caption || "The RC522 on the SPI bus. Tap a card below to hold it on the reader."}<span class="swipe"> Swipe sideways to see all of it.</span></figcaption></figure>`;
-    const mover = $(".tagmove", host), rf = $(".rf", host), cap = $(".bench-cap", host), svgEl = $("svg", host);
+    let RX, RY, cx, cy, rest, mover, rf, cap, svgEl;
+    const build = () => {
+      RX = G.MX; RY = G.MY; cx = RX + 64; cy = RY + 99; rest = G.tall ? [300, 120] : [596, 290];
+      let s = rc522G(RX, RY, { power: true });
+      s += board(G.BX, G.BY, { k: G.BK, pwr: true, hi: Object.values(RC_MAP) });
+      Object.keys(RC_MAP).forEach((p, i) => { const [px, py] = rcPin(RX, RY, p); s += jumper(px, py, RC_MAP[p], WIRE_COL[p], i); });
+      s += `<g class="rf">${[26, 44, 62].map((r) => `<circle cx="${cx}" cy="${cy}" r="${r}"/>`).join("")}</g>`;
+      s += T(rest[0], rest[1] + 50, "", "middle", "small bench-cap") + `<g class="tagmove" style="transform:translate(${rest[0]}px,${rest[1]}px)"></g>`;
+      host.innerHTML = `<figure class="scene-box"><div class="scene-scroll"><svg class="scene bench3${G.tall ? " tall" : ""}" viewBox="0 0 ${G.VW} ${G.tall ? 440 : 340}" role="img" aria-label="RC522 reader wired to the ESP32, with a card beside it">${s}</svg></div>
+        <figcaption>${o.caption || "The RC522 on the SPI bus. Tap a card below to hold it on the reader."}<span class="swipe"> Swipe sideways to see all of it.</span></figcaption></figure>`;
+      mover = $(".tagmove", host); rf = $(".rf", host); cap = $(".bench-cap", host); svgEl = $("svg", host);
+    };
+    build();
+    REDRAW.push(build);
     let back = 0;
     const api = { busy: false,
       led(on) { const l = $(".dk-led.blue", host); if (l) l.classList.toggle("on", !!on); },
@@ -111,7 +125,7 @@
         mover.innerHTML = tagShape(k); cap.textContent = tagOf(k).name;
         mover.style.transform = `translate(${rest[0]}px,${rest[1]}px)`;
         await sleep(40);
-        mover.style.transform = far ? `translate(${cx + 150}px,${cy}px)` : `translate(${cx}px,${cy}px)`;
+        mover.style.transform = far ? (G.tall ? `translate(${cx + 120}px,${cy - 30}px)` : `translate(${cx + 150}px,${cy}px)`) : `translate(${cx}px,${cy}px)`;
         await sleep(520);
         if (!far) rf.classList.add("on");
         svgEl.setAttribute("aria-label", `RC522 reader wired to the ESP32. The ${tagOf(k).name.toLowerCase()} is ${far ? "held about 8 cm away" : "on the reader"}.`);
@@ -182,18 +196,22 @@
     const host = $(".how-host", el), read = $(".pv-read", el), bytes = CARDS.card.map(hex2);
     const seg = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
     const draw = (t) => {
-      const cardX = 520 - 250 * seg(t, 0, 2.5), field = t >= 2.5 && t < 11, lit = t >= 4;
-      let s = `<rect class="rc-pcb" x="40" y="50" width="150" height="150" rx="8"/>`;
-      for (let i = 0; i < 4; i++) s += `<rect class="rc-coil" x="${56 + i * 10}" y="${66 + i * 10}" width="${118 - i * 20}" height="${118 - i * 20}" rx="8"/>`;
-      s += T(115, 222, "RC522 reader", "middle", "tt") + T(115, 240, "its coil is an antenna", "middle", "small");
-      if (field) [0, 1, 2].forEach((i) => { const k = ((t * 0.7 + i / 3) % 1); s += `<circle class="how-ring" cx="190" cy="125" r="${f1(20 + k * 110)}" opacity="${(0.8 * (1 - k)).toFixed(2)}"/>`; });
-      s += `<g transform="translate(${f1(cardX)} 125)"><rect class="tg-card" x="-52" y="-66" width="104" height="132" rx="8"/><rect class="how-ant" x="-40" y="-54" width="80" height="108" rx="6"/>` +
+      // wide: reader, card, ESP32 in a row. tall (phone): reader and card on top, the ESP32 below
+      const tl = G.tall, ox = tl ? -20 : 0, oy = tl ? -10 : 0, rEdge = 190 + ox, midY = 125 + oy;
+      const cardX = tl ? 326 - 76 * seg(t, 0, 2.5) : 520 - 250 * seg(t, 0, 2.5), field = t >= 2.5 && t < 11, lit = t >= 4;
+      let s = `<rect class="rc-pcb" x="${40 + ox}" y="${50 + oy}" width="150" height="150" rx="8"/>`;
+      for (let i = 0; i < 4; i++) s += `<rect class="rc-coil" x="${56 + ox + i * 10}" y="${66 + oy + i * 10}" width="${118 - i * 20}" height="${118 - i * 20}" rx="8"/>`;
+      s += T(115 + ox, 222 + oy, "RC522 reader", "middle", "tt") + T(115 + ox, 240 + oy, "its coil is an antenna", "middle", "small");
+      if (field) [0, 1, 2].forEach((i) => { const k = ((t * 0.7 + i / 3) % 1); s += `<circle class="how-ring" cx="${rEdge}" cy="${midY}" r="${f1(20 + k * 110)}" opacity="${(0.8 * (1 - k)).toFixed(2)}"/>`; });
+      s += `<g transform="translate(${f1(cardX)} ${midY})"><rect class="tg-card" x="-52" y="-66" width="104" height="132" rx="8"/><rect class="how-ant" x="-40" y="-54" width="80" height="108" rx="6"/>` +
         `<rect class="how-chip${lit ? " on" : ""}" x="-10" y="-10" width="20" height="20" rx="3"/>${T(0, 84, "RFID card", "middle", "tt")}${T(0, 102, lit ? "chip powered" : "no battery", "middle", "small")}</g>`;
       // the UID comes back one byte at a time
-      bytes.forEach((b, i) => { const k = seg(t, 5 + i * 0.9, 6.2 + i * 0.9); if (k > 0 && k < 1) s += `<g class="pkt" transform="translate(${f1(cardX - 60 - k * (cardX - 250))} ${106 + i * 12})"><rect x="-17" y="-10" width="34" height="20" rx="10"/><text y="4" text-anchor="middle">${b}</text></g>`; });
-      s += `<rect class="how-esp" x="560" y="80" width="120" height="90" rx="8"/>${T(620, 108, "ESP32", "middle", "tt inv")}${T(620, 132, t >= 10.5 ? bytes.join(" ") : "waiting…", "middle", "how-uid")}${T(620, 152, t >= 10.5 ? "UID received" : "", "middle", "small inv")}`;
-      s += `<path class="how-spi${t >= 9 && t < 10.5 ? " on" : ""}" d="M190,60C300,10 480,20 560,100"/>${T(380, 28, "SPI bus", "middle", "small")}`;
-      host.innerHTML = `<svg class="scene how" viewBox="0 0 700 250" role="img" aria-label="How RFID works: the reader's field powers the card, the card sends back its UID ${bytes.join(" ")}, and the reader passes it to the ESP32.">${s}</svg>`;
+      bytes.forEach((b, i) => { const k = seg(t, 5 + i * 0.9, 6.2 + i * 0.9); if (k > 0 && k < 1) s += `<g class="pkt" transform="translate(${f1(cardX - 60 - k * (cardX - 60 - rEdge))} ${106 + oy + i * 12})"><rect x="-17" y="-10" width="34" height="20" rx="10"/><text y="4" text-anchor="middle">${b}</text></g>`; });
+      const [ex, ey] = tl ? [130, 330] : [560, 80];
+      s += `<rect class="how-esp" x="${ex}" y="${ey}" width="120" height="90" rx="8"/>${T(ex + 60, ey + 28, "ESP32", "middle", "tt inv")}${T(ex + 60, ey + 52, t >= 10.5 ? bytes.join(" ") : "waiting…", "middle", "how-uid")}${T(ex + 60, ey + 72, t >= 10.5 ? "UID received" : "", "middle", "small inv")}`;
+      s += tl ? `<path class="how-spi${t >= 9 && t < 10.5 ? " on" : ""}" d="M95,250C95,290 190,280 190,330"/>${T(150, 300, "SPI bus", "start", "small")}`
+        : `<path class="how-spi${t >= 9 && t < 10.5 ? " on" : ""}" d="M190,60C300,10 480,20 560,100"/>${T(380, 28, "SPI bus", "middle", "small")}`;
+      host.innerHTML = `<svg class="scene how${tl ? " tall" : ""}" viewBox="0 0 ${tl ? "380 430" : "700 250"}" role="img" aria-label="How RFID works: the reader's field powers the card, the card sends back its UID ${bytes.join(" ")}, and the reader passes it to the ESP32.">${s}</svg>`;
       read.innerHTML = t < 2.5 ? `<strong>1. Bring the card near.</strong> An RFID card has a small chip and a coil of wire inside, but no battery.`
         : t < 5 ? `<strong>2. The reader powers the card.</strong> The RC522's coil makes a 13.56 MHz magnetic field. Within a few centimetres, the card's coil picks up enough energy to switch its chip on.`
         : t < 9 ? `<strong>3. The card answers.</strong> The chip sends back its serial number, the <strong>UID</strong>: ${bytes.length} bytes here, written in hexadecimal as <strong>${bytes.join(" ")}</strong>. No two cards should have the same UID.`
@@ -201,6 +219,7 @@
         : `<strong>5. The ESP32 decides what to do.</strong> A sensor that works out and reports a ready-made answer like this, not just a raw voltage, is called a <strong>smart sensor</strong>.`;
     };
     player($(".pv-pl", el), el, { dur: 12, loop: false, draw, still: 7, label: "How RFID works" });
+    REDRAW.push(() => { const r = $(".pl-s", el); draw(r ? (+r.value / 1000) * 12 : 7); });
   }
 
   /* =====================================================================
@@ -278,7 +297,7 @@
   /* A wiring trainer: choose where each pin of a module goes, then check. Wrong wiring shows what would
      happen on the real bench. cfg: { mod, pins: [[name, role]], opts: [[espPin, label]], right: { name: espPin },
      judge(got) → { state: "ok" | "warn" | "bad" | "dead", title, html }, caption } */
-  const lcdPin = (name) => [276, 96 + ["GND", "VCC", "SDA", "SCL"].indexOf(name) * 26];
+  const lcdPin = (name) => [276, G.MY + 36 + ["GND", "VCC", "SDA", "SCL"].indexOf(name) * 26];
   function mountWire(el, cfg) {
     const got = {};
     let res = null;
@@ -291,13 +310,14 @@
     const svgBox = $(".wr-svg", el), out = $(".wr-out", el);
     const draw = () => {
       const st = res ? res.state : "", used = cfg.pins.map(([p]) => got[p]).filter(Boolean);
-      let s = cfg.mod === "rc" ? rc522G(16, 60, { power: st === "ok", dead: st === "dead" })
-        : lcdSvg(st === "ok" || st === "warn" ? ["", "", "", ""] : [], { light: st === "ok" || st === "warn", contrast: 0.5 }).replace("<svg ", `<svg x="14" y="70" width="200" height="87" `) +
-          `<rect class="bp" x="222" y="80" width="68" height="112" rx="4"/>` + ["GND", "VCC", "SDA", "SCL"].map((p) => { const [px, py] = lcdPin(p); return `<circle class="dk-pin" cx="${px}" cy="${py}" r="4"/>` + T(px - 12, py + 4, p, "end", "bp-l"); }).join("") + T(152, 214, "16 × 4 LCD and its I2C backpack", "middle", "small");
-      s += board(BX, BY, { pwr: true, hi: used });
-      cfg.pins.forEach(([p]) => { if (!got[p]) return; const [px, py] = cfg.mod === "rc" ? rcPin(16, 60, p) : lcdPin(p); s += jumper(px, py, got[p], `${WIRE_COL[p]}${st === "ok" && !/GND|VCC|3\.3V/.test(p) ? " live" : ""}`); });
-      if (st === "dead") s += `<g class="burn">${[[0, 9, 0], [8, 8, .4], [-8, 7, .8]].map(([dx, r, d]) => `<circle class="smoke" cx="${90 + dx}" cy="70" r="${r}" style="animation-delay:${d}s"/>`).join("")}</g>` + T(98, 48, "MODULE DAMAGED", "middle", "burn-t");
-      svgBox.innerHTML = `<svg class="scene wiring" viewBox="0 0 700 340" role="img" aria-label="${cfg.aria}. ${used.length} of ${cfg.pins.length} wires connected${res ? ": " + res.title : ""}.">${s}</svg>`;
+      const MY = G.MY, dy = MY - 60; // the module's drawing moves up by dy on a phone
+      let s = cfg.mod === "rc" ? rc522G(16, MY, { power: st === "ok", dead: st === "dead" })
+        : lcdSvg(st === "ok" || st === "warn" ? ["", "", "", ""] : [], { light: st === "ok" || st === "warn", contrast: 0.5 }).replace("<svg ", `<svg x="14" y="${70 + dy}" width="200" height="87" `) +
+          `<rect class="bp" x="222" y="${80 + dy}" width="68" height="112" rx="4"/>` + ["GND", "VCC", "SDA", "SCL"].map((p) => { const [px, py] = lcdPin(p); return `<circle class="dk-pin" cx="${px}" cy="${py}" r="4"/>` + T(px - 12, py + 4, p, "end", "bp-l"); }).join("") + T(152, 214 + dy, "16 × 4 LCD and its I2C backpack", "middle", "small");
+      s += board(G.BX, G.BY, { k: G.BK, pwr: true, hi: used });
+      cfg.pins.forEach(([p], i) => { if (!got[p]) return; const [px, py] = cfg.mod === "rc" ? rcPin(16, MY, p) : lcdPin(p); s += jumper(px, py, got[p], `${WIRE_COL[p]}${st === "ok" && !/GND|VCC|3\.3V/.test(p) ? " live" : ""}`, i); });
+      if (st === "dead") s += `<g class="burn">${[[0, 9, 0], [8, 8, .4], [-8, 7, .8]].map(([dx, r, d]) => `<circle class="smoke" cx="${90 + dx}" cy="${70 + dy}" r="${r}" style="animation-delay:${d}s"/>`).join("")}</g>` + T(98, Math.max(14, 48 + dy), "MODULE DAMAGED", "middle", "burn-t");
+      svgBox.innerHTML = `<svg class="scene wiring${G.tall ? " tall" : ""}" viewBox="0 0 ${G.VW} ${G.tall ? 440 : 340}" role="img" aria-label="${cfg.aria}. ${used.length} of ${cfg.pins.length} wires connected${res ? ": " + res.title : ""}.">${s}</svg>`;
     };
     const say = () => { out.innerHTML = res ? `<div class="callout ${res.state === "ok" ? "info" : "warn"}"><strong>${res.title}</strong>${res.html}</div>` : `<p class="small-note">Choose where each pin goes, then check. The wires appear as you choose.</p>`; };
     el.addEventListener("change", (e) => { const sel = e.target.closest("select[data-p]"); if (!sel) return; got[sel.dataset.p] = sel.value; res = null; draw(); say(); });
@@ -312,6 +332,7 @@
       draw(); say();
     });
     draw(); say();
+    REDRAW.push(draw);
   }
   const wrongList = (items) => `<ul>${items.map((x) => `<li>${x}</li>`).join("")}</ul>`;
   const RC_WHY = {

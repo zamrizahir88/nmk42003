@@ -725,7 +725,7 @@ void loop()
         path += `L${x0 + fw + 10},${yH}`;
         lab += `<text x="${x0 + fw / 2}" y="24" text-anchor="middle" class="chr">“${esc(show(c))}” = ${code} = 0x${code.toString(16).toUpperCase().padStart(2, "0")}</text>`;
       });
-      el.querySelector(".uart-wave").innerHTML = `<svg class="ckt uart" viewBox="0 0 ${W2} 110" style="min-width:${Math.max(440, W2 * 0.9)}px" role="img" aria-label="UART waveform for ${chars.length} characters">${lab}<path d="${path}" class="trace"/><text x="12" y="${yH - 6}" class="small">1</text><text x="12" y="${yL + 4}" class="small">0</text></svg>`;
+      el.querySelector(".uart-wave").innerHTML = `<svg class="ckt uart" viewBox="0 0 ${W2} 110" style="min-width:${Math.max(440, W2 * 0.9)}px;max-width:${Math.round(W2 * 1.15)}px" role="img" aria-label="UART waveform for ${chars.length} characters">${lab}<path d="${path}" class="trace"/><text x="12" y="${yH - 6}" class="small">1</text><text x="12" y="${yL + 4}" class="small">0</text></svg>`;
       const tb = 1 / S.baud, tf = 10 * tb, n = chars.length;
       el.querySelector(".result").innerHTML = `${n} character${n === 1 ? "" : "s"} take ${eng(n * tf, "s")} at ${S.baud} baud`;
       el.querySelector(".steps").innerHTML = stepsHtml([
@@ -790,7 +790,7 @@ void loop()
       </svg>`;
       const bits = Array.from({ length: 7 }, (_, k) => (S.addr >> (6 - k)) & 1);
       const fr = [["S", "st"], ...bits.map((v) => [v, "ad"]), [S.rw, "rw"], [found ? "A" : "N", found ? "ack" : "nak"], ...(found ? [..."01000001"].map((v) => [v, "da"]).concat([["A", "ack"]]) : []), ["P", "st"]];
-      el.querySelector(".i2c-frame").innerHTML = `<svg class="ckt i2cf" viewBox="0 0 ${fr.length * 34 + 20} 80" style="min-width:${fr.length * 26}px" role="img" aria-label="I2C frame bits">${fr.map(([v, c], i) => `<rect x="${10 + i * 34}" y="20" width="30" height="34" rx="5" class="fb ${c}"/><text x="${25 + i * 34}" y="42" text-anchor="middle" class="fbt">${v}</text>`).join("")}
+      el.querySelector(".i2c-frame").innerHTML = `<svg class="ckt i2cf" viewBox="0 0 ${fr.length * 34 + 20} 80" style="min-width:${fr.length * 26}px;max-width:${Math.round((fr.length * 34 + 20) * 1.15)}px" role="img" aria-label="I2C frame bits">${fr.map(([v, c], i) => `<rect x="${10 + i * 34}" y="20" width="30" height="34" rx="5" class="fb ${c}"/><text x="${25 + i * 34}" y="42" text-anchor="middle" class="fbt">${v}</text>`).join("")}
         ${T(10 + 1 * 34 + 7 * 17, 14, "address", "middle", "small")}${T(10 + 8 * 34 + 15, 72, "R/W", "middle", "small")}${found ? T(10 + 10 * 34 + 8 * 17, 14, S.rw ? "data from the device" : "data to the device", "middle", "small") : ""}</svg>`;
       el.querySelector(".result").innerHTML = `First byte = 0x${first.toString(16).toUpperCase().padStart(2, "0")} = ${first}. ${found ? "The device recognises its address and pulls SDA low to acknowledge (A)." : "No device has this address, so nobody acknowledges (N) and the ESP32 stops."}`;
       el.querySelector(".steps").innerHTML = stepsHtml([
@@ -800,6 +800,464 @@ void loop()
     el.querySelector("#i2c-a").addEventListener("input", (e) => { S.addr = +e.target.value; draw(); });
     el.querySelector("#i2c-rw").addEventListener("input", (e) => { S.rw = +e.target.value; draw(); });
     draw();
+  }
+
+  /* ---------------- UART, SPI and I²C compared: the interactive table ----------------
+     Tap a row (one characteristic) and a small demo of just that row opens under it, always with UART, SPI
+     and I²C side by side. "Test me on the table" blanks the cells for an exam drill; a row answered fully
+     right counts once as a quiz answer for the course journey. */
+  const BUSES = ["UART", "SPI", "I²C"];
+  const BT_ROWS = [
+    { k: "wires", h: "Wires (plus GND)", cells: ["2: TX and RX", "4: SCLK, MOSI, MISO and one CS per device", "2: SDA and SCL, with pull-up resistors"],
+      short: ["2: TX and RX", "3 shared + 1 CS per device", "2: SDA and SCL"],
+      exam: "UART uses 2 signal wires (TX, RX), SPI uses 3 shared wires (SCLK, MOSI, MISO) plus one CS wire for each device, and I²C uses only 2 wires (SDA, SCL) however many devices share the bus." },
+    { k: "clock", h: "Clock", cells: ["Asynchronous: no clock wire, same baud rate on both sides", "Synchronous: the master drives SCLK", "Synchronous: the master drives SCL"],
+      short: ["Asynchronous", "Synchronous", "Synchronous"],
+      exam: "UART is asynchronous: there is no clock wire, so both ends must be set to the same baud rate. SPI and I²C are synchronous: the master sends a clock, and each bit is read on a clock edge." },
+    { k: "duplex", h: "Duplex", cells: ["Full duplex", "Full duplex", "Half duplex"], short: ["Full duplex", "Full duplex", "Half duplex"],
+      exam: "UART (TX and RX) and SPI (MOSI and MISO) are full duplex: data goes both ways at the same time. I²C is half duplex: its one data line, SDA, carries data one way at a time." },
+    { k: "devices", h: "Devices", cells: ["Two, point to point", "One master, many slaves (one CS pin each)", "Many on one bus; 7-bit addresses allow up to 112 devices"],
+      short: ["Two, point to point", "One master, many slaves (CS each)", "Many, picked by address"],
+      exam: "UART links exactly two devices (point to point). SPI has one master and many slaves, each picked by its own chip-select (CS) wire. I²C puts many devices on the same two wires and picks each one by its 7-bit address." },
+    { k: "speed", h: "Typical speed", cells: ["9600 to 115200 baud (ESP32: up to 5 Mbps)", "Several to tens of MHz (ESP32: up to 80 MHz)", "100 kHz standard, 400 kHz fast mode"],
+      short: ["9600 to 115200 baud", "Tens of MHz", "100 or 400 kHz"],
+      exam: "SPI is the fastest (MHz), I²C is next (100 kHz or 400 kHz), and UART is usually the slowest (9600 to 115200 baud)." },
+    { k: "distance", h: "Distance", cells: ["A metre or so at 3.3 V logic; much further with RS-232 or RS-485 line drivers", "Short: on the same board", "Short: on the board or a short cable"],
+      short: ["About a metre (far with RS-485)", "Same board", "Board or short cable"],
+      exam: "SPI and I²C are for short distances, on one board or a short cable. UART reaches about a metre at 3.3 V logic, and much further with RS-232 or RS-485 line drivers." },
+    { k: "esp32", h: "On the ESP32", cells: ["3 UARTs (UART0 is used for USB and uploading)", "4 SPI (HSPI and VSPI are free)", "2 I²C controllers"],
+      short: ["3 (UART0 for USB)", "4 (HSPI, VSPI free)", "2 controllers"],
+      exam: "The ESP32 has 3 UARTs (UART0 is taken by USB), 4 SPI controllers (HSPI and VSPI are free) and 2 I²C controllers." },
+    { k: "uses", h: "Typical uses", cells: ["GPS, MB1010 sonar, Bluetooth modules, PC serial", "SD cards, TFT displays, fast ADCs", "Sensors (BME280, MPU6050), OLED displays, clocks"],
+      short: ["GPS, sonar, PC serial", "SD card, TFT, fast ADC", "Sensors, OLED, clocks"],
+      exam: "UART: GPS, sonar, Bluetooth modules and PC serial. SPI: SD cards, TFT displays and fast ADCs. I²C: sensors, OLED displays and clocks." }
+  ];
+  const f1 = (x) => x.toFixed(1);
+  const PAGE = location.pathname.split("/").pop() || "chapter-2.html";
+
+  // An animation from 0 to 1 over dur ms (at once with reduced motion). Returns { p: Promise, stop() }
+  function anim(dur, f) {
+    let raf = 0, t0 = 0, dead = false;
+    const p = new Promise((res) => {
+      if (reduceMotion) { f(1); res(); return; }
+      const tick = (now) => { if (dead) { res(); return; } if (!t0) t0 = now; const k = Math.min(1, (now - t0) / dur); f(k); if (k < 1) raf = requestAnimationFrame(tick); else res(); };
+      raf = requestAnimationFrame(tick);
+    });
+    return { p, stop() { dead = true; cancelAnimationFrame(raf); } };
+  }
+  const tri = (ctl) => `${ctl ? `<div class="bt-ctl">${ctl}</div>` : ""}<div class="bt-tri">${BUSES.map((b, i) => `<figure class="bt-p"><figcaption>${b}</figcaption><div class="bt-svg" data-i="${i}"></div><p class="bt-note" data-i="${i}" aria-live="polite"></p></figure>`).join("")}</div>`;
+  const panes = (host) => [0, 1, 2].map((i) => ({ svg: host.querySelector(`.bt-svg[data-i="${i}"]`), note: host.querySelector(`.bt-note[data-i="${i}"]`) }));
+
+  /* ---- buses with 1 to 4 devices (used by the Wires and Devices rows) ----
+     o: { pick: device index talked to, hi: wire name to highlight, clash: I²C address clash } */
+  const BUS_DEV = [["GPS", "Sonar", "Modem", "PC"], ["SD card", "TFT", "ADC", "Flash"], ["OLED", "BME280", "MPU6050", "LCD"]];
+  const I2C_ADDR = [0x3c, 0x76, 0x68, 0x27];
+  const hx = (a) => "0x" + a.toString(16).toUpperCase();
+  function busSvg(b, n, o = {}) {
+    const H = 30 + n * 50, Y = (i) => 16 + i * 50, EX = 66, DX = 176;
+    const ln = (name, d, extra = "") => `<path class="bw ${name.toLowerCase()}${o.hi === name ? " hi" : o.hi ? " dim" : ""}${extra}" d="${d}"/>`;
+    let s = `<rect class="bt-box" x="4" y="10" width="62" height="${H - 20}" rx="6"/>${T(35, 6 + H / 2, "ESP32", "middle", "bt-bl")}`;
+    for (let i = 0; i < n; i++) {
+      const y = Y(i), on = o.pick === i, clash = o.clash && b === 2 && (i === 0 || i === 1) && (o.pick === 0 || o.pick === 1);
+      const lost = b === 0 && i >= 2, sub = b === 2 ? hx(o.clash && i === 1 ? I2C_ADDR[0] : I2C_ADDR[i]) : b === 1 ? (o.pick === undefined ? `CS${i + 1}` : `CS${i + 1} = ${on ? 0 : 1}`) : lost ? "no UART" : `UART${2 - i}`;
+      s += `<rect class="bt-box dev${on ? " on" : ""}${clash ? " clash" : ""}${lost ? " lost" : ""}" x="${DX}" y="${y}" width="60" height="36" rx="6"/>${T(DX + 30, y + 15, BUS_DEV[b][i], "middle", "bt-dl")}${T(DX + 30, y + 29, sub, "middle", "bt-ds")}`;
+      if (b === 0) {
+        if (lost) s += `<path class="bw lost" d="M${DX},${y + 12}h-26M${DX},${y + 24}h-26"/>`;
+        else s += ln("TX", `M${EX},${y + 12}H${DX}`, on ? " on" : "") + ln("RX", `M${DX},${y + 24}H${EX}`, on ? " on" : "") + (i === 0 ? T(121, y + 9, "TX → RX", "middle", "bt-wl") + T(121, y + 37, "RX ← TX", "middle", "bt-wl") : "");
+      }
+    }
+    const last = Y(n - 1);
+    if (b === 1) {
+      [["SCLK", 92], ["MOSI", 104], ["MISO", 116]].forEach(([nm, x], j) => {
+        s += ln(nm, `M${EX},${18 + j * 6}H${x}V${last + 8 + j * 7}`);
+        for (let i = 0; i < n; i++) s += ln(nm, `M${x},${Y(i) + 8 + j * 7}H${DX}`) + `<circle class="bt-dot" cx="${x}" cy="${Y(i) + 8 + j * 7}" r="2.2"/>`;
+      });
+      for (let i = 0; i < n; i++) s += ln("CS", `M${EX},${Y(i) + 31}H${DX}`, o.pick === i ? " on" : "");
+      s += T(98, 12, "SCLK MOSI MISO", "start", "bt-wl");
+    }
+    if (b === 2) {
+      [["SDA", 104], ["SCL", 120]].forEach(([nm, x], j) => {
+        s += ln(nm, `M${EX},${22 + j * 8}H${x}V${last + 12 + j * 12}`);
+        for (let i = 0; i < n; i++) s += ln(nm, `M${x},${Y(i) + 12 + j * 12}H${DX}`) + `<circle class="bt-dot" cx="${x}" cy="${Y(i) + 12 + j * 12}" r="2.2"/>`;
+      });
+      s += T(104, 12, "SDA", "middle", "bt-wl") + T(124, 12, "SCL", "start", "bt-wl");
+    }
+    return `<svg class="bt-bus" viewBox="0 0 240 ${H}" role="img" aria-label="${BUSES[b]} with ${n} device${n > 1 ? "s" : ""}">${s}</svg>`;
+  }
+  const WIRE_JOB = {
+    TX: "<strong>TX</strong> (transmit) carries data out of a device, into the other device's RX.",
+    RX: "<strong>RX</strong> (receive) brings data in, from the other device's TX. TX and RX cross over.",
+    SCLK: "<strong>SCLK</strong> (serial clock) carries the master's clock pulses. One bit moves on each pulse.",
+    MOSI: "<strong>MOSI</strong> (master out, slave in) carries data from the ESP32 to the device.",
+    MISO: "<strong>MISO</strong> (master in, slave out) carries data from the device back to the ESP32.",
+    CS: "<strong>CS</strong> (chip select) is pulled low by the master to pick one device. Each device has its own CS wire.",
+    SDA: "<strong>SDA</strong> (serial data) is I²C's only data line, used in both directions, one way at a time.",
+    SCL: "<strong>SCL</strong> (serial clock) carries the master's clock pulses for I²C."
+  };
+  function demoWires(host) {
+    let n = 2, hi = "";
+    host.innerHTML = tri(`<label class="bt-range">Devices on the bus: <output>2</output><input type="range" min="1" max="4" value="2" aria-label="Number of devices"></label>
+      ${chips("What does this wire do?", Object.keys(WIRE_JOB).map((w) => [w, w]), "")}<p class="bt-wire-t widget-lead" aria-live="polite">Tap a wire name to see its job and where it is.</p>`);
+    const P = panes(host), out = host.querySelector("output");
+    const draw = () => {
+      P.forEach((p, b) => { p.svg.innerHTML = busSvg(b, n, { hi }); });
+      P[0].note.innerHTML = `<strong>${2 * n} signal wires.</strong> Each device needs its own TX and RX pair.${n > 2 ? " The ESP32 has only 2 free UARTs, so device 3 can't be connected." : ""}`;
+      P[1].note.innerHTML = `<strong>${3 + n} signal wires.</strong> SCLK, MOSI and MISO are shared, plus one CS wire for each device.`;
+      P[2].note.innerHTML = `<strong>2 signal wires</strong> for ${n} device${n > 1 ? "s" : ""}: every device shares SDA and SCL.`;
+    };
+    host.querySelector("input[type=range]").addEventListener("input", (e) => { n = +e.target.value; out.textContent = n; draw(); });
+    wireChips(host.querySelector(".chips-row"), (w) => { hi = w; host.querySelector(".bt-wire-t").innerHTML = WIRE_JOB[w]; draw(); });
+    draw();
+  }
+  function demoDevices(host) {
+    let n = 3, pick = 0, clash = false;
+    host.innerHTML = tri(`<div class="bt-btns"><button type="button" class="btn ghost small" data-add>+ Add a device</button><button type="button" class="btn ghost small" data-rem>− Remove one</button></div>
+      <div class="bt-talk"></div><label class="bt-check"><input type="checkbox" data-clash> Give the BME280 the same I²C address as the OLED (0x3C)</label>`);
+    const P = panes(host), talk = host.querySelector(".bt-talk");
+    const draw = () => {
+      pick = Math.min(pick, n - 1);
+      talk.innerHTML = chips("The ESP32 talks to", Array.from({ length: n }, (_, i) => [String(i), `Device ${i + 1}`]), String(pick));
+      wireChips(talk.querySelector(".chips-row"), (v) => { pick = +v; draw(); });
+      P.forEach((p, b) => { p.svg.innerHTML = busSvg(b, n, { pick, clash }); });
+      P[0].note.innerHTML = pick >= 2 ? `<strong>Device ${pick + 1} can't be reached.</strong> UART is point to point: one device on each TX and RX pair, and the ESP32's free UARTs (UART1 and UART2) are both used.`
+        : `<strong>Point to point.</strong> Device ${pick + 1} has its own pair of wires on UART${2 - pick}. Adding a device means adding another UART.`;
+      P[1].note.innerHTML = `<strong>CS${pick + 1} goes low (0)</strong>, so only the ${BUS_DEV[1][pick]} listens. The other CS wires stay high (1). Each new device needs one more CS pin.`;
+      const clashing = clash && n >= 2 && (pick === 0 || pick === 1);
+      P[2].note.innerHTML = clashing ? `<strong class="warn-t">Clash!</strong> The OLED and the BME280 both answer to 0x3C, so their data collide on SDA. Every device on one I²C bus needs its own address.`
+        : `<strong>The ESP32 sends the address ${hx(clash && pick === 1 ? I2C_ADDR[0] : I2C_ADDR[pick])} first.</strong> Only that device answers. ${n} devices, still only 2 wires.`;
+      host.querySelector("[data-add]").disabled = n >= 4; host.querySelector("[data-rem]").disabled = n <= 1;
+    };
+    host.addEventListener("click", (e) => { if (e.target.closest("[data-add]") && n < 4) { n++; draw(); } if (e.target.closest("[data-rem]") && n > 1) { n--; draw(); } });
+    host.querySelector("[data-clash]").addEventListener("change", (e) => { clash = e.target.checked; draw(); });
+    draw();
+  }
+
+  /* ---- the Clock row: one byte, 'K' = 0x4B ---- */
+  function demoClock(host) {
+    let rx = 9600, uneven = false, run = null;
+    host.innerHTML = tri(`<button type="button" class="btn" data-go>▶ Send one byte</button>
+      ${chips("UART receiver set to", [["9600", "UART receiver: 9600 baud (same)"], ["4800", "4800 baud (wrong)"]], "9600")}
+      ${chips("Clock from the master", [["0", "Steady clock"], ["1", "Uneven clock (master pauses)"]], "0")}`);
+    const P = panes(host), BYTE = 0x4b, rows = host.querySelectorAll(".chips-row");
+    const lsb = Array.from({ length: 8 }, (_, j) => (BYTE >> j) & 1), msb = lsb.slice().reverse();
+    const draw = (k) => {
+      const cur = 14 + k * 222, clip = (id) => `<clipPath id="${id}"><rect x="0" y="0" width="${cur}" height="140"/></clipPath>`;
+      // UART: idle, start 0, 8 bits LSB first, stop 1, idle. Bit width 18 from x = 26
+      const w = 18, x0 = 26, frame = [0, ...lsb, 1], lvl = (x) => (x < x0 || x >= x0 + 10 * w ? 1 : frame[Math.floor((x - x0) / w)]);
+      let path = `M8,${lvl(0) ? 34 : 64}`;
+      for (let j = 0; j <= 10; j++) { const x = x0 + j * w, y = (j < 10 ? frame[j] : 1) ? 34 : 64; path += `H${x}V${y}`; }
+      path += "H234";
+      const wr = w * (9600 / rx), got = [];
+      let marks = "";
+      for (let j = 1; j <= 8; j++) { const x = x0 + (j + 0.5) * wr, v = lvl(x); got.push(v); if (x < 236) marks += `<g class="smp${x <= cur ? " on" : ""}"><line x1="${x}" y1="24" x2="${x}" y2="74"/><text x="${x}" y="88" text-anchor="middle">${x <= cur ? v : ""}</text></g>`; }
+      const val = got.reduce((a, v, j) => a | (v << j), 0), ok = val === BYTE, doneU = k >= 1;
+      P[0].svg.innerHTML = `<svg viewBox="0 0 240 100" role="img" aria-label="UART waveform of one byte, sampled by the receiver">${clip("clu")}${T(8, 18, "TX → RX (no clock wire)", "start", "bt-wl")}<path class="wave" clip-path="url(#clu)" d="${path}"/>${marks}${T(26, 98, "receiver's own timing", "start", "bt-ds")}</svg>`;
+      P[0].note.innerHTML = !doneU ? "The receiver times each bit with its own clock." : ok ? `Received <strong>0x4B ('K') ✓</strong>. Both ends use 9600 baud, so the receiver samples the middle of every bit.`
+        : `Received <strong class="warn-t">${hx(val)} ✗</strong>. The receiver expects 4800 baud, so it waits twice as long per bit and samples in the wrong places. With no clock wire, both ends must use the same baud rate.`;
+      // SPI and I²C: a clock from the master; data is read on each rising edge
+      const per = uneven ? [18, 30, 14, 34, 18, 24, 16, 26] : [23, 23, 23, 23, 23, 23, 23, 23];
+      const sync = (b, cn, dn) => {
+        let x = 30, clk = `M8,52H${x}`, dat = `M8,${msb[0] ? 74 : 98}H${x}`, mk = "";
+        msb.forEach((v, j) => {
+          const p = per[j], y = v ? 74 : 98, mid = x + p / 2;
+          dat += `V${y}H${x + p}`;
+          clk += `H${mid}V30H${x + p}V52`;
+          mk += `<g class="smp${mid <= cur ? " on" : ""}"><line x1="${mid}" y1="26" x2="${mid}" y2="102"/><text x="${mid}" y="114" text-anchor="middle">${mid <= cur ? v : ""}</text></g>`;
+          x += p;
+        });
+        clk += "H234"; dat += "H234";
+        return `<svg viewBox="0 0 240 120" role="img" aria-label="${b} clock and data waveforms">${clip("cl" + b)}${T(8, 22, cn, "start", "bt-wl")}<path class="wave clk" clip-path="url(#cl${b})" d="${clk}"/>${T(8, 68, dn, "start", "bt-wl")}<path class="wave" clip-path="url(#cl${b})" d="${dat}"/>${mk}</svg>`;
+      };
+      P[1].svg.innerHTML = sync("spi", "SCLK", "MOSI");
+      P[2].svg.innerHTML = sync("i2c", "SCL", "SDA");
+      const syncNote = (c) => !doneU ? `Each bit is read when ${c} rises.` : `Received <strong>0x4B ('K') ✓</strong>. ${uneven ? `The clock is uneven, but every bit is still read on a ${c} edge: the receiver never needs to know the speed.` : `Every bit is read on a rising edge of ${c}.`}`;
+      P[1].note.innerHTML = syncNote("SCLK"); P[2].note.innerHTML = syncNote("SCL");
+    };
+    const go = () => { if (run) run.stop(); run = anim(2600, draw); };
+    host.querySelector("[data-go]").addEventListener("click", go);
+    wireChips(rows[0], (v) => { rx = +v; draw(1); });
+    wireChips(rows[1], (v) => { uneven = v === "1"; draw(1); });
+    draw(1);
+    return () => run && run.stop();
+  }
+
+  /* ---- the Duplex row: the ESP32 sends 0xA5 and the device sends 0x3C ---- */
+  function demoDuplex(host) {
+    let run = null;
+    host.innerHTML = tri(`<button type="button" class="btn" data-go>▶ Swap one byte each way</button><span class="small-note">The ESP32 sends 0xA5; the device sends 0x3C.</span>`);
+    const P = panes(host), A = [1, 0, 1, 0, 0, 1, 0, 1], B = [0, 0, 1, 1, 1, 1, 0, 0], L = 3, END = 21;
+    // each bus: lines and the bits on them. bit = [value, leave time, line y, direction (1 = to the device)]
+    const plan = [
+      { busy: 10, lines: [[46, "TX → RX"], [76, "RX ← TX"]], bits: [[0, ...A, 1].map((v, j) => [v, j, 46, 1]), [0, ...B, 1].map((v, j) => [v, j, 76, -1])].flat() },
+      { busy: 8, lines: [[46, "MOSI →"], [76, "← MISO"]], clock: 100, bits: [A.map((v, j) => [v, j, 46, 1]), B.map((v, j) => [v, j, 76, -1])].flat() },
+      { busy: 18, lines: [[60, "SDA (one line, both ways)"]], clock: 100, bits: [...A.map((v, j) => [v, j, 60, 1]), ["A", 8, 60, -1], ...B.map((v, j) => [v, 9 + j, 60, -1]), ["A", 17, 60, 1]] }
+    ];
+    const draw = (k) => {
+      const t = k * END;
+      plan.forEach((pl, b) => {
+        let s = `<rect class="bt-box" x="4" y="28" width="52" height="66" rx="6"/>${T(30, 65, "ESP32", "middle", "bt-bl")}<rect class="bt-box dev" x="184" y="28" width="52" height="66" rx="6"/>${T(210, 65, "Device", "middle", "bt-dl")}`;
+        pl.lines.forEach(([y, lab]) => { s += `<path class="bw" d="M56,${y}H184"/>${T(120, y - 8, lab, "middle", "bt-wl")}`; });
+        if (pl.clock) s += `<path class="bw clk" d="M56,${pl.clock}H184"/>${T(120, pl.clock + 14, b === 1 ? "SCLK" : "SCL", "middle", "bt-wl")}`;
+        let moving = 0;
+        pl.bits.forEach(([v, t0, y, dir]) => {
+          const f = (t - t0) / L;
+          if (f <= 0 || f >= 1) return;
+          moving = dir;
+          const x = dir > 0 ? 62 + f * 116 : 178 - f * 116;
+          s += `<g class="bit${v === "A" ? " ack" : ""}"><circle cx="${f1(x)}" cy="${y}" r="7.5"/><text x="${f1(x)}" y="${y + 4}" text-anchor="middle">${v}</text></g>`;
+        });
+        const used = Math.min(pl.busy, Math.max(0, t - 0)), done = t >= pl.busy + L - 1;
+        s += `<rect class="bt-track" x="4" y="112" width="232" height="8" rx="4"/><rect class="bt-fill" x="4" y="112" width="${f1(232 * Math.min(used, pl.busy) / 18)}" height="8" rx="4"/>`;
+        P[b].svg.innerHTML = `<svg viewBox="0 0 240 124" role="img" aria-label="${BUSES[b]}: one byte each way">${s}</svg>`;
+        if (b === 2 && !done && k > 0 && k < 1) P[b].note.innerHTML = moving > 0 ? "→ The ESP32 is sending. The device must wait." : moving < 0 ? "← The device is answering. The ESP32 must wait." : "The line turns round…";
+        else P[b].note.innerHTML = b === 2 ? `<strong>Half duplex:</strong> one byte, then the other on the same SDA line. About <strong>18 clock pulses</strong> (with the acknowledge bits A).`
+          : b === 0 ? `<strong>Full duplex:</strong> both bytes travel at the same time on TX and RX. <strong>10 bit times</strong> (with the start and stop bits).`
+          : `<strong>Full duplex:</strong> on each clock pulse one bit goes out on MOSI and one comes back on MISO. <strong>8 clock pulses</strong> for both bytes.`;
+      });
+    };
+    host.querySelector("[data-go]").addEventListener("click", () => { if (run) run.stop(); run = anim(7000, draw); });
+    draw(1);
+    return () => run && run.stop();
+  }
+
+  /* ---- the Speed row: a race, with the working ---- */
+  function demoSpeed(host) {
+    let n = 100, baud = 115200, fi = 400e3, fs = 10e6, run = null;
+    host.innerHTML = tri(`<label class="bt-range">Bytes to send: <output>100</output><input type="range" min="10" max="1000" step="10" value="100" aria-label="Bytes to send"></label>
+      <label class="bt-sel">UART <select data-s="u"><option value="9600">9600 baud</option><option value="115200" selected>115200 baud</option></select></label>
+      <label class="bt-sel">I²C <select data-s="i"><option value="100000">100 kHz</option><option value="400000" selected>400 kHz</option></select></label>
+      <label class="bt-sel">SPI <select data-s="s"><option value="1000000">1 MHz</option><option value="10000000" selected>10 MHz</option><option value="40000000">40 MHz</option></select></label>
+      <button type="button" class="btn" data-go>▶ Race</button>`);
+    const P = panes(host);
+    const times = () => [n * 10 / baud, (n + 1) * 9 / fi, n * 8 / fs];
+    const fmtF = (f) => f >= 1e6 ? `${f / 1e6} MHz` : `${f / 1e3} kHz`;
+    const draw = (k) => {
+      const ts = times(), mx = Math.max(...ts);
+      ts.forEach((t, b) => {
+        const fill = Math.min(1, (k * mx) / t), w = (t / mx) * 100 * fill;
+        P[b].svg.innerHTML = `<div class="bt-race"><span class="bt-time">${fill >= 1 ? eng(t, "s") : "…"}</span><div class="bt-bar"><i style="width:${w.toFixed(2)}%"></i></div></div>`;
+      });
+      P[0].note.innerHTML = `t = ${n} bytes × 10 bits ÷ ${baud} baud = <strong>${eng(ts[0], "s")}</strong>. Each byte needs a start and a stop bit: 10 bits.`;
+      P[1].note.innerHTML = `t = (${n} + 1) bytes × 9 bits ÷ ${fmtF(fi)} = <strong>${eng(ts[1], "s")}</strong>. One address byte first, and an acknowledge bit after every byte: 9 bits.`;
+      P[2].note.innerHTML = `t = ${n} bytes × 8 bits ÷ ${fmtF(fs)} = <strong>${eng(ts[2], "s")}</strong>. Just 8 bits per byte, one per clock pulse.`;
+    };
+    host.querySelector("input[type=range]").addEventListener("input", (e) => { n = +e.target.value; host.querySelector("output").textContent = n; draw(1); });
+    host.addEventListener("change", (e) => { const s = e.target.closest("select[data-s]"); if (!s) return; ({ u: () => { baud = +s.value; }, i: () => { fi = +s.value; }, s: () => { fs = +s.value; } })[s.dataset.s](); draw(1); });
+    host.querySelector("[data-go]").addEventListener("click", () => { if (run) run.stop(); run = anim(3500, draw); });
+    draw(1);
+    return () => run && run.stop();
+  }
+
+  /* ---- the Distance row: one chart on a log scale, 1 cm to 1 km ---- */
+  function demoDistance(host) {
+    const pos = (m) => ((Math.log10(m) + 2) / 5) * 100; // 1 cm = 0 %, 1 km = 100 %
+    const ROWS = [["SPI", 0.3, "on the same board"], ["I²C", 1, "on the board or a short cable"], ["UART at 3.3 V", 1.5, "a metre or so"], ["UART with RS-485 drivers", 1200, "up to about 1.2 km", "far"]];
+    host.innerHTML = `<div class="bt-dist">${ROWS.map(([n, m, t, far]) => `<div class="bt-dr"><span class="bt-dn">${n}</span><div class="bt-dt"><i class="${far ? "far" : ""}" style="width:${pos(m).toFixed(1)}%"></i><span>${t}</span></div></div>`).join("")}
+      <div class="bt-dr axis"><span></span><div class="bt-ax">${[["1 cm", 0.01], ["10 cm", 0.1], ["1 m", 1], ["10 m", 10], ["100 m", 100], ["1 km", 1000]].map(([l, m]) => `<span style="left:${pos(m)}%">${l}</span>`).join("")}</div></div></div>
+      <p class="bt-note">The faster and simpler the signal, the shorter the wire it can travel. SPI and I²C are meant for chips near each other. For long cables, a UART is sent through line drivers such as RS-232 or RS-485. (The scale goes up ten times at each step.)</p>`;
+  }
+
+  /* ---- On the ESP32: the board's two pin headers, with the bus pins lit ---- */
+  function demoEsp32(host) {
+    host.innerHTML = tri("");
+    const P = panes(host), TAG = ["uart", "spi", "i2c"];
+    const NOTE = [
+      "<strong>3 UART controllers.</strong> UART0 (TX0 and RX0, GPIO1 and 3) is joined to the USB chip for uploading and the Serial Monitor. UART2 (TX2 GPIO17, RX2 GPIO16) is free; UART1 can be moved to other pins.",
+      "<strong>4 SPI controllers.</strong> Two run the board's flash memory. HSPI (GPIO14 SCLK, 12 MISO, 13 MOSI, 15 CS) and VSPI (GPIO18 SCLK, 19 MISO, 23 MOSI, 5 CS) are free.",
+      "<strong>2 I²C controllers.</strong> The default pins are GPIO21 (SDA) and GPIO22 (SCL), and the ESP32 can move I²C to most other pins."
+    ];
+    P.forEach((p, b) => {
+      const dot = (pin, i, y) => { const on = pin.tags.includes(TAG[b]); return `<circle class="pm${on ? " on" : ""}" cx="${16 + i * 15}" cy="${y}" r="4.5"/>${on ? T(16 + i * 15, y === 22 ? 12 : 58, pin.lab, "middle", "pm-t") : ""}`; };
+      p.svg.innerHTML = `<svg viewBox="0 0 240 70" role="img" aria-label="ESP32 pins for ${BUSES[b]}"><rect class="bt-box" x="4" y="16" width="232" height="38" rx="5"/>${LEFT.map((pin, i) => dot(pin, 14 - i, 22)).join("")}${RIGHT.map((pin, i) => dot(pin, 14 - i, 48)).join("")}</svg>`;
+      p.note.innerHTML = NOTE[b];
+    });
+  }
+
+  /* ---- Typical uses: sort ten real devices ---- */
+  const USES = [
+    ["GPS module", 0, "It streams text sentences (NMEA) at 9600 baud on TX."], ["MB1010 sonar", 0, "It sends “R078⏎” as text on one wire at 9600 baud."],
+    ["HC-05 Bluetooth module", 0, "The ESP32 talks to it with serial text commands on TX and RX."], ["microSD card", 1, "A data logger needs the fastest bus for big files."],
+    ["TFT colour display", 1, "Thousands of pixels need a fast bus."], ["RC522 RFID reader (Lab 3)", 1, "It uses SDA (its CS), SCK, MOSI and MISO."],
+    ["BME280 weather sensor", 2, "A few bytes now and then, at address 0x76."], ["OLED display", 2, "Small screen at address 0x3C on SDA and SCL."],
+    ["MPU6050 motion sensor", 2, "Accelerometer and gyro at address 0x68."], ["16 × 4 LCD with I2C backpack (Lab 3)", 2, "The backpack turns 16 LCD pins into SDA and SCL."]
+  ];
+  function demoUses(host) {
+    const done = {};
+    host.innerHTML = `<p class="widget-lead">Which bus does each device use? Pick one for each.</p>
+      <div class="bt-uses">${USES.map(([n], i) => `<div class="bt-use" data-i="${i}"><span class="bt-un">${n}</span><span class="bt-ub">${BUSES.map((b, j) => `<button type="button" class="chip-btn" data-j="${j}">${b}</button>`).join("")}</span><span class="bt-uw" aria-live="polite"></span></div>`).join("")}</div>${tri("")}`;
+    const P = panes(host);
+    const draw = () => {
+      P.forEach((p, b) => { const l = USES.filter((u, i) => done[i] && u[1] === b).map((u) => `<li>${u[0]}</li>`); p.svg.innerHTML = l.length ? `<ul class="bt-bin">${l.join("")}</ul>` : `<p class="bt-empty">Nothing sorted here yet.</p>`; });
+      const c = Object.keys(done).length;
+      P[0].note.textContent = ""; P[1].note.textContent = ""; P[2].note.innerHTML = c === USES.length ? "<strong>All 10 sorted ✓</strong>" : `${c} of ${USES.length} sorted`;
+    };
+    host.addEventListener("click", (e) => {
+      const b = e.target.closest(".bt-use .chip-btn");
+      if (!b) return;
+      const row = b.closest(".bt-use"), i = +row.dataset.i, j = +b.dataset.j, u = USES[i], ok = j === u[1];
+      row.querySelectorAll(".chip-btn").forEach((x) => x.setAttribute("aria-pressed", x === b));
+      row.classList.toggle("ok", ok); row.classList.toggle("bad", !ok);
+      row.querySelector(".bt-uw").innerHTML = ok ? `✓ ${u[2]}` : `Not ${BUSES[j]}. Look at the row above for a clue, and try again.`;
+      if (ok) done[i] = 1;
+      draw();
+    });
+    draw();
+  }
+  const BT_DEMO = { wires: demoWires, clock: demoClock, duplex: demoDuplex, devices: demoDevices, speed: demoSpeed, distance: demoDistance, esp32: demoEsp32, uses: demoUses };
+
+  function mountBusTable(el) {
+    let open = "", drill = false, stop = null, picks = {}, marks = {}, opts = {};
+    const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    el.innerHTML = `<p class="widget-lead">This table is what exam questions ask about. <strong>Tap a row</strong> to see that characteristic in action for all three buses side by side. When you know it, press <strong>Test me on the table</strong>.</p>
+      <div class="bt-tools"><button type="button" class="btn ghost" data-drill aria-pressed="false">Test me on the table</button><span class="bt-score" aria-live="polite"></span></div>
+      <div class="table-wrap bt-wrap"><table class="cmp bt-table"><thead><tr><th scope="col">Characteristic</th>${BUSES.map((b) => `<th scope="col">${b}</th>`).join("")}</tr></thead><tbody></tbody></table></div>
+      <div class="bt-drillbar" hidden><button type="button" class="btn" data-check>Check my table</button><button type="button" class="btn ghost" data-clear>Start again</button></div>`;
+    const body = $q("tbody"), score = $q(".bt-score"), bar = $q(".bt-drillbar"), dbtn = $q("[data-drill]");
+    function $q(s) { return el.querySelector(s); }
+    const cell = (r, i) => {
+      if (!drill) return r.cells[i];
+      const m = marks[r.k] && marks[r.k][i];
+      return `<select data-r="${r.k}" data-i="${i}" aria-label="${r.h}: ${BUSES[i]}" class="${m === true ? "ok" : m === false ? "bad" : ""}"><option value="">Choose…</option>${opts[r.k].map((o) => `<option${picks[r.k] && picks[r.k][i] === o ? " selected" : ""}>${o}</option>`).join("")}</select>`;
+    };
+    const render = () => {
+      if (stop) { stop(); stop = null; }
+      body.innerHTML = BT_ROWS.map((r) => `<tr class="bt-row${open === r.k ? " open" : ""}" data-k="${r.k}"><th scope="row"><button type="button" class="bt-open" aria-expanded="${open === r.k}" data-open="${r.k}"><span class="bt-ic" aria-hidden="true">▸</span><span>${r.h}</span></button></th>${[0, 1, 2].map((i) => `<td data-bus="${BUSES[i]}" class="${drill && marks[r.k] ? (marks[r.k][i] ? "ok" : "bad") : ""}">${cell(r, i)}</td>`).join("")}</tr>` +
+        (open === r.k ? `<tr class="bt-demo-row"><td colspan="4"><div class="bt-demo"></div><p class="bt-exam"><strong>For the exam:</strong> ${r.exam}</p></td></tr>` : "")).join("");
+      if (open) stop = BT_DEMO[open](body.querySelector(".bt-demo")) || null;
+    };
+    el.addEventListener("click", (e) => {
+      const o = e.target.closest("[data-open]");
+      if (o) { open = open === o.dataset.open ? "" : o.dataset.open; render(); const b = el.querySelector(`[data-open="${o.dataset.open}"]`); if (b) b.focus(); return; }
+      if (e.target.closest("[data-drill]")) {
+        drill = !drill; dbtn.setAttribute("aria-pressed", drill); dbtn.textContent = drill ? "Show the full table" : "Test me on the table";
+        bar.hidden = !drill; picks = {}; marks = {}; score.textContent = drill ? "Choose the right entry for every cell, then check." : "";
+        BT_ROWS.forEach((r) => { opts[r.k] = shuffle([...new Set(r.short)]); });
+        open = ""; render(); return;
+      }
+      if (e.target.closest("[data-clear]")) { picks = {}; marks = {}; score.textContent = "Choose the right entry for every cell, then check."; open = ""; render(); return; }
+      if (e.target.closest("[data-check]")) {
+        let right = 0, firstBad = "";
+        BT_ROWS.forEach((r) => {
+          marks[r.k] = [0, 1, 2].map((i) => !!(picks[r.k] && picks[r.k][i] === r.short[i]));
+          if (marks[r.k].every(Boolean)) { right++; document.dispatchEvent(new CustomEvent("nmk:quiz", { detail: { key: `${PAGE}|table:${r.k}` } })); }
+          else if (!firstBad) firstBad = r.k;
+        });
+        score.innerHTML = right === BT_ROWS.length ? `<strong>All ${right} rows right ✓</strong> You know the table.` : `<strong>${right} of ${BT_ROWS.length} rows right.</strong> The amber cells are wrong: the demo for the first one is open as a hint.`;
+        open = firstBad; render();
+      }
+    });
+    el.addEventListener("change", (e) => { const s = e.target.closest("select[data-r]"); if (!s) return; (picks[s.dataset.r] = picks[s.dataset.r] || [])[+s.dataset.i] = s.value; if (marks[s.dataset.r]) { delete marks[s.dataset.r]; s.className = ""; s.closest("td").className = ""; } });
+    render();
+  }
+
+  /* ---------------- See all three together: a weather and distance logger ----------------
+     One reading uses every bus in turn: the sonar on UART, the BME280 and the OLED on I²C, the SD card on SPI.
+     Wide: side by side. Tall (phone): stacked. Packets run along the real wires of each bus. */
+  const LG_TALL = window.matchMedia("(max-width: 640px)");
+  const LG = {
+    wide: { vb: "0 0 720 340", esp: [290, 130, 140, 90], son: [30, 40, 150, 64], bme: [462, 26, 116, 58], oled: [596, 16, 116, 84],
+      sd: [280, 276, 160, 56],
+      uTx: "M180,62H240V156H290", uRx: "M290,192H226V88H180",
+      sda: "M430,150H700", scl: "M430,176H700", bSda: "M430,150H500V84", bScl: "M545,84V176", oSda: "M430,150H630V100", oScl: "M672,100V176",
+      bDrop: "M500,84V150", oDrop: "M630,100V150",
+      spi: [["SCLK", 310], ["MOSI", 340], ["MISO", 370], ["CS", 400]], spiY: [220, 276], uLab: [235, 34, "middle"] },
+    tall: { vb: "0 0 380 430", esp: [120, 190, 140, 86], son: [14, 14, 150, 64], bme: [222, 14, 140, 52], oled: [222, 84, 140, 82],
+      sd: [110, 352, 160, 56],
+      uTx: "M60,78V212H120", uRx: "M120,252H34V78",
+      sda: "M260,206H370V40", scl: "M260,232H376V58", bSda: "M260,206H370V40H362", bScl: "M376,58H362", oSda: "M260,206H370V112H362", oScl: "M376,140H362",
+      bDrop: "M370,40H362", oDrop: "M370,112H362",
+      spi: [["SCLK", 140], ["MOSI", 170], ["MISO", 200], ["CS", 230]], spiY: [276, 352], uLab: [66, 150, "start"] }
+  };
+  function mountLogger(el) {
+    let stage = 0, busy = false, run = null, reading = null;
+    const log = [];
+    el.innerHTML = `<div class="lg-ctl"><button type="button" class="btn" data-all>▶ Take a reading</button><button type="button" class="btn ghost" data-next>Next stage ›</button><span class="small-note">Run it all, or one stage at a time.</span></div>
+      <figure class="scene-box lg-box"><div class="lg-svg"></div><figcaption>An ESP32 logger: the sonar on UART, the BME280 sensor and the OLED display sharing I²C, and the microSD card on SPI.</figcaption></figure>
+      <ol class="lg-stages">${["UART: read the sonar", "I²C: read the BME280", "I²C: write to the OLED", "SPI: save to the SD card"].map((s, i) => `<li data-s="${i}">${s}</li>`).join("")}</ol>
+      <p class="lg-say widget-lead" aria-live="polite">Press <strong>Take a reading</strong>. Each stage lights up the bus it uses.</p>
+      <div class="lg-log"><div class="serial-head"><span>log.csv on the SD card</span></div><pre class="serial lg-file">time, distance_cm, temp_C\n</pre></div>`;
+    const svgHost = el.querySelector(".lg-svg"), say = el.querySelector(".lg-say"), file = el.querySelector(".lg-file");
+    const g = () => (LG_TALL.matches ? LG.tall : LG.wide);
+    let state = { on: "", oled: ["NMK42003 logger", "ready"], espT: "" };
+    const box = ([x, y, w, h], cls, t1, t2) => `<rect class="lg-b ${cls}" x="${x}" y="${y}" width="${w}" height="${h}" rx="7"/>${T(x + w / 2, y + h / 2 - (t2 ? 3 : -4), t1, "middle", "bt-bl")}${t2 ? T(x + w / 2, y + h / 2 + 14, t2, "middle", "bt-ds") : ""}`;
+    const draw = () => {
+      const G = g(), on = state.on, cls = (b) => (on ? (on === b ? " on" : " dim") : "");
+      let s = "";
+      // UART
+      s += `<g class="lg-bus${cls("uart")}"><path class="bw" d="${G.uTx}"/><path class="bw" d="${G.uRx}"/>${T(G.uLab[0], G.uLab[1], "UART: TX → RX2", G.uLab[2], "bt-wl")}</g>`;
+      // I²C
+      s += `<g class="lg-bus${cls("i2c")}"><path class="bw" d="${G.sda}"/><path class="bw clk" d="${G.scl}"/><path class="bw" d="${G.bDrop}"/><path class="bw clk" d="${G.bScl}"/><path class="bw" d="${G.oDrop}"/><path class="bw clk" d="${G.oScl}"/>` +
+        (LG_TALL.matches ? T(318, 200, "SDA", "middle", "bt-wl") + T(318, 248, "SCL", "middle", "bt-wl") : T(452, 144, "SDA", "start", "bt-wl") + T(452, 192, "SCL", "start", "bt-wl")) + `</g>`;
+      // SPI
+      s += `<g class="lg-bus${cls("spi")}">${G.spi.map(([n, x]) => `<path class="bw${n === "SCLK" ? " clk" : ""}" d="M${x},${G.spiY[0]}V${G.spiY[1]}"/><text class="bt-wl" x="${x + 11}" y="${(G.spiY[0] + G.spiY[1]) / 2}" text-anchor="middle" transform="rotate(-90 ${x + 11} ${(G.spiY[0] + G.spiY[1]) / 2})">${n === "CS" && state.cs ? "CS = 0" : n}</text>`).join("")}</g>`;
+      s += box(G.son, "son" + cls("uart"), "MB1010 sonar", "UART, 9600 baud") + box(G.bme, "bme" + cls("i2c"), "BME280", "I²C 0x76");
+      const [ox, oy, ow, oh] = G.oled;
+      s += `<rect class="lg-b oled${cls("i2c")}" x="${ox}" y="${oy}" width="${ow}" height="${oh}" rx="7"/><rect class="lg-scr" x="${ox + 8}" y="${oy + 8}" width="${ow - 16}" height="${oh - 30}" rx="3"/>${T(ox + ow / 2, oy + 28, state.oled[0], "middle", "lg-st")}${T(ox + ow / 2, oy + 44, state.oled[1], "middle", "lg-st")}${T(ox + ow / 2, oy + oh - 8, "OLED I²C 0x3C", "middle", "bt-ds")}`;
+      s += box(G.sd, "sd" + cls("spi"), "microSD card", "SPI, log.csv") + box(G.esp, "esp", "ESP32", state.espT);
+      svgHost.innerHTML = `<svg class="lg" viewBox="${G.vb}" role="img" aria-label="ESP32 logger with a sonar on UART, a BME280 and an OLED on I²C, and an SD card on SPI">${s}<g class="lg-pk"></g></svg>`;
+    };
+    // send labelled packets along a path (reverse = from its end to its start)
+    const send = (d, label, ms, reverse = false) => {
+      const pk = svgHost.querySelector(".lg-pk"), p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      p.setAttribute("d", d); p.setAttribute("fill", "none"); pk.appendChild(p);
+      const L = p.getTotalLength(), gEl = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      gEl.setAttribute("class", "lg-p"); gEl.innerHTML = `<rect x="${-label.length * 3.6 - 6}" y="-10" width="${label.length * 7.2 + 12}" height="20" rx="10"/><text y="4" text-anchor="middle">${esc(label)}</text>`;
+      pk.appendChild(gEl);
+      run = anim(ms, (k) => { const pt = p.getPointAtLength((reverse ? 1 - k : k) * L); gEl.setAttribute("transform", `translate(${pt.x.toFixed(1)} ${pt.y.toFixed(1)})`); });
+      return run.p.then(() => { gEl.remove(); p.remove(); });
+    };
+    const mark = () => el.querySelectorAll(".lg-stages li").forEach((li, i) => { li.className = i < stage ? "done" : i === stage && busy ? "now" : ""; });
+    const STAGES = [
+      async () => {
+        state.on = "uart"; state.espT = ""; draw();
+        say.innerHTML = `<strong>1. UART (asynchronous, full duplex).</strong> The sonar sends the text “R${String(reading.inch).padStart(3, "0")}⏎” on its TX wire into the ESP32's RX2, one character after another at 9600 baud. There is no clock wire: both ends were set to 9600 baud beforehand.`;
+        for (const c of ["R", ...String(reading.inch).padStart(3, "0"), "⏎"]) await send(g().uTx, c, 650);
+        state.espT = `${reading.inch} in = ${reading.cm} cm`; draw();
+      },
+      async () => {
+        state.on = "i2c"; draw();
+        say.innerHTML = `<strong>2. I²C (synchronous, half duplex).</strong> The ESP32 drives the clock on SCL and sends the address <strong>0x76</strong> on SDA. Only the BME280 answers; the OLED ignores it. Then the SDA line turns round and the BME280 sends the temperature back.`;
+        await send(g().bSda, "0x76 W", 900); await send(g().bSda, "0xFA", 700);
+        await send(g().bSda, "0x76 R", 900); await send(g().bSda, `${reading.temp} °C`, 1000, true);
+        state.espT = `${reading.cm} cm, ${reading.temp} °C`; draw();
+      },
+      async () => {
+        state.on = "i2c"; draw();
+        say.innerHTML = `<strong>3. I²C again, to another device on the same two wires.</strong> The ESP32 sends the address <strong>0x3C</strong>, so this time only the OLED listens. Then it writes the text to show.`;
+        await send(g().oSda, "0x3C W", 900); await send(g().oSda, `${reading.cm} cm`, 900);
+        state.oled = [`${reading.cm} cm`, `${reading.temp} °C`]; draw();
+      },
+      async () => {
+        state.on = "spi"; state.cs = true; draw();
+        say.innerHTML = `<strong>4. SPI (synchronous, full duplex, fast).</strong> The ESP32 pulls the SD card's <strong>CS</strong> low to select it. On each SCLK pulse a bit goes out on MOSI and another comes back on MISO, at the same time.`;
+        const x = (n) => g().spi.find((s) => s[0] === n)[1], [y0, y1] = g().spiY;
+        await Promise.all([send(`M${x("MOSI")},${y0}V${y1}`, "data", 900), send(`M${x("MISO")},${y1}V${y0}`, "OK", 900)]);
+        log.push(`${reading.time}, ${reading.cm}, ${reading.temp}`);
+        file.textContent = "time, distance_cm, temp_C\n" + log.slice(-6).join("\n") + "\n";
+        state.cs = false; draw();
+      }
+    ];
+    const newReading = () => {
+      const inch = 30 + Math.floor(Math.random() * 120), d = new Date();
+      reading = { inch, cm: Math.round(inch * 2.54), temp: (27 + Math.random() * 5).toFixed(1), time: `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}` };
+    };
+    const step = async () => {
+      if (busy) return;
+      if (stage === 0 || !reading) newReading();
+      busy = true; mark();
+      await STAGES[stage]();
+      busy = false; stage = (stage + 1) % 4; mark();
+      if (stage === 0) {
+        state.on = ""; draw();
+        say.innerHTML = `<strong>Reading saved.</strong> Three buses, each chosen for its job: UART for the sonar's simple text, I²C for several slow devices on two wires, and SPI for fast writing to the SD card.`;
+      }
+    };
+    el.addEventListener("click", async (e) => {
+      if (e.target.closest("[data-next]")) step();
+      if (e.target.closest("[data-all]") && !busy) { do { await step(); } while (stage !== 0); }
+    });
+    LG_TALL.addEventListener("change", draw);
+    draw(); mark();
   }
 
   const PROTO_QUIZ = [
@@ -968,18 +1426,13 @@ WiFi.softAP("ESP32-setup", "12345678");`]
       mount: mountI2c },
     { id: "wiredcompare", group: "wired", title: "UART, SPI and I²C Compared", toc: "Comparison",
       mount(el) {
-        el.innerHTML = `<div class="table-wrap"><table class="cmp"><thead><tr><th scope="col"></th><th scope="col">UART</th><th scope="col">SPI</th><th scope="col">I²C</th></tr></thead><tbody>
-          <tr><th scope="row">Wires (plus GND)</th><td>2: TX and RX</td><td>4: SCLK, MOSI, MISO and one CS per device</td><td>2: SDA and SCL, with pull-up resistors</td></tr>
-          <tr><th scope="row">Clock</th><td>Asynchronous: no clock wire, same baud rate on both sides</td><td>Synchronous: the master drives SCLK</td><td>Synchronous: the master drives SCL</td></tr>
-          <tr><th scope="row">Duplex</th><td>Full duplex</td><td>Full duplex</td><td>Half duplex</td></tr>
-          <tr><th scope="row">Devices</th><td>Two, point to point</td><td>One master, many slaves (one CS pin each)</td><td>Many on one bus; 7-bit addresses allow up to 112 devices</td></tr>
-          <tr><th scope="row">Typical speed</th><td>9600 to 115200 baud (ESP32: up to 5 Mbps)</td><td>Several to tens of MHz (ESP32: up to 80 MHz)</td><td>100 kHz standard, 400 kHz fast mode</td></tr>
-          <tr><th scope="row">Distance</th><td>A metre or so at 3.3 V logic; much further with RS-232 or RS-485 line drivers</td><td>Short: on the same board</td><td>Short: on the board or a short cable</td></tr>
-          <tr><th scope="row">On the ESP32</th><td>3 UARTs (UART0 is used for USB and uploading)</td><td>4 SPI (HSPI and VSPI are free)</td><td>2 I²C controllers</td></tr>
-          <tr><th scope="row">Typical uses</th><td>GPS, MB1010 sonar, Bluetooth modules, PC serial</td><td>SD cards, TFT displays, fast ADCs</td><td>Sensors (BME280, MPU6050), OLED displays, clocks</td></tr>
-        </tbody></table></div><h4 class="sub-h">Check Yourself: Which Protocol?</h4><div class="proto-quiz"></div>`;
+        el.innerHTML = `<div class="bus-table"></div><h4 class="sub-h">Check Yourself: Which Protocol?</h4><div class="proto-quiz"></div>`;
+        mountBusTable(el.querySelector(".bus-table"));
         quiz(el.querySelector(".proto-quiz"), PROTO_QUIZ);
       } },
+    { id: "logger", group: "wired", title: "See All Three Together: A Data Logger", toc: "All Three",
+      intro: `<p>A real instrument often uses all three buses at once, each for the job it suits. This ESP32 logger reads distance from a sonar on <strong>UART</strong>, reads temperature from a BME280 and shows the result on an OLED display, both on <strong>I²C</strong>, and saves every reading to a microSD card on <strong>SPI</strong>.</p>`,
+      mount: mountLogger },
 
     /* ---------------- Wireless ---------------- */
     { id: "bt", group: "wireless", title: "Bluetooth", toc: "Bluetooth",
