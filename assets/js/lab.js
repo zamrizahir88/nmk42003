@@ -12,7 +12,7 @@
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const store = {
     get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
-    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} document.dispatchEvent(new CustomEvent("nmk:store", { detail: k })); }
   };
 
   /* =====================================================================
@@ -494,6 +494,9 @@
         mark.textContent = ok ? "✓ Correct" : "✗ Not yet";
       });
       if (blank) { status.textContent = `Answer all ${ex.ans.length} part${ex.ans.length > 1 ? "s" : ""} before checking.`; return; }
+      // for the student's progress record (saved to their account when signed in)
+      document.dispatchEvent(new CustomEvent("nmk:exercise", { detail: { id: ex.id, solved: right === ex.ans.length, right, total: ex.ans.length,
+        hints: Math.min(tries, hints.length), answers: ex.ans.map((a, i) => $(`#${ex.id}-a${i}`, el).value.slice(0, 40)) } }));
       if (right === ex.ans.length) {
         status.innerHTML = `<strong>✓ All correct, well done!</strong> Compare your method with the full working below.`;
         unlock(true);

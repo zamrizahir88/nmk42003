@@ -1,0 +1,62 @@
+/* NMK42003 accounts: the header sign-in button, its menu, the approval banner, dialogs and the lecturer dashboard. */
+
+.acc-btn { position: relative; }
+.acc-btn.out { width: auto; padding: 0 12px; gap: 6px; display: inline-flex; align-items: center; font: 600 .9rem var(--sans); }
+.acc-btn .acc-t { white-space: nowrap; }
+@media (max-width: 560px) { .acc-btn.out .acc-t { display: none; } .acc-btn.out { padding: 0; width: 40px; justify-content: center; } }
+.acc-av { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--teal); color: #fff; font: 700 .95rem var(--sans); }
+:root[data-theme="dark"] .acc-av { color: #0e1720; }
+.acc-dot { position: absolute; top: 4px; right: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 2px var(--surface); }
+
+.acc-menu { position: fixed; z-index: 90; width: 280px; max-width: calc(100vw - 16px); background: var(--surface); color: var(--ink); border: 1px solid var(--rule); border-radius: var(--r-md); box-shadow: 0 14px 36px rgba(21, 36, 58, .22); padding: 8px; }
+.acc-menu[hidden] { display: none; }
+.acc-who { display: grid; gap: 2px; padding: 8px 10px 10px; border-bottom: 1px solid var(--rule); margin-bottom: 6px; }
+.acc-who span { font-size: .85rem; color: var(--ink-2); overflow-wrap: anywhere; }
+.acc-st { justify-self: start; margin-top: 4px; font-size: .78rem !important; font-weight: 600; border-radius: 999px; padding: 1px 10px; background: var(--grid); }
+.acc-st.approved { background: var(--teal-soft); color: var(--teal) !important; }
+.acc-st.pending { background: var(--amber-soft); color: var(--amber) !important; }
+.acc-note { font-size: .82rem; color: var(--ink-3); margin: 0 10px 6px; }
+.acc-item { display: block; width: 100%; text-align: left; font: inherit; font-size: .95rem; padding: 9px 10px; border: 0; border-radius: var(--r-sm); background: none; color: var(--ink); text-decoration: none; cursor: pointer; }
+.acc-item:hover { background: var(--grid); }
+
+.acc-banner { background: var(--amber-soft); border-bottom: 1px solid var(--amber); color: var(--ink); font-size: .95rem; padding: 10px 0; }
+.acc-banner.rejected { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); border-bottom-color: var(--danger); }
+
+.acc-back { position: fixed; inset: 0; z-index: 100; background: rgba(10, 18, 28, .55); display: grid; place-items: center; padding: 16px; }
+.acc-modal { width: 520px; max-width: 100%; max-height: calc(100vh - 32px); overflow-y: auto; background: var(--surface); color: var(--ink); border-radius: 14px; padding: 22px 24px; box-shadow: 0 20px 50px rgba(0, 0, 0, .3); }
+.acc-modal h2 { font-size: 1.4rem; margin: 0 0 10px; }
+.acc-modal p { margin: 0 0 10px; color: var(--ink-2); }
+.acc-privacy { background: var(--paper); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 12px 14px; margin: 10px 0 14px; font-size: .9rem; }
+.acc-privacy strong { display: block; margin-bottom: 6px; }
+.acc-privacy p { font-size: .9rem; }
+.acc-form { display: grid; gap: 8px; }
+.acc-form > label:first-child { font-weight: 600; display: grid; gap: 2px; }
+.acc-form > label:first-child span { font-weight: 400; font-size: .82rem; color: var(--ink-3); }
+.acc-form input[type="text"] { font: inherit; font-size: 16px; height: 44px; padding: 0 12px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); }
+.acc-ok { display: flex; gap: 8px; align-items: flex-start; font-size: .92rem; }
+.acc-ok input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--teal); }
+.acc-err { color: var(--danger); font-size: .9rem; margin: 0 !important; min-height: 1.2em; }
+.acc-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+
+/* ---------- Lecturer dashboard ---------- */
+.adm-gate { max-width: var(--measure); }
+.adm-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.adm-sum { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 16px; }
+.adm-sum div { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 10px 16px; display: grid; }
+.adm-sum strong { font: 700 1.5rem var(--serif); }
+.adm-sum span { font-size: .82rem; color: var(--ink-3); }
+.adm-scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: var(--r-md); background: var(--surface); }
+table.adm { width: 100%; border-collapse: collapse; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.adm th { text-align: left; font-weight: 600; font-size: .8rem; color: var(--ink-3); padding: 9px 12px; border-bottom: 1px solid var(--rule); white-space: nowrap; background: var(--surface); }
+.adm td { padding: 8px 12px; border-bottom: 1px solid var(--grid); vertical-align: middle; }
+.adm td small { display: block; color: var(--ink-3); overflow-wrap: anywhere; }
+.adm tr:last-child td { border-bottom: 0; }
+.adm .btn.sm { min-height: 34px; padding: 4px 12px; font-size: .85rem; }
+.adm-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.adm-empty { color: var(--ink-3); padding: 16px; margin: 0; }
+.adm-st { font-size: .78rem; font-weight: 600; border-radius: 999px; padding: 1px 10px; background: var(--grid); white-space: nowrap; }
+.adm-st.approved { background: var(--teal-soft); color: var(--teal); }
+.adm-st.pending { background: var(--amber-soft); color: var(--amber); }
+.adm-st.rejected { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--danger); }
+.adm-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 10px; }
+.adm-tools input { font: inherit; height: 38px; padding: 0 10px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); min-width: 220px; }

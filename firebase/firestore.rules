@@ -1,0 +1,46 @@
+rules_version = '2';
+// NMK42003 course website: who may read and write what.
+// Paste this whole file into Firebase console → Firestore Database → Rules, then press Publish.
+// The lecturer list must match ADMINS in assets/js/account.js.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function email() { return request.auth.token.email.lower(); }
+    function verified() { return signedIn() && request.auth.token.email_verified == true; }
+    function isLecturer() { return verified() && email() in ['zamrizahir@unimap.edu.my']; }
+    function isStudentMail() { return verified() && email().matches('.*@studentmail[.]unimap[.]edu[.]my$'); }
+    function isSelf(uid) { return signedIn() && request.auth.uid == uid; }
+    function approved() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
+    }
+
+    // One profile per account: name, email, nickname, status (pending / approved / rejected), role.
+    match /users/{uid} {
+      allow read: if isLecturer() || isSelf(uid);
+      // a student creates their own profile, always as "pending"; a lecturer may create their own as approved
+      allow create: if isSelf(uid) && request.resource.data.email == email() && (
+          (isStudentMail() && request.resource.data.status == 'pending' && request.resource.data.role == 'student')
+          || isLecturer());
+      // students may change their own profile, but never their status, role or email; lecturers may change anything
+      allow update: if isLecturer() || (isSelf(uid)
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.email == resource.data.email);
+      allow delete: if isLecturer();
+    }
+
+    // Progress records: only an approved owner writes them; the owner and the lecturers read them.
+    match /progress/{uid} {
+      allow read: if isLecturer() || isSelf(uid);
+      allow write: if isSelf(uid) && approved();
+      allow delete: if isLecturer();
+    }
+
+    // Everything else stays closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
