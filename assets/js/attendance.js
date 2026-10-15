@@ -403,8 +403,8 @@
     body.innerHTML = `<div class="adm-tools"><button type="button" class="btn" data-new>+ New session</button><button type="button" class="btn ghost" data-bulk>${L.sessions.some(fromPlan) ? "Update sessions from the timetable" : "Create the semester's sessions"}</button>
         ${["all", "lecture", "lab"].map((f) => `<button type="button" class="chip-btn" data-filter="${f}" aria-pressed="${L.filter === f}">${{ all: "All", lecture: "Lectures", lab: "Labs" }[f]}</button>`).join("")}
         ${L.picked.size ? `<button type="button" class="btn small at-danger" data-delpicked>Delete selected (${L.picked.size})</button><button type="button" class="btn ghost small" data-unpick>Clear selection</button>` : ""}</div>
-      ${(() => { if (!L.sessions.some(fromPlan)) return ""; const d = planDiff(), n = d.add.length + d.upd.length + d.del.length;
-        return n ? `<div class="at-card warn at-sync"><strong>The course timetable has changed.</strong> ${[d.add.length && `${d.add.length} to add`, d.upd.length && `${d.upd.length} to update`, d.del.length && `${d.del.length} to remove`].filter(Boolean).join(", ")}. Sessions already held are never changed. <button type="button" class="btn small" data-bulk>Review and update</button></div>` : ""; })()}
+      ${(() => { if (!L.sessions.some(fromPlan)) return ""; const d = planDiff(), n = d.add.length + d.upd.length + d.del.length + d.link.length;
+        return n ? `<div class="at-card warn at-sync"><strong>The course timetable has changed.</strong> ${[d.add.length && `${d.add.length} to add`, d.upd.length && `${d.upd.length} to update`, d.del.length && `${d.del.length} to remove`, d.link.length && `${d.link.length} of your own to link`].filter(Boolean).join(", ")}. Sessions already held are never changed. <button type="button" class="btn small" data-bulk>Review and update</button></div>` : ""; })()}
       ${!list.length ? `<p class="adm-empty">No sessions yet. Press <strong>Create the semester's sessions</strong> to add every lecture and lab from the course timetable, or add one with <strong>+ New session</strong>.</p>` :
       `<div class="adm-scroll"><table class="adm at-ses"><thead><tr><th scope="col"><input type="checkbox" class="at-cb" data-pickall aria-label="Select every session in this list"${list.length && list.every((s) => L.picked.has(s.id)) ? " checked" : ""}></th><th scope="col">Week</th><th scope="col">Date</th><th scope="col">Session</th><th scope="col">For</th><th scope="col">State</th><th scope="col">P / L / E / A</th><th scope="col"><span class="vh">Manage</span></th></tr></thead><tbody>
       ${list.map((s) => { const n = counts(s), sw = s.kind === "lab" ? L.moves.filter((m) => m.slot === slotOf(s) && m.section === s.section).length : 0; return `<tr class="${s.date === t ? "today" : ""}${L.picked.has(s.id) ? " picked" : ""}"><td><input type="checkbox" class="at-cb" data-pick="${s.id}" aria-label="Select ${esc(s.title)}"${L.picked.has(s.id) ? " checked" : ""}></td><td>${s.week || weekOfDate(s.date)}</td><td>${fmtDate(s.date)}<br><small>${fmtTime(s.start)} to ${fmtTime(s.end)}</small></td>
@@ -493,10 +493,17 @@
   // the timetable place a session was made for (kept when its date is changed by hand); older sessions: from their id
   const pkeyOf = (x) => { if (x.pkey) return x.pkey; const m = String(x.id || "").match(/-w(\d\d)-(lecture|lab)(?:-(mon|wed|thu))?$/); return m ? `${+m[1]}|${m[2]}|${m[3] || "all"}` : planKey(x); };
   function planDiff() {
-    const plan = semesterPlan(), mine = L.sessions.filter(fromPlan), used = new Set(), add = [], upd = [], del = [], keep = [];
+    // sessions from the timetable, and the lecturer's own sessions already linked to a timetable place
+    const plan = semesterPlan(), mine = L.sessions.filter((x) => fromPlan(x) || x.pkey), used = new Set(), add = [], upd = [], del = [], keep = [], link = [];
+    const overlap = (a, b) => a.start < b.end && b.start < a.end;
     plan.forEach((p) => {
       const ex = mine.find((x) => !used.has(x.id) && pkeyOf(x) === planKey(p));
-      if (!ex) { add.push(p); return; }
+      if (!ex) {
+        // one of the lecturer's own sessions on the same day, at an overlapping time, for the same students: that is this one
+        const own = L.sessions.find((x) => !used.has(x.id) && !fromPlan(x) && !x.pkey && x.kind === p.kind && x.section === p.section && x.date === p.date && overlap(x, p));
+        if (own) { used.add(own.id); link.push({ s: own, p }); return; }
+        add.push(p); return;
+      }
       used.add(ex.id);
       const ch = ["title", "date", "start", "end", "venue"].filter((f) => (ex[f] || "") !== (p[f] || ""));
       if (!ch.length) return;
@@ -504,16 +511,17 @@
       if (held(ex)) keep.push({ s: ex, p, why: "already held" }); else upd.push({ s: ex, p, ch });
     });
     mine.filter((x) => !used.has(x.id)).forEach((x) => { if (held(x)) keep.push({ s: x, why: "held, no longer in the timetable" }); else if (x.manual) keep.push({ s: x, why: "changed by you" }); else del.push(x); });
-    return { add, upd, del, keep };
+    return { add, upd, del, keep, link };
   }
   function bulkCreate() {
-    const d = planDiff(), n = d.add.length + d.upd.length + d.del.length;
+    const d = planDiff(), n = d.add.length + d.upd.length + d.del.length + d.link.length;
     if (!n) { say("Up to Date", `Every lecture and lab in the course timetable has its session, and they all match.${d.keep.length ? ` ${d.keep.length} session${d.keep.length === 1 ? " that was" : "s that were"} already held ${d.keep.length === 1 ? "differs" : "differ"} from the timetable and ${d.keep.length === 1 ? "is" : "are"} kept as ${d.keep.length === 1 ? "it was" : "they were"}.` : ""}`); return; }
     const li = (t) => `<li>${t}</li>`, label = (x) => `${fmtDate(x.date)} · ${esc(x.title)}`;
     const p = panel(`<h3>Update Sessions from the Timetable</h3>
       <p>These changes make the sessions match the course timetable${L.sessions.length ? "" : " (every lecture on Thursday, 2 PM to 4 PM; each lab in three sections: Monday 1 to 4 PM, Wednesday 12 to 3 PM, Thursday 9 AM to 12 PM)"}. Sessions already held, and sessions you made yourself, are never changed.</p>
       ${d.add.length ? `<h4>Add ${d.add.length}</h4><ul class="at-list">${d.add.slice(0, 40).map((x) => li(label(x))).join("")}${d.add.length > 40 ? li(`…and ${d.add.length - 40} more`) : ""}</ul>` : ""}
       ${d.upd.length ? `<h4>Update ${d.upd.length}</h4><ul class="at-list">${d.upd.map((u) => li(`${label(u.s)} → <strong>${u.ch.includes("title") ? esc(u.p.title) : ""}${u.ch.includes("date") ? ` ${fmtDate(u.p.date)}` : ""}${u.ch.some((f) => f === "start" || f === "end") ? ` ${fmtTime(u.p.start)} to ${fmtTime(u.p.end)}` : ""}${u.ch.includes("venue") ? ` · ${esc(u.p.venue || "no venue")}` : ""}</strong>`)).join("")}</ul>` : ""}
+      ${d.link.length ? `<h4>Already there ${d.link.length} <small class="at-sub">your own session at the same date and time: it is linked to the timetable, not renamed or moved</small></h4><ul class="at-list">${d.link.map((k) => li(`${label(k.s)} <small>= ${esc(k.p.title)}</small>`)).join("")}</ul>` : ""}
       ${d.del.length ? `<h4>Remove ${d.del.length} <small class="at-sub">not opened, and no longer in the timetable</small></h4><ul class="at-list">${d.del.map((x) => li(label(x))).join("")}</ul>` : ""}
       ${d.keep.length ? `<h4>Kept as they are ${d.keep.length}</h4><ul class="at-list">${d.keep.map((k) => li(`${label(k.s)} <small>(${k.why})</small>`)).join("")}</ul>` : ""}
       <p class="at-err" aria-live="polite"></p>
@@ -528,6 +536,7 @@
       // an updated lab keeps its slot, so swaps made for it stay with it
       d.upd.forEach((u) => ops.push((b) => b.update(db.collection("sessions").doc(u.s.id), { title: u.p.title, date: u.p.date, start: u.p.start, end: u.p.end, venue: u.p.venue, week: u.p.week, pkey: planKey(u.p) })));
       d.del.forEach((x) => ops.push((b) => b.delete(db.collection("sessions").doc(x.id))));
+      d.link.forEach((k) => ops.push((b) => b.update(db.collection("sessions").doc(k.s.id), { pkey: planKey(k.p), manual: true })));
       try {
         for (let i = 0; i < ops.length; i += 400) { const b = db.batch(); ops.slice(i, i + 400).forEach((f) => f(b)); await b.commit(); }
         closePanel();
