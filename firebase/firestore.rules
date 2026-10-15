@@ -117,7 +117,8 @@ service cloud.firestore {
     // Lab swaps: a student asks a classmate (by matric number); the classmate accepts or declines; a lecturer approves.
     match /swaps/{id} {
       allow read: if isLecturer() || (signedIn() && (resource.data.fromEmail == email() || (onRoster() && resource.data.toMatric == rosterDoc().matric)));
-      allow create: if onRoster() && request.resource.data.fromEmail == email() && request.resource.data.fromMatric == rosterDoc().matric
+      // a student asks; a lecturer may also swap two students directly
+      allow create: if isLecturer() || onRoster() && request.resource.data.fromEmail == email() && request.resource.data.fromMatric == rosterDoc().matric
         && request.resource.data.status == 'requested' && request.resource.data.toMatric != rosterDoc().matric;
       allow update: if isLecturer()
         || (resource.data.fromEmail == email() && resource.data.status in ['requested', 'accepted'] && request.resource.data.status == 'cancelled'

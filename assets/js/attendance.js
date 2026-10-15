@@ -100,8 +100,9 @@
 
   // a type-to-filter list of classmates: tap one to choose. list: [{ m, n, s, g }], onPick(item)
   function picker(el, list, onPick, label) {
-    el.innerHTML = `<label class="at-lbl" for="pk-${label}">${esc(label)} <span>Type a name or matric number, then tap the student</span></label>
-      <input id="pk-${label}" class="at-in" type="search" autocomplete="off" spellcheck="false" placeholder="e.g. Ahmad or 2313">
+    const pid = `pk-${String(label).replace(/\W+/g, "-")}`;
+    el.innerHTML = `<label class="at-lbl" for="${pid}">${esc(label)} <span>Type a name or matric number, then tap the student</span></label>
+      <input id="${pid}" class="at-in" type="search" autocomplete="off" spellcheck="false" placeholder="e.g. Ahmad or 2313">
       <ul class="at-pick-list" role="listbox"></ul><p class="at-chosen" aria-live="polite"></p>`;
     const inp = $("input", el), ul = $("ul", el), chosen = $(".at-chosen", el);
     const draw = () => {
@@ -554,7 +555,7 @@
       ${waiting.length ? `<div class="at-card warn"><h3>Swaps Waiting for Your Approval</h3>${waiting.map(swapRow).join("")}</div>` : ""}
       ${opts}
       <h3 class="at-gap">Take Attendance <small class="at-sub">${n.P} present · ${n.L} late · ${n.E} excused · ${n.A} absent · ${studs.length - marked} not marked</small></h3>
-      <div class="adm-tools"><span>Set every unmarked student to</span>${["P", "L", "E", "A"].map((k) => `<button type="button" class="btn ghost small" data-all="${k}">${ST[k]}</button>`).join("")}${slot ? `<button type="button" class="btn ghost small" data-addin>+ Add a student from another section</button>` : ""}</div>
+      <div class="adm-tools"><span>Set every unmarked student to</span>${["P", "L", "E", "A"].map((k) => `<button type="button" class="btn ghost small" data-all="${k}">${ST[k]}</button>`).join("")}${slot ? `<button type="button" class="btn ghost small" data-addin>+ Add a student from another section</button><button type="button" class="btn ghost small" data-lswap="${slot}">⇄ Swap two students</button>` : ""}</div>
       ${!studs.length ? `<p class="adm-empty">No students in this section. Load the class list first (Class List tab).</p>` :
       `<div class="adm-scroll"><table class="adm at-take"><thead><tr><th scope="col">#</th><th scope="col">Student</th><th scope="col">Group</th><th scope="col">Status</th><th scope="col">Remark</th><th scope="col">Marked</th></tr></thead><tbody>${rows}</tbody></table></div>`}
       ${out.length ? `<p class="small-note">Swapped out of this lab: ${out.map((r) => `${esc(r.name)} (to ${SEC_SHORT[moveOf(slot, r.id).section] || "–"})`).join(", ")}.</p>` : ""}
@@ -633,13 +634,48 @@
   /* ---------- swaps ---------- */
   const SW = { requested: "Waiting for the classmate", accepted: "Waiting for your approval", approved: "Approved", declined: "Declined by the classmate", rejected: "Not approved", cancelled: "Cancelled" };
   const swapRow = (x) => `<div class="at-req" data-swid="${x.id}"><p><strong>${esc(x.labTitle)}</strong>: ${esc(x.fromName)} (${SEC_SHORT[x.fromSection] || "–"} G${x.fromGroup || "–"}) ⇄ ${esc(x.toName)} (${SEC_SHORT[x.toSection] || "–"} G${x.toGroup || "–"})
-      · <span class="at-tag ${x.status}">${SW[x.status] || x.status}</span>${x.note ? `<br><small>“${esc(x.note)}”</small>` : ""}<br><small>Asked ${fmtStamp(x.createdAt)}</small></p>
+      · <span class="at-tag ${x.status}">${SW[x.status] || x.status}</span>${x.note ? `<br><small>“${esc(x.note)}”</small>` : ""}<br><small>${x.byLecturer ? "Made by the lecturer" : "Asked"} ${fmtStamp(x.createdAt)}</small></p>
       <div class="acc-row">${x.status === "accepted" ? `<button type="button" class="btn small" data-swok>Approve</button><button type="button" class="btn ghost small" data-swno>Reject</button>` : x.status === "approved" ? `<button type="button" class="btn ghost small" data-swundo>Cancel this swap</button>` : x.status === "requested" ? `<button type="button" class="btn ghost small" data-swno>Reject</button>` : ""}</div></div>`;
   function drawSwaps(body) {
     const order = { accepted: 0, requested: 1, approved: 2, rejected: 3, declined: 4, cancelled: 5 };
     const list = L.swaps.slice().sort((a, b) => order[a.status] - order[b.status] || tsMs(b.createdAt) - tsMs(a.createdAt));
-    body.innerHTML = `<p class="widget-lead">Students ask a classmate in another section to swap one lab. When the classmate accepts, the swap waits here for you. After you approve it, the two students change places (section and group) for that lab only.</p>
+    body.innerHTML = `<p class="widget-lead">Students ask a classmate in another section to swap one lab. When the classmate accepts, the swap waits here for you. After you approve it, the two students change places (section and group) for that lab only. You can also swap two students yourself.</p>
+      <div class="adm-tools"><button type="button" class="btn" data-lswap>+ Swap two students</button></div>
       ${list.length ? list.map(swapRow).join("") : `<p class="adm-empty">No swap requests yet.</p>`}`;
+  }
+  // the lecturer swaps two students in different sections for one lab, straight away (no request, no acceptance)
+  function lecturerSwap(pre) {
+    const labs = {};
+    L.sessions.filter((s) => s.kind === "lab" && slotOf(s)).forEach((s) => { const k = slotOf(s); if (!labs[k]) labs[k] = { slot: k, name: labName(s), date: s.date }; if (s.date < labs[k].date) labs[k].date = s.date; });
+    const list = Object.values(labs).sort((a, b) => (a.date < b.date ? -1 : 1));
+    if (!list.length) { say("No Labs Yet", "Create the lab sessions first (Sessions tab)."); return; }
+    const studs = L.roster.filter((r) => r.status === "active" && r.section).map((r) => ({ m: String(r.matric), n: r.name, s: r.section, g: r.group, email: r.id }));
+    let a = null, c = null;
+    const p = panel(`<h3>Swap Two Students</h3><p>For one lab only. Each student takes the other's section and group for that lab. It takes effect straight away.</p>
+      <form class="at-dform" novalidate><label>Which lab<select name="slot">${list.map((l) => `<option value="${l.slot}"${pre === l.slot ? " selected" : ""}>${esc(l.name)}</option>`).join("")}</select></label>
+      <div class="at-pk-a"></div><div class="at-pk-b"></div>
+      <label>Note (optional)<input name="note" maxlength="200" placeholder="e.g. Asked in person on the lab day"></label>
+      <p class="at-err" aria-live="polite"></p><div class="acc-row"><button type="submit" class="btn">Swap them</button><button type="button" class="btn ghost" data-x>Cancel</button></div></form>`);
+    picker($(".at-pk-a", p), studs, (x) => { a = x; }, "First student");
+    picker($(".at-pk-b", p), studs, (x) => { c = x; }, "Second student");
+    $(".at-dform", p).addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const v = Object.fromEntries(new FormData(e.target).entries()), err = $(".at-err", p);
+      if (!a || !c) { err.textContent = "Choose both students."; return; }
+      if (a.email === c.email) { err.textContent = "Choose two different students."; return; }
+      if (a.s === c.s) { err.textContent = "Both students are in the same section, so there is nothing to swap."; return; }
+      if (moveOf(v.slot, a.email) || moveOf(v.slot, c.email)) { err.textContent = "One of them is already swapped or moved for this lab. Cancel that first."; return; }
+      const by = A.state.user.email.toLowerCase(), ref = db.collection("swaps").doc();
+      try {
+        const b = db.batch();
+        b.set(ref, { semester: SEM, slot: v.slot, labTitle: labs[v.slot].name, fromEmail: a.email, fromMatric: a.m, fromName: a.n, fromSection: a.s, fromGroup: a.g || 0,
+          toMatric: c.m, toName: c.n, toSection: c.s, toGroup: c.g || 0, note: (v.note || "").trim().slice(0, 200), status: "approved", byLecturer: true, decidedBy: by,
+          createdAt: FV.serverTimestamp(), updatedAt: FV.serverTimestamp() });
+        b.set(db.collection("labMoves").doc(`${v.slot}_${a.email}`), { semester: SEM, slot: v.slot, email: a.email, section: c.s, group: c.g || 0, swap: ref.id, by, at: FV.serverTimestamp() });
+        b.set(db.collection("labMoves").doc(`${v.slot}_${c.email}`), { semester: SEM, slot: v.slot, email: c.email, section: a.s, group: a.g || 0, swap: ref.id, by, at: FV.serverTimestamp() });
+        await b.commit(); closePanel();
+      } catch (ex) { err.textContent = `Could not swap them (${ex.code || ex}).`; }
+    });
   }
   async function decideSwap(id, ok) {
     const x = L.swaps.find((y) => y.id === id);
@@ -932,6 +968,7 @@
     if (b("[data-addstu]")) return studentForm(null);
     if (b("[data-editstu]")) return studentForm(L.roster.find((r) => r.id === b("[data-editstu]").dataset.editstu));
     if (b("[data-wk]")) return weekForm(+b("[data-wk]").dataset.wk);
+    if (b("[data-lswap]")) return lecturerSwap(b("[data-lswap]").dataset.lswap || "");
     if (b("[data-swok]")) return decideSwap(b("[data-swid]").dataset.swid, true);
     if (b("[data-swno]")) return decideSwap(b("[data-swid]").dataset.swid, false);
     if (b("[data-swundo]")) return undoSwap(b("[data-swid]").dataset.swid);
