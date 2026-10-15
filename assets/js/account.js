@@ -22,11 +22,23 @@
   const STUDENT_DOMAIN = "@studentmail.unimap.edu.my";
   const EX_KEY = "nmk-ex-log", UID_KEY = "nmk-sync-uid";
   // progress kept in this browser that is not worth syncing
-  const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-)/;
+  const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-|sched)/;
   const SEM = (typeof COURSE !== "undefined" && (COURSE.semesterId || COURSE.session)) || "";
 
   firebase.initializeApp(CONFIG);
   const auth = firebase.auth(), db = firebase.firestore();
+
+  /* ---------- The lecturer's changes to the public timetable (applied by schedule.js on the next page load) ---------- */
+  const SCHED_ID = String(SEM).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  db.collection("schedule").doc(SCHED_ID).get().then((d) => {
+    const v = d.exists ? JSON.stringify(Object.assign({ semester: SEM }, { weeks: d.data().weeks || {}, labs: d.data().labs || {}, topics: d.data().topics || {} })) : "";
+    let old = ""; try { old = localStorage.getItem("nmk-sched") || ""; } catch (e) { /* private mode */ }
+    if (v === old) return;
+    try { if (v) localStorage.setItem("nmk-sched", v); else localStorage.removeItem("nmk-sched"); } catch (e) { return; }
+    // draw the page again once with the new timetable (never in a loop)
+    let done = ""; try { done = sessionStorage.getItem("nmk-sched-reloaded") || ""; } catch (e) { /* ignore */ }
+    if (done !== v) { try { sessionStorage.setItem("nmk-sched-reloaded", v); } catch (e) { return; } location.reload(); }
+  }).catch(() => { /* offline: keep the copy this browser has */ });
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const isAdmin = (email) => ADMINS.includes(String(email || "").toLowerCase());
@@ -37,7 +49,7 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } }
   };
 
-  const state = { user: null, profile: null, ready: false };
+  const state = { user: null, profile: null, roster: null, ready: false };
   const listeners = [];
   const changed = () => listeners.forEach((f) => { try { f(state); } catch (e) { /* a page's own problem */ } });
 
@@ -69,10 +81,13 @@
       const keys = snapshot();
       await db.collection("progress").doc(state.user.uid).set({ keys, semester: SEM, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       if (window.NMKGame) {   // the small public summary for the progress board
-        const g = window.NMKGame.compute(keys), p = state.profile;
+        const G = window.NMKGame, g = G.compute(keys), p = state.profile, r = state.roster || {};
+        // the public profile: classmates see the real name, matric and lab section from the class list, and the photo only if the student chose to show it
         await db.collection("board").doc(state.user.uid).set({ nickname: p.nickname || "", role: p.role || "student", semester: SEM, xp: g.xp, level: g.level, levelNo: g.levelNo,
           badges: g.badges.map((b) => b.id), streak: g.streak, solved: g.solved, lastActive: g.lastActive || null,
-          stops: Object.fromEntries(g.stops.filter((s) => s.total).map((s) => [s.label, s.pct])), updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+          stops: Object.fromEntries(g.stops.filter((s) => s.total).map((s) => [s.label, s.pct])), prog: G.summaryProg ? G.summaryProg(g) : {}, feed: G.feed ? G.feed(g, 20) : [],
+          name: r.name || p.name || "", matric: r.matric || "", section: r.section || "", group: r.group || 0, photo: p.showPhoto && state.user.photoURL ? state.user.photoURL : "",
+          since: p.createdAt || null, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       }
       await db.collection("users").doc(state.user.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() });
     } catch (e) { console.warn("NMK sync: could not save progress", e.code || e); }
@@ -125,7 +140,8 @@
     }
     try {
       const ref = db.collection("users").doc(u.uid), doc = await ref.get();
-      const listed = isAdmin(u.email) ? false : await onList(u.email);
+      state.roster = isAdmin(u.email) ? null : await rosterOf(u.email);
+      const listed = !!(state.roster && state.roster.status === "active");
       if (doc.exists) {
         state.profile = doc.data();
         // a student who asked before the class list was loaded is approved as soon as they are on it
@@ -141,9 +157,9 @@
 
   /* ---------- Attendance ---------- */
   // Is this studentmail address on the NMK42003 class list (and not dropped)? Students on it are approved straight away.
-  async function onList(email) {
-    try { const r = await db.collection("roster").doc(String(email).toLowerCase()).get(); return r.exists && r.data().status === "active"; }
-    catch (e) { return false; }
+  async function rosterOf(email) {
+    try { const r = await db.collection("roster").doc(String(email).toLowerCase()).get(); return r.exists ? r.data() : null; }
+    catch (e) { return null; }
   }
   // A student's own attendance records, kept in this browser as nmk-att for the course journey (XP and badges)
   async function loadAttendance() {
@@ -151,6 +167,7 @@
     const em = state.user.email.toLowerCase();
     try {
       const [r, snap] = await Promise.all([db.collection("roster").doc(em).get(), db.collection("attendance").where("email", "==", em).get()]);
+      if (r.exists) state.roster = r.data();
       const recs = snap.docs.map((d) => d.data()).filter((x) => !x.semester || x.semester === SEM)
         .map((x) => ({ t: x.title || "", k: x.kind || "", d: x.date || "", s: x.status })).sort((a, b) => (a.d < b.d ? -1 : 1));
       const v = JSON.stringify({ section: r.exists ? r.data().section || "" : "", recs });
@@ -230,7 +247,8 @@
     menu.innerHTML = `<div class="acc-who"><strong>${esc((p && p.nickname) || u.displayName || "")}</strong><span>${esc(u.email)}</span>
         <span class="acc-st ${p ? p.status : ""}">${p ? STATUS[p.status] || p.status : "Setting up…"}</span></div>
       ${p && p.status === "approved" ? `<p class="acc-note">Your progress is saved to your account and follows you to any device.</p>` : ""}
-      <a class="acc-item" href="board.html">My progress and the board</a>
+      <a class="acc-item" href="profile.html">My profile</a>
+      <a class="acc-item" href="board.html">Progress board</a>
       <a class="acc-item" href="attendance.html">${isAdmin(u.email) ? "Attendance (lecturer)" : "Attendance"}</a>
       ${isAdmin(u.email) ? `<a class="acc-item" href="admin.html">Lecturer dashboard</a>` : ""}
       <button type="button" class="acc-item" data-out>Sign out</button>`;
@@ -264,5 +282,5 @@
 
   paint();
   // For admin.html and later pages: read-only access to the signed-in state and the database
-  window.NMKAccount = { db, auth, isAdmin, state, on: (f) => { listeners.push(f); if (state.ready) f(state); }, signIn, loadAttendance, SEM };
+  window.NMKAccount = { db, auth, isAdmin, state, on: (f) => { listeners.push(f); if (state.ready) f(state); }, signIn, loadAttendance, push, SEM };
 })();

@@ -20,7 +20,7 @@
   let rows = [], me = null;
 
   const row = (r, i) => `<tr class="${me && r.uid === me ? "me" : ""}"><td class="bd-rk">${i}</td>
-      <td><button type="button" class="bd-name" data-uid="${esc(r.uid)}">${esc(r.nickname)}</button>${me && r.uid === me ? ' <span class="bd-you">you</span>' : ""}</td>
+      <td><a class="bd-name" href="profile.html?u=${encodeURIComponent(r.uid)}">${esc(r.nickname)}</a>${me && r.uid === me ? ' <span class="bd-you">you</span>' : ""}</td>
       <td><span class="bd-lv">L${r.levelNo || 1}</span> ${esc(r.level || "Apprentice")}</td><td class="bd-xp">${r.xp || 0}</td>
       <td class="bd-bs">${(r.badges || []).map((id) => BADGE[id] ? `<span title="${esc(BADGE[id].name)}">${BADGE[id].icon}</span>` : "").join("")}</td>
       <td>${ago(r.lastActive)}</td></tr>`;
@@ -51,7 +51,7 @@
     back.querySelector("[data-close]").onclick = close; back.querySelector("[data-close]").focus();
     back.addEventListener("click", (e) => { if (e.target === back) close(); });
   }
-  host.addEventListener("click", (e) => { const b = e.target.closest("[data-uid]"); if (b) profile(b.dataset.uid); });
+  // names open each student's profile page (profile.html)
 
   A.on(async (st) => {
     if (!st.user) { host.innerHTML = `<p>Sign in with your studentmail account to see the class board.</p><button type="button" class="btn" data-signin>Sign in with Google</button>`; host.querySelector("[data-signin]").onclick = A.signIn; return; }

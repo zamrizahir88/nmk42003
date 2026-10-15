@@ -402,7 +402,8 @@
     const chips = [
       ...wk.activities.map((a) => `<span class="chip">${esc(a)}</span>`),
       ...wk.assessments.map((a) => `<span class="chip due">${esc(a)}</span>`),
-      ...wk.notes.map((a) => `<span class="chip note">${esc(a)}</span>`)
+      ...wk.notes.map((a) => `<span class="chip note">${esc(a)}</span>`),
+      ...(wk.edited ? [`<span class="chip upd" title="Your lecturer changed this week's plan">Updated</span>`] : [])
     ].join("");
     const topics = COURSE.topics.filter((t) => weekNumbers(t.weeks).includes(wk.w));
     $("#weekDetail").innerHTML = `
@@ -495,7 +496,8 @@
         const cls = [muted ? "muted" : "", wk.w === curWeek ? "current" : ""].join(" ").trim();
         const right = [
           ...wk.assessments.map((a) => `<span class="chip due">${esc(a)}</span>`),
-          ...wk.notes.map((a) => `<span class="chip note">${esc(a)}</span>`)
+          ...wk.notes.map((a) => `<span class="chip note">${esc(a)}</span>`),
+          ...(wk.edited ? [`<span class="chip upd" title="Your lecturer changed this week's plan">Updated</span>`] : [])
         ].join(" ");
         return `<tr id="wk-${wk.w}" class="${cls}">
           <td><span class="wnum">${wk.w}</span><span class="wdate">${esc(fmt(weekStart(wk.w)))} to ${esc(fmt(weekEnd(wk.w)))}</span></td>

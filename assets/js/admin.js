@@ -174,7 +174,7 @@
     const b = e.target.closest("button");
     if (!b) return;
     if (b.dataset.tab) { tab = b.dataset.tab; draw(); }
-    else if (b.dataset.detail) detail(b.dataset.detail);
+    else if (b.dataset.detail) location.href = `profile.html?u=${encodeURIComponent(b.dataset.detail)}`;
     else if (b.dataset.ok) setStatus(b.dataset.ok, "approved");
     else if (b.dataset.no && confirm("Remove this student's access?")) setStatus(b.dataset.no, "rejected");
     else if (b.dataset.csv) csv(b.dataset.csv);

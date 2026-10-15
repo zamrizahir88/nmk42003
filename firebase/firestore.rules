@@ -16,6 +16,7 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
     }
     // on the NMK42003 class list, and not dropped
+    function rosterDoc() { return get(/databases/$(database)/documents/roster/$(email())).data; }
     function onRoster() {
       return verified() && exists(/databases/$(database)/documents/roster/$(email()))
         && get(/databases/$(database)/documents/roster/$(email())).data.status == 'active';
@@ -49,9 +50,11 @@ service cloud.firestore {
 
     // Progress board: one small public summary per student (nickname, level, XP, badges, last active).
     // Approved students and lecturers may read the board; each approved student writes only their own entry.
+    // Students on the class list must show their real name and matric from it (classmates see them on profiles).
     match /board/{uid} {
       allow read: if isLecturer() || approved();
-      allow write: if isSelf(uid) && (approved() || isLecturer());
+      allow write: if isSelf(uid) && (approved() || isLecturer())
+        && (!onRoster() || (request.resource.data.get('name', '') == rosterDoc().name && request.resource.data.get('matric', '') == rosterDoc().matric));
       allow delete: if isLecturer();
     }
 
@@ -90,16 +93,59 @@ service cloud.firestore {
       let s = get(/databases/$(database)/documents/sessions/$(d.session)).data;
       let k = get(/databases/$(database)/documents/sessionKeys/$(d.session)).data;
       let r = get(/databases/$(database)/documents/roster/$(email())).data;
+      // a lab follows the student's approved swap (or the lecturer's move) for that lab
+      let mv = /databases/$(database)/documents/labMoves/$(s.get('slot', 'none') + '_' + email());
+      let sec = s.kind == 'lab' && exists(mv) ? get(mv).data.section : r.section;
       let la = s.get('lateAfter', 0);
       let late = la is int && la > 0 && request.time > s.openedAt + duration.value(la, 'm');
       return verified()
         && aid == d.session + '_' + email()
         && d.keys().hasOnly(['session', 'email', 'status', 'by', 'at', 'key', 'semester', 'kind', 'date', 'title'])
         && d.email == email() && d.by == 'self' && d.at == request.time
-        && s.state == 'open' && r.status == 'active' && (s.section == 'all' || s.section == r.section)
+        && s.state == 'open' && r.status == 'active' && (s.section == 'all' || s.section == sec)
         && (d.key == k.cur || d.key == k.prev)
         && d.kind == s.kind && d.date == s.date && d.title == s.title && d.semester == s.semester
         && ((late && d.status == 'L') || (!late && d.status == 'P'));
+    }
+
+    // A student moved to another lab section for one lab (an approved swap, or the lecturer's choice): lecturers only write.
+    match /labMoves/{mid} {
+      allow read: if isLecturer() || (signedIn() && resource.data.email == email());
+      allow write: if isLecturer();
+    }
+
+    // Lab swaps: a student asks a classmate (by matric number); the classmate accepts or declines; a lecturer approves.
+    match /swaps/{id} {
+      allow read: if isLecturer() || (signedIn() && (resource.data.fromEmail == email() || (onRoster() && resource.data.toMatric == rosterDoc().matric)));
+      allow create: if onRoster() && request.resource.data.fromEmail == email() && request.resource.data.fromMatric == rosterDoc().matric
+        && request.resource.data.status == 'requested' && request.resource.data.toMatric != rosterDoc().matric;
+      allow update: if isLecturer()
+        || (resource.data.fromEmail == email() && resource.data.status in ['requested', 'accepted'] && request.resource.data.status == 'cancelled'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']))
+        || (onRoster() && resource.data.toMatric == rosterDoc().matric && resource.data.status == 'requested' && request.resource.data.status in ['accepted', 'declined']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']));
+      allow delete: if isLecturer();
+    }
+
+    // Absence notices, one per student per session: the student writes and changes it while it waits; a lecturer decides.
+    match /notices/{nid} {
+      allow read: if isLecturer() || (signedIn() && resource.data.email == email());
+      allow create: if onRoster() && nid == request.resource.data.session + '_' + email() && request.resource.data.email == email() && request.resource.data.status == 'pending';
+      allow update: if isLecturer() || (signedIn() && resource.data.email == email() && resource.data.status == 'pending'
+          && request.resource.data.status == 'pending' && request.resource.data.email == email() && request.resource.data.session == resource.data.session);
+      allow delete: if isLecturer() || (signedIn() && resource.data.email == email() && resource.data.status == 'pending');
+    }
+
+    // The classmate list for the swap form: name, matric, lab section and group only.
+    match /meta/classmates {
+      allow read: if isLecturer() || onRoster();
+      allow write: if isLecturer();
+    }
+
+    // The lecturer's changes to the public timetable: everyone reads them, lecturers write them.
+    match /schedule/{id} {
+      allow read: if true;
+      allow write: if isLecturer();
     }
 
     // Everything else stays closed.

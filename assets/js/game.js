@@ -57,7 +57,7 @@
     k = k || {};
     const solved = parse(k["nmk-solved"], []).filter((id) => CATALOG[id]), log = parse(k["nmk-ex-log"], {}), quiz = parse(k["nmk-quiz-log"], {});
     const items = [], dates = [];
-    const add = (xp, what, when) => { items.push({ xp, what }); if (when) dates.push(when); };
+    const add = (xp, what, when) => { items.push({ xp, what, when: when || null }); if (when) dates.push(when); };
     solved.forEach((id) => {
       const r = log[id];
       add(!r ? 20 : r.wrong === 0 ? 30 : r.wrong <= 2 ? 20 : 10, `Solved ${CATALOG[id]}`, r && (r.solvedAt || r.at));
@@ -163,8 +163,9 @@
       <div class="gm-bar" role="img" aria-label="${g.nextAt ? `${g.nextAt - g.xp} XP to ${g.nextLevel}` : "Top level reached"}"><span style="width:${Math.min(100, Math.round((into / span) * 100))}%"></span></div>
       <p class="gm-next">${g.nextAt ? `${g.nextAt - g.xp} XP to <strong>${g.nextLevel}</strong>` : "You have reached the top level."}</p>`;
   }
-  function journeyHtml(g) {
-    const now = g.nowWeek, nextStop = g.stops.find((s) => (s.kind === "ch" || s.built) && s.done < s.total);
+  // o.other: someone else's journey (a classmate's profile): no "pick up where you left off" note
+  function journeyHtml(g, o = {}) {
+    const now = g.nowWeek, nextStop = o.other ? null : g.stops.find((s) => (s.kind === "ch" || s.built) && s.done < s.total);
     const days = g.lastActive ? Math.floor((today() - new Date(g.lastActive).getTime()) / DAY) : null;
     const nudge = !nextStop ? "" : days !== null && days >= 14
       ? `<div class="gm-nudge"><strong>No progress for ${Math.floor(days / 7)} weeks.</strong> Pick up where you left off: <a href="${esc(nextStop.href)}">${esc(nextStop.label)}: ${esc(nextStop.title)}</a>.</div>`
@@ -178,8 +179,9 @@
           <span class="gm-pr">${st === "soon" ? "Virtual lab coming" : `${s.done} of ${s.total} done`}</span>
           ${s.total ? `<span class="gm-mini" aria-hidden="true"><i style="width:${s.pct}%"></i></span>` : ""}</a></li>`;
     }).join("");
+    if (o.noHead) return `${nudge}<ol class="gm-path">${stops}</ol>`;
     return `${nudge}<div class="gm-head">${xpBar(g)}<div class="gm-badges">${g.badges.length ? g.badges.map((b) => `<span class="gm-b" title="${esc(b.desc)}"><span aria-hidden="true">${b.icon}</span>${esc(b.name)}</span>`).join("") : `<span class="gm-none">No badges yet: solve your first exercise to earn one.</span>`}</div>
-        <p class="gm-meta">${g.solved} of ${g.total} exercises solved · ${g.streak ? `${g.streak}-week streak` : "no streak yet"} · <a href="board.html">Progress board</a></p></div>
+        <p class="gm-meta">${g.solved} of ${g.total} exercises solved · ${g.streak ? `${g.streak}-week streak` : "no streak yet"}${o.other ? "" : ` · <a href="profile.html">My profile</a> · <a href="board.html">Progress board</a>`}</p></div>
       <ol class="gm-path">${stops}</ol>`;
   }
   function paintJourney() {
@@ -187,7 +189,31 @@
     if (host) host.innerHTML = journeyHtml(local());
   }
 
-  window.NMKGame = { SEM, CATALOG, STOPS, BADGES, LEVELS, compute, local, localKeys, xpBar, journeyHtml, weekOf, today };
+  /* ---------- profiles: the activity feed, and a public summary that rebuilds the journey for classmates ---------- */
+  // the most recent things done (dated XP items, plus each level reached), newest first
+  function feed(g, n = 20) {
+    const dated = g.items.filter((i) => i.when).sort((a, b) => new Date(a.when) - new Date(b.when));
+    const out = [];
+    let sum = 0, lv = 0;
+    dated.forEach((i) => {
+      sum += i.xp; out.push({ w: i.what, t: i.when, x: i.xp });
+      LEVELS.forEach(([at, name], k) => { if (k > lv && sum >= at) { lv = k; out.push({ w: `Reached Level ${k + 1}: ${name}`, t: i.when, x: 0, lv: 1 }); } });
+    });
+    return out.reverse().slice(0, n);
+  }
+  const summaryProg = (g) => Object.fromEntries(g.stops.map((s) => [s.key, [s.done, s.total]]));
+  // a classmate's progress from their public summary (board/{uid}): enough for the badges and the journey map
+  function fromSummary(b) {
+    b = b || {};
+    const xp = b.xp || 0;
+    let li = 0; LEVELS.forEach(([t], i) => { if (xp >= t) li = i; });
+    const prog = b.prog || {};
+    const stops = STOPS.map((s) => { const [done, total] = prog[s.key] || [0, s.ids.length + (s.kind === "lab" && s.built ? 1 : 0)]; return Object.assign({}, s, { done, total, pct: total ? Math.round((done / total) * 100) : 0 }); });
+    return { xp, items: [], level: LEVELS[li][1], levelNo: li + 1, levelAt: LEVELS[li][0], nextAt: LEVELS[li + 1] ? LEVELS[li + 1][0] : null, nextLevel: LEVELS[li + 1] ? LEVELS[li + 1][1] : null,
+      badges: BADGES.filter((x) => (b.badges || []).includes(x.id)), solved: b.solved || 0, total: Object.keys(CATALOG).length, stops, weeks: [], streak: b.streak || 0, lastActive: b.lastActive || null, nowWeek: weekOf(today()) };
+  }
+
+  window.NMKGame = { SEM, CATALOG, STOPS, BADGES, LEVELS, compute, local, localKeys, xpBar, journeyHtml, weekOf, today, feed, summaryProg, fromSummary };
   paintJourney();
   check();
 })();

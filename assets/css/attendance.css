@@ -108,3 +108,49 @@ body.at-show .page-hero, body.at-show .site-footer, body.at-show .chat-fab, body
 .at-proj .at-keybox { justify-content: center; text-align: left; }
 .at-proj .at-keybox.big .at-keyval span { font-size: clamp(2.6rem, 7vw, 5.5rem); border-width: 3px; }
 .at-proj .at-pc { font: 700 1.6rem var(--sans); color: var(--teal); font-variant-numeric: tabular-nums; }
+
+/* in-page forms (no pop-ups), the save bar, swaps, notices, the classmate picker, lab groups, the timetable editor */
+.at-panel { background: var(--surface); border: 2px solid var(--teal); border-radius: var(--r-md); padding: 16px 18px; margin: 0 0 16px; scroll-margin-top: 130px; }
+.at-panel h3 { margin-top: 0; }
+.at-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+.at-actions[hidden] { display: none; }
+.at-note { background: var(--amber-soft); border-left: 3px solid var(--amber); padding: 8px 12px; border-radius: 0 var(--r-sm) var(--r-sm) 0; font-size: .9rem; margin: 0; }
+.at-dform textarea { font: inherit; font-weight: 400; padding: 8px 10px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); resize: vertical; }
+.at-hint, .at-lbl span { font-weight: 400; font-size: .82rem; color: var(--ink-3); }
+.at-lbl { display: grid; gap: 2px; font-weight: 600; font-size: .92rem; margin-bottom: 4px; }
+.at-in { font: inherit; height: 40px; padding: 0 10px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); min-width: 0; width: 100%; max-width: 420px; }
+.at-pick-list { list-style: none; padding: 0; margin: 4px 0 0; max-width: 420px; border-radius: var(--r-sm); overflow: hidden; }
+.at-pick-list li button { display: grid; width: 100%; text-align: left; gap: 1px; padding: 8px 12px; font: inherit; background: var(--paper); color: var(--ink); border: 1px solid var(--rule); border-top: 0; cursor: pointer; }
+.at-pick-list li:first-child button { border-top: 1px solid var(--rule); }
+.at-pick-list li button:hover, .at-pick-list li button:focus-visible { background: var(--teal-soft); }
+.at-pick-list li button span { font-size: .82rem; color: var(--ink-3); }
+.at-none { padding: 8px 12px; color: var(--ink-3); font-size: .9rem; }
+.at-chosen { margin: 6px 0 0; font-size: .92rem; color: var(--teal); }
+.at-req { border-top: 1px solid var(--rule); padding: 10px 0; }
+.at-card > .at-req:first-of-type, .at-body > .at-req:first-of-type { border-top: 0; }
+.at-req p { margin: 0 0 6px; }
+.at-list { margin: 0; padding-left: 1.1em; display: grid; gap: 8px; }
+.at-tag { display: inline-block; font-size: .75rem; font-weight: 700; border-radius: 999px; padding: 1px 9px; background: var(--grid); color: var(--ink-2); white-space: nowrap; }
+.at-tag.approved { background: var(--teal-soft); color: var(--teal); }
+.at-tag.accepted, .at-tag.pending, .at-tag.requested { background: var(--amber-soft); color: var(--amber); }
+.at-tag.rejected, .at-tag.declined { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--danger); }
+.at-swn { color: var(--teal); font-weight: 600; }
+.at-ntc { font-weight: 600; color: var(--amber); }
+.at-ntc.approved { color: var(--teal); }
+.at-ntc.rejected { color: var(--danger); }
+.at-pl { font-weight: 600; color: var(--ink); text-decoration: none; border-bottom: 1px dotted var(--ink-3); }
+.at-pl:hover { color: var(--teal); border-bottom-color: var(--teal); }
+table.at-take tr.changed td { background: var(--amber-soft); }
+.at-savebar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 75; background: var(--ink); color: var(--paper); padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -8px 24px rgba(0, 0, 0, .2); }
+.at-savebar[hidden] { display: none; }
+.at-savebar .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.at-savebar .btn.ghost { background: transparent; color: var(--paper); border-color: var(--paper); }
+body:has(.at-savebar:not([hidden])) .chat-fab, body:has(.at-savebar:not([hidden])) .to-top { bottom: 84px; }
+.chip-btn.has { font-weight: 700; }
+.at-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 12px; }
+.at-glist { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.at-glist li { display: grid; grid-template-columns: 5.5em minmax(0, 1fr); gap: 8px; padding: 6px 0; border-top: 1px solid var(--grid); font-size: .9rem; }
+.at-gn { font-weight: 700; color: var(--ink-3); font-size: .82rem; }
+table.at-sch tr.changed td { background: color-mix(in srgb, var(--teal) 7%, transparent); }
+.at-wkgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(170px, 100%), 1fr)); gap: 10px; }
+.at-tags { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); display: grid; }

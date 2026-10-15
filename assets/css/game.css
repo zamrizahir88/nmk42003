@@ -56,7 +56,7 @@ table.bd tr.me td { background: var(--teal-soft); }
 .bd-bs span { font-size: 1.1rem; margin-right: 2px; }
 .bd-lv { font-size: .75rem; font-weight: 700; color: var(--teal); background: var(--teal-soft); border-radius: 999px; padding: 1px 8px; }
 .bd-you { font-size: .72rem; font-weight: 700; color: var(--surface); background: var(--teal); border-radius: 999px; padding: 1px 8px; }
-.bd-name { font: inherit; font-weight: 600; color: var(--ink); background: none; border: 0; padding: 0; cursor: pointer; border-bottom: 1px dotted var(--ink-3); text-align: left; }
+.bd-name { text-decoration: none; font: inherit; font-weight: 600; color: var(--ink); background: none; border: 0; padding: 0; cursor: pointer; border-bottom: 1px dotted var(--ink-3); text-align: left; }
 .bd-name:hover { color: var(--teal); border-bottom-color: var(--teal); }
 .bd-stops { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
 .bd-stops li { display: grid; grid-template-columns: 6em minmax(0, 1fr) 3em; gap: 10px; align-items: center; font-size: .9rem; }

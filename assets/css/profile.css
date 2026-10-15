@@ -1,0 +1,44 @@
+/* NMK42003 student profile page: header, badges, journey, activity feed, and the private parts. */
+.pf-page { padding-top: 24px; }
+.pf-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); grid-template-areas: "top top" "main side"; gap: 16px; margin-top: 12px; }
+@media (max-width: 900px) { .pf-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "top" "side" "main"; } }
+.pf-top { grid-area: top; display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 320px); gap: 16px 20px; align-items: center; }
+@media (max-width: 760px) { .pf-top { grid-template-columns: auto minmax(0, 1fr); } .pf-top .pf-lv { grid-column: 1 / -1; } }
+.pf-main { grid-area: main; min-width: 0; display: grid; gap: 16px; align-content: start; }
+.pf-side { grid-area: side; min-width: 0; display: grid; gap: 16px; align-content: start; }
+.pf-private { display: grid; gap: 16px; }
+.pf-card { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 16px 18px; min-width: 0; }
+.pf-h { font: 600 1.15rem var(--serif); margin: 0 0 10px; }
+.pf-h3 { font: 600 1rem var(--serif); margin: 14px 0 6px; }
+.pf-sub { font: 400 .82rem var(--sans); color: var(--ink-3); margin-left: 6px; }
+.pf-av { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: #fff; font: 700 1.2rem var(--sans); object-fit: cover; flex: none; }
+.pf-av.big { width: 88px; height: 88px; font-size: 2.4rem; box-shadow: 0 0 0 4px var(--surface), 0 0 0 6px var(--teal); }
+.pf-nick { font: 600 1.7rem var(--serif); margin: 0; line-height: 1.2; }
+.pf-name { margin: 2px 0 6px; color: var(--ink-2); font-weight: 500; }
+.pf-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; font-size: .88rem; color: var(--ink-2); }
+.pf-lv .gm-level strong { font-size: 1.1rem; }
+.pf-lv .gm-next { margin-bottom: 0; }
+.pf-photo { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--ink-2); }
+.pf-photo input { width: 18px; height: 18px; }
+.pf-tools { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+.pf-badges { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); gap: 8px; }
+.pf-badges li { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; align-items: center; padding: 8px 10px; border: 1px dashed var(--rule); border-radius: var(--r-sm); opacity: .5; filter: grayscale(1); }
+.pf-badges li.on { opacity: 1; filter: none; border-style: solid; border-color: color-mix(in srgb, var(--amber) 45%, transparent); background: var(--amber-soft); }
+.pf-bi { grid-row: span 2; font-size: 1.5rem; }
+.pf-badges strong { font-size: .85rem; }
+.pf-badges small { font-size: .72rem; color: var(--ink-3); line-height: 1.3; }
+.pf-feed { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; }
+.pf-feed li { display: grid; grid-template-columns: 3em minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--grid); font-size: .9rem; }
+.pf-feed li:last-child { border-bottom: 0; }
+.pf-feed li.lv { font-weight: 600; }
+.pf-fx { font-weight: 700; color: var(--teal); font-variant-numeric: tabular-nums; }
+.pf-feed time { font-size: .78rem; color: var(--ink-3); white-space: nowrap; }
+.pf-list { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; font-size: .92rem; }
+.pf-priv { border-left: 3px solid var(--teal); }
+.pf-warn { color: var(--danger); font-weight: 600; }
+table.pf-ex tr.pf-stop th { background: var(--grid); color: var(--ink); text-align: left; font-size: .85rem; }
+@media print {
+  .site-header, .site-footer, .chat-fab, .to-top, .crumb, .pf-tools, .pf-photo, .read-progress { display: none !important; }
+  .pf-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "top" "main" "side"; }
+  .pf-card { break-inside: avoid; }
+}
