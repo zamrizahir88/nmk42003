@@ -160,3 +160,11 @@ table.at-sch tr.changed td { background: color-mix(in srgb, var(--teal) 7%, tran
 table.at-ses tr.picked td { background: color-mix(in srgb, var(--danger) 8%, transparent); }
 .btn.at-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
 .btn.at-danger:hover { filter: brightness(1.1); background: var(--danger); }
+
+/* duplicate sessions in the timetable review */
+.at-dups { display: grid; gap: 8px; margin: 0 0 8px; }
+.at-dup { border: 1px solid var(--rule); border-radius: var(--r-sm); padding: 6px 12px 10px; margin: 0; }
+.at-dup legend { font-weight: 700; padding: 0 4px; }
+.at-dupr { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 4px 0; font-size: .92rem; }
+.at-dupr span small { display: block; color: var(--ink-3); }
+.at-warn { color: var(--danger); font-weight: 600; }
