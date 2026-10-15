@@ -1,6 +1,8 @@
 /* NMK42003 Class Moments (gallery.html, and the "Latest Photos" strip on the home page).
-   The photos live in the lecturer's Google Drive folder. A small Google Apps Script (apps-script/gallery.gs) lists
-   them; its address and the "show to the public" switch are in Firestore meta/gallery. Each photo goes to the
+   The photos live in the lecturer's Google Drive folder. A Google Apps Script in the lecturer's account
+   (apps-script/gallery.gs) saves the list of photos into Firestore meta/photos every 10 minutes; the Firestore rules
+   let only signed-in students on the class list and lecturers read it (or everyone, when the lecturer turns on the
+   "show to the public" switch in meta/gallery). Each photo goes to the
    lecture or lab session at the date and time it was taken (the time stored in the photo, else in its file name,
    else when it was uploaded). Drive makes the small copies the page shows; the full photo opens from Drive.
    Who sees the photos: signed-in students on the class list and lecturers, or everyone when the switch is on. */
@@ -10,7 +12,7 @@
   if (!page && !strip) return;
   const A = window.NMKAccount;
   if (!A || !A.db) { if (page) page.innerHTML = `<p class="small-note">Class Moments needs the sign-in service, which could not load. Check your connection and reload the page.</p>`; if (strip) strip.closest("section").hidden = true; return; }
-  const db = A.db, SEM = A.SEM, CACHE = "nmk-gal", CACHE_MS = 10 * 60 * 1000;
+  const db = A.db, SEM = A.SEM;
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -32,7 +34,7 @@
   }
   const toMin = (t) => { const [h, m] = String(t || "0:0").split(":").map(Number); return h * 60 + m; };
 
-  let settings = {}, photos = null, sessions = [], who = "";
+  let settings = {}, photos = null, updated = null, sessions = [], who = "";
   queueMicrotask(() => A.on((st) => {
     if (!st.ready) return;
     const key = st.user ? `${st.user.uid}:${st.profile ? st.profile.status : ""}:${st.roster ? st.roster.status : ""}` : "out";
@@ -46,32 +48,27 @@
     const member = lec || !!(st.user && ((st.roster && st.roster.status === "active") || (st.profile && st.profile.status === "approved")));
     try { const d = await db.collection("meta").doc("gallery").get(); settings = d.exists ? d.data() : {}; } catch (e) { settings = {}; }
     const allowed = member || !!settings.public;
-    if (strip) return paintStrip(allowed);
+    if (strip) return paintStrip(allowed, st);
     if (!allowed) {
       page.innerHTML = `<div class="gl-card"><h2 class="gl-h">Photos for the Class</h2><p>Class Moments shows photos from our lectures and labs to students on the NMK42003 class list. Sign in with your studentmail account to see them.</p>
         ${st.user ? "" : `<button type="button" class="btn" data-signin>Sign in with Google</button>`}</div>`;
       const b = $("[data-signin]", page); if (b) b.addEventListener("click", () => A.signIn());
       return;
     }
-    page.innerHTML = `${lec ? lecturerPanel() : ""}<div class="gl-albums"><p class="small-note">Loading the photos…</p></div>`;
-    if (lec) wirePanel();
+    page.innerHTML = `<div class="gl-albums"><p class="small-note">Loading the photos…</p></div>`;
     if (st.user) { try { const q = await db.collection("sessions").where("semester", "==", SEM).get(); sessions = q.docs.map((d) => d.data()); } catch (e) { sessions = []; } }
-    await loadPhotos(false);
+    await loadPhotos();
+    if (lec) { page.insertAdjacentHTML("afterbegin", lecturerPanel()); wirePanel(); }
     paintAlbums();
   }
 
-  async function loadPhotos(fresh) {
-    photos = null;
-    if (!settings.url) return;
-    let c = null;
-    try { c = JSON.parse(localStorage.getItem(CACHE) || "null"); } catch (e) { c = null; }
-    if (!fresh && c && c.url === settings.url && Date.now() - c.at < CACHE_MS) { photos = c.photos; return; }
+  // the photo list saved by the Apps Script (Firestore meta/photos)
+  async function loadPhotos() {
+    photos = null; updated = null;
     try {
-      const r = await fetch(settings.url, { cache: "no-store" });
-      const j = await r.json();
-      photos = Array.isArray(j.photos) ? j.photos : [];
-      try { localStorage.setItem(CACHE, JSON.stringify({ url: settings.url, at: Date.now(), photos })); } catch (e) { /* too big or private mode */ }
-    } catch (e) { photos = c && c.url === settings.url ? c.photos : null; console.warn("NMK gallery: could not load the photo list", e); }
+      const d = await db.collection("meta").doc("photos").get();
+      if (d.exists) { const v = d.data(); photos = JSON.parse(v.json || "[]"); updated = v.updated || null; } else photos = [];
+    } catch (e) { photos = null; console.warn("NMK gallery: could not load the photo list", e.code || e); }
   }
 
   // albums: each photo goes to the session at that date and time (30 minutes either side), else to its day
@@ -93,9 +90,8 @@
 
   function paintAlbums() {
     const box = $(".gl-albums", page);
-    if (!settings.url) { box.innerHTML = `<div class="gl-card"><p><strong>Photos are coming soon.</strong></p></div>`; return; }
     if (!photos) { box.innerHTML = `<div class="gl-card"><p>The photo list could not be loaded right now. Please try again later.</p></div>`; return; }
-    if (!photos.length) { box.innerHTML = `<div class="gl-card"><p>No photos yet.</p></div>`; return; }
+    if (!photos.length) { box.innerHTML = `<div class="gl-card"><p><strong>Photos are coming soon.</strong></p></div>`; return; }
     const list = albums();
     box.innerHTML = `<p class="gl-count">${photos.length} photo${photos.length === 1 ? "" : "s"} in ${list.length} album${list.length === 1 ? "" : "s"}</p>` + list.map((a, ai) => `
       <section class="gl-album" id="${albumId(a)}"><h2 class="gl-h">${esc(albumName(a))}</h2><p class="gl-sub">${fmtDate(a.date)}${a.start ? ` · ${fmtTime(a.start)}` : ""} · ${a.list.length} photo${a.list.length === 1 ? "" : "s"}</p>
@@ -138,43 +134,43 @@
     $(".gl-x", back).focus();
   }
 
-  /* ---------- lecturers: the photo list address and the public switch ---------- */
+  /* ---------- lecturers: the public switch, and how up to date the photo list is ---------- */
+  const stamp = (t) => { const ms = t && t.toMillis ? t.toMillis() : t ? new Date(t).getTime() : 0; if (!ms) return "never"; const d = new Date(ms + 8 * 3600000).toISOString(); return `${fmtDate(d.slice(0, 10))}, ${fmtTime(d.slice(11, 16))}`; };
   function lecturerPanel() {
-    return `<details class="gl-card gl-set"${settings.url ? "" : " open"}><summary><strong>Settings (lecturers)</strong> · ${settings.public ? "shown to everyone" : "shown to students on the class list"}</summary>
+    const ready = photos && photos.length;
+    return `<details class="gl-card gl-set"${ready ? "" : " open"}><summary><strong>Settings (lecturers)</strong> · <span class="gl-who">${settings.public ? "shown to everyone" : "shown to signed-in students on the class list"}</span></summary>
       <form class="gl-form" novalidate>
         <label class="gl-pub"><input type="checkbox" name="public"${settings.public ? " checked" : ""}> <span><strong>Show to the public</strong><br><small>Off: only students on the class list and lecturers, signed in. On: anyone with the website link.</small></span></label>
-        <label>Photo list address <small>(the Apps Script web app address, ending in /exec)</small><input name="url" type="url" value="${esc(settings.url || "")}" placeholder="https://script.google.com/macros/s/…/exec"></label>
-        <div class="acc-row"><button type="submit" class="btn">Save</button><button type="button" class="btn ghost" data-refresh>Check for new photos now</button></div><p class="gl-msg" aria-live="polite"></p>
-        ${settings.url ? "" : `<div class="gl-help"><strong>Setting up (once, about 10 minutes)</strong><ol>
-          <li>Open <a href="https://script.google.com" target="_blank" rel="noopener">script.google.com</a>, press <strong>New project</strong> and name it <em>NMK42003 Class Moments</em>.</li>
-          <li>Replace everything in <em>Code.gs</em> with the script in <a href="apps-script/gallery.gs" target="_blank" rel="noopener">apps-script/gallery.gs</a>.</li>
-          <li>Next to <strong>Services</strong> press <strong>+</strong>, choose <strong>Drive API</strong> (version v3), press <strong>Add</strong>.</li>
-          <li><strong>Deploy → New deployment</strong>, type <strong>Web app</strong>, Execute as <strong>Me</strong>, Who has access <strong>Anyone</strong>, then <strong>Deploy</strong> and allow access.</li>
-          <li>Copy the <strong>Web app</strong> address and paste it above, then <strong>Save</strong>.</li></ol>
-          <p>Keep the photo folder shared as <em>Anyone with the link can view</em>.</p></div>`}
+        <p class="gl-msg" aria-live="polite"></p>
+        <p class="small-note gl-upd"></p>
+        <div class="gl-help"><strong>Setting up the photo list (once, about 10 minutes)</strong><ol>
+          <li>Open <a href="https://script.google.com" target="_blank" rel="noopener">script.google.com</a> signed in as the owner of the Firebase project, press <strong>New project</strong> and name it <em>NMK42003 Class Moments</em>.</li>
+          <li>Replace everything in <em>Code.gs</em> with <a href="apps-script/gallery.gs" target="_blank" rel="noopener">apps-script/gallery.gs</a>.</li>
+          <li>Next to <strong>Services</strong> press <strong>+</strong>, choose <strong>Drive API</strong> (v3), press <strong>Add</strong>.</li>
+          <li><strong>Project Settings</strong> (gear) → tick <strong>Show "appsscript.json" manifest file in editor</strong>; open <em>appsscript.json</em> and replace it with <a href="apps-script/appsscript.json" target="_blank" rel="noopener">apps-script/appsscript.json</a>.</li>
+          <li>In <em>Code.gs</em>, choose <strong>setup</strong> at the top and press <strong>Run</strong>; allow access. The photos appear here, and the list updates every 10 minutes by itself.</li></ol>
+          <p>No need to deploy anything. Keep the photo folder shared so the pictures can show (<em>Anyone with the link</em>).</p></div>
       </form></details>`;
   }
   function wirePanel() {
-    const f = $(".gl-form", page), msg = $(".gl-msg", page);
-    f.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const url = f.url.value.trim();
-      if (url && !/^https:\/\/script\.google(usercontent)?\.com\//.test(url)) { msg.textContent = "Paste the Apps Script web app address (it starts with https://script.google.com/)."; return; }
+    const f = $(".gl-form", page), msg = $(".gl-msg", page), upd = $(".gl-upd", page);
+    const status = () => { upd.innerHTML = photos === null ? "The photo list could not be read." : photos.length ? `Photo list updated ${stamp(updated)}: ${photos.length} photos. New uploads appear within about 10 minutes.` : "No photo list yet: follow the steps below."; };
+    f.public.addEventListener("change", async () => {
       try {
-        await db.collection("meta").doc("gallery").set({ url, public: f.public.checked, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-        settings = Object.assign(settings, { url, public: f.public.checked });
-        msg.textContent = "Saved."; $(".gl-set summary", page).innerHTML = `<strong>Settings (lecturers)</strong> · ${settings.public ? "shown to everyone" : "shown to students on the class list"}`;
-        await loadPhotos(true); paintAlbums();
-      } catch (ex) { msg.textContent = `Could not save (${ex.code || ex}). If this says permission-denied, publish the latest firebase/firestore.rules.`; }
+        await db.collection("meta").doc("gallery").set({ public: f.public.checked, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        settings.public = f.public.checked; msg.textContent = f.public.checked ? "Saved: the photos are now shown to everyone." : "Saved: the photos are shown only to signed-in students on the class list.";
+        $(".gl-who", page).textContent = settings.public ? "shown to everyone" : "shown to signed-in students on the class list";
+      } catch (ex) { f.public.checked = !f.public.checked; msg.textContent = `Could not save (${ex.code || ex}). If this says permission-denied, publish the latest firebase/firestore.rules.`; }
     });
-    $("[data-refresh]", page).addEventListener("click", async () => { msg.textContent = "Checking…"; await loadPhotos(true); paintAlbums(); msg.textContent = photos ? `${photos.length} photos found.` : "Could not load the photo list. Check the address."; });
+    document.addEventListener("nmk:gallery-loaded", status);
+    status();
   }
 
   /* ---------- the home page: the newest photos ---------- */
   async function paintStrip(allowed) {
     const sec = strip.closest("section");
-    if (!allowed || !settings.url) { sec.hidden = true; return; }
-    await loadPhotos(false);
+    if (!allowed) { sec.hidden = true; return; }
+    await loadPhotos();
     if (!photos || !photos.length) { sec.hidden = true; return; }
     const newest = photos.map((p) => Object.assign({ at: whenTaken(p) }, p)).sort((a, b) => (a.at.date + a.at.time < b.at.date + b.at.time ? 1 : -1)).slice(0, 8);
     sec.hidden = false;

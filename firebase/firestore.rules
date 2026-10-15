@@ -143,9 +143,15 @@ service cloud.firestore {
       allow write: if isLecturer();
     }
 
-    // Class Moments settings (the photo list address and the "show to the public" switch).
+    // Class Moments: the "show to the public" switch (everyone reads it), and the photo list saved by the lecturer's
+    // Apps Script (it writes with the project owner's own Google access, so these rules don't apply to it).
     match /meta/gallery {
       allow read: if true;
+      allow write: if isLecturer();
+    }
+    match /meta/photos {
+      allow read: if isLecturer() || onRoster() || approved()
+        || (exists(/databases/$(database)/documents/meta/gallery) && get(/databases/$(database)/documents/meta/gallery).data.get('public', false) == true);
       allow write: if isLecturer();
     }
 
