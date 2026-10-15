@@ -168,3 +168,7 @@ table.at-ses tr.picked td { background: color-mix(in srgb, var(--danger) 8%, tra
 .at-dupr { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 4px 0; font-size: .92rem; }
 .at-dupr span small { display: block; color: var(--ink-3); }
 .at-warn { color: var(--danger); font-weight: 600; }
+
+/* a session marked by hand without opening it, and one only partly marked */
+.at-state.hand { background: var(--amber-soft); color: var(--amber); }
+.at-part { color: var(--amber); font-weight: 600; }

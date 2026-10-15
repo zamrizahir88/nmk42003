@@ -409,8 +409,12 @@
       `<div class="adm-scroll"><table class="adm at-ses"><thead><tr><th scope="col"><input type="checkbox" class="at-cb" data-pickall aria-label="Select every session in this list"${list.length && list.every((s) => L.picked.has(s.id)) ? " checked" : ""}></th><th scope="col">Week</th><th scope="col">Date</th><th scope="col">Session</th><th scope="col">For</th><th scope="col">State</th><th scope="col">P / L / E / A</th><th scope="col"><span class="vh">Manage</span></th></tr></thead><tbody>
       ${list.map((s) => { const n = counts(s), sw = s.kind === "lab" ? L.moves.filter((m) => m.slot === slotOf(s) && m.section === s.section).length : 0; return `<tr class="${s.date === t ? "today" : ""}${L.picked.has(s.id) ? " picked" : ""}"><td><input type="checkbox" class="at-cb" data-pick="${s.id}" aria-label="Select ${esc(s.title)}"${L.picked.has(s.id) ? " checked" : ""}></td><td>${s.week || weekOfDate(s.date)}</td><td>${fmtDate(s.date)}<br><small>${fmtTime(s.start)} to ${fmtTime(s.end)}</small></td>
         <td><strong>${esc(s.title)}</strong>${s.venue ? `<br><small>${esc(s.venue)}</small>` : ""}${sw ? `<br><small class="at-swn">⇄ ${sw} swapped in</small>` : ""}</td><td>${SECTION[s.section] || s.section}</td>
-        <td><span class="at-state ${s.state}">${{ planned: "Not opened", open: "Open", closed: "Closed" }[s.state] || s.state}</span></td>
-        <td class="at-n">${s.state === "planned" ? "–" : `${n.P} / ${n.L} / ${n.E} / ${n.A}`}</td><td><button type="button" class="btn small${s.state === "open" ? "" : " ghost"}" data-sid="${s.id}">${s.state === "open" ? "Open ›" : "Manage"}</button></td></tr>`; }).join("")}
+        ${(() => {
+          // marks count whether the session was opened or marked by hand afterwards
+          const done = n.P + n.L + n.E + n.A, byHand = s.state === "planned" && done, total = done ? studentsFor(s).length : 0;
+          return `<td><span class="at-state ${byHand ? "hand" : s.state}">${byHand ? "Marked by hand" : { planned: "Not opened", open: "Open", closed: "Closed" }[s.state] || s.state}</span></td>
+        <td class="at-n">${done ? `${n.P} / ${n.L} / ${n.E} / ${n.A}${done < total ? `<br><small class="at-part">${done} of ${total} marked</small>` : ""}` : "–"}</td>`;
+        })()}<td><button type="button" class="btn small${s.state === "open" ? "" : " ghost"}" data-sid="${s.id}">${s.state === "open" ? "Open ›" : "Manage"}</button></td></tr>`; }).join("")}
       </tbody></table></div>`}`;
   }
 
@@ -973,7 +977,7 @@
 
   /* ---------- the report ---------- */
   function reportData() {
-    const ses = sortedSessions().filter((s) => s.state !== "planned" && (L.rkind === "all" || s.kind === L.rkind) && (L.rsec === "all" || L.rsec === "none" || s.section === "all" || s.section === L.rsec));
+    const ses = sortedSessions().filter((s) => (s.state !== "planned" || L.att.some((x) => x.session === s.id)) && (L.rkind === "all" || s.kind === L.rkind) && (L.rsec === "all" || L.rsec === "none" || s.section === "all" || s.section === L.rsec));
     const studs = L.roster.filter((r) => r.status === "active" && (L.rsec === "all" || (L.rsec === "none" ? !r.section : r.section === L.rsec)))
       .sort((a, b) => ((a.section || "z") + a.name < (b.section || "z") + b.name ? -1 : 1));
     const rows = studs.map((r) => {
