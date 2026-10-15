@@ -166,6 +166,7 @@
       <div class="at-two"><label>Matric number<input name="matric" value="${esc(r.matric)}"></label><label>Lab section<select name="section"><option value="">None</option>${Object.entries(SECTION).map(([v, l]) => `<option value="${v}"${r.section === v ? " selected" : ""}>${l}</option>`).join("")}</select></label></div>
       <div class="at-two"><label>Lab group<input name="group" type="number" min="0" max="30" value="${r.group || ""}"></label><label>Status<select name="status"><option value="active"${r.status === "active" ? " selected" : ""}>Active</option><option value="dropped"${r.status !== "active" ? " selected" : ""}>Dropped</option></select></label></div>
       <div class="at-two"><label>RPS name<input name="rps" value="${esc(r.rps || "")}"></label><label>RPS email<input name="rpsEmail" type="email" value="${esc(r.rpsEmail || "")}"></label></div>
+      <p class="small-note">To change the studentmail address, use <a href="attendance.html">Attendance</a> → Class List → Edit.</p>
       <p class="at-err" aria-live="polite"></p><div class="acc-row"><button type="submit" class="btn">Save</button><button type="button" class="btn ghost" data-cancel>Cancel</button></div></form>`;
     $(".pf-main").prepend(box);
     box.querySelector("input").focus();
