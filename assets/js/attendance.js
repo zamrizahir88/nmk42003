@@ -400,9 +400,11 @@
   function drawSessions(body) {
     const list = sortedSessions().filter((s) => L.filter === "all" || s.kind === L.filter);
     const t = todayIso();
-    body.innerHTML = `<div class="adm-tools"><button type="button" class="btn" data-new>+ New session</button><button type="button" class="btn ghost" data-bulk>Create the semester's sessions</button>
+    body.innerHTML = `<div class="adm-tools"><button type="button" class="btn" data-new>+ New session</button><button type="button" class="btn ghost" data-bulk>${L.sessions.some(fromPlan) ? "Update sessions from the timetable" : "Create the semester's sessions"}</button>
         ${["all", "lecture", "lab"].map((f) => `<button type="button" class="chip-btn" data-filter="${f}" aria-pressed="${L.filter === f}">${{ all: "All", lecture: "Lectures", lab: "Labs" }[f]}</button>`).join("")}
         ${L.picked.size ? `<button type="button" class="btn small at-danger" data-delpicked>Delete selected (${L.picked.size})</button><button type="button" class="btn ghost small" data-unpick>Clear selection</button>` : ""}</div>
+      ${(() => { if (!L.sessions.some(fromPlan)) return ""; const d = planDiff(), n = d.add.length + d.upd.length + d.del.length;
+        return n ? `<div class="at-card warn at-sync"><strong>The course timetable has changed.</strong> ${[d.add.length && `${d.add.length} to add`, d.upd.length && `${d.upd.length} to update`, d.del.length && `${d.del.length} to remove`].filter(Boolean).join(", ")}. Sessions already held are never changed. <button type="button" class="btn small" data-bulk>Review and update</button></div>` : ""; })()}
       ${!list.length ? `<p class="adm-empty">No sessions yet. Press <strong>Create the semester's sessions</strong> to add every lecture and lab from the course timetable, or add one with <strong>+ New session</strong>.</p>` :
       `<div class="adm-scroll"><table class="adm at-ses"><thead><tr><th scope="col"><input type="checkbox" class="at-cb" data-pickall aria-label="Select every session in this list"${list.length && list.every((s) => L.picked.has(s.id)) ? " checked" : ""}></th><th scope="col">Week</th><th scope="col">Date</th><th scope="col">Session</th><th scope="col">For</th><th scope="col">State</th><th scope="col">P / L / E / A</th><th scope="col"><span class="vh">Manage</span></th></tr></thead><tbody>
       ${list.map((s) => { const n = counts(s), sw = s.kind === "lab" ? L.moves.filter((m) => m.slot === slotOf(s) && m.section === s.section).length : 0; return `<tr class="${s.date === t ? "today" : ""}${L.picked.has(s.id) ? " picked" : ""}"><td><input type="checkbox" class="at-cb" data-pick="${s.id}" aria-label="Select ${esc(s.title)}"${L.picked.has(s.id) ? " checked" : ""}></td><td>${s.week || weekOfDate(s.date)}</td><td>${fmtDate(s.date)}<br><small>${fmtTime(s.start)} to ${fmtTime(s.end)}</small></td>
@@ -438,7 +440,8 @@
   // every lecture and lab of the semester, from the weekly plan (ids are fixed, so nothing is made twice)
   function semesterPlan() {
     const out = [], dayOff = { mon: 0, wed: 2, thu: 3 }, labTime = { mon: ["13:00", "16:00"], wed: ["12:00", "15:00"], thu: ["09:00", "12:00"] };
-    COURSE.weeks.forEach((w) => {
+    const ow = (L.sched && L.sched.weeks) || {}, base = (COURSE.original && COURSE.original.weeks) || COURSE.weeks;
+    base.map((w0) => Object.assign({}, w0, ow[w0.w] || ow[String(w0.w)] || {})).forEach((w) => {
       const monday = addDays(COURSE.semesterStart, 7 * (w.w - 1)), wk = String(w.w).padStart(2, "0");
       if ((w.activities || []).includes("Lecture")) {
         out.push({ id: `${semSlug}-w${wk}-lecture`, kind: "lecture", section: "all", title: `Lecture, week ${w.w}: ${w.topic}`, date: addDays(monday, 3), start: "14:00", end: "16:00",
@@ -474,26 +477,61 @@
       const data = { title: v.title.trim(), kind: v.kind, section: v.section, date: v.date, start: v.start, end: v.end, venue: v.venue.trim(), week: weekOfDate(v.date), semester: SEM, slot };
       try {
         if (isNew) await db.collection("sessions").add(Object.assign(data, { state: "planned", lateAfter: 0, createdAt: FV.serverTimestamp() }));
-        else await db.collection("sessions").doc(s.id).update(data);
+        else await db.collection("sessions").doc(s.id).update(Object.assign(data, fromPlan(s) ? { manual: true, pkey: pkeyOf(s) } : {}));
         closePanel();
       } catch (ex) { $(".at-err", p).textContent = `Could not save (${ex.code || ex}).`; }
     });
   }
 
+  /* Keep the sessions in step with the course timetable. Sessions made from the timetable are matched to it by week,
+     type and section: missing ones are added; ones not opened yet are updated (title, date, time, venue) or removed when
+     the timetable no longer has them. A session that has been opened, or has any attendance, is never changed, and
+     sessions the lecturer made by hand are left alone. */
+  const fromPlan = (s) => String(s.id || "").startsWith(`${semSlug}-w`);
+  const held = (s) => s.state !== "planned" || L.att.some((x) => x.session === s.id);
+  const planKey = (x) => `${x.week || weekOfDate(x.date)}|${x.kind}|${x.section}`;
+  // the timetable place a session was made for (kept when its date is changed by hand); older sessions: from their id
+  const pkeyOf = (x) => { if (x.pkey) return x.pkey; const m = String(x.id || "").match(/-w(\d\d)-(lecture|lab)(?:-(mon|wed|thu))?$/); return m ? `${+m[1]}|${m[2]}|${m[3] || "all"}` : planKey(x); };
+  function planDiff() {
+    const plan = semesterPlan(), mine = L.sessions.filter(fromPlan), used = new Set(), add = [], upd = [], del = [], keep = [];
+    plan.forEach((p) => {
+      const ex = mine.find((x) => !used.has(x.id) && pkeyOf(x) === planKey(p));
+      if (!ex) { add.push(p); return; }
+      used.add(ex.id);
+      const ch = ["title", "date", "start", "end", "venue"].filter((f) => (ex[f] || "") !== (p[f] || ""));
+      if (!ch.length) return;
+      if (ex.manual) { keep.push({ s: ex, p, why: "changed by you" }); return; } // the lecturer changed this one by hand: leave it
+      if (held(ex)) keep.push({ s: ex, p, why: "already held" }); else upd.push({ s: ex, p, ch });
+    });
+    mine.filter((x) => !used.has(x.id)).forEach((x) => { if (held(x)) keep.push({ s: x, why: "held, no longer in the timetable" }); else if (x.manual) keep.push({ s: x, why: "changed by you" }); else del.push(x); });
+    return { add, upd, del, keep };
+  }
   function bulkCreate() {
-    const plan = semesterPlan(), have = new Set(L.sessions.map((s) => s.id)), add = plan.filter((p) => !have.has(p.id));
-    const nl = add.filter((p) => p.kind === "lecture").length, nb = add.length - nl;
-    if (!add.length) { say("Nothing to Add", "Every lecture and lab in the course timetable already has a session."); return; }
-    const p = panel(`<h3>Create the Semester's Sessions</h3><p>From the weekly plan: <strong>${nl} lecture${nl === 1 ? "" : "s"}</strong> (Thursday, 2 PM to 4 PM) and <strong>${nb} lab session${nb === 1 ? "" : "s"}</strong> (one for each section: Monday 1 to 4 PM, Wednesday 12 to 3 PM, Thursday 9 AM to 12 PM).</p>
-      <p class="small-note">Sessions that already exist are left alone. You can edit, move or delete any session afterwards.</p><p class="at-err" aria-live="polite"></p>
-      <div class="acc-row"><button type="button" class="btn" data-go>Create ${add.length} sessions</button><button type="button" class="btn ghost" data-x>Cancel</button></div>`);
+    const d = planDiff(), n = d.add.length + d.upd.length + d.del.length;
+    if (!n) { say("Up to Date", `Every lecture and lab in the course timetable has its session, and they all match.${d.keep.length ? ` ${d.keep.length} session${d.keep.length === 1 ? " that was" : "s that were"} already held ${d.keep.length === 1 ? "differs" : "differ"} from the timetable and ${d.keep.length === 1 ? "is" : "are"} kept as ${d.keep.length === 1 ? "it was" : "they were"}.` : ""}`); return; }
+    const li = (t) => `<li>${t}</li>`, label = (x) => `${fmtDate(x.date)} · ${esc(x.title)}`;
+    const p = panel(`<h3>Update Sessions from the Timetable</h3>
+      <p>These changes make the sessions match the course timetable${L.sessions.length ? "" : " (every lecture on Thursday, 2 PM to 4 PM; each lab in three sections: Monday 1 to 4 PM, Wednesday 12 to 3 PM, Thursday 9 AM to 12 PM)"}. Sessions already held, and sessions you made yourself, are never changed.</p>
+      ${d.add.length ? `<h4>Add ${d.add.length}</h4><ul class="at-list">${d.add.slice(0, 40).map((x) => li(label(x))).join("")}${d.add.length > 40 ? li(`…and ${d.add.length - 40} more`) : ""}</ul>` : ""}
+      ${d.upd.length ? `<h4>Update ${d.upd.length}</h4><ul class="at-list">${d.upd.map((u) => li(`${label(u.s)} → <strong>${u.ch.includes("title") ? esc(u.p.title) : ""}${u.ch.includes("date") ? ` ${fmtDate(u.p.date)}` : ""}${u.ch.some((f) => f === "start" || f === "end") ? ` ${fmtTime(u.p.start)} to ${fmtTime(u.p.end)}` : ""}${u.ch.includes("venue") ? ` · ${esc(u.p.venue || "no venue")}` : ""}</strong>`)).join("")}</ul>` : ""}
+      ${d.del.length ? `<h4>Remove ${d.del.length} <small class="at-sub">not opened, and no longer in the timetable</small></h4><ul class="at-list">${d.del.map((x) => li(label(x))).join("")}</ul>` : ""}
+      ${d.keep.length ? `<h4>Kept as they are ${d.keep.length}</h4><ul class="at-list">${d.keep.map((k) => li(`${label(k.s)} <small>(${k.why})</small>`)).join("")}</ul>` : ""}
+      <p class="at-err" aria-live="polite"></p>
+      <div class="acc-row"><button type="button" class="btn" data-go>Apply ${n} change${n === 1 ? "" : "s"}</button><button type="button" class="btn ghost" data-x>Cancel</button></div>`);
     $("[data-go]", p).addEventListener("click", async (e) => {
       e.target.disabled = true;
+      const have = new Set(L.sessions.map((x) => x.id)), ops = [];
+      d.add.forEach((x) => {
+        const { id, ...data } = x, nid = have.has(id) ? `${id}-${Date.now().toString(36)}` : id; // a moved session may still use this id
+        ops.push((b) => b.set(db.collection("sessions").doc(nid), Object.assign(data, { pkey: planKey(x), semester: SEM, state: "planned", lateAfter: 0, createdAt: FV.serverTimestamp() })));
+      });
+      // an updated lab keeps its slot, so swaps made for it stay with it
+      d.upd.forEach((u) => ops.push((b) => b.update(db.collection("sessions").doc(u.s.id), { title: u.p.title, date: u.p.date, start: u.p.start, end: u.p.end, venue: u.p.venue, week: u.p.week, pkey: planKey(u.p) })));
+      d.del.forEach((x) => ops.push((b) => b.delete(db.collection("sessions").doc(x.id))));
       try {
-        const b = db.batch();
-        add.forEach((x) => { const { id, ...data } = x; b.set(db.collection("sessions").doc(id), Object.assign(data, { semester: SEM, state: "planned", lateAfter: 0, createdAt: FV.serverTimestamp() })); });
-        await b.commit(); closePanel();
-      } catch (ex) { e.target.disabled = false; $(".at-err", p).textContent = `Could not create them (${ex.code || ex}).`; }
+        for (let i = 0; i < ops.length; i += 400) { const b = db.batch(); ops.slice(i, i + 400).forEach((f) => f(b)); await b.commit(); }
+        closePanel();
+      } catch (ex) { e.target.disabled = false; $(".at-err", p).textContent = `Could not apply them (${ex.code || ex}).`; }
     });
   }
   // move a whole lab (its sessions in every section) to another week
@@ -509,7 +547,7 @@
       if (!(to >= 1 && to <= COURSE.weeks.length)) { $(".at-err", p).textContent = "Choose a week of the semester."; return; }
       try {
         const b = db.batch();
-        group.forEach((x) => { const d = addDays(x.date, 7 * (to - (x.week || weekOfDate(x.date)))); b.update(db.collection("sessions").doc(x.id), { date: d, week: weekOfDate(d), slot }); });
+        group.forEach((x) => { const d = addDays(x.date, 7 * (to - (x.week || weekOfDate(x.date)))); b.update(db.collection("sessions").doc(x.id), { date: d, week: weekOfDate(d), slot, manual: true, pkey: pkeyOf(x) }); });
         await b.commit(); closePanel();
       } catch (ex) { $(".at-err", p).textContent = `Could not move it (${ex.code || ex}).`; }
     });
