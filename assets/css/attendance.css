@@ -154,3 +154,9 @@ body:has(.at-savebar:not([hidden])) .chat-fab, body:has(.at-savebar:not([hidden]
 table.at-sch tr.changed td { background: color-mix(in srgb, var(--teal) 7%, transparent); }
 .at-wkgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(170px, 100%), 1fr)); gap: 10px; }
 .at-tags { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); display: grid; }
+
+/* selecting sessions to delete */
+.at-cb { width: 18px; height: 18px; cursor: pointer; }
+table.at-ses tr.picked td { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.btn.at-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn.at-danger:hover { filter: brightness(1.1); background: var(--danger); }

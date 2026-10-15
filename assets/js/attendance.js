@@ -72,7 +72,7 @@
 
   // the lecturer's view: what is loaded and what is shown
   const L = { sessions: [], roster: [], att: [], moves: [], swaps: [], notices: [], users: [], sched: null, tab: "sessions", sid: null, keys: {}, filter: "all", rsec: "all", rkind: "all",
-    rview: "list", q: "", watched: new Set(), edits: {}, openWeek: null, dirSent: "" };
+    rview: "list", q: "", watched: new Set(), edits: {}, openWeek: null, dirSent: "", picked: new Set() };
 
   /* ---------- who is here ---------- */
   let who = "";
@@ -401,14 +401,38 @@
     const list = sortedSessions().filter((s) => L.filter === "all" || s.kind === L.filter);
     const t = todayIso();
     body.innerHTML = `<div class="adm-tools"><button type="button" class="btn" data-new>+ New session</button><button type="button" class="btn ghost" data-bulk>Create the semester's sessions</button>
-        ${["all", "lecture", "lab"].map((f) => `<button type="button" class="chip-btn" data-filter="${f}" aria-pressed="${L.filter === f}">${{ all: "All", lecture: "Lectures", lab: "Labs" }[f]}</button>`).join("")}</div>
+        ${["all", "lecture", "lab"].map((f) => `<button type="button" class="chip-btn" data-filter="${f}" aria-pressed="${L.filter === f}">${{ all: "All", lecture: "Lectures", lab: "Labs" }[f]}</button>`).join("")}
+        ${L.picked.size ? `<button type="button" class="btn small at-danger" data-delpicked>Delete selected (${L.picked.size})</button><button type="button" class="btn ghost small" data-unpick>Clear selection</button>` : ""}</div>
       ${!list.length ? `<p class="adm-empty">No sessions yet. Press <strong>Create the semester's sessions</strong> to add every lecture and lab from the course timetable, or add one with <strong>+ New session</strong>.</p>` :
-      `<div class="adm-scroll"><table class="adm at-ses"><thead><tr><th scope="col">Week</th><th scope="col">Date</th><th scope="col">Session</th><th scope="col">For</th><th scope="col">State</th><th scope="col">P / L / E / A</th><th scope="col"><span class="vh">Manage</span></th></tr></thead><tbody>
-      ${list.map((s) => { const n = counts(s), sw = s.kind === "lab" ? L.moves.filter((m) => m.slot === slotOf(s) && m.section === s.section).length : 0; return `<tr class="${s.date === t ? "today" : ""}"><td>${s.week || weekOfDate(s.date)}</td><td>${fmtDate(s.date)}<br><small>${fmtTime(s.start)} to ${fmtTime(s.end)}</small></td>
+      `<div class="adm-scroll"><table class="adm at-ses"><thead><tr><th scope="col"><input type="checkbox" class="at-cb" data-pickall aria-label="Select every session in this list"${list.length && list.every((s) => L.picked.has(s.id)) ? " checked" : ""}></th><th scope="col">Week</th><th scope="col">Date</th><th scope="col">Session</th><th scope="col">For</th><th scope="col">State</th><th scope="col">P / L / E / A</th><th scope="col"><span class="vh">Manage</span></th></tr></thead><tbody>
+      ${list.map((s) => { const n = counts(s), sw = s.kind === "lab" ? L.moves.filter((m) => m.slot === slotOf(s) && m.section === s.section).length : 0; return `<tr class="${s.date === t ? "today" : ""}${L.picked.has(s.id) ? " picked" : ""}"><td><input type="checkbox" class="at-cb" data-pick="${s.id}" aria-label="Select ${esc(s.title)}"${L.picked.has(s.id) ? " checked" : ""}></td><td>${s.week || weekOfDate(s.date)}</td><td>${fmtDate(s.date)}<br><small>${fmtTime(s.start)} to ${fmtTime(s.end)}</small></td>
         <td><strong>${esc(s.title)}</strong>${s.venue ? `<br><small>${esc(s.venue)}</small>` : ""}${sw ? `<br><small class="at-swn">⇄ ${sw} swapped in</small>` : ""}</td><td>${SECTION[s.section] || s.section}</td>
         <td><span class="at-state ${s.state}">${{ planned: "Not opened", open: "Open", closed: "Closed" }[s.state] || s.state}</span></td>
         <td class="at-n">${s.state === "planned" ? "–" : `${n.P} / ${n.L} / ${n.E} / ${n.A}`}</td><td><button type="button" class="btn small${s.state === "open" ? "" : " ghost"}" data-sid="${s.id}">${s.state === "open" ? "Open ›" : "Manage"}</button></td></tr>`; }).join("")}
       </tbody></table></div>`}`;
+  }
+
+  // delete several sessions at once (e.g. made by mistake), optionally with their attendance records
+  function deletePicked() {
+    const ses = L.sessions.filter((s) => L.picked.has(s.id));
+    if (!ses.length) return;
+    const recs = L.att.filter((x) => L.picked.has(x.session)), open = ses.filter((s) => s.state === "open").length;
+    const p = panel(`<h3>Delete ${ses.length} Session${ses.length === 1 ? "" : "s"}</h3>
+      <ul class="at-list">${ses.slice(0, 12).map((s) => `<li>${fmtDate(s.date)} · ${esc(s.title)}${s.state !== "planned" ? ` <small>(${s.state})</small>` : ""}</li>`).join("")}${ses.length > 12 ? `<li>…and ${ses.length - 12} more</li>` : ""}</ul>
+      ${open ? `<p class="at-note">${open} of them ${open === 1 ? "is" : "are"} open right now.</p>` : ""}
+      ${recs.length ? `<label class="at-late"><input type="checkbox" data-delrecs checked> Also delete their <strong>${recs.length}</strong> attendance record${recs.length === 1 ? "" : "s"} (untick to keep them in the database)</label>` : `<p class="small-note">No attendance has been taken in them.</p>`}
+      <p class="at-err" aria-live="polite"></p>
+      <div class="acc-row"><button type="button" class="btn at-danger" data-go>Delete ${ses.length} session${ses.length === 1 ? "" : "s"}</button><button type="button" class="btn ghost" data-x>Cancel</button></div>`);
+    $("[data-go]", p).addEventListener("click", async (e) => {
+      e.target.disabled = true;
+      const withRecs = recs.length && $("[data-delrecs]", p).checked, ops = [];
+      ses.forEach((s) => { ops.push((b) => b.delete(db.collection("sessions").doc(s.id))); ops.push((b) => b.delete(db.collection("sessionKeys").doc(s.id))); });
+      if (withRecs) recs.forEach((x) => ops.push((b) => b.delete(db.collection("attendance").doc(x.id))));
+      try {
+        for (let i = 0; i < ops.length; i += 400) { const b = db.batch(); ops.slice(i, i + 400).forEach((f) => f(b)); await b.commit(); }
+        L.picked.clear(); closePanel(); draw();
+      } catch (ex) { e.target.disabled = false; $(".at-err", p).textContent = `Could not delete them (${ex.code || ex}).`; }
+    });
   }
 
   // every lecture and lab of the semester, from the weekly plan (ids are fixed, so nothing is made twice)
@@ -958,6 +982,8 @@
     const t = e.target, b = (s) => t.closest(s);
     if (b("[data-tab]")) { if (!leaveOk()) return; closePanel(); L.tab = b("[data-tab]").dataset.tab; L.sid = null; draw(); return; }
     if (b("[data-filter]")) { L.filter = b("[data-filter]").dataset.filter; draw(); return; }
+    if (b("[data-delpicked]")) return deletePicked();
+    if (b("[data-unpick]")) { L.picked.clear(); draw(); return; }
     if (b("[data-rsec]")) { L.rsec = b("[data-rsec]").dataset.rsec; draw(); return; }
     if (b("[data-rkind]")) { L.rkind = b("[data-rkind]").dataset.rkind; draw(); return; }
     if (b("[data-rview]")) { L.rview = b("[data-rview]").dataset.rview; draw(); return; }
@@ -999,6 +1025,8 @@
   async function onChange(e) {
     const t = e.target;
     if (t.matches("[data-file]") && t.files[0]) { importList(t.files[0]); t.value = ""; return; }
+    if (t.matches("[data-pick]")) { if (t.checked) L.picked.add(t.dataset.pick); else L.picked.delete(t.dataset.pick); draw(); return; }
+    if (t.matches("[data-pickall]")) { sortedSessions().filter((s) => L.filter === "all" || s.kind === L.filter).forEach((s) => (t.checked ? L.picked.add(s.id) : L.picked.delete(s.id))); draw(); return; }
     if (t.closest(".at-wkform")) return;
     const tr = t.closest("tr[data-em]");
     if (!tr || !t.matches("[data-f]")) return;
