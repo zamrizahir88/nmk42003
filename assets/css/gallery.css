@@ -1,0 +1,38 @@
+/* NMK42003 Class Moments: the albums, the photo viewer, the lecturer settings, and the home-page strip. */
+.gl-card { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 16px 18px; margin: 0 0 16px; }
+.gl-h { font: 600 1.2rem var(--serif); margin: 0 0 2px; }
+.gl-sub, .gl-count { color: var(--ink-3); font-size: .9rem; margin: 0 0 10px; }
+.gl-album { margin: 0 0 28px; scroll-margin-top: 90px; }
+.gl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(170px, 46%), 1fr)); gap: 8px; }
+.gl-th { display: block; padding: 0; border: 0; border-radius: 10px; overflow: hidden; background: var(--grid); aspect-ratio: 4 / 3; cursor: zoom-in; }
+.gl-th img, .gl-sth img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .25s ease; }
+.gl-th:hover img, .gl-sth:hover img { transform: scale(1.04); }
+.gl-th:focus-visible, .gl-sth:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+.gl-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, 46%), 1fr)); gap: 8px; }
+.gl-sth { display: block; border-radius: 10px; overflow: hidden; aspect-ratio: 4 / 3; background: var(--grid); }
+.gl-strip .gl-sth:nth-child(n+7) { display: none; }
+@media (min-width: 900px) { .gl-strip .gl-sth:nth-child(n+7) { display: block; } }
+body.gl-open { overflow: hidden; }
+.gl-view { position: fixed; inset: 0; z-index: 120; background: rgba(5, 10, 16, .94); display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
+.gl-fig { margin: 0; display: grid; justify-items: center; gap: 10px; padding: 48px 4px 16px; max-height: 100vh; }
+.gl-fig img { max-width: 100%; max-height: calc(100vh - 120px); object-fit: contain; border-radius: 6px; background: #111; }
+.gl-fig figcaption { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center; color: #e6edf3; font-size: .9rem; text-align: center; }
+.gl-fig figcaption a { color: #7fe3d6; }
+.gl-nav, .gl-x { font: 400 2.4rem/1 var(--sans); color: #fff; background: rgba(255, 255, 255, .08); border: 0; border-radius: 50%; width: 52px; height: 52px; margin: 0 8px; cursor: pointer; }
+.gl-nav:disabled { opacity: .2; cursor: default; }
+.gl-nav:focus-visible, .gl-x:focus-visible { outline: 3px solid #7fe3d6; }
+.gl-x { position: absolute; top: 10px; right: 10px; font-size: 2rem; }
+@media (max-width: 600px) { .gl-nav { position: absolute; bottom: 14px; width: 46px; height: 46px; } .gl-nav.prev { left: 12px; } .gl-nav.next { right: 12px; } .gl-view { grid-template-columns: minmax(0, 1fr); } .gl-fig { padding-bottom: 72px; } }
+.gl-set summary { cursor: pointer; }
+.gl-form { display: grid; gap: 12px; margin-top: 12px; }
+.gl-form label { display: grid; gap: 4px; font-weight: 600; font-size: .92rem; }
+.gl-form label small { font-weight: 400; color: var(--ink-3); }
+.gl-form input[type=url] { font: inherit; font-weight: 400; height: 40px; padding: 0 10px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); }
+.gl-pub { grid-template-columns: auto minmax(0, 1fr); align-items: start; font-weight: 400 !important; }
+.gl-pub input { width: 20px; height: 20px; margin-top: 2px; }
+.gl-msg { margin: 0; color: var(--teal); font-size: .9rem; min-height: 1.2em; }
+.gl-help { background: var(--paper); border: 1px dashed var(--rule); border-radius: var(--r-sm); padding: 10px 14px; font-size: .92rem; }
+.gl-help ol { margin: 6px 0; padding-left: 1.2em; display: grid; gap: 4px; }
+@media (prefers-reduced-motion: reduce) { .gl-th img, .gl-sth img { transition: none; } }
+.block-link { align-self: flex-end; font-weight: 600; color: var(--teal); text-decoration: none; white-space: nowrap; }
+.block-link:hover { text-decoration: underline; }

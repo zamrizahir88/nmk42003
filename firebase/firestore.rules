@@ -143,6 +143,12 @@ service cloud.firestore {
       allow write: if isLecturer();
     }
 
+    // Class Moments settings (the photo list address and the "show to the public" switch).
+    match /meta/gallery {
+      allow read: if true;
+      allow write: if isLecturer();
+    }
+
     // The lecturer's changes to the public timetable: everyone reads them, lecturers write them.
     match /schedule/{id} {
       allow read: if true;

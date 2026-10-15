@@ -22,7 +22,7 @@
   const STUDENT_DOMAIN = "@studentmail.unimap.edu.my";
   const EX_KEY = "nmk-ex-log", UID_KEY = "nmk-sync-uid";
   // progress kept in this browser that is not worth syncing
-  const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-|sched|role|preview)/;
+  const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-|sched|role|preview|gal)/;
   const SEM = (typeof COURSE !== "undefined" && (COURSE.semesterId || COURSE.session)) || "";
 
   firebase.initializeApp(CONFIG);
@@ -261,6 +261,7 @@
       ${p && p.status === "approved" ? `<p class="acc-note">Your progress is saved to your account and follows you to any device.</p>` : ""}
       ${isAdmin(u.email) ? "" : `<a class="acc-item" href="profile.html">My profile</a>`}
       <a class="acc-item" href="board.html">Progress board</a>
+      <a class="acc-item" href="gallery.html">Class Moments</a>
       <a class="acc-item" href="attendance.html">${isAdmin(u.email) ? "Attendance (lecturer)" : "Attendance"}</a>
       ${isAdmin(u.email) ? `<a class="acc-item" href="admin.html">Lecturer dashboard</a>` : ""}
       <button type="button" class="acc-item" data-out>Sign out</button>`;
