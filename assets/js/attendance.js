@@ -312,7 +312,7 @@
      ===================================================================== */
   function lecturer() {
     host.innerHTML = `<div class="at-tabs adm-tabs" role="group" aria-label="Attendance view"></div><div class="at-body"></div><div class="at-savebar" hidden></div>`;
-    const load = (name, q, map) => unsubs.push(q.onSnapshot((s) => { L[name] = s.docs.map(map); if (name === "roster") syncDirectory(); if (name === "sessions") addSlots(); draw(); },
+    const load = (name, q, map) => unsubs.push(q.onSnapshot((s) => { L[name] = s.docs.map(map); if (name === "roster") syncDirectory(); if (name === "roster" || name === "users") autoApprove(); if (name === "sessions") addSlots(); draw(); },
       (e) => { console.warn("NMK attendance:", name, e.code || e); $(".at-body").innerHTML = `<p class="small-note">Could not load ${name} (${esc(e.code || e)}). If this says permission-denied, publish the latest firebase/firestore.rules in the Firebase console.</p>`; }));
     const withId = (d) => Object.assign({ id: d.id }, d.data());
     load("sessions", db.collection("sessions").where("semester", "==", SEM), withId);
@@ -341,6 +341,18 @@
     if (v === L.dirSent) return;
     clearTimeout(dirTimer);
     dirTimer = setTimeout(() => db.collection("meta").doc("classmates").set({ semester: SEM, list, updatedAt: FV.serverTimestamp() }).then(() => { L.dirSent = v; }).catch((e) => console.warn("NMK attendance: classmate list", e.code || e)), 1500);
+  }
+  // a student account still waiting whose address is (now) on the class list is approved straight away: e.g. after the
+  // lecturer corrects a studentmail address, adds a student, or loads the list after the student first signed in
+  const approving = new Set();
+  function autoApprove() {
+    if (!L.users.length || !L.roster.length) return;
+    const listed = new Set(L.roster.filter((r) => r.status === "active").map((r) => r.id));
+    L.users.filter((u) => u.status === "pending" && u.role !== "lecturer" && listed.has(String(u.email || "").toLowerCase()) && !approving.has(u.id)).forEach((u) => {
+      approving.add(u.id);
+      db.collection("users").doc(u.id).update({ status: "approved", approvedBy: "class list", approvedAt: FV.serverTimestamp() })
+        .catch((e) => { approving.delete(u.id); console.warn("NMK attendance: could not approve", u.email, e.code || e); });
+    });
   }
   // lab sessions made before slots existed get theirs from their id, once
   function addSlots() {
