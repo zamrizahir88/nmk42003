@@ -878,7 +878,8 @@
   function refreshSched() {
     db.collection("schedule").doc(semSlug).get().then((d) => {
       const v = d.exists ? { semester: SEM, weeks: d.data().weeks || {}, labs: d.data().labs || {}, topics: d.data().topics || {} } : null;
-      try { if (v) localStorage.setItem("nmk-sched", JSON.stringify(v)); else localStorage.removeItem("nmk-sched"); } catch (e) { /* private mode */ }
+      const stable = (x) => (Array.isArray(x) ? `[${x.map(stable).join(",")}]` : x && typeof x === "object" ? `{${Object.keys(x).sort().map((k) => `${JSON.stringify(k)}:${stable(x[k])}`).join(",")}}` : JSON.stringify(x));
+      try { if (v) localStorage.setItem("nmk-sched", stable(v)); else localStorage.removeItem("nmk-sched"); } catch (e) { /* private mode */ }
     }).catch(() => {});
   }
 

@@ -30,14 +30,19 @@
 
   /* ---------- The lecturer's changes to the public timetable (applied by schedule.js on the next page load) ---------- */
   const SCHED_ID = String(SEM).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  // the same content always gives the same text (Firestore returns the fields in any order)
+  const stable = (x) => (Array.isArray(x) ? `[${x.map(stable).join(",")}]` : x && typeof x === "object" ? `{${Object.keys(x).sort().map((k) => `${JSON.stringify(k)}:${stable(x[k])}`).join(",")}}` : JSON.stringify(x));
   db.collection("schedule").doc(SCHED_ID).get().then((d) => {
-    const v = d.exists ? JSON.stringify(Object.assign({ semester: SEM }, { weeks: d.data().weeks || {}, labs: d.data().labs || {}, topics: d.data().topics || {} })) : "";
+    const v = d.exists ? stable({ semester: SEM, weeks: d.data().weeks || {}, labs: d.data().labs || {}, topics: d.data().topics || {} }) : "";
     let old = ""; try { old = localStorage.getItem("nmk-sched") || ""; } catch (e) { /* private mode */ }
+    try { if (old) old = stable(JSON.parse(old)); } catch (e) { old = ""; }
     if (v === old) return;
     try { if (v) localStorage.setItem("nmk-sched", v); else localStorage.removeItem("nmk-sched"); } catch (e) { return; }
-    // draw the page again once with the new timetable (never in a loop)
-    let done = ""; try { done = sessionStorage.getItem("nmk-sched-reloaded") || ""; } catch (e) { /* ignore */ }
-    if (done !== v) { try { sessionStorage.setItem("nmk-sched-reloaded", v); } catch (e) { return; } location.reload(); }
+    // draw the page again once with the new timetable: never twice within 30 seconds, so it can never loop
+    let last = 0; try { last = +sessionStorage.getItem("nmk-sched-reload-at") || 0; } catch (e) { return; }
+    if (Date.now() - last < 30000) return;
+    try { sessionStorage.setItem("nmk-sched-reload-at", String(Date.now())); } catch (e) { return; }
+    location.reload();
   }).catch(() => { /* offline: keep the copy this browser has */ });
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
