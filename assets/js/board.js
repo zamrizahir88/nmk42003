@@ -10,7 +10,12 @@
   const BADGE = Object.fromEntries(G.BADGES.map((b) => [b.id, b]));
   const ago = (iso) => { if (!iso) return "never"; const d = Math.floor((G.today() - new Date(iso).getTime()) / 86400000); return d <= 0 ? "today" : d === 1 ? "yesterday" : d < 14 ? `${d} days ago` : `${Math.floor(d / 7)} weeks ago`; };
 
-  const paintMine = () => { mine.innerHTML = G.journeyHtml(G.local()); };
+  // lecturers have no journey of their own: hide "My Progress" for them
+  const paintMine = () => {
+    const lec = G.isLecturer && G.isLecturer(), head = mine.previousElementSibling;
+    mine.hidden = lec; if (head && head.tagName === "H2") head.hidden = lec;
+    if (!lec) mine.innerHTML = G.journeyHtml(G.local());
+  };
   paintMine();
   document.addEventListener("nmk:store", () => setTimeout(paintMine, 500));
 

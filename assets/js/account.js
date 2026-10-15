@@ -22,7 +22,7 @@
   const STUDENT_DOMAIN = "@studentmail.unimap.edu.my";
   const EX_KEY = "nmk-ex-log", UID_KEY = "nmk-sync-uid";
   // progress kept in this browser that is not worth syncing
-  const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-|sched)/;
+  const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-|sched|role|preview)/;
   const SEM = (typeof COURSE !== "undefined" && (COURSE.semesterId || COURSE.session)) || "";
 
   firebase.initializeApp(CONFIG);
@@ -140,6 +140,10 @@
 
   auth.onAuthStateChanged(async (u) => {
     state.user = u; state.profile = null; state.ready = true;
+    // remember in this browser whether a lecturer is signed in: the course journey shows them a class summary instead
+    const role = u && isAdmin(u.email) ? "lecturer" : "";
+    if ((ls.get("nmk-role") || "") !== role) { try { if (role) localStorage.setItem("nmk-role", role); else { localStorage.removeItem("nmk-role"); localStorage.removeItem("nmk-preview"); } } catch (e) { /* private mode */ } }
+    if (window.NMKGame && window.NMKGame.paint) setTimeout(window.NMKGame.paint, 0);
     if (!u) { paint(); changed(); return; }
     if (!allowed(u.email)) {
       await auth.signOut();
@@ -255,7 +259,7 @@
     menu.innerHTML = `<div class="acc-who"><strong>${esc((p && p.nickname) || u.displayName || "")}</strong><span>${esc(u.email)}</span>
         <span class="acc-st ${p ? p.status : ""}">${p ? STATUS[p.status] || p.status : "Setting up…"}</span></div>
       ${p && p.status === "approved" ? `<p class="acc-note">Your progress is saved to your account and follows you to any device.</p>` : ""}
-      <a class="acc-item" href="profile.html">My profile</a>
+      ${isAdmin(u.email) ? "" : `<a class="acc-item" href="profile.html">My profile</a>`}
       <a class="acc-item" href="board.html">Progress board</a>
       <a class="acc-item" href="attendance.html">${isAdmin(u.email) ? "Attendance (lecturer)" : "Attendance"}</a>
       ${isAdmin(u.email) ? `<a class="acc-item" href="admin.html">Lecturer dashboard</a>` : ""}

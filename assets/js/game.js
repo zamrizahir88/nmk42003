@@ -18,6 +18,11 @@
   const startMs = (() => { const [y, m, d] = COURSE.semesterStart.split("-").map(Number); return Date.UTC(y, m - 1, d) - 8 * 3600000; })(); // Monday 00:00 in Malaysia
   const weekOf = (t) => Math.floor((new Date(t).getTime() - startMs) / (7 * DAY)) + 1;
   const firstWeek = (w) => { const m = String(w || "").match(/\d+/); return m ? +m[0] : 99; };
+  // lecturers (remembered by account.js after sign-in) see a class summary instead of their own journey, and no
+  // badge or level pop-ups; "Preview as a student" (nmk-preview) shows the journey as students see it
+  const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const isLecturer = () => lsGet("nmk-role") === "lecturer";
+  const previewing = () => lsGet("nmk-preview") === "1";
   const today = () => { const q = new URLSearchParams(location.search).get("today"); return q ? new Date(q + "T12:00:00+08:00").getTime() : Date.now(); };
 
   /* ---------- the stops of the journey: chapters and labs in teaching order ---------- */
@@ -145,7 +150,7 @@
     checkTimer = setTimeout(() => {
       const g = local(), seen = parse(localStorage.getItem("nmk-game-seen"), null);
       const ids = g.badges.map((b) => b.id);
-      if (seen) {
+      if (seen && !isLecturer()) {
         g.badges.filter((b) => !seen.badges.includes(b.id)).forEach((b) => toast(b.icon, `Badge earned: ${b.name}`, b.desc));
         if (g.levelNo > (seen.level || 1)) toast("⭐", `Level up: ${g.level}`, `You now have ${g.xp} XP.`);
       }
@@ -186,8 +191,48 @@
   }
   function paintJourney() {
     const host = document.getElementById("journeyMap");
-    if (host) host.innerHTML = journeyHtml(local());
+    if (!host) return;
+    const sec = document.getElementById("journey"), h = sec && sec.querySelector("h2"), p = sec && sec.querySelector(".block-head p");
+    if (h && !h.dataset.text) { h.dataset.text = h.textContent; if (p) p.dataset.text = p.textContent; }
+    if (isLecturer() && !previewing()) {
+      if (h) h.textContent = "Class at a Glance";
+      if (p) p.textContent = "How your students are getting on this semester. Students see their own course journey here.";
+      lecturerSummary(host);
+      return;
+    }
+    if (h && h.dataset.text) { h.textContent = h.dataset.text; if (p) p.textContent = p.dataset.text; }
+    host.innerHTML = (isLecturer() ? `<div class="gm-preview"><span>👁 Previewing the page as a student sees it (with the progress saved in this browser).</span><button type="button" class="btn ghost small" data-gm-preview="0">Back to the class summary</button></div>` : "") + journeyHtml(local());
   }
+  // the lecturer's summary: students signed in, active, stalled, and what is waiting on the attendance page
+  let lecBusy = false;
+  async function lecturerSummary(host) {
+    const A = window.NMKAccount;
+    if (!A || !A.db || !A.state || !A.state.user) { host.innerHTML = `<p class="small-note">Loading the class summary…</p>`; return; }
+    if (lecBusy) return;
+    lecBusy = true;
+    const db = A.db, get = (q) => q.get().catch(() => ({ docs: [] }));
+    try {
+      const [users, board, swaps, notices] = await Promise.all([get(db.collection("users")), get(db.collection("board").where("semester", "==", SEM)),
+        get(db.collection("swaps").where("semester", "==", SEM).where("status", "==", "accepted")), get(db.collection("notices").where("semester", "==", SEM).where("status", "==", "pending"))]);
+      const studs = users.docs.map((d) => d.data()).filter((u) => u.role !== "lecturer");
+      const approved = studs.filter((u) => u.status === "approved").length, pending = studs.filter((u) => u.status === "pending").length;
+      const b = board.docs.map((d) => d.data()).filter((x) => x.role !== "lecturer"), now = today();
+      const days = (x) => (x.lastActive ? (now - new Date(x.lastActive).getTime()) / DAY : Infinity);
+      const active = b.filter((x) => days(x) <= 7).length, stalled = Math.max(0, approved - b.filter((x) => days(x) < 14).length);
+      const avg = b.length ? Math.round(b.reduce((a, x) => a + (x.xp || 0), 0) / b.length) : 0;
+      const tile = (n, t, href, warn) => `<a class="gm-tile${warn ? " warn" : ""}" href="${href}"><strong>${n}</strong><span>${t}</span></a>`;
+      host.innerHTML = `<div class="gm-tiles">${tile(approved, "students signed in", "admin.html")}${tile(pending, "waiting for approval", "admin.html", pending)}${tile(active, "active in the last 7 days", "admin.html")}
+          ${tile(stalled, "no progress for 2+ weeks", "admin.html", stalled)}${tile(avg, "average XP", "board.html")}${tile(swaps.docs.length, "lab swaps to approve", "attendance.html", swaps.docs.length)}${tile(notices.docs.length, "absence notices to check", "attendance.html", notices.docs.length)}</div>
+        <div class="gm-lecbar"><a class="btn" href="admin.html">Lecturer dashboard</a><a class="btn ghost" href="attendance.html">Attendance</a><a class="btn ghost" href="board.html">Progress board</a>
+          <button type="button" class="btn ghost" data-gm-preview="1">Preview as a student</button></div>`;
+    } finally { lecBusy = false; }
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-gm-preview]");
+    if (!b) return;
+    try { if (b.dataset.gmPreview === "1") localStorage.setItem("nmk-preview", "1"); else localStorage.removeItem("nmk-preview"); } catch (err) { /* private mode */ }
+    paintJourney();
+  });
 
   /* ---------- profiles: the activity feed, and a public summary that rebuilds the journey for classmates ---------- */
   // the most recent things done (dated XP items, plus each level reached), newest first
@@ -213,7 +258,7 @@
       badges: BADGES.filter((x) => (b.badges || []).includes(x.id)), solved: b.solved || 0, total: Object.keys(CATALOG).length, stops, weeks: [], streak: b.streak || 0, lastActive: b.lastActive || null, nowWeek: weekOf(today()) };
   }
 
-  window.NMKGame = { SEM, CATALOG, STOPS, BADGES, LEVELS, compute, local, localKeys, xpBar, journeyHtml, weekOf, today, feed, summaryProg, fromSummary };
+  window.NMKGame = { SEM, CATALOG, STOPS, BADGES, LEVELS, compute, local, localKeys, xpBar, journeyHtml, weekOf, today, feed, summaryProg, fromSummary, isLecturer, paint: paintJourney };
   paintJourney();
   check();
 })();

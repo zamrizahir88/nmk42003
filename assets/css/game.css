@@ -89,3 +89,13 @@ table.hmap td.hm { text-align: center; font-size: .8rem; min-width: 3.4em; }
 table.dt tr.dt-stop th { background: var(--grid); color: var(--ink); font-size: .85rem; text-align: left; }
 table.dt tr.dt-stop th span { font-weight: 400; color: var(--ink-3); margin-left: 8px; }
 .dt-list { margin: 0; padding-left: 1.2em; color: var(--ink-2); font-size: .92rem; }
+
+/* ---------- the lecturer's class summary on the home page ---------- */
+.gm-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); gap: 10px; margin: 0 0 14px; }
+.gm-tile { display: grid; gap: 2px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); color: var(--ink); text-decoration: none; }
+.gm-tile:hover { border-color: var(--teal); }
+.gm-tile strong { font: 700 1.6rem var(--serif); }
+.gm-tile span { font-size: .85rem; color: var(--ink-3); }
+.gm-tile.warn { border-color: var(--amber); background: var(--amber-soft); }
+.gm-lecbar { display: flex; flex-wrap: wrap; gap: 8px; }
+.gm-preview { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; background: var(--teal-soft); border: 1px solid var(--teal); border-radius: var(--r-md); padding: 10px 14px; margin: 0 0 14px; font-size: .92rem; }
