@@ -38,7 +38,10 @@
     try { if (old) old = stable(JSON.parse(old)); } catch (e) { old = ""; }
     if (v === old) return;
     try { if (v) localStorage.setItem("nmk-sched", v); else localStorage.removeItem("nmk-sched"); } catch (e) { return; }
-    // draw the page again once with the new timetable: never twice within 30 seconds, so it can never loop
+    // draw the page again with the new timetable, but only on pages that just show it (nothing for a student to type
+    // and lose); everywhere else the new timetable appears on the next page opened. Never twice within 30 seconds.
+    const page = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+    if (!["", "index.html", "schedule.html", "chapters.html", "labs.html"].includes(page)) return;
     let last = 0; try { last = +sessionStorage.getItem("nmk-sched-reload-at") || 0; } catch (e) { return; }
     if (Date.now() - last < 30000) return;
     try { sessionStorage.setItem("nmk-sched-reload-at", String(Date.now())); } catch (e) { return; }
