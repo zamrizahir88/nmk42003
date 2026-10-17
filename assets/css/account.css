@@ -60,3 +60,20 @@ table.adm { width: 100%; border-collapse: collapse; font-size: .9rem; font-varia
 .adm-st.rejected { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--danger); }
 .adm-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 10px; }
 .adm-tools input { font: inherit; height: 38px; padding: 0 10px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); min-width: 220px; }
+
+/* ---------- Notification bell ---------- */
+.acc-bell { position: relative; }
+.acc-bell[hidden] { display: none; }
+.acc-badge { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--amber); color: #1a1205; font: 700 .7rem/18px var(--sans); text-align: center; box-shadow: 0 0 0 2px var(--surface); }
+.acc-bellbox { width: 340px; max-height: min(70vh, 480px); overflow-y: auto; }
+.acc-notes { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.acc-notes a { display: block; padding: 9px 10px; border-radius: var(--r-sm); color: var(--ink); text-decoration: none; font-size: .9rem; line-height: 1.4; }
+.acc-notes a:hover { background: var(--grid); }
+.acc-notes li.todo a, .acc-notes li.fresh a { background: color-mix(in srgb, var(--amber-soft) 60%, transparent); }
+.acc-notes small { display: block; color: var(--ink-3); font-size: .78rem; margin-top: 2px; }
+.acc-tag { display: inline-block; font-size: .72rem; font-weight: 700; border-radius: 999px; padding: 0 8px; background: var(--amber-soft); color: var(--amber); vertical-align: 1px; }
+.acc-tag.new { background: var(--teal-soft); color: var(--teal); }
+.acc-toast { position: fixed; z-index: 95; top: 72px; right: 16px; max-width: calc(100vw - 32px); display: flex; align-items: center; gap: 10px; background: var(--surface); color: var(--ink); border: 1px solid var(--amber); border-radius: var(--r-md); box-shadow: 0 14px 36px rgba(21, 36, 58, .22); padding: 10px 12px; font-size: .92rem; }
+.acc-toast .btn.small { min-height: 32px; padding: 2px 12px; font-size: .85rem; }
+.acc-x { border: 0; background: none; color: var(--ink-3); font-size: 1.3rem; line-height: 1; cursor: pointer; padding: 2px 4px; }
+@media (max-width: 480px) { .site-header .wrap { gap: 10px; } .acc-bellbox { left: 8px !important; right: 8px !important; width: auto; } }

@@ -108,23 +108,42 @@ service cloud.firestore {
         && ((late && d.status == 'L') || (!late && d.status == 'P'));
     }
 
-    // A student moved to another lab section for one lab (an approved swap, or the lecturer's choice): lecturers only write.
+    // A student moved to another lab section for one lab (a swap, or the lecturer's choice). Lecturers write them; a
+    // student who accepts a classmate's swap request writes the two moves of that swap in the same batch: each goes to
+    // the other's section on the class list.
     match /labMoves/{mid} {
       allow read: if isLecturer() || (signedIn() && resource.data.email == email());
-      allow write: if isLecturer();
+      allow create: if isLecturer() || swapMove(mid);
+      allow update, delete: if isLecturer();
+    }
+    function swapMove(mid) {
+      let d = request.resource.data;
+      let sw = getAfter(/databases/$(database)/documents/swaps/$(d.swap)).data;
+      let me = rosterDoc();
+      let from = get(/databases/$(database)/documents/roster/$(sw.fromEmail)).data;
+      return onRoster() && sw.status == 'approved' && sw.toMatric == me.matric
+        && mid == d.slot + '_' + d.email && d.slot == sw.slot && d.semester == sw.semester
+        && d.keys().hasOnly(['semester', 'slot', 'email', 'section', 'group', 'swap', 'by', 'at']) && d.by == email() && d.group is int
+        && ((d.email == sw.fromEmail && d.section == me.section) || (d.email == email() && d.section == from.section));
     }
 
-    // Lab swaps: a student asks a classmate (by matric number); the classmate accepts or declines; a lecturer approves.
+    // Lab swaps: a student asks a classmate (by matric number); the classmate accepts (the swap is done) or declines.
     match /swaps/{id} {
       allow read: if isLecturer() || (signedIn() && (resource.data.fromEmail == email() || (onRoster() && resource.data.toMatric == rosterDoc().matric)));
       // a student asks; a lecturer may also swap two students directly
       allow create: if isLecturer() || onRoster() && request.resource.data.fromEmail == email() && request.resource.data.fromMatric == rosterDoc().matric
         && request.resource.data.status == 'requested' && request.resource.data.toMatric != rosterDoc().matric;
+      // the student who asked may cancel while it waits; the classmate declines, or accepts: the swap is done, with
+      // both moves written in the same batch
       allow update: if isLecturer()
         || (resource.data.fromEmail == email() && resource.data.status in ['requested', 'accepted'] && request.resource.data.status == 'cancelled'
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']))
-        || (onRoster() && resource.data.toMatric == rosterDoc().matric && resource.data.status == 'requested' && request.resource.data.status in ['accepted', 'declined']
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']));
+        || (onRoster() && resource.data.toMatric == rosterDoc().matric && resource.data.status == 'requested'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'auto'])
+            && (request.resource.data.status == 'declined'
+              || (request.resource.data.status == 'approved'
+                && existsAfter(/databases/$(database)/documents/labMoves/$(resource.data.slot + '_' + email()))
+                && existsAfter(/databases/$(database)/documents/labMoves/$(resource.data.slot + '_' + resource.data.fromEmail)))));
       allow delete: if isLecturer();
     }
 

@@ -140,7 +140,7 @@
         return;
       }
       // swap requests sent to me (by my matric number), and the classmate list for the swap form
-      unsubs.push(db.collection("swaps").where("toMatric", "==", String(me.matric)).onSnapshot((q) => { got = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((x) => x.semester === SEM); paintReqs(); }, () => {}));
+      unsubs.push(db.collection("swaps").where("toMatric", "==", String(me.matric)).onSnapshot((q) => { got = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((x) => x.semester === SEM); paintReqs(); if (A.refreshBell) A.refreshBell(); }, () => {}));
       db.collection("meta").doc("classmates").get().then((d) => { mates = d.exists ? (d.data().list || []) : []; }).catch(() => {});
       paintOpen();
     }).catch(() => { openEl.innerHTML = `<p class="small-note">Could not load the class list. Reload the page to try again.</p>`; });
@@ -153,7 +153,7 @@
     unsubs.push(db.collection("attendance").where("email", "==", email).onSnapshot((q) => {
       recs = {};
       q.docs.forEach((d) => { const x = d.data(); if (!x.semester || x.semester === SEM) recs[x.session] = x; });
-      paintOpen(); paintMine();
+      paintOpen(); paintMine(); if (A.refreshBell) A.refreshBell();
     }, () => { mineEl.innerHTML = `<p class="small-note">Could not load your records. Reload the page to try again.</p>`; }));
     unsubs.push(db.collection("labMoves").where("email", "==", email).onSnapshot((q) => { moves = {}; q.docs.forEach((d) => { const x = d.data(); moves[x.slot] = x; }); paintOpen(); }, () => {}));
     unsubs.push(db.collection("swaps").where("fromEmail", "==", email).onSnapshot((q) => { sent = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((x) => x.semester === SEM); paintReqs(); }, () => {}));
@@ -246,7 +246,7 @@
       let partner = null;
       const others = mates.filter((x) => x.m !== String(me.matric) && x.s && x.s !== me.section);
       const p = panel(`<h3>Request a Lab Swap</h3>
-        <p>Swap places with a classmate in another section <strong>for one lab only</strong>. Agree with them first. They accept your request, then your lecturer approves it. You each take the other's place and group for that lab.</p>
+        <p>Swap places with a classmate in another section <strong>for one lab only</strong>. Agree with them first. When they accept your request, the swap is done: you each take the other's place and group for that lab, and your lecturer is told.</p>
         <form class="at-dform" novalidate>
           <label>Which lab<select name="slot">${list.map((l) => { const mine = l.dates.find((s) => s.section === me.section); return `<option value="${l.slot}">${esc(l.name)}${mine ? ` (yours: ${fmtDate(mine.date)})` : ""}</option>`; }).join("")}</select></label>
           <div class="at-pickbox"></div>
@@ -267,7 +267,7 @@
         } catch (ex) { $(".at-err", p).textContent = `Could not send (${ex.code || ex}). Please try again.`; }
       });
     }
-    const SWAP_ST = { requested: "Waiting for your classmate", accepted: "Waiting for the lecturer", approved: "Approved", declined: "Declined by your classmate", rejected: "Not approved", cancelled: "Cancelled" };
+    const SWAP_ST = { requested: "Waiting for your classmate", accepted: "Waiting for the lecturer", approved: "Swapped", declined: "Declined by your classmate", rejected: "Not approved", cancelled: "Cancelled", ended: "Ended by the lecturer" };
     const NOTE_ST = { pending: "Waiting for approval", approved: "Approved: marked Excused", rejected: "Not approved" };
     function paintReqs() {
       const inbox = got.filter((x) => x.status === "requested");
@@ -284,13 +284,28 @@
       if (t.closest("[data-swap]")) return swapForm();
       const sw = t.closest("[data-sw]"), nt = t.closest("[data-n]");
       try {
-        if (sw && t.closest("[data-acc]")) await db.collection("swaps").doc(sw.dataset.sw).update({ status: "accepted", updatedAt: FV.serverTimestamp() });
+        if (sw && t.closest("[data-acc]")) await acceptSwap(got.find((x) => x.id === sw.dataset.sw));
         if (sw && t.closest("[data-dec]")) await db.collection("swaps").doc(sw.dataset.sw).update({ status: "declined", updatedAt: FV.serverTimestamp() });
         if (sw && t.closest("[data-cancel]")) await db.collection("swaps").doc(sw.dataset.sw).update({ status: "cancelled", updatedAt: FV.serverTimestamp() });
         if (nt && t.closest("[data-nedit]")) noticeForm(notices.find((n) => n.id === nt.dataset.n));
         if (nt && t.closest("[data-ndel]") && confirm("Withdraw this absence notice?")) await db.collection("notices").doc(nt.dataset.n).delete();
       } catch (ex) { say("Could Not Save", esc(ex.code || ex)); }
     });
+
+    // accepting a classmate's request completes the swap straight away (the lecturer sees it in the Swaps tab and the bell)
+    async function acceptSwap(x) {
+      if (!x) return;
+      const started = all.filter((s) => slotOf(s) === x.slot && [x.fromSection, me.section].includes(s.section)).some((s) => s.state !== "planned" || s.date < todayIso());
+      if (started) { say("Too Late to Swap", "This lab has already started for one of you, so the swap can't be done here. Ask your lecturer."); return; }
+      if (moves[x.slot]) { say("Already Moved", "You are already swapped or moved for this lab. Ask your lecturer."); return; }
+      if (!confirm(`Swap ${x.labTitle} with ${x.fromName}? You go to the ${SECTION[x.fromSection] || "other section"} and ${x.fromName} comes to yours. This is done straight away.`)) return;
+      const b = db.batch(), base = { semester: SEM, slot: x.slot, swap: x.id, by: email, at: FV.serverTimestamp() };
+      b.update(db.collection("swaps").doc(x.id), { status: "approved", auto: true, updatedAt: FV.serverTimestamp() });
+      b.set(db.collection("labMoves").doc(`${x.slot}_${x.fromEmail}`), Object.assign({ email: x.fromEmail, section: me.section, group: +me.group || 0 }, base));
+      b.set(db.collection("labMoves").doc(`${x.slot}_${email}`), Object.assign({ email, section: x.fromSection, group: +x.fromGroup || 0 }, base));
+      try { await b.commit(); }
+      catch (ex) { say("Could Not Swap", `${esc(ex.code || ex)}. One of you may already be swapped for this lab: ask your lecturer.`); }
+    }
 
     function paintMine() {
       const list = Object.values(recs).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
@@ -756,12 +771,12 @@
   /* ---------- swaps ---------- */
   const SW = { requested: "Waiting for the classmate", accepted: "Waiting for your approval", approved: "Approved", declined: "Declined by the classmate", rejected: "Not approved", cancelled: "Cancelled", ended: "Ended" };
   const swapRow = (x) => `<div class="at-req" data-swid="${x.id}"><p><strong>${esc(x.labTitle)}</strong>${x.term ? ` <span class="at-tag approved">whole semester</span>` : ""}: ${x.kind === "group" ? `${esc(x.fromName)} ⇄ ${esc(x.toName)}` : `${esc(x.fromName)} (${SEC_SHORT[x.fromSection] || "–"} G${x.fromGroup || "–"}) ⇄ ${esc(x.toName)} (${SEC_SHORT[x.toSection] || "–"} G${x.toGroup || "–"})`}
-      · <span class="at-tag ${x.status}">${SW[x.status] || x.status}</span>${x.note ? `<br><small>“${esc(x.note)}”</small>` : ""}<br><small>${x.byLecturer ? "Made by the lecturer" : "Asked"} ${fmtStamp(x.createdAt)}</small></p>
+      · <span class="at-tag ${x.status}">${SW[x.status] || x.status}</span>${x.note ? `<br><small>“${esc(x.note)}”</small>` : ""}<br><small>${x.byLecturer ? "Made by the lecturer" : "Asked"} ${fmtStamp(x.createdAt)}${x.auto ? ` · accepted by the classmate ${fmtStamp(x.updatedAt)}` : ""}</small></p>
       <div class="acc-row">${x.status === "accepted" ? `<button type="button" class="btn small" data-swok>Approve</button><button type="button" class="btn ghost small" data-swno>Reject</button>` : x.status === "approved" ? `<button type="button" class="btn ghost small" data-swundo>${x.term ? "End this swap" : "Cancel this swap"}</button>` : x.status === "requested" ? `<button type="button" class="btn ghost small" data-swno>Reject</button>` : ""}</div></div>`;
   function drawSwaps(body) {
     const order = { accepted: 0, requested: 1, approved: 2, ended: 3, rejected: 4, declined: 5, cancelled: 6 };
     const list = L.swaps.slice().sort((a, b) => order[a.status] - order[b.status] || tsMs(b.createdAt) - tsMs(a.createdAt));
-    body.innerHTML = `<p class="widget-lead">Students ask a classmate in another section to swap one lab. When the classmate accepts, the swap waits here for you. After you approve it, the two students change places (section and group) for that lab only. You can also swap two students, or two whole lab groups, yourself: for one lab, or for every lab to the end of the semester.</p>
+    body.innerHTML = `<p class="widget-lead">Students ask a classmate in another section to swap one lab. When the classmate accepts, the swap is done straight away: the two students change places (section and group) for that lab only, and it shows here and in your notification bell. You can cancel any swap. You can also swap two students, or two whole lab groups, yourself: for one lab, or for every lab to the end of the semester.</p>
       <div class="adm-tools"><button type="button" class="btn" data-lswap>+ Swap students or groups</button></div>
       ${list.length ? list.map(swapRow).join("") : `<p class="adm-empty">No swap requests yet.</p>`}`;
   }

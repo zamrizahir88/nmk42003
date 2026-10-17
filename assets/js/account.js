@@ -22,7 +22,7 @@
   const STUDENT_DOMAIN = "@studentmail.unimap.edu.my";
   const EX_KEY = "nmk-ex-log", UID_KEY = "nmk-sync-uid";
   // progress kept in this browser that is not worth syncing
-  const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-|sched|role|preview|gal)/;
+  const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-|sched|role|preview|gal|bell)/;
   const SEM = (typeof COURSE !== "undefined" && (COURSE.semesterId || COURSE.session)) || "";
 
   firebase.initializeApp(CONFIG);
@@ -144,7 +144,7 @@
     const role = u && isAdmin(u.email) ? "lecturer" : "";
     if ((ls.get("nmk-role") || "") !== role) { try { if (role) localStorage.setItem("nmk-role", role); else { localStorage.removeItem("nmk-role"); localStorage.removeItem("nmk-preview"); } } catch (e) { /* private mode */ } }
     if (window.NMKGame && window.NMKGame.paint) setTimeout(window.NMKGame.paint, 0);
-    if (!u) { paint(); changed(); return; }
+    if (!u) { paint(); changed(); loadBell(false); return; }
     if (!allowed(u.email)) {
       await auth.signOut();
       notice("Use your UniMAP student account", `<p>This course site accepts only <strong>@studentmail.unimap.edu.my</strong> Google accounts. You signed in as <strong>${esc(u.email)}</strong>.</p><p>Sign in again and choose your studentmail account.</p>`);
@@ -163,7 +163,7 @@
         await ref.set(Object.assign({ createdAt: firebase.firestore.FieldValue.serverTimestamp() }, state.profile));
       } else { setup(u, listed); }
     } catch (e) { console.warn("NMK account: could not load the profile", e.code || e); }
-    paint(); changed();
+    paint(); changed(); loadBell(false);
     if (canSync()) { pull(); queuePush(); loadAttendance(); db.collection("users").doc(u.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() }).catch(() => {}); }
   });
 
@@ -278,6 +278,110 @@
   document.addEventListener("click", (e) => { if (!menu.hidden && !menu.contains(e.target) && !btn.contains(e.target)) closeMenu(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !menu.hidden) { closeMenu(); btn.focus(); } });
 
+  /* ---------- The notification bell: what is waiting for this person, and what changed lately ----------
+     Students: swap requests to answer, attendance open now that they haven't marked, and their swaps and absence
+     notices that were decided. Lecturers: swaps the students completed, swaps and absence notices waiting, and
+     accounts waiting for approval. "To do" items stay until they are done; other news counts as new until the bell
+     is opened (nmk-bell, this browser only). The list is read again at most once a minute. */
+  const BELL_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
+  const bell = document.createElement("button");
+  bell.type = "button"; bell.className = "icon-btn acc-bell"; bell.hidden = true; bell.setAttribute("aria-haspopup", "true"); bell.setAttribute("aria-expanded", "false");
+  if (btn.parentNode) btn.parentNode.insertBefore(bell, btn);
+  const bellBox = document.createElement("div");
+  bellBox.className = "acc-menu acc-bellbox"; bellBox.hidden = true; bellBox.setAttribute("role", "region"); bellBox.setAttribute("aria-label", "Notifications");
+  document.body.appendChild(bellBox);
+  let bellItems = [], bellAt = 0, bellUser = "";
+  const tms = (t) => (t && t.toMillis ? t.toMillis() : t ? new Date(t).getTime() || 0 : 0);
+  const klToday = () => new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+  const seenAt = () => { try { return +localStorage.getItem("nmk-bell") || 0; } catch (e) { return 0; } };
+  const SEC = { mon: "Monday", wed: "Wednesday", thu: "Thursday" };
+  const slotOf = (s) => s.slot || ((s.id || "").match(/-(w\d\d-lab)-(mon|wed|thu)$/) || [])[1] || "";
+  async function loadBell(force) {
+    const u = state.user, em = u ? u.email.toLowerCase() : "";
+    if (!u || !state.profile || state.profile.status !== "approved") { bellItems = []; bellUser = ""; paintBell(); return; }
+    if (!force && bellUser === em && Date.now() - bellAt < 60000) return;
+    bellAt = Date.now(); bellUser = em;
+    const out = [], week2 = Date.now() - 14 * 86400000;
+    const add = (o) => { if (o.todo || o.t > week2) out.push(o); };
+    try {
+      if (isAdmin(em)) {
+        const [sw, nt, us] = await Promise.all([db.collection("swaps").where("semester", "==", SEM).get(),
+          db.collection("notices").where("status", "==", "pending").get(), db.collection("users").where("status", "==", "pending").get()]);
+        nt.docs.map((d) => d.data()).filter((n) => !n.semester || n.semester === SEM).forEach((n) => add({ todo: true, t: tms(n.at), href: "attendance.html", text: `<strong>${esc(n.name)}</strong> sent an absence notice for ${esc(n.title)}` }));
+        us.docs.map((d) => d.data()).forEach((x) => add({ todo: true, t: tms(x.createdAt), href: "admin.html", text: `<strong>${esc(x.nickname || x.email)}</strong> is waiting for account approval` }));
+        sw.docs.map((d) => d.data()).forEach((x) => {
+          if (x.status === "accepted") add({ todo: true, t: tms(x.updatedAt), href: "attendance.html", text: `Lab swap waiting for your approval: ${esc(x.fromName)} ⇄ ${esc(x.toName)}, ${esc(x.labTitle)}` });
+          else if (x.status === "approved" && x.auto) add({ t: tms(x.updatedAt), href: "attendance.html", text: `Lab swap done: <strong>${esc(x.fromName)}</strong> (${SEC[x.fromSection] || "–"}) ⇄ <strong>${esc(x.toName)}</strong> (${SEC[x.toSection] || "–"}), ${esc(x.labTitle)}` });
+        });
+      } else if (state.roster && state.roster.status === "active") {
+        const r = state.roster, mat = String(r.matric), mine = (q) => q.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((x) => !x.semester || x.semester === SEM);
+        const [got, sent, nts, open, mv, att] = await Promise.all([db.collection("swaps").where("toMatric", "==", mat).get(), db.collection("swaps").where("fromEmail", "==", em).get(),
+          db.collection("notices").where("email", "==", em).get(), db.collection("sessions").where("state", "==", "open").get(),
+          db.collection("labMoves").where("email", "==", em).get(), db.collection("attendance").where("email", "==", em).get()].map((p) => p.catch(() => ({ docs: [] }))));
+        const moves = {}, done = new Set(mine(att).map((x) => x.session));
+        mine(mv).forEach((m) => { moves[m.slot] = m.section; });
+        mine(open).filter((s) => s.date === klToday() && !done.has(s.id) && (s.section === "all" || s.section === (s.kind === "lab" && moves[slotOf(s)] ? moves[slotOf(s)] : r.section)))
+          .forEach((s) => add({ todo: true, t: Date.now(), href: "attendance.html", text: `Attendance is open: <strong>${esc(s.title)}</strong>. Mark it now.` }));
+        mine(got).forEach((x) => {
+          if (x.status === "requested") add({ todo: true, t: tms(x.createdAt), href: "attendance.html", text: `<strong>${esc(x.fromName)}</strong> asks to swap ${esc(x.labTitle)} with you` });
+          else if (x.status === "approved" && x.byLecturer) add({ t: tms(x.createdAt), href: "attendance.html", text: `Your lecturer swapped your lab: ${esc(x.labTitle)}` });
+        });
+        mine(sent).forEach((x) => {
+          if (x.status === "approved") add({ t: tms(x.updatedAt), href: "attendance.html", text: x.byLecturer ? `Your lecturer swapped your lab: ${esc(x.labTitle)}` : `<strong>${esc(x.toName)}</strong> accepted: you swapped ${esc(x.labTitle)}` });
+          else if (x.status === "declined") add({ t: tms(x.updatedAt), href: "attendance.html", text: `<strong>${esc(x.toName)}</strong> declined your swap for ${esc(x.labTitle)}` });
+          else if (["rejected", "cancelled", "ended"].includes(x.status) && x.decidedBy) add({ t: tms(x.updatedAt), href: "attendance.html", text: `Your lecturer ${x.status === "rejected" ? "did not approve" : "cancelled"} your swap for ${esc(x.labTitle)}` });
+        });
+        mine(nts).filter((n) => n.status !== "pending").forEach((n) => add({ t: tms(n.decidedAt), href: "attendance.html", text: `Your absence notice for ${esc(n.title)} was <strong>${n.status === "approved" ? "approved (Excused)" : "not approved"}</strong>${n.note ? `: “${esc(n.note)}”` : ""}` }));
+      }
+    } catch (e) { console.warn("NMK bell: could not check for notifications", e.code || e); }
+    const seen = seenAt();
+    bellItems = out.map((o) => Object.assign(o, { fresh: !o.todo && o.t > seen })).sort((a, b) => (b.todo - a.todo) || b.t - a.t).slice(0, 30);
+    paintBell();
+    // once per visit: a small reminder after signing in when something is waiting
+    const n = bellCount();
+    let shown = true; try { shown = sessionStorage.getItem("nmk-bell-told") === em; } catch (e) { /* private mode */ }
+    if (n && !shown) { try { sessionStorage.setItem("nmk-bell-told", em); } catch (e) { /* private mode */ } toast(n); }
+  }
+  const bellCount = () => bellItems.filter((o) => o.todo || o.fresh).length;
+  function paintBell() {
+    bell.hidden = !bellUser;
+    const n = bellCount();
+    bell.innerHTML = `${BELL_ICON}${n ? `<span class="acc-badge">${n > 9 ? "9+" : n}</span>` : ""}`;
+    bell.setAttribute("aria-label", n ? `Notifications: ${n} new` : "Notifications");
+  }
+  function openBell() {
+    bellBox.innerHTML = `<div class="acc-who"><strong>Notifications</strong></div>${bellItems.length ? `<ul class="acc-notes">${bellItems.map((o) => `<li class="${o.todo ? "todo" : o.fresh ? "fresh" : ""}"><a href="${o.href}">${o.todo ? '<span class="acc-tag">To do</span> ' : o.fresh ? '<span class="acc-tag new">New</span> ' : ""}${o.text}${o.todo ? "" : `<small>${new Date(o.t + 8 * 3600000).toISOString().slice(0, 10).split("-").reverse().join("/")}</small>`}</a></li>`).join("")}</ul>` : `<p class="acc-note">Nothing new. You're all caught up.</p>`}`;
+    const r = bell.getBoundingClientRect();
+    bellBox.style.top = `${Math.round(r.bottom + 8)}px`;
+    bellBox.style.right = `${Math.max(8, Math.round(innerWidth - r.right))}px`;
+    bellBox.hidden = false; bell.setAttribute("aria-expanded", "true");
+    // opened: the news is seen (to-do items stay until they are done)
+    try { localStorage.setItem("nmk-bell", String(Date.now())); } catch (e) { /* private mode */ }
+    bellItems.forEach((o) => { o.fresh = false; });
+    paintBell();
+    const first = bellBox.querySelector("a");
+    if (first) first.focus();
+  }
+  const closeBell = () => { bellBox.hidden = true; bell.setAttribute("aria-expanded", "false"); };
+  bell.addEventListener("click", () => { closeMenu(); if (bellBox.hidden) openBell(); else closeBell(); });
+  document.addEventListener("click", (e) => { if (!bellBox.hidden && !e.composedPath().some((n) => n === bell || n === bellBox)) closeBell(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !bellBox.hidden) { closeBell(); bell.focus(); } });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") loadBell(false); });
+  setInterval(() => { if (document.visibilityState === "visible") loadBell(false); }, 180000);
+  // pages call this after something changed (an answered swap, a marked attendance): read the list again shortly
+  let bellT = 0;
+  const refreshBell = () => { clearTimeout(bellT); bellT = setTimeout(() => loadBell(true), 1500); };
+  function toast(n) {
+    const t = document.createElement("div");
+    t.className = "acc-toast"; t.setAttribute("role", "status");
+    t.innerHTML = `<span>You have <strong>${n}</strong> notification${n === 1 ? "" : "s"}.</span><button type="button" class="btn small">Show</button><button type="button" class="acc-x" aria-label="Close">×</button>`;
+    document.body.appendChild(t);
+    const bye = () => t.remove();
+    t.querySelector(".btn").addEventListener("click", (e) => { e.stopPropagation(); bye(); openBell(); });
+    t.querySelector(".acc-x").addEventListener("click", bye);
+    setTimeout(bye, 9000);
+  }
+
   /* ---------- A small dialog ---------- */
   let back = null;
   function modal(html, closable = true) {
@@ -295,5 +399,5 @@
 
   paint();
   // For admin.html and later pages: read-only access to the signed-in state and the database
-  window.NMKAccount = { db, auth, isAdmin, state, on: (f) => { listeners.push(f); if (state.ready) f(state); }, signIn, loadAttendance, push, SEM };
+  window.NMKAccount = { db, auth, isAdmin, state, on: (f) => { listeners.push(f); if (state.ready) f(state); }, signIn, loadAttendance, push, SEM, refreshBell };
 })();
