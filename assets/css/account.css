@@ -77,3 +77,5 @@ table.adm { width: 100%; border-collapse: collapse; font-size: .9rem; font-varia
 .acc-toast .btn.small { min-height: 32px; padding: 2px 12px; font-size: .85rem; }
 .acc-x { border: 0; background: none; color: var(--ink-3); font-size: 1.3rem; line-height: 1; cursor: pointer; padding: 2px 4px; }
 @media (max-width: 480px) { .site-header .wrap { gap: 10px; } .acc-bellbox { left: 8px !important; right: 8px !important; width: auto; } }
+.acc-all { margin-top: 4px; border-top: 1px solid var(--rule); border-radius: 0; font-weight: 600; color: var(--teal); }
+.acc-log { max-width: var(--measure); margin: 0 0 22px; border: 1px solid var(--rule); border-radius: var(--r-md); background: var(--surface); padding: 6px; }

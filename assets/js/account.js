@@ -144,7 +144,7 @@
     const role = u && isAdmin(u.email) ? "lecturer" : "";
     if ((ls.get("nmk-role") || "") !== role) { try { if (role) localStorage.setItem("nmk-role", role); else { localStorage.removeItem("nmk-role"); localStorage.removeItem("nmk-preview"); } } catch (e) { /* private mode */ } }
     if (window.NMKGame && window.NMKGame.paint) setTimeout(window.NMKGame.paint, 0);
-    if (!u) { paint(); changed(); loadBell(false); return; }
+    if (!u) { paint(); changed(); loadBell(false); paintLog(); return; }
     if (!allowed(u.email)) {
       await auth.signOut();
       notice("Use your UniMAP student account", `<p>This course site accepts only <strong>@studentmail.unimap.edu.my</strong> Google accounts. You signed in as <strong>${esc(u.email)}</strong>.</p><p>Sign in again and choose your studentmail account.</p>`);
@@ -260,6 +260,7 @@
         <span class="acc-st ${p ? p.status : ""}">${p ? STATUS[p.status] || p.status : "Setting up…"}</span></div>
       ${p && p.status === "approved" ? `<p class="acc-note">Your progress is saved to your account and follows you to any device.</p>` : ""}
       ${isAdmin(u.email) ? "" : `<a class="acc-item" href="profile.html">My profile</a>`}
+      <a class="acc-item" href="notifications.html">Notifications</a>
       <a class="acc-item" href="board.html">Progress board</a>
       <a class="acc-item" href="gallery.html">Class Moments</a>
       <a class="acc-item" href="attendance.html">${isAdmin(u.email) ? "Attendance (lecturer)" : "Attendance"}</a>
@@ -301,8 +302,7 @@
     if (!u || !state.profile || state.profile.status !== "approved") { bellItems = []; bellUser = ""; paintBell(); return; }
     if (!force && bellUser === em && Date.now() - bellAt < 60000) return;
     bellAt = Date.now(); bellUser = em;
-    const out = [], week2 = Date.now() - 14 * 86400000;
-    const add = (o) => { if (o.todo || o.t > week2) out.push(o); };
+    const out = [], add = (o) => out.push(o);
     try {
       if (isAdmin(em)) {
         const [sw, nt, us] = await Promise.all([db.collection("swaps").where("semester", "==", SEM).get(),
@@ -311,6 +311,8 @@
         us.docs.map((d) => d.data()).forEach((x) => add({ todo: true, t: tms(x.createdAt), href: "admin.html", text: `<strong>${esc(x.nickname || x.email)}</strong> is waiting for account approval` }));
         sw.docs.map((d) => d.data()).forEach((x) => {
           if (x.status === "accepted") add({ todo: true, t: tms(x.updatedAt), href: "attendance.html", text: `Lab swap waiting for your approval: ${esc(x.fromName)} ⇄ ${esc(x.toName)}, ${esc(x.labTitle)}` });
+          else if (x.status === "requested") add({ t: tms(x.createdAt), href: "attendance.html", text: `Lab swap asked: <strong>${esc(x.fromName)}</strong> (${SEC[x.fromSection] || "–"}) asks <strong>${esc(x.toName)}</strong> (${SEC[x.toSection] || "–"}), ${esc(x.labTitle)}` });
+          else if (x.status === "declined") add({ t: tms(x.updatedAt), href: "attendance.html", text: `Lab swap declined: ${esc(x.toName)} declined ${esc(x.fromName)}, ${esc(x.labTitle)}` });
           else if (x.status === "approved" && x.auto) add({ t: tms(x.updatedAt), href: "attendance.html", text: `Lab swap done: <strong>${esc(x.fromName)}</strong> (${SEC[x.fromSection] || "–"}) ⇄ <strong>${esc(x.toName)}</strong> (${SEC[x.toSection] || "–"}), ${esc(x.labTitle)}` });
         });
       } else if (state.roster && state.roster.status === "active") {
@@ -321,7 +323,7 @@
         const moves = {}, done = new Set(mine(att).map((x) => x.session));
         mine(mv).forEach((m) => { moves[m.slot] = m.section; });
         mine(open).filter((s) => s.date === klToday() && !done.has(s.id) && (s.section === "all" || s.section === (s.kind === "lab" && moves[slotOf(s)] ? moves[slotOf(s)] : r.section)))
-          .forEach((s) => add({ todo: true, t: Date.now(), href: "attendance.html", text: `Attendance is open: <strong>${esc(s.title)}</strong>. Mark it now.` }));
+          .forEach((s) => add({ todo: true, t: tms(s.openedAt) || Date.now(), href: "attendance.html", text: `Attendance is open: <strong>${esc(s.title)}</strong>. Mark it now.` }));
         mine(got).forEach((x) => {
           if (x.status === "requested") add({ todo: true, t: tms(x.createdAt), href: "attendance.html", text: `<strong>${esc(x.fromName)}</strong> asks to swap ${esc(x.labTitle)} with you` });
           else if (x.status === "approved" && x.byLecturer) add({ t: tms(x.createdAt), href: "attendance.html", text: `Your lecturer swapped your lab: ${esc(x.labTitle)}` });
@@ -335,14 +337,29 @@
       }
     } catch (e) { console.warn("NMK bell: could not check for notifications", e.code || e); }
     const seen = seenAt();
-    bellItems = out.map((o) => Object.assign(o, { fresh: !o.todo && o.t > seen })).sort((a, b) => (b.todo - a.todo) || b.t - a.t).slice(0, 30);
-    paintBell();
+    bellItems = out.map((o) => Object.assign(o, { fresh: o.t > seen })).sort((a, b) => (b.todo - a.todo) || b.t - a.t).slice(0, 200);
+    paintBell(); paintLog();
     // once per visit: a small reminder after signing in when something is waiting
     const n = bellCount();
     let shown = true; try { shown = sessionStorage.getItem("nmk-bell-told") === em; } catch (e) { /* private mode */ }
     if (n && !shown) { try { sessionStorage.setItem("nmk-bell-told", em); } catch (e) { /* private mode */ } toast(n); }
   }
-  const bellCount = () => bellItems.filter((o) => o.todo || o.fresh).length;
+  // the number on the bell: what arrived since the bell (or the notifications page) was last opened
+  const bellCount = () => bellItems.filter((o) => o.fresh).length;
+  const noteDate = (t) => { const d = new Date(t + 8 * 3600000).toISOString(); return `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}, ${d.slice(11, 16)}`; };
+  const noteLi = (o) => `<li class="${o.fresh ? "fresh" : o.todo ? "todo" : ""}"><a href="${o.href}">${o.todo ? '<span class="acc-tag">To do</span> ' : ""}${o.fresh ? '<span class="acc-tag new">New</span> ' : ""}${o.text}${o.t ? `<small>${noteDate(o.t)}</small>` : ""}</a></li>`;
+  const markSeen = () => { try { localStorage.setItem("nmk-bell", String(Date.now())); } catch (e) { /* private mode */ } };
+  // notifications.html: the whole list (the page counts as opening the bell)
+  function paintLog() {
+    const box = document.getElementById("notes");
+    if (!box) return;
+    if (!state.user) { box.innerHTML = `<p>Sign in to see your notifications.</p>`; return; }
+    if (!bellUser) { box.innerHTML = `<p class="small-note">Notifications appear here once your account is approved.</p>`; return; }
+    const todo = bellItems.filter((o) => o.todo), rest = bellItems.filter((o) => !o.todo);
+    box.innerHTML = `${todo.length ? `<h2 class="h3">To Do</h2><ul class="acc-notes acc-log">${todo.map(noteLi).join("")}</ul>` : ""}
+      <h2 class="h3">${todo.length ? "Everything Else" : "All Notifications"}</h2>${rest.length ? `<ul class="acc-notes acc-log">${rest.map(noteLi).join("")}</ul>` : `<p class="small-note">Nothing yet.</p>`}`;
+    markSeen(); bellItems.forEach((o) => { o.fresh = false; }); paintBell();
+  }
   function paintBell() {
     bell.hidden = !bellUser;
     const n = bellCount();
@@ -350,13 +367,15 @@
     bell.setAttribute("aria-label", n ? `Notifications: ${n} new` : "Notifications");
   }
   function openBell() {
-    bellBox.innerHTML = `<div class="acc-who"><strong>Notifications</strong></div>${bellItems.length ? `<ul class="acc-notes">${bellItems.map((o) => `<li class="${o.todo ? "todo" : o.fresh ? "fresh" : ""}"><a href="${o.href}">${o.todo ? '<span class="acc-tag">To do</span> ' : o.fresh ? '<span class="acc-tag new">New</span> ' : ""}${o.text}${o.todo ? "" : `<small>${new Date(o.t + 8 * 3600000).toISOString().slice(0, 10).split("-").reverse().join("/")}</small>`}</a></li>`).join("")}</ul>` : `<p class="acc-note">Nothing new. You're all caught up.</p>`}`;
+    const show = bellItems.filter((o) => o.todo || o.fresh).concat(bellItems.filter((o) => !o.todo && !o.fresh)).slice(0, 12);
+    bellBox.innerHTML = `<div class="acc-who"><strong>Notifications</strong></div>${show.length ? `<ul class="acc-notes">${show.map(noteLi).join("")}</ul>` : `<p class="acc-note">Nothing yet.</p>`}
+      <a class="acc-item acc-all" href="notifications.html">See all notifications →</a>`;
     const r = bell.getBoundingClientRect();
     bellBox.style.top = `${Math.round(r.bottom + 8)}px`;
     bellBox.style.right = `${Math.max(8, Math.round(innerWidth - r.right))}px`;
     bellBox.hidden = false; bell.setAttribute("aria-expanded", "true");
-    // opened: the news is seen (to-do items stay until they are done)
-    try { localStorage.setItem("nmk-bell", String(Date.now())); } catch (e) { /* private mode */ }
+    // opened: everything so far counts as seen (the list keeps it, and to-do items stay marked until they are done)
+    markSeen();
     bellItems.forEach((o) => { o.fresh = false; });
     paintBell();
     const first = bellBox.querySelector("a");

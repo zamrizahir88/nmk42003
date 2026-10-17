@@ -833,7 +833,7 @@
   function drawSwaps(body) {
     const order = { accepted: 0, requested: 1, approved: 2, ended: 3, rejected: 4, declined: 5, cancelled: 6 };
     const list = L.swaps.slice().sort((a, b) => order[a.status] - order[b.status] || tsMs(b.createdAt) - tsMs(a.createdAt));
-    body.innerHTML = `<p class="widget-lead">Students ask a classmate in another section to swap one lab. When the classmate accepts, the swap is done straight away: the two students change places (section and group) for that lab only, and it shows here and in your notification bell. You can cancel any swap. You can also swap two students, or two whole lab groups, yourself: for one lab, or for every lab to the end of the semester.</p>
+    body.innerHTML = `<p class="widget-lead">A swap is always one student with one student. The student who asks chooses <strong>one lab only</strong> or <strong>every lab to the end of the semester</strong> (from a lab neither section has started). When the classmate accepts, the swap is done straight away: the two change places (section and group) for those labs, and it shows here and in your notification bell. A pair sends two requests, one each. You can cancel or end any swap, and swap two students or two whole lab groups yourself.</p>
       <div class="adm-tools"><button type="button" class="btn" data-lswap>+ Swap students or groups</button></div>
       ${list.length ? list.map(swapRow).join("") : `<p class="adm-empty">No swap requests yet.</p>`}`;
   }
