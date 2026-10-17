@@ -172,3 +172,17 @@ table.at-ses tr.picked td { background: color-mix(in srgb, var(--danger) 8%, tra
 /* a session marked by hand without opening it, and one only partly marked */
 .at-state.hand { background: var(--amber-soft); color: var(--amber); }
 .at-part { color: var(--amber); font-weight: 600; }
+
+/* the students' list of lab sections and groups */
+.at-secbar { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.at-secbar [aria-pressed="true"] { background: var(--teal); border-color: var(--teal); color: #fff; }
+:root[data-theme="dark"] .at-secbar [aria-pressed="true"] { color: #0e1720; }
+.at-secs { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin: 10px 0; }
+.at-secg { border: 1px solid var(--rule); border-radius: var(--r-md); padding: 8px 12px; background: var(--surface); }
+.at-secg h4 { margin: 2px 0 6px; font-size: .95rem; }
+.at-secg ul { list-style: none; margin: 0; padding: 0; }
+.at-secg li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 0; border-top: 1px solid var(--grid); font-size: .9rem; }
+.at-secg li:first-child { border-top: 0; }
+.at-secg li small { color: var(--ink-3); }
+.at-secg li .btn.small { white-space: nowrap; }
+.at-you { font-weight: 600; color: var(--teal) !important; }
