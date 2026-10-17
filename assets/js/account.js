@@ -90,11 +90,11 @@
       await db.collection("progress").doc(state.user.uid).set({ keys, semester: SEM, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       if (window.NMKGame) {   // the small public summary for the progress board
         const G = window.NMKGame, g = G.compute(keys), p = state.profile, r = state.roster || {};
-        // the public profile: classmates see the real name, matric and lab section from the class list, and the photo only if the student chose to show it
+        // the public profile: classmates see the real name, matric and lab section from the class list, and the Google account photo
         await db.collection("board").doc(state.user.uid).set({ nickname: p.nickname || "", role: p.role || "student", semester: SEM, xp: g.xp, level: g.level, levelNo: g.levelNo,
           badges: g.badges.map((b) => b.id), streak: g.streak, solved: g.solved, lastActive: g.lastActive || null,
           stops: Object.fromEntries(g.stops.filter((s) => s.total).map((s) => [s.label, s.pct])), prog: G.summaryProg ? G.summaryProg(g) : {}, feed: G.feed ? G.feed(g, 20) : [],
-          name: r.name || p.name || "", matric: r.matric || "", section: r.section || "", group: r.group || 0, photo: p.showPhoto && state.user.photoURL ? state.user.photoURL : "",
+          name: r.name || p.name || "", matric: r.matric || "", section: r.section || "", group: r.group || 0, photo: state.user.photoURL || "",
           since: p.createdAt || null, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       }
       await db.collection("users").doc(state.user.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() });
@@ -164,7 +164,7 @@
       } else { setup(u, listed); }
     } catch (e) { console.warn("NMK account: could not load the profile", e.code || e); }
     paint(); changed(); loadBell(false);
-    if (canSync()) { pull(); queuePush(); loadAttendance(); db.collection("users").doc(u.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() }).catch(() => {}); }
+    if (canSync()) { pull(); queuePush(); loadAttendance(); db.collection("users").doc(u.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp(), photo: u.photoURL || "" }).catch(() => {}); }
   });
 
   /* ---------- Attendance ---------- */
@@ -193,7 +193,7 @@
       <p>Signed in as <strong>${esc(u.email)}</strong>.</p>
       <div class="acc-privacy"><strong>What is saved, and who sees it</strong>
         <p>When your account is approved, this site saves your name, your studentmail address, the nickname you choose, your progress (the exercises you answer, your Pre-Lab Check results and your virtual lab work) and your class attendance. It is kept in a Google Firebase database run by your lecturer, and is used only for this course.</p>
-        <p>Your lecturers can see all of it. Classmates will see only your nickname, level and badges on the course progress board, never your attendance. Nothing here counts towards your grade, and the site works fully without signing in.</p></div>
+        <p>Your lecturers can see all of it. Classmates will see your name, matric number, lab section, Google account photo, nickname, level and badges on the course progress board and your profile, never your attendance. Nothing here counts towards your grade, and the site works fully without signing in.</p></div>
       <form class="acc-form" novalidate>
         <label for="accNick">Choose a nickname <span>3 to 16 letters or numbers. Classmates will see it.</span></label>
         <input id="accNick" type="text" maxlength="16" autocomplete="off" spellcheck="false" required>
@@ -235,7 +235,7 @@
     if (!u) { btn.innerHTML = `${ICON}<span class="acc-t">Sign in</span>`; btn.setAttribute("aria-label", "Sign in with Google"); btn.className = "icon-btn acc-btn out"; }
     else {
       const initial = ((p && p.nickname) || u.displayName || u.email || "?").trim()[0].toUpperCase();
-      btn.innerHTML = `<span class="acc-av">${esc(initial)}</span>${p && p.status !== "approved" ? '<span class="acc-dot" aria-hidden="true"></span>' : ""}`;
+      btn.innerHTML = `${u.photoURL ? `<img class="acc-av" src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer">` : `<span class="acc-av">${esc(initial)}</span>`}${p && p.status !== "approved" ? '<span class="acc-dot" aria-hidden="true"></span>' : ""}`;
       btn.setAttribute("aria-label", `Your account: ${p ? STATUS[p.status] || p.status : "signed in"}`);
       btn.className = "icon-btn acc-btn in";
     }

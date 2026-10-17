@@ -25,7 +25,7 @@
   let rows = [], me = null;
 
   const row = (r, i) => `<tr class="${me && r.uid === me ? "me" : ""}"><td class="bd-rk">${i}</td>
-      <td><a class="bd-name" href="profile.html?u=${encodeURIComponent(r.uid)}">${esc(r.nickname)}</a>${me && r.uid === me ? ' <span class="bd-you">you</span>' : ""}</td>
+      <td><a class="bd-name" href="profile.html?u=${encodeURIComponent(r.uid)}">${r.photo ? `<img class="bd-av" src="${esc(r.photo)}" alt="" referrerpolicy="no-referrer" loading="lazy">` : ""}${esc(r.nickname)}</a>${me && r.uid === me ? ' <span class="bd-you">you</span>' : ""}</td>
       <td><span class="bd-lv">L${r.levelNo || 1}</span> ${esc(r.level || "Apprentice")}</td><td class="bd-xp">${r.xp || 0}</td>
       <td class="bd-bs">${(r.badges || []).map((id) => BADGE[id] ? `<span title="${esc(BADGE[id].name)}">${BADGE[id].icon}</span>` : "").join("")}</td>
       <td>${ago(r.lastActive)}</td></tr>`;

@@ -99,3 +99,4 @@ table.dt tr.dt-stop th span { font-weight: 400; color: var(--ink-3); margin-left
 .gm-tile.warn { border-color: var(--amber); background: var(--amber-soft); }
 .gm-lecbar { display: flex; flex-wrap: wrap; gap: 8px; }
 .gm-preview { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; background: var(--teal-soft); border: 1px solid var(--teal); border-radius: var(--r-md); padding: 10px 14px; margin: 0 0 14px; font-size: .92rem; }
+.bd-av { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 8px; }

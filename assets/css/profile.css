@@ -18,8 +18,6 @@
 .pf-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; font-size: .88rem; color: var(--ink-2); }
 .pf-lv .gm-level strong { font-size: 1.1rem; }
 .pf-lv .gm-next { margin-bottom: 0; }
-.pf-photo { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--ink-2); }
-.pf-photo input { width: 18px; height: 18px; }
 .pf-tools { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
 .pf-badges { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); gap: 8px; }
 .pf-badges li { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; align-items: center; padding: 8px 10px; border: 1px dashed var(--rule); border-radius: var(--r-sm); opacity: .5; filter: grayscale(1); }

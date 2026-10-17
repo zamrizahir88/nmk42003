@@ -67,7 +67,7 @@
       const info = {
         nickname: (board && board.nickname) || (user && user.nickname) || "", name: (roster && roster.name) || (board && board.name) || (user && user.name) || "",
         matric: (roster && roster.matric) || (board && board.matric) || "", section: (roster && roster.section) || (board && board.section) || "", group: (roster && roster.group) || (board && board.group) || 0,
-        photo: (board && board.photo) || "", since: (user && user.createdAt) || (board && board.since) || null, last: (board && board.lastActive) || (user && user.lastActive) || null
+        photo: (board && board.photo) || (user && user.photo) || (own && d.st.user.photoURL) || "", since: (user && user.createdAt) || (board && board.since) || null, last: (board && board.lastActive) || (user && user.lastActive) || null
       };
       let mates = [];
       try { const m = await db.collection("meta").doc("classmates").get(); mates = m.exists ? m.data().list || [] : []; } catch (e) { /* not on the class list */ }
@@ -88,18 +88,12 @@
         <p class="pf-meta">${info.section ? `<span>🧪 ${SECTION[info.section]}, group ${info.group || "–"}</span>` : ""}${d.partner ? `<span>👥 Lab partner: ${esc(d.partner.n)}</span>` : ""}
           ${g.streak ? `<span>🔥 ${g.streak}-week streak</span>` : ""}<span>${info.last ? `Active ${ago(info.last)}` : d.uid ? "No activity yet" : "Not signed in yet"}</span>${info.since ? `<span>Joined ${dstr(info.since)}</span>` : ""}</p></div>
       <div class="pf-lv">${G.xpBar(g)}</div>
-      ${own ? `<label class="pf-photo"><input type="checkbox" data-photo${d.user && d.user.showPhoto ? " checked" : ""}> Show my Google account photo to classmates</label>` : ""}
       ${lec ? `<div class="pf-tools"><button type="button" class="btn ghost small" data-print>Print</button>${d.roster ? `<button type="button" class="btn ghost small" data-edit>Edit details</button>` : ""}<a class="btn ghost small" href="attendance.html">Attendance</a></div>` : ""}</section>`;
     const badges = card(`Badges <small class="pf-sub">${g.badges.length} of ${G.BADGES.length}</small>`, `<ul class="pf-badges">${G.BADGES.map((b) => `<li class="${earned.has(b.id) ? "on" : ""}" title="${esc(b.desc)}"><span class="pf-bi" aria-hidden="true">${b.icon}</span><strong>${esc(b.name)}</strong><small>${esc(b.desc)}</small></li>`).join("")}</ul>`);
     const journey = card("Course Journey", `<div class="gm-journey">${G.journeyHtml(g, { other: !own, noHead: true })}</div>`);
     const activity = card("Recent Activity", feed.length ? `<ol class="pf-feed">${feed.map((f) => `<li class="${f.lv ? "lv" : ""}"><span class="pf-fx">${f.lv ? "⭐" : f.x ? `+${f.x}` : ""}</span><span>${esc(f.w)}</span><time>${ago(f.t)}</time></li>`).join("")}</ol>` : `<p class="small-note">Nothing yet.</p>`);
     host.innerHTML = `<div class="pf-grid">${header}<div class="pf-main">${journey}${(own || lec) ? `<div class="pf-private"></div>` : ""}</div><div class="pf-side">${activity}${badges}</div></div>`;
     if (own || lec) privateParts(d);
-    host.addEventListener("change", async (e) => {
-      if (!e.target.matches("[data-photo]")) return;
-      try { await db.collection("users").doc(d.st.user.uid).update({ showPhoto: e.target.checked }); if (A.state.profile) A.state.profile.showPhoto = e.target.checked; if (A.push) await A.push(); location.reload(); }
-      catch (ex) { alert(`Could not save (${ex.code || ex}).`); }
-    });
     host.addEventListener("click", (e) => {
       if (e.target.closest("[data-print]")) window.print();
       if (e.target.closest("[data-edit]")) editDetails(d);
