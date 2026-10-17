@@ -177,6 +177,18 @@ service cloud.firestore {
       allow write: if isLecturer();
     }
 
+    // Missions: the release switch (anyone signed in reads it), and each station's mission file (the questions):
+    // lecturers always; students on the class list or approved, only after the lecturer releases the game.
+    match /meta/missions {
+      allow read: if signedIn();
+      allow write: if isLecturer();
+    }
+    match /missions/{id} {
+      allow read: if isLecturer() || ((onRoster() || approved())
+        && exists(/databases/$(database)/documents/meta/missions) && get(/databases/$(database)/documents/meta/missions).data.get('released', false) == true);
+      allow write: if isLecturer();
+    }
+
     // The lecturer's changes to the public timetable: everyone reads them, lecturers write them.
     match /schedule/{id} {
       allow read: if true;

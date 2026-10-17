@@ -22,7 +22,7 @@
   const STUDENT_DOMAIN = "@studentmail.unimap.edu.my";
   const EX_KEY = "nmk-ex-log", UID_KEY = "nmk-sync-uid";
   // progress kept in this browser that is not worth syncing
-  const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-|sched|role|preview|gal|bell)/;
+  const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-|sched|role|preview|gal|bell|msnd)/;
   const SEM = (typeof COURSE !== "undefined" && (COURSE.semesterId || COURSE.session)) || "";
 
   firebase.initializeApp(CONFIG);
@@ -181,6 +181,8 @@
       } else { setup(u, listed); }
     } catch (e) { console.warn("NMK account: could not load the profile", e.code || e); }
     paint(); changed(); loadBell(false);
+    // is the Missions game released to students? (for the menu link)
+    if (state.profile && state.profile.status === "approved") db.collection("meta").doc("missions").get().then((d) => { missionsOpen = !!(d.exists && d.data().released); }).catch(() => {});
     if (canSync()) { pull(); queuePush(); loadAttendance(); db.collection("users").doc(u.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp(), photo: u.photoURL || "" }).catch(() => {}); }
   });
 
@@ -247,6 +249,7 @@
   document.body.appendChild(menu);
 
   const STATUS = { approved: "Approved", pending: "Waiting for approval", rejected: "Not approved" };
+  let missionsOpen = false;
   function paint() {
     const u = state.user, p = state.profile;
     if (!u) { btn.innerHTML = `${ICON}<span class="acc-t">Sign in</span>`; btn.setAttribute("aria-label", "Sign in with Google"); btn.className = "icon-btn acc-btn out"; }
@@ -280,6 +283,7 @@
       <a class="acc-item" href="notifications.html">Notifications</a>
       <a class="acc-item" href="board.html">Progress board</a>
       <a class="acc-item" href="gallery.html">Class Moments</a>
+      ${isAdmin(u.email) || missionsOpen ? `<a class="acc-item" href="missions.html">Missions${isAdmin(u.email) && !missionsOpen ? " (not released)" : ""}</a>` : ""}
       <a class="acc-item" href="attendance.html">${isAdmin(u.email) ? "Attendance (lecturer)" : "Attendance"}</a>
       ${isAdmin(u.email) ? `<a class="acc-item" href="admin.html">Lecturer dashboard</a>` : ""}
       <button type="button" class="acc-item" data-out>Sign out</button>`;

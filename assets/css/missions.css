@@ -1,0 +1,112 @@
+/* NMK42003 Missions: the map, My Character and the battle (missions.js). The battle scene keeps its own fixed
+   colours, like a game screen; everything around it follows the site's light and dark themes. */
+.ms-gate { max-width: var(--measure); background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 16px 18px; }
+.ms-lec { background: var(--amber-soft); border: 1px solid var(--amber); border-radius: var(--r-md); padding: 8px 12px; margin: 0 0 12px; font-size: .92rem; }
+.ms-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; }
+.ms-sp { flex: 1; }
+.ms-pill { display: inline-flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--rule); border-radius: 999px; padding: 4px 12px; }
+.ms-coin { width: 16px; height: 16px; border-radius: 50%; background: #f0b429; box-shadow: inset 0 0 0 2px #c98a00; display: inline-block; }
+.ms-stars { color: #e0a100; letter-spacing: 2px; white-space: nowrap; }
+
+/* stations and missions */
+.ms-worlds { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.ms-world { display: grid; gap: 4px; text-align: left; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-left: 5px solid var(--teal); border-radius: var(--r-md); padding: 12px 14px; cursor: pointer; }
+.ms-world:hover:not(.locked) { border-color: var(--teal); }
+.ms-world.locked { opacity: .65; cursor: default; border-left-color: var(--rule); }
+.ms-wno { font-size: .8rem; font-weight: 700; color: var(--teal); text-transform: uppercase; letter-spacing: .04em; }
+.ms-wfoot { font-size: .88rem; color: var(--ink-2); margin-top: 4px; }
+.ms-list { display: grid; gap: 10px; }
+.ms-mis { display: grid; grid-template-columns: 84px 1fr auto; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 8px 12px; }
+.ms-mis > div { display: grid; gap: 2px; }
+.ms-mis.boss { border: 2px solid var(--amber); background: color-mix(in srgb, var(--amber-soft) 50%, var(--surface)); }
+.ms-mis.locked { opacity: .6; }
+.ms-mon { width: 84px; height: 66px; background: #cfe8dd; border-radius: 8px; }
+.ms-mis.boss .ms-mon { background: #e6dccb; }
+@media (max-width: 520px) { .ms-mis { grid-template-columns: 64px 1fr; } .ms-mon { width: 64px; height: 52px; } .ms-mis > .btn, .ms-mis > span:last-child { grid-column: 1 / -1; justify-self: start; } }
+
+/* My Character */
+.ms-mk { display: grid; grid-template-columns: minmax(160px, 240px) 1fr; gap: 18px; align-items: start; }
+.ms-pv { background: #cfe8dd; border-radius: 12px; padding: 8px; display: grid; gap: 8px; position: sticky; top: 8px; }
+.ms-pv .small-note { color: #33475e; margin: 0; }
+.ms-opt[hidden] { display: none; }
+.ms-ol { font-weight: 600; margin: 10px 0 6px; }
+.ms-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ms-opt button:not(.ms-sw) { font: inherit; min-height: 38px; padding: 6px 12px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }
+.ms-opt button[aria-pressed="true"]:not(.ms-sw) { border: 2px solid var(--teal); background: var(--teal-soft); font-weight: 600; }
+.ms-sw { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--rule); cursor: pointer; padding: 0; }
+.ms-sw[aria-pressed="true"] { outline: 3px solid var(--amber); outline-offset: 2px; }
+@media (max-width: 560px) { .ms-mk { grid-template-columns: 1fr; } .ms-pv { max-width: 240px; position: static; } }
+
+/* the battle: the scene stays in view while the student types */
+.ms-scene { position: sticky; top: 61px; z-index: 5; border-radius: 0 0 14px 14px; overflow: hidden; border: 1px solid var(--rule); background: #cfe8dd; user-select: none; box-shadow: 0 6px 14px rgba(21, 36, 58, .12); }
+.ms-scene svg { display: block; width: 100%; height: auto; max-height: 44vh; }
+.ms-float { position: absolute; font: 700 1.4rem var(--sans); pointer-events: none; animation: ms-rise 1s ease-out forwards; text-shadow: 0 2px 0 #fff, 0 0 6px #fff; }
+@keyframes ms-rise { from { transform: translate(-50%, 0); opacity: 1; } to { transform: translate(-50%, -60px); opacity: 0; } }
+.ms-banner { position: absolute; left: 50%; top: 46%; transform: translateX(-50%); background: rgba(255, 255, 255, .92); color: #15243a; border-radius: 999px; padding: 4px 14px; font-weight: 600; font-size: .95rem; white-space: nowrap; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.ms-banner.on { opacity: 1; }
+.ms-bubble { position: absolute; left: 22%; top: 4%; max-width: min(46%, 360px); background: #fff; color: #15243a; border: 2px solid #0b6e6e; border-radius: 14px; padding: 8px 12px; font-size: .92rem; line-height: 1.4; box-shadow: 0 4px 10px rgba(21, 36, 58, .15); opacity: 0; transform: translateY(6px); transition: opacity .2s, transform .2s; pointer-events: none; }
+.ms-bubble.on { opacity: 1; transform: none; }
+.ms-bubble b { color: #0b6e6e; }
+@media (max-width: 560px) { .ms-bubble { font-size: .78rem; left: 14%; max-width: 62%; padding: 6px 9px; } .ms-banner { font-size: .8rem; padding: 2px 10px; } }
+.ms-panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 14px 16px; margin-top: 12px; }
+.ms-track { display: flex; gap: 6px; margin: 0 0 10px; }
+.ms-track i { flex: 1; height: 6px; border-radius: 3px; background: var(--rule); }
+.ms-track i.done { background: var(--teal); } .ms-track i.now { background: var(--amber); }
+.ms-step { font-weight: 600; margin: 0 0 8px; }
+.ms-panel input[type=text] { font: inherit; font-size: 17px; width: 150px; height: 42px; padding: 0 10px; border: 1px solid var(--rule); border-radius: 8px; background: var(--paper); color: var(--ink); }
+.ms-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.ms-msg { min-height: 1.4em; margin: 8px 0 0; font-weight: 500; }
+.ms-msg.ok { color: var(--teal); } .ms-msg.no { color: var(--amber); } .ms-msg.err { color: var(--danger); }
+.ms-story { color: var(--ink-2); margin: 10px 0 6px; }
+.ms-data { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.ms-data span { background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 2px 8px; font-variant-numeric: tabular-nums; }
+.ms-hint { background: var(--amber-soft); border-radius: 8px; padding: 8px 12px; margin-top: 8px; font-size: .95rem; }
+.ms-win { text-align: center; }
+.ms-big { font-size: 2.2rem; }
+.ms-mock { background: var(--teal-soft); border-radius: 8px; padding: 8px 12px; display: inline-block; }
+.ms-working { background: var(--paper); border-radius: 8px; padding: 10px 14px; margin-top: 10px; font-size: .95rem; }
+.ms-working p { margin: 6px 0; }
+.ms-center { justify-content: center; margin-top: 12px; }
+
+/* animations (all switched off for reduced motion) */
+#msHero, #msPvh { transform-box: fill-box; transform-origin: 50% 100%; animation: ms-idle 2.4s ease-in-out infinite; }
+@keyframes ms-idle { 50% { transform: translateY(-4px); } }
+#msHero.atk { animation: ms-lunge .45s ease-out; }
+@keyframes ms-lunge { 40% { transform: translateX(46px) rotate(4deg); } }
+#msHero.recoil { animation: ms-recoil .3s; }
+@keyframes ms-recoil { 30% { transform: translateX(-8px); } }
+#msHero.sad { animation: ms-shrug .6s; }
+@keyframes ms-shrug { 30% { transform: translateY(3px) scaleY(.96); } }
+#msHero.cheer, #msPvh.cheer { animation: ms-cheer .7s ease-in-out 3; }
+@keyframes ms-cheer { 50% { transform: translateY(-16px); } }
+#msMon { transform-box: fill-box; transform-origin: 50% 100%; animation: ms-squish 1.6s ease-in-out infinite; }
+@keyframes ms-squish { 50% { transform: scale(1.04, .95); } }
+#msMon.hit { animation: ms-shake .4s; filter: brightness(1.8); }
+@keyframes ms-shake { 20% { transform: translateX(-10px); } 40% { transform: translateX(9px); } 60% { transform: translateX(-6px); } 80% { transform: translateX(3px); } }
+#msMon.laugh { animation: ms-laugh .5s ease-in-out 2; }
+@keyframes ms-laugh { 50% { transform: translateY(-14px) scale(1.05, .95); } }
+#msMon.faint { animation: ms-faint 1s ease-in forwards; }
+@keyframes ms-faint { 30% { transform: scale(1.15, .8); } to { transform: scale(.1, .05) translateY(40px); opacity: 0; } }
+.ms-shot { opacity: 0; }
+.ms-shot.fly { animation: ms-fly .38s linear; }
+@keyframes ms-fly { 0% { opacity: 1; transform: translateX(0); } 100% { opacity: 1; transform: translateX(230px); } }
+#msSlash { opacity: 0; transform-box: fill-box; transform-origin: center; }
+#msSlash.cut { animation: ms-cut .35s ease-out; }
+@keyframes ms-cut { 0% { opacity: 1; transform: rotate(-30deg) scale(.6); } 100% { opacity: 0; transform: rotate(20deg) scale(1.2); } }
+#msHp { transition: width .5s ease-out; }
+.ms-spark { animation: ms-spark .9s ease-out forwards; transform-box: fill-box; transform-origin: center; }
+@keyframes ms-spark { from { transform: scale(.2); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+#msVolt { cursor: pointer; outline: none; }
+#msVoltIn { transform-box: fill-box; transform-origin: center; animation: ms-hover 1.8s ease-in-out infinite; }
+@keyframes ms-hover { 50% { transform: translateY(-7px) rotate(-3deg); } }
+#msVolt.alert #msVoltIn { animation: ms-hover 1.8s ease-in-out infinite, ms-wiggle .5s ease-in-out 3; }
+@keyframes ms-wiggle { 25% { transform: rotate(-12deg); } 75% { transform: rotate(12deg); } }
+#msVolt:focus-visible circle { stroke: #b86e00; stroke-width: 4; }
+#msVolt .ms-bang, #msVolt .ms-tag { opacity: 0; transition: opacity .2s; }
+#msVolt.alert .ms-bang, #msVolt.alert .ms-tag { opacity: 1; }
+#msVolt .ms-tagIn { transform-box: fill-box; transform-origin: bottom center; }
+#msVolt.alert .ms-tagIn { animation: ms-tagbob .9s ease-in-out infinite; }
+@keyframes ms-tagbob { 50% { transform: translateY(-5px) scale(1.04); } }
+.ms-prop { transform-box: fill-box; transform-origin: center; animation: ms-spin .25s linear infinite; }
+@keyframes ms-spin { 50% { transform: scaleX(.2); } }
+@media (prefers-reduced-motion: reduce) { #msHero, #msPvh, #msMon, #msVoltIn, .ms-prop, .ms-tagIn, .ms-spark, .ms-float, .ms-shot, #msSlash { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } #msHp { transition: none; } }

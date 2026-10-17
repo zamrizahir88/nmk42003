@@ -140,12 +140,50 @@
     document.addEventListener("keydown", function esc_(e) { if (e.key === "Escape") { close(); document.removeEventListener("keydown", esc_); } });
   }
 
+  /* ---------- Missions: release the game to students, and upload each world's mission file ----------
+     The file (kept in _source/Missions/, never published) returns { world, chapter, title, missions }. It is stored in
+     Firestore missions/world{N}; the rules let only lecturers, or students after release, read it. */
+  let ms = null, msMsg = "";
+  async function loadMissions() {
+    try {
+      const [m, q] = await Promise.all([db.collection("meta").doc("missions").get(), db.collection("missions").get()]);
+      ms = { released: !!(m.exists && m.data().released), at: m.exists ? m.data().updatedAt : null,
+        worlds: q.docs.map((d) => Object.assign({ id: d.id }, d.data())).sort((a, b) => a.world - b.world) };
+    } catch (e) { ms = { err: e.code || String(e) }; }
+    if (tab === "missions") draw();
+  }
+  function missionsTab() {
+    if (!ms) { loadMissions(); return `<p class="small-note">Loading…</p>`; }
+    if (ms.err) return `<div class="callout warn"><strong>Could not load the missions</strong>${esc(ms.err)}. If this says permission-denied, publish the latest firebase/firestore.rules in the Firebase console.</div>`;
+    const played = approved().filter((u) => Object.keys(parse(((progress[u.uid] || {}).keys || {})["nmk-missions"], {})).length).length;
+    return `<div class="adm-sum"><div><strong>${ms.released ? "On" : "Off"}</strong><span>released to students</span></div><div><strong>${ms.worlds.length}</strong><span>stations uploaded</span></div><div><strong>${played}</strong><span>students have played</span></div></div>
+      <div class="ms-adm"><label class="ms-rel"><input type="checkbox" data-mrel${ms.released ? " checked" : ""}> <span><strong>Release Missions to students</strong><br><small>Off: only lecturers can open the Missions page (to test). On: signed-in, approved students can play, and Missions appears in their account menu. Each station still opens in the week its chapter is lectured.</small></span></label>
+        <p class="ms-amsg small-note" aria-live="polite">${esc(msMsg)}</p>
+        <h3 class="h3">Stations</h3>
+        ${ms.worlds.length ? `<div class="adm-scroll"><table class="adm"><thead><tr><th>Station</th><th>Chapter</th><th>Missions</th><th>Uploaded</th></tr></thead><tbody>${ms.worlds.map((w) => `<tr><td>${esc(w.title || w.id)}</td><td>${w.chapter || ""}</td><td>${w.count || ""}</td><td>${fmt(w.updatedAt && w.updatedAt.toDate ? w.updatedAt.toDate().toISOString() : null)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="adm-empty">No stations uploaded yet.</p>`}
+        <p><label class="btn ghost">Upload a mission file (.js)<input type="file" accept=".js,text/javascript" data-mup hidden></label> <a class="btn ghost" href="missions.html">Open Missions ›</a></p>
+        <p class="small-note">Uploading a station again replaces it. Students keep their coins and stars.</p></div>`;
+  }
+  async function uploadMissions(file) {
+    const say = (t) => { msMsg = t; const m = host.querySelector(".ms-amsg"); if (m) m.textContent = t; };
+    try {
+      const code = await file.text();
+      const w = new Function(code)();   // check the file before saving it: it must give a world with missions
+      if (!w || !Number.isInteger(w.world) || !Array.isArray(w.missions) || !w.missions.length) throw new Error("This file doesn't describe a station (world, missions).");
+      w.missions.forEach((m) => { const v = m.make(Math.random); m.steps.forEach((s) => { if (!s.choice && !isFinite(s.ans(v))) throw new Error(`${m.title}: "${typeof s.q === "function" ? s.q(v) : s.q}" gives no number.`); }); });
+      await db.collection("missions").doc(`world${w.world}`).set({ world: w.world, chapter: w.chapter || w.world, title: w.title || `Station ${w.world}`, count: w.missions.length, code,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(), by: A.state.user.email.toLowerCase() });
+      ms = null; loadMissions();
+      say(`Uploaded ${w.title || `Station ${w.world}`}: ${w.missions.length} missions.`);
+    } catch (e) { say(`Could not upload: ${e.code || e.message || e}`); }
+  }
+
   /* ---------- page frame ---------- */
-  const TABS = [["overview", "Overview"], ["heatmap", "Class Heatmap"], ["exercises", "Exercise Difficulty"], ["board", "Board"], ["pending", "Waiting for Approval"], ["students", "All Students"]];
+  const TABS = [["overview", "Overview"], ["heatmap", "Class Heatmap"], ["exercises", "Exercise Difficulty"], ["board", "Board"], ["pending", "Waiting for Approval"], ["students", "All Students"], ["missions", "Missions"]];
   function draw() {
     const sems = [...new Set(users.map((u) => u.semester || G.SEM).concat(G.SEM))].sort();
     const pending = students().filter((u) => u.status === "pending").length;
-    const view = tab === "overview" ? overview() : tab === "heatmap" ? heatmap() : tab === "exercises" ? difficulty() : tab === "board" ? board() : people(tab === "pending");
+    const view = tab === "overview" ? overview() : tab === "heatmap" ? heatmap() : tab === "exercises" ? difficulty() : tab === "board" ? board() : tab === "missions" ? missionsTab() : people(tab === "pending");
     host.innerHTML = `<div class="adm-top"><div class="adm-tabs" role="group" aria-label="Dashboard view">${TABS.map(([v, l]) => `<button type="button" class="chip-btn" data-tab="${v}" aria-pressed="${tab === v}">${l}${v === "pending" && pending ? ` (${pending})` : ""}</button>`).join("")}</div>
         ${sems.length > 1 ? `<label class="adm-sem">Semester <select data-sem>${sems.map((s) => `<option${s === sem ? " selected" : ""}>${esc(s)}</option>`).join("")}</select></label>` : `<span class="adm-sem">${esc(sem)}</span>`}<a class="btn ghost small" href="attendance.html">Attendance ›</a></div>${view}`;
     const s = host.querySelector("[data-q]");
@@ -193,6 +231,13 @@
     if (e.target.matches("[data-sort]")) { sortBy = e.target.value; draw(); }
     if (e.target.matches("[data-sem]")) { sem = e.target.value; draw(); }
     if (e.target.matches("[data-stop]")) { stopFilter = e.target.value; draw(); }
+    if (e.target.matches("[data-mup]") && e.target.files[0]) uploadMissions(e.target.files[0]);
+    if (e.target.matches("[data-mrel]")) {
+      const on = e.target.checked;
+      db.collection("meta").doc("missions").set({ released: on, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), by: A.state.user.email.toLowerCase() }, { merge: true })
+        .then(() => { ms.released = on; msMsg = on ? "Released: students can now play Missions." : "Missions are hidden from students again."; draw(); })
+        .catch((ex) => { e.target.checked = !on; const m = host.querySelector(".ms-amsg"); if (m) m.textContent = `Could not save (${ex.code || ex}). If this says permission-denied, publish the latest firebase/firestore.rules.`; });
+    }
   });
 
   A.on((st) => {

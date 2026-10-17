@@ -46,7 +46,9 @@
     { id: "lab-regular", name: "Lab Regular", icon: "🧪", desc: "Attended every lab session so far (at least two)" },
     { id: "lecture-regular", name: "Lecture Regular", icon: "📚", desc: "Attended five lectures in a row" },
     { id: "full-house", name: "Full House", icon: "🏠", desc: "No absences at all, from week 8 on" },
-    { id: "early-riser", name: "Early Riser", icon: "🌅", desc: "Attended a Thursday 9 AM lab" }
+    { id: "early-riser", name: "Early Riser", icon: "🌅", desc: "Attended a Thursday 9 AM lab" },
+    { id: "mission-1", name: "On a Mission", icon: "🗡️", desc: "Completed your first Mission" },
+    { id: "boss-breaker", name: "Boss Breaker", icon: "🛡️", desc: "Defeated a Mission boss" }
   ].concat(COURSE.labs.filter((l) => l.page).map((l) => ({ id: `lab${l.no}-ready`, name: `Lab ${l.no} Ready`, icon: "🔓", desc: `Passed the Lab ${l.no} Pre-Lab Check` })));
 
   // Lab 2's virtual sensor, to check the student's own equation (the same model as lab2.js)
@@ -91,6 +93,9 @@
     const here = (r) => r.s === "P" || r.s === "L";
     recs.forEach((r) => { if (here(r)) add(10, `Attended ${r.t || (r.k === "lab" ? "a lab" : "a lecture")}`, r.d ? `${r.d}T12:00:00+08:00` : null); });
 
+    // Missions: the best result of each mission; 2 coins make 1 XP
+    const mis = parse(k["nmk-missions"], {}) || {};
+    Object.values(mis).forEach((r) => { if (r && r.c) add(Math.floor(r.c / 2), `Mission: ${r.t || "a mission"}${r.boss ? " (boss)" : ""}`, r.at); });
     const xp = items.reduce((s, i) => s + i.xp, 0);
     let li = 0; LEVELS.forEach(([t], i) => { if (xp >= t) li = i; });
     // activity by semester week
@@ -114,6 +119,8 @@
     if (weekOf(today()) >= 8 && recs.length >= 5 && !recs.some((r) => r.s === "A")) earned.add("full-house");
     if (att && att.section === "thu" && labs.some(here)) earned.add("early-riser");
     if (streak >= 3) earned.add("on-a-roll");
+    if (Object.keys(mis).length) earned.add("mission-1");
+    if (Object.values(mis).some((r) => r && r.boss)) earned.add("boss-breaker");
     if (solved.length * 2 >= Object.keys(CATALOG).length) earned.add("halfway");
     return {
       xp, items, level: LEVELS[li][1], levelNo: li + 1, levelAt: LEVELS[li][0], nextAt: LEVELS[li + 1] ? LEVELS[li + 1][0] : null, nextLevel: LEVELS[li + 1] ? LEVELS[li + 1][1] : null,

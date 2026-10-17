@@ -80,3 +80,9 @@ table.adm { width: 100%; border-collapse: collapse; font-size: .9rem; font-varia
 @media (max-width: 480px) { .site-header .wrap { gap: 10px; } .acc-bellbox { left: 8px !important; right: 8px !important; width: auto; } }
 .acc-all { margin-top: 4px; border-top: 1px solid var(--rule); border-radius: 0; font-weight: 600; color: var(--teal); }
 .acc-log { max-width: var(--measure); margin: 0 0 22px; border: 1px solid var(--rule); border-radius: var(--r-md); background: var(--surface); padding: 6px; }
+
+/* lecturer dashboard: the Missions tab */
+.ms-adm { max-width: 760px; }
+.ms-rel { display: flex; gap: 10px; align-items: flex-start; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 12px 14px; }
+.ms-rel input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--teal); }
+.ms-rel small { color: var(--ink-2); }
