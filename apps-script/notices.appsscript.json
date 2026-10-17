@@ -5,10 +5,7 @@
   "oauthScopes": [
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/datastore",
-    "https://www.googleapis.com/auth/script.external_request"
-  ],
-  "webapp": {
-    "executeAs": "USER_DEPLOYING",
-    "access": "ANYONE_ANONYMOUS"
-  }
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/script.scriptapp"
+  ]
 }

@@ -177,10 +177,22 @@ service cloud.firestore {
       allow write: if isLecturer();
     }
 
-    // Where absence-notice documents are sent (the lecturer's Apps Script web app address)
+    // Absence-notice documents: the switch (meta/uploads, also the Drive script's last run), and each student's file,
+    // kept in parts until the lecturer's Apps Script moves it into their Drive folder and deletes it here (the script
+    // uses the project owner's own access, so these rules don't apply to it).
     match /meta/uploads {
       allow read: if signedIn();
       allow write: if isLecturer();
+    }
+    match /uploads/{id} {
+      allow create: if onRoster() && request.resource.data.email == email()
+        && request.resource.data.notice == request.resource.data.session + '_' + email() && request.resource.data.parts is int && request.resource.data.parts <= 8;
+      allow read: if isLecturer() || (signedIn() && resource.data.email == email());
+      allow delete: if isLecturer();
+      match /parts/{pid} {
+        allow create: if onRoster() && request.resource.data.email == email() && request.resource.data.data is string && request.resource.data.data.size() <= 900000;
+        allow read, delete: if isLecturer();
+      }
     }
 
     // Missions: the release switch (anyone signed in reads it), and each station's mission file (the questions):

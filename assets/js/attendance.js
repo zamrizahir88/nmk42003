@@ -27,20 +27,39 @@
   const POINTS = { P: 2, L: 1, E: 1, A: 0 };
   const REASONS = { mc: "Medical (MC)", family: "Family emergency", official: "Official university activity", other: "Other" };
   const COORDINATOR = "zamrizahir@unimap.edu.my";
-  // Supporting documents of absence notices go to the lecturer's Google Drive folder through a Google Apps Script
-  // (apps-script/notices.gs); its web app address is kept in Firestore meta/uploads.noticeUrl (set on the Notices tab).
-  let uploadUrl = null;
-  const getUploadUrl = async () => { if (uploadUrl === null) { try { const d = await db.collection("meta").doc("uploads").get(); uploadUrl = (d.exists && d.data().noticeUrl) || ""; } catch (e) { uploadUrl = ""; } } return uploadUrl; };
-  const DOC_TYPES = { "application/pdf": "PDF", "image/jpeg": "JPG", "image/png": "PNG" }, DOC_MAX = 5 * 1024 * 1024;
+  // Supporting documents of absence notices: the student's file is saved in Firestore (uploads/{id}, in parts of up to
+  // 900 KB), the lecturer can open it at once, and the lecturer's Apps Script (apps-script/notices.gs, on a 5-minute
+  // timer in their own Google account) moves it into their Drive folder and puts the Drive link on the notice.
+  // meta/uploads.on switches it on (Notices tab); meta/uploads.lastRun is written by the script.
+  let uploadOn = null;
+  const getUploadOn = async () => { if (uploadOn === null) { try { const d = await db.collection("meta").doc("uploads").get(); uploadOn = !!(d.exists && d.data().on); } catch (e) { uploadOn = false; } } return uploadOn; };
+  const DOC_TYPES = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png" }, DOC_MAX = 5 * 1024 * 1024, PART = 900000;
   const docLink = (d, label) => (d && d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener">📎 ${esc(label || d.name || "Supporting document")}</a>` : "");
+  // photos are made smaller first (a phone photo of an MC is several MB; 1600 px is plenty to read it)
+  const shrink = (file) => new Promise((ok) => {
+    if (!/^image\/(jpeg|png)$/.test(file.type)) return ok(null);
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => { const k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      c.toBlob((b) => ok(b && b.size < file.size ? b : null), "image/jpeg", 0.8); };
+    img.onerror = () => { URL.revokeObjectURL(url); ok(null); };
+    img.src = url;
+  });
   async function sendDoc(file, meta) {
-    const data = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.onerror = () => no(new Error("Could not read the file.")); r.readAsDataURL(file); });
-    const idToken = await firebase.auth().currentUser.getIdToken();
-    // text/plain keeps it a simple request, which Apps Script web apps accept from another site
-    const res = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ idToken, type: file.type, data }, meta)) });
-    const out = await res.json();
-    if (!out.ok) throw new Error(out.error || "The upload didn't work.");
-    return { id: out.id, url: out.url, name: out.name, size: file.size };
+    const small = await shrink(file), blob = small || file, type = small ? "image/jpeg" : file.type;
+    const data = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.onerror = () => no(new Error("Could not read the file.")); r.readAsDataURL(blob); });
+    const ref = db.collection("uploads").doc(), parts = Math.ceil(data.length / PART);
+    for (let k = 0; k < parts; k++) await ref.collection("parts").doc(`p${String(k).padStart(3, "0")}`).set({ email: meta.email, data: data.slice(k * PART, (k + 1) * PART) });
+    // the upload record last: the script only moves records whose parts are all there
+    await ref.set(Object.assign({ type, ext: DOC_TYPES[type], parts, size: blob.size, name: file.name.slice(0, 120), semester: SEM, at: FV.serverTimestamp() }, meta));
+    return { upload: ref.id, name: file.name.slice(0, 120), type, size: blob.size };
+  }
+  // open a document that is still in Firestore (not yet moved to Drive)
+  async function openUpload(id, win) {
+    const q = await db.collection("uploads").doc(id).collection("parts").get(), u = await db.collection("uploads").doc(id).get();
+    const data = q.docs.sort((a, b) => (a.id < b.id ? -1 : 1)).map((d) => d.data().data).join(""), bin = atob(data), arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    win.location.href = URL.createObjectURL(new Blob([arr], { type: (u.exists && u.data().type) || "application/octet-stream" }));
   }
   const LAB_VENUE = "TVET MI01 (Makmal Industri UniMAP - Tessolve)";
   const ROTATE_MS = 3 * 60 * 1000;
@@ -239,18 +258,20 @@
     }
 
     /* ---- absence notice ---- */
-    async function noticeForm(n) {
+    async function noticeForm(n, preSid) {
       const choices = all.filter(forMe);
-      await getUploadUrl();
+      await getUploadOn();
       if (!choices.length) { say("No Sessions Yet", "Your lecturer hasn't set up the sessions yet. Try again later."); return; }
       const t = todayIso(), next = choices.find((s) => s.date >= t) || choices[choices.length - 1];
-      const pick = n ? n.session : next.id;
+      const pick = n ? n.session : preSid || next.id;
+      const opt = (s) => `<option value="${s.id}"${s.id === pick ? " selected" : ""}>${fmtDate(s.date)} · ${esc(s.title)}${recs[s.id] ? ` (${ST[recs[s.id].status] || recs[s.id].status})` : ""}</option>`;
+      const past = choices.filter((s) => s.date < t || s.state === "closed").reverse(), ahead = choices.filter((s) => !past.includes(s));
       const p = panel(`<h3>${n ? "Edit Your Absence Notice" : "Tell the Lecturer You Can't Attend"}</h3>
         <form class="at-dform" novalidate>
-          <label>Session<select name="session"${n ? " disabled" : ""}>${choices.map((s) => `<option value="${s.id}"${s.id === pick ? " selected" : ""}>${fmtDate(s.date)} · ${esc(s.title)}${s.state === "closed" ? " (held)" : ""}</option>`).join("")}</select></label>
+          <label>Session<select name="session"${n ? " disabled" : ""}>${past.length ? `<optgroup label="Already held (absent already)">${past.map(opt).join("")}</optgroup>` : ""}${ahead.length ? `<optgroup label="Coming up">${ahead.map(opt).join("")}</optgroup>` : ""}</select></label>
           <label>Reason<select name="reason">${Object.entries(REASONS).map(([v, l]) => `<option value="${v}"${n && n.reason === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>
           <label>Explain briefly<textarea name="detail" rows="3" maxlength="500" required placeholder="e.g. Fever, clinic visit at Pusat Kesihatan UniMAP">${esc(n ? n.detail : "")}</textarea></label>
-          ${uploadUrl ? `<label>Supporting document (MC, official letter…)<input type="file" name="doc" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"${n ? "" : " required"}>
+          ${uploadOn ? `<label>Supporting document (MC, official letter…)<input type="file" name="doc" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"${n ? "" : " required"}>
             <small class="at-sub">PDF, JPG or PNG, up to 5 MB. ${n && n.doc ? `Sent: ${docLink(n.doc)}. Choose a file only to replace it.` : "A clear photo of the document is fine."}</small></label>
             <p class="at-note">Your document goes straight to your lecturer. When they approve the notice, your attendance for that session becomes <strong>Excused</strong>.</p>`
           : `<p class="at-note">📎 Email your supporting document (e.g. MC or official letter) to the course coordinator at <a href="mailto:${COORDINATOR}">${COORDINATOR}</a>. This notice only tells your lecturer; it is approved or not after they check it.</p>`}
@@ -261,15 +282,15 @@
         const v = Object.fromEntries(new FormData(e.target).entries()), sid = n ? n.session : v.session, s = all.find((x) => x.id === sid);
         if (!v.detail || v.detail.trim().length < 5) { $(".at-err", p).textContent = "Please explain in a few words."; return; }
         if (!n && notices.some((x) => x.session === sid)) { $(".at-err", p).textContent = "You already sent a notice for this session. Edit it in the list below."; return; }
-        const file = uploadUrl && e.target.doc && e.target.doc.files[0];
-        if (uploadUrl && !file && !(n && n.doc)) { $(".at-err", p).textContent = "Attach your supporting document (PDF, JPG or PNG)."; return; }
+        const file = uploadOn && e.target.doc && e.target.doc.files[0];
+        if (uploadOn && !file && !(n && n.doc)) { $(".at-err", p).textContent = "Attach your supporting document (PDF, JPG or PNG)."; return; }
         if (file && !DOC_TYPES[file.type]) { $(".at-err", p).textContent = "Use a PDF, JPG or PNG file."; return; }
         if (file && file.size > DOC_MAX) { $(".at-err", p).textContent = "The file is larger than 5 MB. Take a smaller photo, or save it as a PDF."; return; }
         const btn = e.target.querySelector("[type=submit]");
         btn.disabled = true;
         try {
           let doc = n && n.doc ? n.doc : null;
-          if (file) { $(".at-err", p).textContent = "Uploading your document…"; doc = await sendDoc(file, { session: sid, title: s.title, date: s.date, reason: REASONS[v.reason] || v.reason }); }
+          if (file) { $(".at-err", p).textContent = "Uploading your document…"; doc = await sendDoc(file, { email, notice: `${sid}_${email}`, session: sid, title: s.title, date: s.date, reason: REASONS[v.reason] || v.reason, studentName: me.name, matric: String(me.matric) }); }
           await db.collection("notices").doc(`${sid}_${email}`).set(Object.assign({ semester: SEM, session: sid, email, name: me.name, matric: String(me.matric), kind: s.kind, date: s.date, title: s.title,
             reason: v.reason, detail: v.detail.trim().slice(0, 500), status: "pending", at: FV.serverTimestamp() }, doc ? { doc } : {}));
           closePanel();
@@ -358,11 +379,12 @@
       reqEl.innerHTML = (inbox.length ? `<div class="at-card warn"><h3>Lab Swap Requests for You</h3>${inbox.map((x) => `<div class="at-req" data-sw="${x.id}"><p><strong>${esc(x.fromName)}</strong> (${SECTION[x.fromSection] || ""}, group ${x.fromGroup || "–"}) asks to swap <strong>${esc(x.labTitle)}</strong> with you.${x.note ? ` <em>“${esc(x.note)}”</em>` : ""}</p>
           <div class="acc-row"><button type="button" class="btn small" data-acc>Accept</button><button type="button" class="btn ghost small" data-dec>Decline</button></div></div>`).join("")}</div>` : "")
         + (swaps.length ? `<div class="at-card"><h3>My Lab Swaps</h3><ul class="at-list">${swaps.map(({ x, out }) => `<li data-sw="${x.id}"><strong>${esc(x.labTitle)}</strong>: ${out ? `with ${esc(x.toName)} (${SECTION[x.toSection] || ""})` : `with ${esc(x.fromName)} (${SECTION[x.fromSection] || ""})`} · <span class="at-tag ${x.status}">${SWAP_ST[x.status] || x.status}</span>${out && ["requested", "accepted"].includes(x.status) ? ` <button type="button" class="btn ghost small" data-cancel>Cancel</button>` : ""}</li>`).join("")}</ul></div>` : "")
-        + (notices.length ? `<div class="at-card"><h3>My Absence Notices</h3><ul class="at-list">${notices.slice().sort((a, b) => (a.date < b.date ? 1 : -1)).map((n) => `<li data-n="${n.id}"><strong>${fmtDate(n.date)} · ${esc(n.title)}</strong>: ${REASONS[n.reason] || n.reason} · <span class="at-tag ${n.status}">${NOTE_ST[n.status] || n.status}</span>${n.doc ? ` · ${docLink(n.doc, "Document")}` : ""}${n.note ? `<br><small>Lecturer: ${esc(n.note)}</small>` : ""}${n.status === "pending" ? ` <button type="button" class="btn ghost small" data-nedit>Edit</button> <button type="button" class="btn ghost small" data-ndel>Withdraw</button>` : ""}</li>`).join("")}</ul></div>` : "");
+        + (notices.length ? `<div class="at-card"><h3>My Absence Notices</h3><ul class="at-list">${notices.slice().sort((a, b) => (a.date < b.date ? 1 : -1)).map((n) => `<li data-n="${n.id}"><strong>${fmtDate(n.date)} · ${esc(n.title)}</strong>: ${REASONS[n.reason] || n.reason} · <span class="at-tag ${n.status}">${NOTE_ST[n.status] || n.status}</span>${n.doc ? ` · ${n.doc.url ? docLink(n.doc, "Document") : "📎 Document sent"}` : ""}${n.note ? `<br><small>Lecturer: ${esc(n.note)}</small>` : ""}${n.status === "pending" ? ` <button type="button" class="btn ghost small" data-nedit>Edit</button> <button type="button" class="btn ghost small" data-ndel>Withdraw</button>` : ""}</li>`).join("")}</ul></div>` : "");
     }
     host.addEventListener("click", async (e) => {
       const t = e.target;
       if (t.closest("[data-notice]")) return noticeForm(null);
+      if (t.closest("[data-explain]")) return noticeForm(null, t.closest("[data-explain]").dataset.explain);
       if (t.closest("[data-swap]")) return swapForm();
       if (t.closest("[data-secs]")) return sectionsView();
       const sw = t.closest("[data-sw]"), nt = t.closest("[data-n]");
@@ -414,7 +436,8 @@
         const pct = Math.round((l.reduce((s, r) => s + POINTS[r.status], 0) / (2 * l.length)) * 100);
         return `<div class="at-sum"><h3>${label}</h3><div class="at-nums"><span><strong>${pct}%</strong> attendance</span><span>${n.P} present</span><span>${n.L} late</span><span>${n.E} excused</span><span class="${n.A ? "warn" : ""}">${n.A} absent</span></div>
           <div class="adm-scroll"><table class="adm"><thead><tr><th scope="col">Date</th><th scope="col">Session</th><th scope="col">Status</th><th scope="col">Remark</th></tr></thead>
-          <tbody>${l.map((r) => `<tr><td>${fmtDate(r.date)}</td><td>${esc(r.title)}</td><td>${chip(r.status)}</td><td>${esc(r.remark || "")}</td></tr>`).join("")}</tbody></table></div></div>`;
+          <tbody>${l.map((r) => { const nt = notices.find((x) => x.session === r.session);
+            return `<tr><td>${fmtDate(r.date)}</td><td>${esc(r.title)}</td><td>${chip(r.status)}</td><td>${esc(r.remark || "")}${r.status === "A" && !nt ? `${r.remark ? "<br>" : ""}<button type="button" class="btn ghost small" data-explain="${esc(r.session)}">Explain absence</button>` : nt && r.status === "A" ? `<br><small>Notice: ${NOTE_ST[nt.status] || nt.status}</small>` : ""}</td></tr>`; }).join("")}</tbody></table></div></div>`;
       };
       mineEl.innerHTML = block("lecture", "Lectures") + block("lab", "Labs") + `<p class="small-note">Present counts 2 points, Late and Excused 1, Absent 0. Each session you attend also earns 10 XP and helps you collect attendance badges.</p>`;
     }
@@ -444,16 +467,19 @@
     load("moves", db.collection("labMoves").where("semester", "==", SEM), withId);
     load("swaps", db.collection("swaps").where("semester", "==", SEM), withId);
     load("notices", db.collection("notices").where("semester", "==", SEM), withId);
-    unsubs.push(db.collection("meta").doc("uploads").onSnapshot((d) => { L.upUrl = (d.exists && d.data().noticeUrl) || ""; uploadUrl = L.upUrl; if (L.tab === "notices") draw(); }, () => {}));
-    // the address of the lecturer's document-upload Apps Script (Notices tab)
-    host.addEventListener("submit", async (e) => {
-      const f = e.target.closest(".at-upform");
-      if (!f) return;
-      e.preventDefault();
-      const url = f.url.value.trim(), msg = $(".at-upmsg");
-      if (url && !/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)) { msg.textContent = "Paste the web app address from Deploy: it starts with https://script.google.com/ and ends with /exec."; return; }
-      try { await db.collection("meta").doc("uploads").set({ noticeUrl: url, updatedAt: FV.serverTimestamp(), by: A.state.user.email.toLowerCase() }, { merge: true }); msg.textContent = url ? "Saved. Students can now attach their documents." : "Saved. Students are asked to email their documents again."; }
-      catch (ex) { msg.textContent = `Could not save (${ex.code || ex}). If this says permission-denied, publish the latest firebase/firestore.rules.`; }
+    unsubs.push(db.collection("meta").doc("uploads").onSnapshot((d) => { L.up = d.exists ? d.data() : {}; uploadOn = !!L.up.on; if (L.tab === "notices") draw(); }, () => {}));
+    // the document-upload switch (Notices tab), and opening a document that is still in Firestore
+    host.addEventListener("change", async (e) => {
+      if (!e.target.matches("[data-upon]")) return;
+      const on = e.target.checked, msg = $(".at-upmsg");
+      try { await db.collection("meta").doc("uploads").set({ on, updatedAt: FV.serverTimestamp(), by: A.state.user.email.toLowerCase() }, { merge: true }); }
+      catch (ex) { e.target.checked = !on; if (msg) msg.textContent = `Could not save (${ex.code || ex}). If this says permission-denied, publish the latest firebase/firestore.rules.`; }
+    });
+    host.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-upview]");
+      if (!b) return;
+      const win = window.open("", "_blank");
+      openUpload(b.dataset.upview, win).catch((ex) => { if (win) win.close(); say("Could Not Open", esc(ex.code || ex.message || ex)); });
     });
     load("users", db.collection("users"), withId);
     unsubs.push(db.collection("schedule").doc(semSlug).onSnapshot((d) => { L.sched = d.exists ? d.data() : {}; draw(); }, () => {}));
@@ -1044,14 +1070,15 @@
   function drawNotices(body) {
     const order = { pending: 0, approved: 1, rejected: 2 };
     const list = L.notices.slice().sort((a, b) => order[a.status] - order[b.status] || (a.date < b.date ? 1 : -1));
-    body.innerHTML = `<p class="widget-lead">Students tell you before or after a session why they can't attend, with their supporting document${L.upUrl ? ", which goes straight into your Google Drive folder" : ` (by email to ${COORDINATOR} until the upload is set up below)`}. <strong>Approve</strong> marks them Excused; <strong>Reject</strong> leaves them Absent.</p>
-      <details class="at-card at-upset"${L.upUrl ? "" : " open"}><summary><strong>Document upload</strong> · ${L.upUrl ? "on: documents go to your Google Drive folder" : "off: students email their documents"}</summary>
-        <form class="at-row at-upform" novalidate><input class="at-in" name="url" type="url" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(L.upUrl || "")}" aria-label="Document upload address" style="flex:1;min-width:240px"><button class="btn small">Save</button></form>
+    const up = L.up || {}, last = up.lastRun && up.lastRun.toMillis ? up.lastRun.toMillis() : 0;
+    body.innerHTML = `<p class="widget-lead">Students tell you before or after a session (backdated) why they can't attend, with their supporting document${up.on ? "" : ` (by email to ${COORDINATOR} while the upload below is off)`}. <strong>Approve</strong> marks them Excused; <strong>Reject</strong> leaves them Absent.</p>
+      <details class="at-card at-upset"${up.on ? "" : " open"}><summary><strong>Document upload</strong> · ${up.on ? "on" : "off: students email their documents"}${up.on ? ` · ${last ? `your Drive script last ran ${fmtStamp(up.lastRun)}` : "the Drive script hasn't run yet"}` : ""}</summary>
+        <label class="at-late"><input type="checkbox" data-upon${up.on ? " checked" : ""}> Students attach their supporting document to the notice (PDF, JPG or PNG, up to 5 MB)</label>
         <p class="small-note at-upmsg" aria-live="polite"></p>
-        <p class="small-note">Set up once: follow the steps at the top of <a href="apps-script/notices.gs" target="_blank" rel="noopener">apps-script/notices.gs</a> (a Google Apps Script in your account that saves each file into your Drive folder), then paste its web app address here. Leave it empty to go back to email.</p></details>
+        <p class="small-note">You can open each document here at once. Your Google Apps Script then moves it into your Drive folder every 5 minutes and puts the Drive link on the notice. Set it up once with the steps at the top of <a href="apps-script/notices.gs" target="_blank" rel="noopener">apps-script/notices.gs</a> (no deployment needed).</p></details>
       ${!list.length ? `<p class="adm-empty">No absence notices yet.</p>` : list.map((n) => { const s = L.sessions.find((x) => x.id === n.session); return `<div class="at-req" data-nid="${n.id}">
         <p>${profileLink(n.email, n.name)} (${esc(n.matric)}) · <strong>${fmtDate(n.date)} · ${esc(n.title)}</strong>${s ? ` <small>(${s.state === "closed" ? "held" : s.state === "open" ? "open now" : "not yet held"})</small>` : ""}<br>
-        <strong>${REASONS[n.reason] || n.reason}</strong>: ${esc(n.detail)}${n.doc ? `<br>${docLink(n.doc, `View document (${n.doc.name || "file"})`)}` : ""}<br><small>Sent ${fmtStamp(n.at)} · <span class="at-tag ${n.status}">${{ pending: "Waiting", approved: "Approved", rejected: "Not approved" }[n.status]}</span>${n.note ? ` · your note: ${esc(n.note)}` : ""}</small></p>
+        <strong>${REASONS[n.reason] || n.reason}</strong>: ${esc(n.detail)}${n.doc ? `<br>${n.doc.url ? docLink(n.doc, `View document in Drive (${n.doc.name || "file"})`) : n.doc.upload ? `<button type="button" class="btn ghost small" data-upview="${esc(n.doc.upload)}">📎 View document (${esc(n.doc.name || "file")})</button> <small>moving to your Drive</small>` : ""}` : ""}<br><small>Sent ${fmtStamp(n.at)} · <span class="at-tag ${n.status}">${{ pending: "Waiting", approved: "Approved", rejected: "Not approved" }[n.status]}</span>${n.note ? ` · your note: ${esc(n.note)}` : ""}</small></p>
         ${n.status === "pending" ? `<div class="at-row"><input class="at-in at-nnote" maxlength="200" placeholder="Note to the student (optional)" aria-label="Note to ${esc(n.name)}"><button type="button" class="btn small" data-nok>Approve</button><button type="button" class="btn ghost small" data-nno>Reject</button></div>`
           : `<button type="button" class="btn ghost small" data-nre>Change decision</button>`}</div>`; }).join("")}`;
   }
