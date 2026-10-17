@@ -177,6 +177,12 @@ service cloud.firestore {
       allow write: if isLecturer();
     }
 
+    // Where absence-notice documents are sent (the lecturer's Apps Script web app address)
+    match /meta/uploads {
+      allow read: if signedIn();
+      allow write: if isLecturer();
+    }
+
     // Missions: the release switch (anyone signed in reads it), and each station's mission file (the questions):
     // lecturers always; students on the class list or approved, only after the lecturer releases the game.
     match /meta/missions {
