@@ -7,6 +7,50 @@
   const DAY = 86400000;
   const TOTAL_WEEKS = COURSE.weeks.length;
 
+  /* ---------- The browser's Back button ----------
+     A link to a part of the same page scrolls there without adding a step to the history, so Back leaves the page.
+     NMKBack: a form or photo opened inside a page adds a step, so Back closes it (layer); a view inside a page (a tab,
+     one session) adds a step, so Back returns to the view before (view, onView). */
+  document.addEventListener("click", (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = e.target.closest("a[href]");
+    if (!a || a.target === "_blank") return;
+    const u = new URL(a.href, location.href);
+    if (u.origin !== location.origin || u.pathname !== location.pathname || u.search !== location.search || u.hash.length < 2) return;
+    const t = document.getElementById(decodeURIComponent(u.hash.slice(1)));
+    if (!t) return;
+    e.preventDefault();
+    history.replaceState(history.state, "", u.hash);
+    t.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+    if (!t.matches("a, button, input, select, textarea, [tabindex]")) t.setAttribute("tabindex", "-1");
+    t.focus({ preventScroll: true });
+  });
+  window.NMKBack = (() => {
+    const layers = [], views = [];
+    let skip = 0;
+    addEventListener("popstate", (e) => {
+      if (skip) { skip--; return; }               // the step a page removed itself when it closed a form
+      const top = layers.pop();
+      if (top) { top.close(); return; }
+      views.forEach((f) => { try { f(e.state || {}); } catch (err) { /* a page's own problem */ } });
+    });
+    return {
+      // a form or overlay opened: Back calls close(). The page calls closed() when it closes it itself (the step is
+      // removed), or drop() when it turns the step into a view with view(state, true).
+      layer(close) {
+        const l = { close };
+        layers.push(l);
+        history.pushState(Object.assign({}, history.state, { layer: layers.length }), "");
+        return {
+          closed() { const i = layers.indexOf(l); if (i < 0) return; layers.splice(i, 1); skip++; history.back(); },
+          drop() { const i = layers.indexOf(l); if (i >= 0) layers.splice(i, 1); }
+        };
+      },
+      view(state, replace) { history[replace ? "replaceState" : "pushState"](Object.assign({}, state, { view: 1 }), ""); },
+      onView(f) { views.push(f); }
+    };
+  })();
+
   /* ---------- Dates ---------- */
   function parseYMD(s) { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); }
   const START = parseYMD(COURSE.semesterStart);

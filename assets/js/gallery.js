@@ -123,7 +123,9 @@
     };
     img.addEventListener("error", () => { if (!img.dataset.alt) { img.dataset.alt = 1; img.src = thumb2(img.dataset.id, 1600); } });
     const go = (d) => { const n = k + d; if (n >= 0 && n < all.length) { k = n; show(); } };
-    const close = () => { back.remove(); document.body.classList.remove("gl-open"); document.removeEventListener("keydown", key); if (last) last.focus(); };
+    // Back closes the photo (a step in the history while it is open)
+    const step = window.NMKBack ? NMKBack.layer(() => close(true)) : null;
+    const close = (fromBack) => { back.remove(); document.body.classList.remove("gl-open"); document.removeEventListener("keydown", key); if (last) last.focus(); if (step && fromBack !== true) step.closed(); };
     const key = (e) => { if (e.key === "Escape") close(); if (e.key === "ArrowLeft") go(-1); if (e.key === "ArrowRight") go(1); };
     document.addEventListener("keydown", key);
     back.addEventListener("click", (e) => { if (e.target === back || e.target.closest(".gl-x")) close(); if (e.target.closest(".prev")) go(-1); if (e.target.closest(".next")) go(1); });

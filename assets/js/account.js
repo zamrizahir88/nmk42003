@@ -127,12 +127,29 @@
   }
 
   /* ---------- Sign in and out ---------- */
-  async function signIn() {
+  // Google doesn't allow signing in inside the browsers of apps such as WhatsApp, Telegram, Instagram or Facebook
+  const IN_APP = /FBAN|FBAV|FB_IAB|Instagram|Line\/|WhatsApp|Telegram|TikTok|musical_ly|Snapchat|MicroMessenger|; wv\)/i.test(navigator.userAgent || "");
+  async function signIn(again) {
+    if (IN_APP) {
+      const box = modal(`<h2>Open in Chrome or Safari</h2><p>Google sign-in doesn't work inside this app's browser. Open this page in Chrome or Safari: tap the menu (⋮ or ···) and choose <strong>Open in browser</strong>, or copy the link and paste it there.</p>
+        <div class="acc-row"><button type="button" class="btn" data-copy>Copy the link</button><button type="button" class="btn ghost" data-close>Close</button></div>`, false);
+      $("[data-close]", box).addEventListener("click", closeModal);
+      $("[data-copy]", box).addEventListener("click", (e) => { const ok = () => { e.target.textContent = "Copied ✓"; }; if (navigator.clipboard) navigator.clipboard.writeText(location.href).then(ok, () => prompt("Copy this link:", location.href)); else prompt("Copy this link:", location.href); });
+      return;
+    }
     const p = new firebase.auth.GoogleAuthProvider();
     p.setCustomParameters({ prompt: "select_account" });
     try { await auth.signInWithPopup(p); }
     catch (e) {
-      if (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment") await auth.signInWithRedirect(p);
+      if (e.code === "auth/popup-blocked" && !again) {
+        // the browser blocked the sign-in window: one more tap opens it (a fresh tap is allowed to open a window)
+        const box = modal(`<h2>Sign in with Google</h2><p>Your browser stopped the sign-in window. Tap the button to open it.</p>
+          <div class="acc-row"><button type="button" class="btn" data-go>Continue with Google</button><button type="button" class="btn ghost" data-close>Cancel</button></div>`, false);
+        $("[data-close]", box).addEventListener("click", closeModal);
+        $("[data-go]", box).addEventListener("click", () => { closeModal(); signIn(true); });
+      }
+      // last resort: sign in on Google's own page and come back (this leaves Google's pages in the Back history)
+      else if (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment") await auth.signInWithRedirect(p);
       else if (e.code !== "auth/popup-closed-by-user" && e.code !== "auth/cancelled-popup-request") notice("Sign-in didn't work", `Please try again. (${esc(e.code || "unknown error")})`);
     }
   }
@@ -274,7 +291,7 @@
     if (first) first.focus();
   }
   const closeMenu = () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); };
-  btn.addEventListener("click", () => { if (!state.user) signIn(); else if (menu.hidden) openMenu(); else closeMenu(); });
+  btn.addEventListener("click", () => { if (!state.user) signIn(false); else if (menu.hidden) openMenu(); else closeMenu(); });
   menu.addEventListener("click", (e) => { if (e.target.closest("[data-out]")) { closeMenu(); signOut(); } });
   document.addEventListener("click", (e) => { if (!menu.hidden && !menu.contains(e.target) && !btn.contains(e.target)) closeMenu(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !menu.hidden) { closeMenu(); btn.focus(); } });

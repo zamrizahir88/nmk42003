@@ -48,9 +48,11 @@
   const fmtStamp = (t) => { const ms = tsMs(t); if (!ms) return ""; const d = new Date(ms + 8 * 3600000); return `${fmtDate(d.toISOString().slice(0, 10))}, ${fmtTime(d.toISOString().slice(11, 16))}`; };
 
   /* ---------- forms open inside the page, at the top of the current view ---------- */
-  let panelEl = null;
+  let panelEl = null, panelBack = null;
   function panel(html) {
-    closePanel();
+    // one form at a time: a new one takes the place (and the Back step) of the one open
+    if (panelEl) { panelEl.remove(); panelEl = null; }
+    else if (window.NMKBack) panelBack = NMKBack.layer(() => { panelBack = null; closePanel(); });
     const at = $(".at-body") || host;
     panelEl = document.createElement("div");
     panelEl.className = "at-panel";
@@ -63,7 +65,19 @@
     if (f) f.focus({ preventScroll: true });
     return panelEl;
   }
-  function closePanel() { if (panelEl) { panelEl.remove(); panelEl = null; } }
+  // keep: the form's Back step becomes the next view's step (no going back in the history)
+  function closePanel(keep) {
+    if (panelEl) { panelEl.remove(); panelEl = null; }
+    if (panelBack) { const b = panelBack; panelBack = null; if (keep) b.drop(); else b.closed(); }
+  }
+  // go to another tab or session: a new step in the history, so Back comes back here
+  function goView(tab, sid) {
+    const had = !!panelBack;
+    closePanel(true);
+    L.tab = tab; L.sid = sid;
+    if (window.NMKBack) NMKBack.view({ tab, sid }, had);
+    draw();
+  }
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && panelEl) closePanel(); });
   const say = (title, text) => panel(`<h3>${title}</h3><p>${text}</p><div class="acc-row"><button type="button" class="btn" data-x>OK</button></div>`);
   const sessionLine = (s) => `${fmtDate(s.date)}, ${fmtTime(s.start)} to ${fmtTime(s.end)}${s.venue ? ` · ${esc(s.venue)}` : ""}`;
@@ -384,7 +398,17 @@
      ===================================================================== */
   function lecturer() {
     host.innerHTML = `<div class="at-tabs adm-tabs" role="group" aria-label="Attendance view"></div><div class="at-body"></div><div class="at-savebar" hidden></div>`;
-    const load = (name, q, map) => unsubs.push(q.onSnapshot((s) => { L[name] = s.docs.map(map); if (name === "roster") syncDirectory(); if (name === "roster" || name === "users") autoApprove(); if (name === "sessions") addSlots(); draw(); },
+    // the tab and session shown before (after Back from a profile), and Back between them
+    const hs = history.state || {};
+    if (hs.view) { L.tab = hs.tab || "sessions"; L.sid = hs.sid || null; }
+    if (window.NMKBack) {
+      NMKBack.view({ tab: L.tab, sid: L.sid }, true);
+      NMKBack.onView((st) => {
+        if (!leaveOk()) { NMKBack.view({ tab: L.tab, sid: L.sid }); return; }
+        closePanel(true); L.tab = st.tab || "sessions"; L.sid = st.sid || null; draw();
+      });
+    }
+    const load = (name, q, map) => unsubs.push(q.onSnapshot((s) => { L[name] = s.docs.map(map); if (name === "roster") syncDirectory(); if (name === "roster" || name === "users") autoApprove(); if (name === "sessions") { addSlots(); L.sessLoaded = true; } draw(); },
       (e) => { console.warn("NMK attendance:", name, e.code || e); $(".at-body").innerHTML = `<p class="small-note">Could not load ${name} (${esc(e.code || e)}). If this says permission-denied, publish the latest firebase/firestore.rules in the Firebase console.</p>`; }));
     const withId = (d) => Object.assign({ id: d.id }, d.data());
     load("sessions", db.collection("sessions").where("semester", "==", SEM), withId);
@@ -460,7 +484,7 @@
       ["notices", `Notices${np ? ` (${np})` : ""}`], ["report", "Report"], ["schedule", "Schedule"]];
     tabs.innerHTML = T.map(([v, l]) => `<button type="button" class="chip-btn${/\(\d+\)$/.test(l) && v !== "roster" ? " has" : ""}" data-tab="${v}" aria-pressed="${L.tab === v && !L.sid}">${l}</button>`).join("");
     const keepPanel = panelEl && body.contains(panelEl) ? panelEl : null;
-    if (L.sid) { const s = L.sessions.find((x) => x.id === L.sid); if (s) drawSession(body, s); else L.sid = null; }
+    if (L.sid) { const s = L.sessions.find((x) => x.id === L.sid); if (s) drawSession(body, s); else if (L.sessLoaded) L.sid = null; else body.innerHTML = `<p class="small-note">Loading…</p>`; }
     if (!L.sid) ({ sessions: drawSessions, roster: drawRoster, swaps: drawSwaps, notices: drawNotices, report: drawReport, schedule: drawSchedule })[L.tab](body);
     if (keepPanel) body.prepend(keepPanel);
     paintSaveBar();
@@ -1230,7 +1254,7 @@
   /* ---------- clicks and changes (lecturer) ---------- */
   function onClick(e) {
     const t = e.target, b = (s) => t.closest(s);
-    if (b("[data-tab]")) { if (!leaveOk()) return; closePanel(); L.tab = b("[data-tab]").dataset.tab; L.sid = null; draw(); return; }
+    if (b("[data-tab]")) { if (!leaveOk()) return; goView(b("[data-tab]").dataset.tab, null); return; }
     if (b("[data-filter]")) { L.filter = b("[data-filter]").dataset.filter; draw(); return; }
     if (b("[data-delpicked]")) return deletePicked();
     if (b("[data-unpick]")) { L.picked.clear(); draw(); return; }
@@ -1252,8 +1276,8 @@
     if (b("[data-nre]")) { const id = b("[data-nid]").dataset.nid; db.collection("notices").doc(id).update({ status: "pending" }).catch((ex) => say("Could Not Save", esc(ex.code || ex))); return; }
     if (b("[data-save]")) return saveEdits();
     if (b("[data-undo]")) { editsFor(L.sid).forEach(([k]) => delete L.edits[k]); draw(); return; }
-    if (b("[data-sid]")) { if (!leaveOk()) return; closePanel(); L.sid = b("[data-sid]").dataset.sid; draw(); window.scrollTo(0, 0); return; }
-    if (b("[data-back]")) { if (!leaveOk()) return; closePanel(); L.sid = null; draw(); return; }
+    if (b("[data-sid]")) { if (!leaveOk()) return; goView(L.tab, b("[data-sid]").dataset.sid); window.scrollTo(0, 0); return; }
+    if (b("[data-back]")) { if (!leaveOk()) return; goView(L.tab, null); return; }
     const s = L.sessions.find((x) => x.id === L.sid);
     if (!s) return;
     if (b("[data-edit]")) return sessionForm(s);

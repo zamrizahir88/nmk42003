@@ -170,10 +170,17 @@
     a.click();
   }
 
+  // Back returns to the dashboard view before (and a view survives a visit to a profile)
+  if (window.NMKBack) {
+    if (history.state && history.state.view && history.state.tab) tab = history.state.tab;
+    NMKBack.view({ tab }, true);
+    NMKBack.onView((st) => { tab = st.tab || "overview"; draw(); });
+  }
+
   host.addEventListener("click", (e) => {
     const b = e.target.closest("button");
     if (!b) return;
-    if (b.dataset.tab) { tab = b.dataset.tab; draw(); }
+    if (b.dataset.tab) { tab = b.dataset.tab; if (window.NMKBack) NMKBack.view({ tab }); draw(); }
     else if (b.dataset.detail) location.href = `profile.html?u=${encodeURIComponent(b.dataset.detail)}`;
     else if (b.dataset.ok) setStatus(b.dataset.ok, "approved");
     else if (b.dataset.no && confirm("Remove this student's access?")) setStatus(b.dataset.no, "rejected");
