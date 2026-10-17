@@ -1,4 +1,4 @@
-/* NMK42003 Missions: a mission game with exam-style questions, one world per chapter.
+/* NMK42003 Missions: a mission game for practising each chapter, one world per chapter.
    The questions are not in this file. A lecturer uploads each world's mission file on the dashboard (admin.html); it is
    kept in Firestore missions/{world N} and only lecturers, or signed-in students after the lecturer releases the game
    (meta/missions.released), can read it. This file is the engine: the map, My Character, the battle, Volt the helper
@@ -219,8 +219,8 @@
       <div class="ms-list">${w.missions.map((m, i) => {
         const open = missionOpen(w, i), r = b[m.id];
         return `<div class="ms-mis${m.boss ? " boss" : ""}${open ? "" : " locked"}"><svg viewBox="-110 -165 220 175" class="ms-mon" aria-hidden="true">${MON[m.monster] || MON.slime}</svg>
-          <div><span class="small-note">${m.boss ? `Boss · exam-length question (${m.marks || 30} marks)` : `Mission ${i + 1}`} · ${esc(m.monsterName)}</span><strong>${esc(m.title)}</strong>
-            <span class="small-note">${r ? `${stars(r.s)} · best ${r.c} coins${r.boss ? ` · mock score ${r.mk}/${r.of}` : ""}` : `${m.steps.length} steps`}</span></div>
+          <div><span class="small-note">${m.boss ? `Boss · ${m.marks || 30} marks` : `Mission ${i + 1}`} · ${esc(m.monsterName)}</span><strong>${esc(m.title)}</strong>
+            <span class="small-note">${r ? `${stars(r.s)} · best ${r.c} coins${r.boss ? ` · score ${r.mk}/${r.of} marks` : ""}` : `${m.steps.length} steps`}</span></div>
           ${open ? `<button type="button" class="btn${r ? " ghost" : ""}" data-play="${i}">${r ? "Play again" : "Play"}</button>` : `<span class="small-note">🔒 ${worldOpen(w) ? "Finish the mission before" : `Opens ${fmtDay(opensOn(w).iso)}`}</span>`}</div>`;
       }).join("")}</div>`);
   }
@@ -368,7 +368,7 @@
         panel.innerHTML = `<div class="ms-win"><p class="ms-step" style="font-size:1.2rem">${m.boss ? "Boss defeated!" : "Mission complete!"} ${esc(m.monsterName)} is fixed.</p>
           <div class="ms-big">${stars(st)}</div>
           <p>You earned <strong>${total} coins</strong>${bonus ? ` (with a ${bonus}-coin bonus)` : ""}. ${firstTry} of ${steps.length} steps right on the first try. ${nb}</p>
-          ${m.boss ? `<p class="ms-mock">Mock exam score: <strong>${mk} / ${m.marks || 30}</strong> <span class="small-note">(full marks for a first-try step, half after one hint, a quarter after that)</span></p>` : ""}</div>
+          ${m.boss ? `<p class="ms-mock">Boss score: <strong>${mk} / ${m.marks || 30}</strong> <span class="small-note">(full marks for a first-try step, half after one hint, a quarter after that)</span></p>` : ""}</div>
           <div class="ms-working"><p><strong>Full working</strong> (compare with your paper)</p>${steps.map((s, k) => `<p><strong>${esc(val(s.q, v))}</strong><br>${s.choice ? `Answer: ${esc(val(s.choice, v)[s.correct])}` : `${esc(s.formula)}<br>${esc(s.sub(v))} = <strong>${esc(fmtAns(s, v))}</strong>`}${got[k] && !s.choice ? ` <span class="small-note">(you: ${esc(got[k])})</span>` : ""}</p>`).join("")}</div>
           <div class="ms-row ms-center"><button type="button" class="btn" data-again>Play again (new numbers)</button><button type="button" class="btn ghost" data-back-world>Back to the station</button></div>`;
         $("[data-again]", panel).addEventListener("click", () => { SFX.click(); battle(w, mi); });
