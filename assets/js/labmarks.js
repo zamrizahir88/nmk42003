@@ -45,15 +45,19 @@
   const totalOf = (rec) => [1, 2, 3, 4, 5].reduce((s, n) => s + (labMarks(rec, n).total || 0), 0);
   const maxTotal = () => [1, 2, 3, 4].reduce((s, n) => s + (W[n].d + W[n].r), 0) + (W[5].t || 0);
 
-  // which students do lab n in a section: their own section, or where a swap or move put them for that lab
+  // which students do lab n in a section: their own section, or where a swap or move put them for the lab's LAST
+  // week (a lab over two weeks, like Lab 1 Parts 1 and 2, is assessed in its last week)
   const labNo = (s) => +((String(s.title || "").match(/^Lab (\d+)/) || [])[1] || 0);
   function people(n) {
-    const L = C.L, ses = L.sessions.filter((s) => s.kind === "lab" && labNo(s) === n), slots = [...new Set(ses.map(C.slotOf).filter(Boolean))];
+    const L = C.L, ses = L.sessions.filter((s) => s.kind === "lab" && labNo(s) === n);
+    const first = {}; ses.forEach((s) => { const k = C.slotOf(s); if (k && (!first[k] || s.date < first[k])) first[k] = s.date; });
+    const lastSlot = Object.keys(first).sort((a, b) => (first[a] < first[b] ? -1 : 1)).pop();
     return L.roster.filter((r) => r.status === "active").map((r) => {
-      const mv = slots.map((k) => C.moveOf(k, r.id)).filter(Boolean).pop();
+      const mv = lastSlot ? C.moveOf(lastSlot, r.id) : null;
       const sec = mv ? mv.section : r.section, grp = mv ? mv.group || r.group : r.group;
-      const att = ses.filter((s) => s.section === sec).sort((a, b) => (a.date < b.date ? -1 : 1)).map((s) => ({ s, rec: C.recOf(s.id, r.id) }));
-      return { r, sec, grp, att, moved: !!mv };
+      // attendance of each week of the lab, in the section the student was in that week
+      const att = Object.keys(first).sort((a, b) => (first[a] < first[b] ? -1 : 1)).map((k) => { const m = C.moveOf(k, r.id), x = ses.find((s) => C.slotOf(s) === k && s.section === (m ? m.section : r.section)); return x ? { s: x, rec: C.recOf(x.id, r.id) } : null; }).filter(Boolean);
+      return { r, sec, grp, att, moved: mv ? r.section : null };
     }).sort((a, b) => ((a.sec || "z") + String(a.grp || 0).padStart(2, "0") + a.r.name < (b.sec || "z") + String(b.grp || 0).padStart(2, "0") + b.r.name ? -1 : 1));
   }
   const docId = (email) => `${C.semSlug}_${email}`;
@@ -100,7 +104,7 @@
       const key = `${p.sec}|${p.grp}`;
       if (key !== g) { g = key; out += `<h4 class="lm-grp">${p.sec ? C.SECTION[p.sec].replace(" lab", "") : "No section"} · Group ${p.grp || "–"}</h4>`; }
       const x = (M[p.r.id] || {})[`l${n}`] || {}, lm = labMarks(M[p.r.id], n), id = esc(p.r.id);
-      const who = `<div class="lm-who">${C.profileLink(p.r.id, p.r.name)}<small>${esc(p.r.matric)}${p.moved ? " · swapped in" : ""} · ${attLine(p)}</small></div>`;
+      const who = `<div class="lm-who">${C.profileLink(p.r.id, p.r.name)}<small>${esc(p.r.matric)}${p.moved ? ` · swapped in from ${p.moved ? C.SECTION[p.moved].replace(" lab", "") : "another section"}` : ""} · ${attLine(p)}</small></div>`;
       if (n === 5) {
         out += `<div class="lm-row" data-em="${id}">${who}<label class="lm-f">Total <input class="at-in lm-in" data-f="t" data-max="${W[5].t}" inputmode="decimal" value="${x.t ?? ""}"> / ${W[5].t}</label><span class="lm-ok"></span></div>`;
       } else if (st.mode === "demo") {
