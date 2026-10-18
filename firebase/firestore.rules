@@ -207,6 +207,14 @@ service cloud.firestore {
       allow write: if isLecturer();
     }
 
+    // Lab marks (demo and report of each lab) and their weights: lecturers only. Students never read them.
+    match /labmarks/{id} {
+      allow read, write: if isLecturer();
+    }
+    match /meta/labmarks {
+      allow read, write: if isLecturer();
+    }
+
     // The lecturer's changes to the public timetable: everyone reads them, lecturers write them.
     match /schedule/{id} {
       allow read: if true;

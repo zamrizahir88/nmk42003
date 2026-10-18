@@ -541,15 +541,15 @@
     if (!tabs || !body) return;
     // don't redraw under the lecturer's fingers while they type: redraw when they leave the box
     const ae = document.activeElement;
-    if (ae && host.contains(ae) && ae.matches(".at-rm, .at-grp, .at-panel input, .at-panel textarea, .at-panel select")) { L.pending = true; return; }
+    if (ae && host.contains(ae) && ae.matches(".at-rm, .at-grp, .at-panel input, .at-panel textarea, .at-panel select, .lm-in, .lm-q, .lm-wf input")) { L.pending = true; return; }
     L.pending = false;
     const pend = (k) => k.filter((x) => x.status === "accepted").length, np = L.notices.filter((x) => x.status === "pending").length;
     const T = [["sessions", "Sessions"], ["roster", `Class List (${L.roster.filter((r) => r.status === "active").length})`], ["swaps", `Swaps${pend(L.swaps) ? ` (${pend(L.swaps)})` : ""}`],
-      ["notices", `Notices${np ? ` (${np})` : ""}`], ["report", "Report"], ["schedule", "Schedule"]];
+      ["notices", `Notices${np ? ` (${np})` : ""}`], ["report", "Report"], ["marks", "Lab Marks"], ["schedule", "Schedule"]];
     tabs.innerHTML = T.map(([v, l]) => `<button type="button" class="chip-btn${/\(\d+\)$/.test(l) && v !== "roster" ? " has" : ""}" data-tab="${v}" aria-pressed="${L.tab === v && !L.sid}">${l}</button>`).join("");
     const keepPanel = panelEl && body.contains(panelEl) ? panelEl : null;
     if (L.sid) { const s = L.sessions.find((x) => x.id === L.sid); if (s) drawSession(body, s); else if (L.sessLoaded) L.sid = null; else body.innerHTML = `<p class="small-note">Loading…</p>`; }
-    if (!L.sid) ({ sessions: drawSessions, roster: drawRoster, swaps: drawSwaps, notices: drawNotices, report: drawReport, schedule: drawSchedule })[L.tab](body);
+    if (!L.sid) ({ sessions: drawSessions, roster: drawRoster, swaps: drawSwaps, notices: drawNotices, report: drawReport, schedule: drawSchedule, marks: drawMarks })[L.tab](body);
     if (keepPanel) body.prepend(keepPanel);
     paintSaveBar();
     if (L.typing) { const q = $("[data-q]"); if (q) { q.focus(); q.setSelectionRange(L.q.length, L.q.length); } L.typing = false; }
@@ -1243,6 +1243,11 @@
       return { r, cells, n, pct: tot ? Math.round((pts / (2 * tot)) * 100) : null, absL: abs("lecture"), absB: abs("lab") };
     });
     return { ses, rows };
+  }
+  // Lab Marks (lecturers only): the marking itself is in labmarks.js
+  function drawMarks(body) {
+    if (!window.NMKLabMarks) { body.innerHTML = `<p class="small-note">Lab Marks didn't load. Reload the page.</p>`; return; }
+    NMKLabMarks.draw(body, { L, db, FV, A, SEM, semSlug, esc, SECTION, fmtDate, slotOf, moveOf, recOf, profileLink });
   }
   function drawReport(body) {
     const { ses, rows } = reportData();
