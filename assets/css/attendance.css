@@ -217,3 +217,24 @@ table.at-ses tr.picked td { background: color-mix(in srgb, var(--danger) 8%, tra
 .lm-wgrid { display: grid; grid-template-columns: auto auto auto; gap: 6px 12px; align-items: center; max-width: 420px; margin: 8px 0; }
 .lm-wgrid .at-in { width: 70px; }
 @media (max-width: 720px) { .lm-row, .lm-rep { grid-template-columns: 1fr 1fr; } .lm-who { grid-column: 1 / -1; } .lm-bands { grid-column: 1 / -1; } }
+
+/* the one-screen swap forms */
+.at-q { font-weight: 600; margin: 14px 0 6px; }
+.at-labs { display: flex; flex-wrap: wrap; gap: 8px; }
+.at-labc { display: grid; gap: 2px; text-align: left; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 8px 12px; cursor: pointer; min-width: 150px; }
+.at-labc small { color: var(--ink-3); }
+.at-labc[aria-pressed="true"] { border: 2px solid var(--teal); background: var(--teal-soft); }
+.at-sq { max-width: 320px; margin: 0 0 8px; }
+.at-cands { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.at-cg { border: 1px solid var(--rule); border-radius: var(--r-md); padding: 6px 10px; background: var(--surface); }
+.at-cg h4 { margin: 2px 0 6px; font-size: .9rem; }
+.at-cg h4 small { color: var(--ink-3); font-weight: 400; }
+.at-cand { display: block; width: 100%; text-align: left; font: inherit; font-size: .92rem; color: var(--ink); background: none; border: 1px solid transparent; border-radius: 8px; padding: 6px 8px; cursor: pointer; }
+.at-cand:hover { background: var(--grid); }
+.at-cand small { color: var(--ink-3); }
+.at-cand[aria-pressed="true"] { border-color: var(--teal); background: var(--teal-soft); font-weight: 600; }
+.at-sumc { background: var(--teal-soft); border-radius: 8px; padding: 8px 12px; margin: 8px 0 0; }
+.at-card.at-sumc { border-color: var(--teal); }
+.at-notebox { margin: 12px 0 0; }
+.at-notebox summary { cursor: pointer; color: var(--teal); font-size: .92rem; }
+.at-notebox .at-in { width: 100%; margin-top: 6px; }

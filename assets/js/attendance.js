@@ -173,7 +173,7 @@
      ===================================================================== */
   function student(email) {
     host.innerHTML = `<div class="at-body"><h2 class="h3">Mark Your Attendance</h2><div class="at-open" aria-live="polite"><p class="small-note">Looking for open sessions…</p></div>
-      <div class="at-actions"><button type="button" class="btn ghost" data-notice>Tell the lecturer I can't attend</button><button type="button" class="btn ghost" data-swap>Request a lab swap</button><button type="button" class="btn ghost" data-secs>Lab sections and groups</button>
+      <div class="at-actions"><button type="button" class="btn ghost" data-notice>Tell the lecturer I can't attend</button><button type="button" class="btn ghost" data-swap>Swap my lab</button>
         <a class="btn ghost" href="profile.html">My profile</a></div>
       <div class="at-reqs"></div>
       <h2 class="h3 at-gap">My Attendance</h2><div class="at-mine"><p class="small-note">Loading…</p></div></div>`;
@@ -196,7 +196,7 @@
     unsubs.push(db.collection("sessions").where("semester", "==", SEM).onSnapshot((q) => {
       all = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).sort((a, b) => (a.date + a.start < b.date + b.start ? -1 : 1));
       open = all.filter((s) => s.state === "open");
-      paintOpen();
+      paintOpen(); paintReqs();
     }, () => { openEl.innerHTML = `<p class="small-note">Could not check for open sessions. Reload the page to try again.</p>`; }));
     unsubs.push(db.collection("attendance").where("email", "==", email).onSnapshot((q) => {
       recs = {};
@@ -308,67 +308,64 @@
     // has this lab started for either of these sections (opened, or its day has passed)?
     const startedFor = (slot, secs) => all.some((s) => slotOf(s) === slot && secs.includes(s.section) && (s.state !== "planned" || s.date < todayIso()));
     const swapSlots = (x) => (x.slots && x.slots.length ? x.slots : [x.slot]);
+    const when = (l, sec) => { const x = l && l.dates.find((y) => y.section === sec); return x ? `${fmtDate(x.date)}, ${fmtTime(x.start)}` : "date not set yet"; };
+    const secName = (k) => (SECTION[k] || "another section").replace(" lab", "");
+    // one screen: the lab, the classmate (listed by section and group with their date), and how long
     function swapForm(pre) {
-      const all2 = labsAhead(), list = all2.filter((l) => !l.held);
+      const all2 = labsAhead(), list = all2.filter((l) => !l.held && !startedFor(l.slot, [me.section]));
       if (!me.section) { say("No Lab Section Yet", "You don't have a lab section yet, so there is nothing to swap. Ask your lecturer."); return; }
       if (!list.length) { say("No Labs to Swap", "There are no lab sessions still to come."); return; }
-      let partner = pre || null;
       const others = mates.filter((x) => x.m !== String(me.matric) && x.s && x.s !== me.section);
-      const p = panel(`<h3>Request a Lab Swap</h3>
-        <p>Swap places with one classmate in another section. Agree with them first. When they accept, the swap is done: you each take the other's section and group, and your lecturer is told. Swapping as a pair? Each of you sends your own request to one student of the other pair.</p>
-        <form class="at-dform" novalidate>
-          <fieldset class="at-fs"><legend>How long</legend>
-            <label><input type="radio" name="term" value="one" checked> One lab only</label>
-            <label><input type="radio" name="term" value="all"> Every lab to the end of the semester</label></fieldset>
-          <label><span class="at-lablbl">Which lab</span><select name="slot">${list.map((l) => { const mine = l.dates.find((s) => s.section === me.section); return `<option value="${l.slot}">${esc(l.name)}${mine ? ` (yours: ${fmtDate(mine.date)})` : ""}</option>`; }).join("")}</select></label>
-          <div class="at-pickbox"></div>
-          <label>Note to the lecturer (optional)<input name="note" maxlength="200" placeholder="e.g. Clinic appointment on Monday"></label>
-          <p class="at-err" aria-live="polite"></p>
-          <div class="acc-row"><button type="submit" class="btn">Send the request</button><button type="button" class="btn ghost" data-x>Cancel</button></div></form>`);
-      const f = $(".at-dform", p);
-      f.addEventListener("change", () => { $(".at-lablbl", p).textContent = f.term.value === "all" ? "Starting from" : "Which lab"; });
-      if (!others.length) $(".at-pickbox", p).innerHTML = `<p class="small-note">The classmate list isn't ready yet. Try again later.</p>`;
-      else {
-        picker($(".at-pickbox", p), others, (x) => { partner = x; }, "Swap with");
-        if (pre) $(".at-chosen", p).innerHTML = `Chosen: <strong>${esc(pre.n)}</strong> (${esc(pre.m)}, ${SECTION[pre.s]})`;
-      }
-      f.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const v = Object.fromEntries(new FormData(f).entries()), lab = list.find((l) => l.slot === v.slot), err = $(".at-err", p), term = v.term === "all";
-        if (!partner) { err.textContent = "Choose the classmate you are swapping with."; return; }
-        if (startedFor(v.slot, [me.section, partner.s])) { err.textContent = `${lab.name} has already started for one of you. Choose a later lab.`; return; }
-        const slots = term ? all2.slice(all2.indexOf(lab)).map((l) => l.slot) : [v.slot];
-        const busy = sent.filter((x) => ["requested", "accepted", "approved"].includes(x.status) && swapSlots(x).some((k) => slots.includes(k)));
-        if (busy.length || slots.some((k) => moves[k])) { err.textContent = "You already have a swap for one of these labs. Cancel it first in the list below, or ask your lecturer."; return; }
-        try {
-          await db.collection("swaps").add({ semester: SEM, slot: v.slot, slots, term, startDate: lab.date, labTitle: term ? `Every lab from ${lab.name}` : lab.name, fromEmail: email, fromMatric: String(me.matric), fromName: me.name, fromSection: me.section, fromGroup: me.group || 0,
-            toMatric: partner.m, toName: partner.n, toSection: partner.s, toGroup: partner.g || 0, note: (v.note || "").trim().slice(0, 200), status: "requested", createdAt: FV.serverTimestamp(), updatedAt: FV.serverTimestamp() });
-          closePanel();
-        } catch (ex) { err.textContent = `Could not send (${ex.code || ex}). Please try again.`; }
-      });
-    }
-    // every student's lab section and group (the class list), to find who to swap with
-    function sectionsView() {
-      if (!mates.length) { say("Lab Sections and Groups", "The list isn't ready yet. Try again later."); return; }
-      let sec = me.section || "mon", q = "";
-      const p = panel(`<h3>Lab Sections and Groups</h3><p class="small-note">From the class list. A swap for a lab changes only that lab, so it isn't shown here.</p>
-        <div class="at-secbar" role="group" aria-label="Lab section">${["mon", "wed", "thu"].map((k) => `<button type="button" class="btn ghost small" data-sec="${k}">${SEC_SHORT[k]}${k === me.section ? " (yours)" : ""}</button>`).join("")}</div>
-        <input class="at-in" type="search" placeholder="Find a name or matric number" aria-label="Find a classmate">
-        <div class="at-secs"></div><div class="acc-row"><button type="button" class="btn ghost" data-x>Close</button></div>`);
-      const draw = () => {
-        $$("[data-sec]", p).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.sec === sec)));
-        const list = mates.filter((x) => (q ? `${x.n} ${x.m}`.toLowerCase().includes(q) : x.s === sec)).sort((a, b) => (a.s + String(a.g).padStart(2, "0") + a.n < b.s + String(b.g).padStart(2, "0") + b.n ? -1 : 1));
-        const groups = {};
-        list.forEach((x) => { const k = `${x.s}|${x.g || 0}`; (groups[k] = groups[k] || []).push(x); });
-        $(".at-secs", p).innerHTML = Object.entries(groups).map(([k, xs]) => { const [s2, g] = k.split("|"); return `<div class="at-secg"><h4>${SEC_SHORT[s2] || "No section"}, group ${+g || "–"}</h4><ul>${xs.map((x) => `<li><span><strong>${esc(x.n)}</strong> <small>${esc(x.m)}</small></span>${x.s && x.s !== me.section && x.m !== String(me.matric) ? `<button type="button" class="btn ghost small" data-ask="${esc(x.m)}">Ask to swap</button>` : x.m === String(me.matric) ? `<small class="at-you">you</small>` : ""}</li>`).join("")}</ul></div>`; }).join("") || `<p class="small-note">No match.</p>`;
+      if (!others.length) { say("Swap My Lab", "The classmate list isn't ready yet. Try again later."); return; }
+      let lab = list[0], partner = pre || null, q = "";
+      const p = panel(`<h3>Swap My Lab</h3>
+        <p class="small-note">Agree with your classmate first. When they accept, the swap is done and your lecturer is told. Swapping as a pair? Each of you sends your own request.</p>
+        <p class="at-q">1. Which lab?</p>
+        <div class="at-labs" role="group" aria-label="Lab">${list.map((l) => `<button type="button" class="at-labc" data-lab="${l.slot}"><strong>${esc(l.name)}</strong><small>Yours: ${when(l, me.section)}</small></button>`).join("")}</div>
+        <p class="at-q">2. Swap with which classmate?</p>
+        <input class="at-in at-sq" type="search" autocomplete="off" placeholder="Find a name or matric number" aria-label="Find a classmate">
+        <div class="at-cands"></div>
+        <div class="at-sum2" aria-live="polite"></div>
+        <p class="at-q">3. Do you want to switch for all labs for the entire semester?</p>
+        <div class="at-fs" role="radiogroup" aria-label="How long">
+          <label><input type="radio" name="term" value="one" checked> No. Swap this lab only.</label>
+          <label><input type="radio" name="term" value="all"> Yes. Swap this lab and every lab after it, until the end of the semester.</label></div>
+        <details class="at-notebox"><summary>Add a note (optional)</summary><input class="at-in" name="note" maxlength="200" placeholder="e.g. Clinic appointment on Monday" aria-label="Note to the lecturer"></details>
+        <p class="at-err" aria-live="polite"></p>
+        <div class="acc-row"><button type="button" class="btn" data-send>Send the request</button><button type="button" class="btn ghost" data-x>Cancel</button></div>`);
+      const term = () => ($("input[name=term]:checked", p) || {}).value === "all";
+      const paint = () => {
+        $$("[data-lab]", p).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lab === lab.slot)));
+        const ql = q.trim().toLowerCase(), groups = {};
+        others.filter((x) => !ql || `${x.n} ${x.m}`.toLowerCase().includes(ql))
+          .sort((a, b) => (a.s + String(a.g || 0).padStart(2, "0") + a.n < b.s + String(b.g || 0).padStart(2, "0") + b.n ? -1 : 1))
+          .forEach((x) => { const k = `${x.s}|${x.g || 0}`; (groups[k] = groups[k] || []).push(x); });
+        $(".at-cands", p).innerHTML = Object.entries(groups).map(([k, xs]) => { const [sec, g] = k.split("|");
+          return `<div class="at-cg"><h4>${secName(sec)} · Group ${+g || "–"} <small>${when(lab, sec)}</small></h4>${xs.map((x) => `<button type="button" class="at-cand" data-m="${esc(x.m)}" aria-pressed="${!!partner && partner.m === x.m}">${esc(x.n)} <small>${esc(x.m)}</small></button>`).join("")}</div>`; }).join("") || `<p class="small-note">No match.</p>`;
+        $(".at-sum2", p).innerHTML = partner ? `<div class="at-card at-sumc"><strong>You go to ${secName(partner.s)}, ${when(lab, partner.s)} (Group ${partner.g || "–"}).</strong><br>${esc(partner.n)} comes to your ${secName(me.section)}, ${when(lab, me.section)} (Group ${me.group || "–"}).${term() ? "<br>The same for every lab after this one, until the end of the semester." : ""}</div>` : "";
       };
       p.addEventListener("click", (e) => {
-        const b = e.target.closest("[data-sec]"), a = e.target.closest("[data-ask]");
-        if (b) { sec = b.dataset.sec; q = ""; $("input", p).value = ""; draw(); }
-        if (a) swapForm(mates.find((x) => x.m === a.dataset.ask));
+        const b = e.target.closest("[data-lab]"), c = e.target.closest("[data-m]");
+        if (b) { lab = list.find((l) => l.slot === b.dataset.lab); paint(); }
+        if (c) { partner = others.find((x) => x.m === c.dataset.m); $(".at-err", p).textContent = ""; paint(); }
       });
-      $("input", p).addEventListener("input", (e) => { q = e.target.value.trim().toLowerCase(); draw(); });
-      draw();
+      $(".at-sq", p).addEventListener("input", (e) => { q = e.target.value; paint(); });
+      $$("input[name=term]", p).forEach((r) => r.addEventListener("change", paint));
+      $("[data-send]", p).addEventListener("click", async (e) => {
+        const err = $(".at-err", p), all = term();
+        if (!partner) { err.textContent = "Choose the classmate you are swapping with."; return; }
+        if (startedFor(lab.slot, [me.section, partner.s])) { err.textContent = `${lab.name} has already started for one of you. Choose a later lab.`; return; }
+        const slots = all ? all2.slice(all2.indexOf(lab)).map((l) => l.slot) : [lab.slot];
+        const busy = sent.filter((x) => ["requested", "accepted", "approved"].includes(x.status) && swapSlots(x).some((k) => slots.includes(k)));
+        if (busy.length || slots.some((k) => moves[k])) { err.textContent = "You already have a swap for one of these labs. Cancel it first in the list below, or ask your lecturer."; return; }
+        e.target.disabled = true;
+        try {
+          await db.collection("swaps").add({ semester: SEM, slot: lab.slot, slots, term: all, startDate: lab.date, labTitle: all ? `Every lab from ${lab.name}` : lab.name, fromEmail: email, fromMatric: String(me.matric), fromName: me.name, fromSection: me.section, fromGroup: me.group || 0,
+            toMatric: partner.m, toName: partner.n, toSection: partner.s, toGroup: partner.g || 0, note: ($("input[name=note]", p).value || "").trim().slice(0, 200), status: "requested", createdAt: FV.serverTimestamp(), updatedAt: FV.serverTimestamp() });
+          closePanel();
+        } catch (ex) { e.target.disabled = false; err.textContent = `Could not send (${ex.code || ex}). Please try again.`; }
+      });
+      paint();
     }
     const SWAP_ST = { requested: "Waiting for your classmate", accepted: "Waiting for the lecturer", approved: "Swapped", declined: "Declined by your classmate", rejected: "Not approved", cancelled: "Cancelled", ended: "Ended by the lecturer" };
     const NOTE_ST = { pending: "Waiting for approval", approved: "Approved: marked Excused", rejected: "Not approved" };
@@ -376,8 +373,10 @@
       const inbox = got.filter((x) => x.status === "requested");
       const live = (x) => !["cancelled", "declined"].includes(x.status);
       const swaps = sent.filter(live).map((x) => ({ x, out: true })).concat(got.filter((x) => live(x) && x.status !== "requested").map((x) => ({ x, out: false })));
-      reqEl.innerHTML = (inbox.length ? `<div class="at-card warn"><h3>Lab Swap Requests for You</h3>${inbox.map((x) => `<div class="at-req" data-sw="${x.id}"><p><strong>${esc(x.fromName)}</strong> (${SECTION[x.fromSection] || ""}, group ${x.fromGroup || "–"}) asks to swap <strong>${esc(x.labTitle)}</strong> with you.${x.note ? ` <em>“${esc(x.note)}”</em>` : ""}</p>
-          <div class="acc-row"><button type="button" class="btn small" data-acc>Accept</button><button type="button" class="btn ghost small" data-dec>Decline</button></div></div>`).join("")}</div>` : "")
+      reqEl.innerHTML = (inbox.length ? `<div class="at-card warn"><h3>Lab Swap Requests for You</h3>${inbox.map((x) => { const pl = swapPlan(x), labs = labsAhead(), first = labs.find((l) => l.slot === (pl.ok || [])[0]);
+          return `<div class="at-req" data-sw="${x.id}"><p><strong>${esc(x.fromName)}</strong> (${secName(x.fromSection)}, Group ${x.fromGroup || "–"}) asks to swap <strong>${esc(x.labTitle)}</strong> with you.${x.note ? ` <em>“${esc(x.note)}”</em>` : ""}</p>
+          ${pl.err ? `<p class="at-warn">${esc(pl.err)}</p>` : `<p class="at-sumc">You'd go to <strong>${secName(x.fromSection)}, ${when(first, x.fromSection)}</strong> (Group ${x.fromGroup || "–"}); ${esc(x.fromName)} comes to your ${secName(me.section)}, ${when(first, me.section)}.${pl.ok.length > 1 ? ` The same for every lab after it (${pl.ok.length} labs).` : ""}${pl.ok.length < pl.want.length ? " Labs that have already started stay as they are." : ""}</p>`}
+          <div class="acc-row">${pl.err ? "" : `<button type="button" class="btn small" data-acc>Accept</button>`}<button type="button" class="btn ghost small" data-dec>Decline</button></div></div>`; }).join("")}</div>` : "")
         + (swaps.length ? `<div class="at-card"><h3>My Lab Swaps</h3><ul class="at-list">${swaps.map(({ x, out }) => `<li data-sw="${x.id}"><strong>${esc(x.labTitle)}</strong>: ${out ? `with ${esc(x.toName)} (${SECTION[x.toSection] || ""})` : `with ${esc(x.fromName)} (${SECTION[x.fromSection] || ""})`} · <span class="at-tag ${x.status}">${SWAP_ST[x.status] || x.status}</span>${out && ["requested", "accepted"].includes(x.status) ? ` <button type="button" class="btn ghost small" data-cancel>Cancel</button>` : ""}</li>`).join("")}</ul></div>` : "")
         + (notices.length ? `<div class="at-card"><h3>My Absence Notices</h3><ul class="at-list">${notices.slice().sort((a, b) => (a.date < b.date ? 1 : -1)).map((n) => `<li data-n="${n.id}"><strong>${fmtDate(n.date)} · ${esc(n.title)}</strong>: ${REASONS[n.reason] || n.reason} · <span class="at-tag ${n.status}">${NOTE_ST[n.status] || n.status}</span>${n.doc ? ` · ${n.doc.url ? docLink(n.doc, "Document") : "📎 Document sent"}` : ""}${n.note ? `<br><small>Lecturer: ${esc(n.note)}</small>` : ""}${n.status === "pending" ? ` <button type="button" class="btn ghost small" data-nedit>Edit</button> <button type="button" class="btn ghost small" data-ndel>Withdraw</button>` : ""}</li>`).join("")}</ul></div>` : "");
     }
@@ -386,10 +385,9 @@
       if (t.closest("[data-notice]")) return noticeForm(null);
       if (t.closest("[data-explain]")) return noticeForm(null, t.closest("[data-explain]").dataset.explain);
       if (t.closest("[data-swap]")) return swapForm();
-      if (t.closest("[data-secs]")) return sectionsView();
       const sw = t.closest("[data-sw]"), nt = t.closest("[data-n]");
       try {
-        if (sw && t.closest("[data-acc]")) acceptSwap(got.find((x) => x.id === sw.dataset.sw));
+        if (sw && t.closest("[data-acc]")) await acceptSwap(got.find((x) => x.id === sw.dataset.sw), t.closest("[data-acc]"));
         if (sw && t.closest("[data-dec]")) await db.collection("swaps").doc(sw.dataset.sw).update({ status: "declined", updatedAt: FV.serverTimestamp() });
         if (sw && t.closest("[data-cancel]")) await db.collection("swaps").doc(sw.dataset.sw).update({ status: "cancelled", updatedAt: FV.serverTimestamp() });
         if (nt && t.closest("[data-nedit]")) noticeForm(notices.find((n) => n.id === nt.dataset.n));
@@ -397,33 +395,29 @@
       } catch (ex) { say("Could Not Save", esc(ex.code || ex)); }
     });
 
-    // accepting a classmate's request completes the swap straight away (the lecturer sees it in the Swaps tab and the bell)
-    function acceptSwap(x) {
-      if (!x) return;
-      const secs = [x.fromSection, me.section], want = swapSlots(x);
+    // what accepting a request would do: the labs that can still be swapped, or why it can't be done here
+    function swapPlan(x) {
+      const secs = [x.fromSection, me.section], want = swapSlots(x), ok = want.filter((k) => !startedFor(k, secs));
       // a whole-semester swap skips any of its labs that has started meanwhile; a one-lab swap can't
-      const ok = want.filter((k) => !startedFor(k, secs));
-      if (!ok.length || (!x.term && ok.length < want.length)) { say("Too Late to Swap", "This lab has already started for one of you, so the swap can't be done here. Ask your lecturer."); return; }
-      if (ok.some((k) => moves[k])) { say("Already Moved", "You are already swapped or moved for one of these labs. Ask your lecturer."); return; }
-      const labs = labsAhead(), at = (k, sec) => { const l = labs.find((y) => y.slot === k), ss = l && l.dates.find((y) => y.section === sec); return ss ? `${fmtDate(ss.date)}, ${fmtTime(ss.start)}` : "date not set yet"; };
-      const name = (k) => { const l = labs.find((y) => y.slot === k); return l ? esc(l.name) : k; };
-      const p = panel(`<h3>Accept the Swap?</h3><p>You and <strong>${esc(x.fromName)}</strong> change places${x.term ? " for every lab below" : ""}. It is done straight away, and your lecturer is told.</p>
-        <div class="adm-scroll"><table class="adm"><thead><tr><th scope="col">Lab</th><th scope="col">You go to</th><th scope="col">${esc(x.fromName)} goes to</th></tr></thead><tbody>
-        ${ok.map((k) => `<tr><td>${name(k)}</td><td>${SEC_SHORT[x.fromSection]}: ${at(k, x.fromSection)}</td><td>${SEC_SHORT[me.section]}: ${at(k, me.section)}</td></tr>`).join("")}</tbody></table></div>
-        ${ok.length < want.length ? `<p class="small-note">Already started, so not swapped: ${want.filter((k) => !ok.includes(k)).map(name).join(", ")}.</p>` : ""}
-        <p class="at-err" aria-live="polite"></p><div class="acc-row"><button type="button" class="btn" data-go>Accept the swap</button><button type="button" class="btn ghost" data-x>Not now</button></div>`);
-      $("[data-go]", p).addEventListener("click", async (e) => {
-        e.target.disabled = true;
-        const b = db.batch();
-        b.update(db.collection("swaps").doc(x.id), Object.assign({ status: "approved", auto: true, updatedAt: FV.serverTimestamp() }, x.slots ? { slot: ok[0], slots: ok } : {}));
-        ok.forEach((k) => {
-          const base = { semester: SEM, slot: k, swap: x.id, by: email, at: FV.serverTimestamp() };
-          b.set(db.collection("labMoves").doc(`${k}_${x.fromEmail}`), Object.assign({ email: x.fromEmail, section: me.section, group: +me.group || 0 }, base));
-          b.set(db.collection("labMoves").doc(`${k}_${email}`), Object.assign({ email, section: x.fromSection, group: +x.fromGroup || 0 }, base));
-        });
-        try { await b.commit(); closePanel(); }
-        catch (ex) { e.target.disabled = false; $(".at-err", p).textContent = `Could not swap (${ex.code || ex}). One of you may already be swapped for one of these labs: ask your lecturer.`; }
+      if (!ok.length || (!x.term && ok.length < want.length)) return { want, ok, err: "This lab has already started for one of you, so the swap can't be done here. Ask your lecturer." };
+      if (ok.some((k) => moves[k])) return { want, ok, err: "You are already swapped or moved for one of these labs. Ask your lecturer." };
+      return { want, ok };
+    }
+    // accepting a classmate's request completes the swap at once (the lecturer sees it in the Swaps tab and the bell)
+    async function acceptSwap(x, btn) {
+      if (!x) return;
+      const pl = swapPlan(x);
+      if (pl.err) { say("Can't Swap Here", esc(pl.err)); return; }
+      if (btn) btn.disabled = true;
+      const b = db.batch();
+      b.update(db.collection("swaps").doc(x.id), Object.assign({ status: "approved", auto: true, updatedAt: FV.serverTimestamp() }, x.slots ? { slot: pl.ok[0], slots: pl.ok } : {}));
+      pl.ok.forEach((k) => {
+        const base = { semester: SEM, slot: k, swap: x.id, by: email, at: FV.serverTimestamp() };
+        b.set(db.collection("labMoves").doc(`${k}_${x.fromEmail}`), Object.assign({ email: x.fromEmail, section: me.section, group: +me.group || 0 }, base));
+        b.set(db.collection("labMoves").doc(`${k}_${email}`), Object.assign({ email, section: x.fromSection, group: +x.fromGroup || 0 }, base));
       });
+      try { await b.commit(); }
+      catch (ex) { if (btn) btn.disabled = false; say("Could Not Swap", `${esc(ex.code || ex)}. One of you may already be swapped for one of these labs: ask your lecturer.`); }
     }
 
     function paintMine() {
@@ -947,87 +941,71 @@
     if (!labs.length) { say("No Labs Yet", "Create the lab sessions first (Sessions tab)."); return; }
     const active = L.roster.filter((r) => r.status === "active" && r.section);
     const studs = active.map((r) => ({ m: String(r.matric), n: r.name, s: r.section, g: r.group, email: r.id }));
-    const groups = {};
-    active.forEach((r) => { const k = `${r.section}|${r.group || 0}`; (groups[k] = groups[k] || []).push(r); });
-    const gOpts = Object.keys(groups).sort().map((k) => { const [sec, g] = k.split("|"); return `<option value="${k}">${SEC_SHORT[sec]} lab, group ${+g || "–"} (${groups[k].length} student${groups[k].length === 1 ? "" : "s"})</option>`; }).join("");
-    let a = null, c = null;
-    const p = panel(`<h3>Swap Lab Places</h3><p>Each side takes the other's section and group. It takes effect straight away; the next step shows the dates to check first.</p>
-      <form class="at-dform" novalidate>
-        <fieldset class="at-fs"><legend>Who</legend>
-          <label><input type="radio" name="who" value="pair" checked> Two students</label>
-          <label><input type="radio" name="who" value="group"> Two whole lab groups</label></fieldset>
-        <fieldset class="at-fs"><legend>How long</legend>
-          <label><input type="radio" name="term" value="one"${pre ? " checked" : ""}> One lab only</label>
-          <label><input type="radio" name="term" value="all"${pre ? "" : " checked"}> Every lab to the end of the semester</label></fieldset>
-        <label class="at-one">Which lab<select name="slot">${labs.map((l) => `<option value="${l.slot}"${pre === l.slot ? " selected" : ""}>${esc(l.name)}</option>`).join("")}</select></label>
-        <div class="at-pair"><div class="at-pk-a"></div><div class="at-pk-b"></div></div>
-        <div class="at-groups" hidden><div class="at-two"><label>First group<select name="ga">${gOpts}</select></label><label>Second group<select name="gb">${gOpts}</select></label></div></div>
-        <label>Note (optional)<input name="note" maxlength="200" placeholder="e.g. Asked in person on the lab day"></label>
-        <p class="at-err" aria-live="polite"></p><div class="acc-row"><button type="submit" class="btn">Next: check the dates</button><button type="button" class="btn ghost" data-x>Cancel</button></div></form>`);
-    const f = $(".at-dform", p);
-    picker($(".at-pk-a", p), studs, (x) => { a = x; }, "First student");
-    picker($(".at-pk-b", p), studs, (x) => { c = x; }, "Second student");
-    const sync = () => { $(".at-pair", p).hidden = f.who.value !== "pair"; $(".at-groups", p).hidden = f.who.value !== "group"; $(".at-one", p).hidden = f.term.value !== "one"; };
-    f.addEventListener("change", sync); sync();
-    f.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const v = Object.fromEntries(new FormData(f).entries()), err = $(".at-err", p);
-      let A1, B1, sideA, sideB;
-      if (v.who === "pair") {
-        if (!a || !c) { err.textContent = "Choose both students."; return; }
-        if (a.email === c.email) { err.textContent = "Choose two different students."; return; }
-        A1 = [active.find((r) => r.id === a.email)]; B1 = [active.find((r) => r.id === c.email)];
-        sideA = { sec: a.s, g: a.g || 0, label: a.n }; sideB = { sec: c.s, g: c.g || 0, label: c.n };
-      } else {
-        if (v.ga === v.gb) { err.textContent = "Choose two different groups."; return; }
-        A1 = groups[v.ga]; B1 = groups[v.gb];
-        const [sa, ga] = v.ga.split("|"), [sb, gb] = v.gb.split("|");
-        sideA = { sec: sa, g: +ga, label: `${SEC_SHORT[sa]} group ${+ga || "–"}` }; sideB = { sec: sb, g: +gb, label: `${SEC_SHORT[sb]} group ${+gb || "–"}` };
-      }
-      if (sideA.sec === sideB.sec) { err.textContent = "Both are in the same section, so there is nothing to swap."; return; }
-      confirmSwap({ term: v.term === "all", slot: v.slot, A1, B1, sideA, sideB, who: v.who, note: (v.note || "").trim().slice(0, 200) });
-    });
-  }
-  // the second step: the dates each side moves to, lab by lab; for a whole-semester swap, the lab it starts from
-  function confirmSwap(o) {
-    const labs = labSlots(), secs = [o.sideA.sec, o.sideB.sec];
-    const firstOk = labs.findIndex((l) => !notYet(l, secs));
-    if (o.term && firstOk < 0) { say("No Labs Left", "Every lab of these two sections has already been held, so there is nothing left to swap."); return; }
-    const at = (l, sec) => { const s = l.list.find((x) => x.section === sec); return s ? `${fmtDate(s.date)}, ${fmtTime(s.start)}` : "no session yet"; };
-    const names = (list) => list.map((r) => esc(r.name)).join(", ");
-    const p = panel(`<h3>Check the Dates</h3>
-      <p><strong>${esc(o.sideA.label)}</strong> <small>(${names(o.A1)})</small> ⇄ <strong>${esc(o.sideB.label)}</strong> <small>(${names(o.B1)})</small></p>
-      ${o.term ? `<label>Starts from<select class="at-in" data-start>${labs.map((l, i) => { const why = notYet(l, secs); return `<option value="${i}"${why ? " disabled" : ""}${i === firstOk ? " selected" : ""}>${esc(l.name)} (${fmtDate(l.date)})${why ? `: ${why}` : ""}</option>`; }).join("")}</select></label>
-        <p class="small-note">A swap can start only from a lab that neither section has held yet, so nobody does the same lab twice or misses one.</p>` : ""}
+    const sn = (k) => (SECTION[k] || "–").replace(" lab", "");
+    const at = (l, sec) => { const x = l && l.list.find((y) => y.section === sec); return x ? `${fmtDate(x.date)}, ${fmtTime(x.start)}` : "no session yet"; };
+    let lab = labs.find((l) => l.slot === pre) || labs.find((l) => l.list.some((x) => !held(x) && x.date >= todayIso())) || labs[labs.length - 1], a = null, c = null, q = "";
+    const p = panel(`<h3>Swap Lab Places</h3><p class="small-note">Each side takes the other's section and group. It takes effect straight away.</p>
+      <label>Lab<select class="at-in" data-lab>${labs.map((l) => `<option value="${l.slot}"${l === lab ? " selected" : ""}>${esc(l.name)} (${fmtDate(l.date)})</option>`).join("")}</select></label>
+      <div class="at-pk-a"></div>
+      <div class="at-step2" hidden><p class="at-q">Swap with</p><input class="at-in at-sq" type="search" autocomplete="off" placeholder="Find a name or matric number" aria-label="Find the second student"><div class="at-cands"></div></div>
+      <div class="at-grpbox"></div>
+      <p class="at-q">Do you want to switch for all labs for the entire semester?</p>
+      <div class="at-fs" role="radiogroup" aria-label="How long"><label><input type="radio" name="term" value="one" checked> No. Swap this lab only.</label><label><input type="radio" name="term" value="all"> Yes. Swap this lab and every lab after it, until the end of the semester.</label></div>
       <div class="at-swdates"></div>
+      <details class="at-notebox"><summary>Add a note (optional)</summary><input class="at-in" name="note" maxlength="200" placeholder="e.g. Asked in person on the lab day" aria-label="Note"></details>
       <p class="at-err" aria-live="polite"></p>
       <div class="acc-row"><button type="button" class="btn" data-go>Confirm the swap</button><button type="button" class="btn ghost" data-x>Cancel</button></div>`);
-    const chosen = () => (o.term ? labs.slice(+$("[data-start]", p).value) : labs.filter((l) => l.slot === o.slot));
-    const paint = () => {
-      const list = chosen(), before = o.term ? labs.slice(0, +$("[data-start]", p).value) : [];
-      $(".at-swdates", p).innerHTML = `<div class="adm-scroll"><table class="adm"><thead><tr><th scope="col">Lab</th><th scope="col">${esc(o.sideA.label)} goes to</th><th scope="col">${esc(o.sideB.label)} goes to</th></tr></thead><tbody>
-        ${list.map((l) => `<tr><td>${esc(l.name)}</td><td>${SEC_SHORT[o.sideB.sec]}: ${at(l, o.sideB.sec)}</td><td>${SEC_SHORT[o.sideA.sec]}: ${at(l, o.sideA.sec)}</td></tr>`).join("")}</tbody></table></div>
-        ${before.length ? `<p class="small-note">Stay as they were: ${before.map((l) => esc(l.name)).join(", ")}.</p>` : ""}
-        ${o.term ? `<p class="small-note">Labs added to the timetable later in the semester follow this swap too.</p>` : ""}`;
+    const term = () => ($("input[name=term]:checked", p) || {}).value === "all";
+    const groupOf = (x) => active.filter((r) => r.section === x.s && (r.group || 0) === (x.g || 0) && x.g);
+    // the two sides: the two students, or their whole groups when that box is ticked
+    const sides = () => {
+      const whole = !!($("[data-whole]", p) || {}).checked && a && c;
+      if (whole) return { who: "group", A1: groupOf(a), B1: groupOf(c), sideA: { sec: a.s, g: a.g || 0, label: `${sn(a.s)} Group ${a.g}` }, sideB: { sec: c.s, g: c.g || 0, label: `${sn(c.s)} Group ${c.g}` } };
+      return { who: "pair", A1: [active.find((r) => r.id === a.email)], B1: [active.find((r) => r.id === c.email)], sideA: { sec: a.s, g: a.g || 0, label: a.n }, sideB: { sec: c.s, g: c.g || 0, label: c.n } };
     };
-    if (o.term) $("[data-start]", p).addEventListener("change", paint);
-    paint();
+    const chosen = () => (term() ? labs.slice(labs.indexOf(lab)) : [lab]);
+    const paint = () => {
+      $(".at-step2", p).hidden = !a;
+      if (a) {
+        const ql = q.trim().toLowerCase(), groups = {};
+        studs.filter((x) => x.s !== a.s && (!ql || `${x.n} ${x.m}`.toLowerCase().includes(ql)))
+          .sort((x, y) => (x.s + String(x.g || 0).padStart(2, "0") + x.n < y.s + String(y.g || 0).padStart(2, "0") + y.n ? -1 : 1))
+          .forEach((x) => { const k = `${x.s}|${x.g || 0}`; (groups[k] = groups[k] || []).push(x); });
+        $(".at-cands", p).innerHTML = Object.entries(groups).map(([k, xs]) => { const [sec, g] = k.split("|");
+          return `<div class="at-cg"><h4>${sn(sec)} · Group ${+g || "–"} <small>${at(lab, sec)}</small></h4>${xs.map((x) => `<button type="button" class="at-cand" data-m="${esc(x.m)}" aria-pressed="${!!c && c.m === x.m}">${esc(x.n)} <small>${esc(x.m)}</small></button>`).join("")}</div>`; }).join("") || `<p class="small-note">No match.</p>`;
+      }
+      const ga = a ? groupOf(a) : [], gc = c ? groupOf(c) : [], was = !!($("[data-whole]", p) || {}).checked;
+      $(".at-grpbox", p).innerHTML = a && c && (ga.length > 1 || gc.length > 1) ? `<label class="at-late"><input type="checkbox" data-whole${was ? " checked" : ""}> Swap their whole groups: ${sn(a.s)} Group ${a.g} (${ga.map((r) => esc(r.name)).join(", ")}) ⇄ ${sn(c.s)} Group ${c.g} (${gc.map((r) => esc(r.name)).join(", ")})</label>` : "";
+      if (!a || !c) { $(".at-swdates", p).innerHTML = ""; return; }
+      const o = sides(), list = chosen(), why = notYet(lab, [o.sideA.sec, o.sideB.sec]);
+      $(".at-swdates", p).innerHTML = `${why && term() ? `<p class="at-warn">${esc(lab.name)} can't start a whole-semester swap: ${esc(why)}. Choose a later lab above.</p>` : ""}
+        <div class="adm-scroll"><table class="adm"><thead><tr><th scope="col">Lab</th><th scope="col">${esc(o.sideA.label)} goes to</th><th scope="col">${esc(o.sideB.label)} goes to</th></tr></thead><tbody>
+        ${list.map((l) => `<tr><td>${esc(l.name)}</td><td>${sn(o.sideB.sec)}: ${at(l, o.sideB.sec)}</td><td>${sn(o.sideA.sec)}: ${at(l, o.sideA.sec)}</td></tr>`).join("")}</tbody></table></div>
+        ${term() ? `<p class="small-note">Labs added to the timetable later in the semester follow this swap too.</p>` : ""}`;
+    };
+    picker($(".at-pk-a", p), studs, (x) => { a = x; c = null; q = ""; $(".at-sq", p).value = ""; $(".at-err", p).textContent = ""; paint(); }, "Student");
+    p.addEventListener("click", (e) => { const b = e.target.closest("[data-m]"); if (b && a) { c = studs.find((x) => x.m === b.dataset.m); $(".at-err", p).textContent = ""; paint(); } });
+    p.addEventListener("change", (e) => { if (e.target.matches("[data-lab]")) lab = labs.find((l) => l.slot === e.target.value); if (e.target.matches("[data-lab], input[name=term], [data-whole]")) paint(); });
+    $(".at-sq", p).addEventListener("input", (e) => { q = e.target.value; paint(); });
     $("[data-go]", p).addEventListener("click", async (e) => {
-      const list = chosen(), err = $(".at-err", p);
+      const err = $(".at-err", p);
+      if (!a || !c) { err.textContent = "Choose both students."; return; }
+      const o = sides(), list = chosen();
+      if (term() && notYet(lab, [o.sideA.sec, o.sideB.sec])) { err.textContent = "Choose a lab that neither section has started, for a whole-semester swap."; return; }
       const busy = [];
       list.forEach((l) => o.A1.concat(o.B1).forEach((r) => { if (moveOf(l.slot, r.id)) busy.push(`${r.name} (${l.name})`); }));
       if (busy.length) { err.textContent = `Already swapped or moved: ${busy.slice(0, 6).join(", ")}${busy.length > 6 ? "…" : ""}. Cancel that first.`; return; }
       e.target.disabled = true;
-      const by = A.state.user.email.toLowerCase(), ref = db.collection("swaps").doc();
+      const by = A.state.user.email.toLowerCase(), ref = db.collection("swaps").doc(), all = term(), note = ($("input[name=note]", p).value || "").trim().slice(0, 200);
       const moves = o.A1.map((r) => ({ e: r.id, s: o.sideB.sec, g: o.sideB.g })).concat(o.B1.map((r) => ({ e: r.id, s: o.sideA.sec, g: o.sideA.g })));
       const pair = o.who === "pair", fa = o.A1[0], fc = o.B1[0];
       try {
         const b = db.batch();
-        b.set(ref, { semester: SEM, slot: list[0].slot, slots: list.map((l) => l.slot), term: o.term, kind: o.who, moves, startDate: list[0].date,
-          labTitle: o.term ? `Every lab from ${list[0].name}` : list[0].name,
+        b.set(ref, { semester: SEM, slot: list[0].slot, slots: list.map((l) => l.slot), term: all, kind: o.who, moves, startDate: list[0].date,
+          labTitle: all ? `Every lab from ${list[0].name}` : list[0].name,
           fromEmail: pair ? fa.id : "", fromMatric: pair ? String(fa.matric) : "", fromName: pair ? fa.name : `${o.sideA.label} (${o.A1.length} student${o.A1.length === 1 ? "" : "s"})`, fromSection: o.sideA.sec, fromGroup: o.sideA.g,
           toMatric: pair ? String(fc.matric) : "", toName: pair ? fc.name : `${o.sideB.label} (${o.B1.length} student${o.B1.length === 1 ? "" : "s"})`, toSection: o.sideB.sec, toGroup: o.sideB.g,
-          note: o.note, status: "approved", byLecturer: true, decidedBy: by, createdAt: FV.serverTimestamp(), updatedAt: FV.serverTimestamp() });
+          note, status: "approved", byLecturer: true, decidedBy: by, createdAt: FV.serverTimestamp(), updatedAt: FV.serverTimestamp() });
         list.forEach((l) => moves.forEach((m) => b.set(db.collection("labMoves").doc(`${l.slot}_${m.e}`), { semester: SEM, slot: l.slot, email: m.e, section: m.s, group: m.g || 0, swap: ref.id, by, at: FV.serverTimestamp() })));
         await b.commit(); closePanel();
       } catch (ex) { e.target.disabled = false; err.textContent = `Could not swap them (${ex.code || ex}).`; }
