@@ -269,3 +269,8 @@ table.at-ses tr.picked td { background: color-mix(in srgb, var(--danger) 8%, tra
   .at-mylabs td:last-child { grid-column: 1 / -1; margin-top: 6px; }
   .at-mylabs td:last-child .btn { width: 100%; }
 }
+.at-results { display: grid; gap: 4px; border: 1px solid var(--rule); border-radius: var(--r-md); padding: 4px; background: var(--surface); }
+.at-results .at-cand span, .at-chosen2 span { display: block; font-size: .85rem; color: var(--ink-2); font-weight: 400; }
+.at-chosen2 { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; background: var(--teal-soft); border: 1px solid var(--teal); border-radius: var(--r-md); padding: 8px 12px; }
+.at-chosen2 span { grid-column: 1; }
+.at-chosen2 .btn { grid-row: 1 / span 2; grid-column: 2; }

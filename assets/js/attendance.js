@@ -388,14 +388,12 @@
       const myNow = (mineIn(lab.parts[lab.parts.length - 1]) || {}).section || me.section;
       const others = mates.filter((x) => x.m !== String(me.matric) && x.s && x.s !== myNow);
       if (!others.length) { say("Swap Lab Session", "The classmate list isn't ready yet. Try again in a moment."); return; }
-      const secs = ["mon", "wed", "thu"].filter((k) => k !== myNow && others.some((x) => x.s === k));
-      let sec = secs[0], partner = null, q = "";
+      let partner = null, q = "";
       const p = panel(`<div class="at-lhead"><h3>Swap Lab Session: Lab ${lab.no}</h3><button type="button" class="at-info" data-help aria-expanded="false" aria-label="How to swap a lab session">i</button></div>
         <div class="at-helpbox" hidden>${SWAP_HELP}</div>
         <p class="at-q">1. Choose your classmate</p>
-        <div class="at-secbar" role="group" aria-label="Section">${secs.map((k) => `<button type="button" class="btn ghost small" data-sec="${k}">${secName(k)}</button>`).join("")}</div>
-        <input class="at-in at-sq" type="search" autocomplete="off" placeholder="Or find a name or matric number" aria-label="Find a classmate">
-        <div class="at-cands"></div>
+        <div class="at-pickrow"><input class="at-in at-sq" type="search" autocomplete="off" placeholder="Type your classmate's name or matric number" aria-label="Find your classmate"></div>
+        <div class="at-cands" aria-live="polite"></div>
         <div class="at-step2" hidden>
           <p class="at-q">2. Check the change</p><div class="at-babox"></div>
           <p class="at-q">3. Do you want to switch for all labs for the entire semester?</p>
@@ -408,12 +406,17 @@
         <div class="acc-row"><button type="button" class="btn" data-send>Send the request</button><button type="button" class="btn ghost" data-x>Cancel</button></div>`);
       const term = () => ($("input[name=term]:checked", p) || {}).value === "all";
       const paint = () => {
-        $$("[data-sec]", p).forEach((b) => b.setAttribute("aria-pressed", String(!q && b.dataset.sec === sec)));
-        const ql = q.trim().toLowerCase(), groups = {}, lastPt = lab.parts[lab.parts.length - 1];
-        others.filter((x) => (ql ? `${x.n} ${x.m}`.toLowerCase().includes(ql) : x.s === sec)).sort((a, b) => (a.s + String(a.g || 0).padStart(2, "0") + a.n < b.s + String(b.g || 0).padStart(2, "0") + b.n ? -1 : 1))
-          .forEach((x) => { const k = `${x.s}|${x.g || 0}`; (groups[k] = groups[k] || []).push(x); });
-        $(".at-cands", p).innerHTML = Object.entries(groups).map(([k, xs]) => { const [s2, g] = k.split("|");
-          return `<div class="at-cg"><h4>${secName(s2)} · Group ${+g || "–"} <small>${whenS(inSec(lastPt, s2))}</small></h4>${xs.map((x) => `<button type="button" class="at-cand" data-m="${esc(x.m)}" aria-pressed="${!!partner && partner.m === x.m}">${esc(x.n)} <small>${esc(x.m)}</small></button>`).join("")}</div>`; }).join("") || `<p class="small-note">No match.</p>`;
+        // names appear only when the student searches (at least 2 letters or digits); once chosen, just that classmate
+        const ql = q.trim().toLowerCase(), lastPt = lab.parts[lab.parts.length - 1];
+        const line = (x) => `<strong>${esc(x.n)}</strong> <small>${esc(x.m)}</small><span>${secName(x.s)} · Group ${x.g || "–"} · ${whenS(inSec(lastPt, x.s))}</span>`;
+        $(".at-pickrow", p).hidden = !!partner;
+        if (partner) $(".at-cands", p).innerHTML = `<div class="at-chosen2">Chosen: ${line(partner)} <button type="button" class="btn ghost small" data-change>Change</button></div>`;
+        else if (ql.length < 2) $(".at-cands", p).innerHTML = `<p class="small-note">Type at least 2 letters of their name, or their matric number.</p>`;
+        else {
+          // each word typed must start a word of the name (so "ali" finds ALI, not KHALIDA); digits match the matric
+          const qs = ql.split(/\s+/).filter(Boolean), match = (x) => { const ws = String(x.n).toLowerCase().split(/[\s/]+/); return qs.every((t) => (/^\d+$/.test(t) ? String(x.m).includes(t) : ws.some((w) => w.startsWith(t)))); };
+          const hits = others.filter(match).slice(0, 8);
+          $(".at-cands", p).innerHTML = hits.length ? `<div class="at-results">${hits.map((x) => `<button type="button" class="at-cand" data-m="${esc(x.m)}">${line(x)}</button>`).join("")}</div>` : `<p class="small-note">No classmate in another section matches "${esc(q.trim())}".</p>`; }
         $(".at-step2", p).hidden = !partner;
         if (partner) {
           const parts = openParts(lab, partner.s);
@@ -423,8 +426,8 @@
         }
       };
       p.addEventListener("click", (e) => {
-        const b = e.target.closest("[data-sec]"), c = e.target.closest("[data-m]");
-        if (b) { sec = b.dataset.sec; q = ""; $(".at-sq", p).value = ""; paint(); }
+        const c = e.target.closest("[data-m]");
+        if (e.target.closest("[data-change]")) { partner = null; paint(); const i = $(".at-sq", p); i.focus(); i.select(); return; }
         if (c) { partner = others.find((x) => x.m === c.dataset.m); $(".at-err", p).textContent = ""; paint(); }
       });
       $(".at-sq", p).addEventListener("input", (e) => { q = e.target.value; paint(); });
