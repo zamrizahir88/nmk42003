@@ -456,12 +456,20 @@
     function paintReqs() {
       paintLabs();
       const inbox = got.filter((x) => x.status === "requested");
+      if (inbox.length && location.hash === "#requests" && !paintReqs.went) { paintReqs.went = true; setTimeout(() => { const r = document.getElementById("requests"); if (r) r.scrollIntoView({ block: "start" }); }, 50); }
       const live = (x) => !["cancelled", "declined"].includes(x.status);
       const swaps = sent.filter(live).map((x) => ({ x, out: true })).concat(got.filter((x) => live(x) && x.status !== "requested").map((x) => ({ x, out: false })));
-      reqEl.innerHTML = (inbox.length ? `<div class="at-card warn"><h3>Lab Swap Requests for You</h3>${inbox.map((x) => { const pl = swapPlan(x);
-          return `<div class="at-req" data-sw="${x.id}"><p><strong>${esc(x.fromName)}</strong> asks to swap <strong>${esc(x.labTitle)}</strong> with you.${x.note ? ` <em>“${esc(x.note)}”</em>` : ""}</p>
-          ${pl.err ? `<p class="at-warn">${esc(pl.err)}</p>` : `${pl.labs.map(({ lab, parts }) => beforeAfter(lab, parts, x.fromName, x.fromSection, x.fromGroup)).slice(0, 1).join("")}${pl.labs.length > 1 ? `<p class="small-note">The same for every lab session after it (${pl.labs.length} labs).</p>` : ""}<p class="small-note">You can accept until the lab session ends: ${pl.until}.</p>`}
-          <div class="acc-row">${pl.err ? "" : `<button type="button" class="btn small" data-acc>Accept</button>`}<button type="button" class="btn ghost small" data-dec>Decline</button></div></div>`; }).join("")}</div>` : "")
+      // requests from the same classmate go in one card (e.g. one request for each lab), with Accept all
+      const byFrom = {}; inbox.forEach((x) => { (byFrom[x.fromEmail] = byFrom[x.fromEmail] || []).push(x); });
+      const one = (x) => { const pl = swapPlan(x);
+        return { x, pl, html: pl.err ? `<p class="at-warn">${esc(x.labTitle)}: ${esc(pl.err)}</p>` : `${pl.labs.map(({ lab, parts }) => beforeAfter(lab, parts, x.fromName, x.fromSection, x.fromGroup)).slice(0, 1).join("")}${pl.labs.length > 1 ? `<p class="small-note">The same for every lab session after it (${pl.labs.length} labs).</p>` : ""}<p class="small-note">You can accept until the lab session ends: ${pl.until}.</p>` }; };
+      reqEl.innerHTML = (inbox.length ? `<div class="at-card warn" id="requests"><h3>Lab Swap Requests for You</h3>${Object.values(byFrom).map((xs) => {
+          const items = xs.sort((a, b) => ((a.startDate || "") < (b.startDate || "") ? -1 : 1)).map(one), x0 = xs[0], ok = items.filter((it) => !it.pl.err);
+          if (xs.length === 1) return `<div class="at-req" data-sw="${x0.id}"><p><strong>${esc(x0.fromName)}</strong> asks to swap <strong>${esc(x0.labTitle)}</strong> with you.${x0.note ? ` <em>“${esc(x0.note)}”</em>` : ""}</p>${items[0].html}
+            <div class="acc-row">${ok.length ? `<button type="button" class="btn small" data-acc>Accept</button>` : ""}<button type="button" class="btn ghost small" data-dec>Decline</button></div></div>`;
+          return `<div class="at-req" data-swall="${xs.map((y) => y.id).join(",")}"><p><strong>${esc(x0.fromName)}</strong> asks to swap <strong>${xs.length} lab sessions</strong> with you: ${xs.map((y) => esc(y.labTitle)).join(", ")}.</p>
+            ${items.map((it) => `<div class="at-reqpart"><p class="at-q">${esc(it.x.labTitle)}${it.x.note ? ` <em>“${esc(it.x.note)}”</em>` : ""}</p>${it.html}</div>`).join("")}
+            <div class="acc-row">${ok.length ? `<button type="button" class="btn small" data-accall>Accept all${ok.length < xs.length ? ` (${ok.length} that can still be swapped)` : ""}</button>` : ""}<button type="button" class="btn ghost small" data-decall>Decline all</button></div></div>`; }).join("")}</div>` : "")
         + (swaps.length ? `<div class="at-card"><h3>My Lab Swaps</h3><ul class="at-list">${swaps.map(({ x, out }) => `<li data-sw="${x.id}"><strong>${esc(x.labTitle)}</strong>: ${out ? `with ${esc(x.toName)} (${secName(x.toSection)})` : `with ${esc(x.fromName)} (${secName(x.fromSection)})`} · <span class="at-tag ${x.status}">${SWAP_ST[x.status] || x.status}</span>${out && ["requested", "accepted"].includes(x.status) ? ` <button type="button" class="btn ghost small" data-cancel>Cancel request</button>` : ""}</li>`).join("")}</ul></div>` : "")
         + (notices.length ? `<div class="at-card"><h3>My Absence Notices</h3><ul class="at-list">${notices.slice().sort((a, b) => (a.date < b.date ? 1 : -1)).map((n) => `<li data-n="${n.id}"><strong>${fmtDate(n.date)} · ${esc(n.title)}</strong>: ${REASONS[n.reason] || n.reason} · <span class="at-tag ${n.status}">${NOTE_ST[n.status] || n.status}</span>${n.doc ? ` · ${n.doc.url ? docLink(n.doc, "Document") : "📎 Document sent"}` : ""}${n.note ? `<br><small>Lecturer: ${esc(n.note)}</small>` : ""}${n.status === "pending" ? ` <button type="button" class="btn ghost small" data-nedit>Edit</button> <button type="button" class="btn ghost small" data-ndel>Withdraw</button>` : ""}</li>`).join("")}</ul></div>` : "");
     }
@@ -470,6 +478,18 @@
       if (t.closest("[data-notice]")) return noticeForm(null);
       if (t.closest("[data-explain]")) return noticeForm(null, t.closest("[data-explain]").dataset.explain);
       if (t.closest("[data-swaplab]")) return swapForm(t.closest("[data-swaplab]").dataset.swaplab);
+      const all2 = t.closest("[data-swall]");
+      if (all2 && (t.closest("[data-accall]") || t.closest("[data-decall]"))) {
+        const ids = all2.dataset.swall.split(","), acc = !!t.closest("[data-accall]"), btn = t.closest("button");
+        btn.disabled = true;
+        for (const id of ids) {
+          const x = got.find((y) => y.id === id);
+          if (!x) continue;
+          if (acc) { if (!swapPlan(x).err) await acceptSwap(x, null); }
+          else { try { await db.collection("swaps").doc(id).update({ status: "declined", updatedAt: FV.serverTimestamp() }); } catch (ex) { say("Could Not Save", esc(ex.code || ex)); } }
+        }
+        return;
+      }
       if (t.closest("[data-help]")) { const b = t.closest("[data-help]"), box = b.closest(".at-card, .at-panel").querySelector(".at-helpbox"); box.hidden = !box.hidden; b.setAttribute("aria-expanded", String(!box.hidden)); return; }
       if (t.closest("[data-cancelsw]")) { try { await db.collection("swaps").doc(t.closest("[data-cancelsw]").dataset.cancelsw).update({ status: "cancelled", updatedAt: FV.serverTimestamp() }); } catch (ex) { say("Could Not Save", esc(ex.code || ex)); } return; }
       const sw = t.closest("[data-sw]"), nt = t.closest("[data-n]");
@@ -644,6 +664,9 @@
     body.innerHTML = `<div class="adm-tools"><button type="button" class="btn" data-new>+ New session</button><button type="button" class="btn ghost" data-bulk>${L.sessions.some(fromPlan) ? "Update sessions from the timetable" : "Create the semester's sessions"}</button>
         ${["all", "lecture", "lab"].map((f) => `<button type="button" class="chip-btn" data-filter="${f}" aria-pressed="${L.filter === f}">${{ all: "All", lecture: "Lectures", lab: "Labs" }[f]}</button>`).join("")}
         ${L.picked.size ? `<button type="button" class="btn small at-danger" data-delpicked>Delete selected (${L.picked.size})</button><button type="button" class="btn ghost small" data-unpick>Clear selection</button>` : ""}</div>
+      ${(() => { const old = L.sessions.filter((x) => x.state === "open" && x.date < t).sort((x, y) => (x.date < y.date ? -1 : 1));
+        return old.length ? `<div class="at-card warn at-stale"><strong>${old.length} session${old.length === 1 ? " is" : "s are"} still open from past days.</strong> Students can still mark themselves, and nobody who missed it is marked Absent until you close it.
+          <ul class="at-list">${old.map((x) => `<li>${fmtDate(x.date)} · ${esc(x.title)} <button type="button" class="btn ghost small" data-sid="${x.id}">Open it to close</button></li>`).join("")}</ul></div>` : ""; })()}
       ${(() => { if (!L.sessions.some(fromPlan)) return ""; const d = planDiff(), dn = duplicates(new Set(d.del.map((x) => x.id))).length, n = d.add.length + d.upd.length + d.del.length + d.link.length + dn;
         return n ? `<div class="at-card warn at-sync"><strong>The course timetable has changed.</strong> ${[d.add.length && `${d.add.length} to add`, d.upd.length && `${d.upd.length} to update`, d.del.length && `${d.del.length} to remove`, d.link.length && `${d.link.length} already there to link`, dn && `${dn} duplicate${dn === 1 ? "" : "s"} to check`].filter(Boolean).join(", ")}. Sessions already held are never changed. <button type="button" class="btn small" data-bulk>Review and update</button></div>` : ""; })()}
       ${!list.length ? `<p class="adm-empty">No sessions yet. Press <strong>Create the semester's sessions</strong> to add every lecture and lab from the course timetable, or add one with <strong>+ New session</strong>.</p>` :

@@ -346,7 +346,7 @@
         mine(open).filter((s) => s.date === klToday() && !done.has(s.id) && (s.section === "all" || s.section === (s.kind === "lab" && moves[slotOf(s)] ? moves[slotOf(s)] : r.section)))
           .forEach((s) => add({ todo: true, t: tms(s.openedAt) || Date.now(), href: "attendance.html", text: `Attendance is open: <strong>${esc(s.title)}</strong>. Mark it now.` }));
         mine(got).forEach((x) => {
-          if (x.status === "requested") add({ todo: true, t: tms(x.createdAt), href: "attendance.html", text: `<strong>${esc(x.fromName)}</strong> asks to swap ${esc(x.labTitle)} with you` });
+          if (x.status === "requested") add({ todo: true, t: tms(x.createdAt), href: "attendance.html#requests", text: `<strong>${esc(x.fromName)}</strong> asks to swap ${esc(x.labTitle)} with you` });
           else if (x.status === "approved" && x.byLecturer) add({ t: tms(x.createdAt), href: "attendance.html", text: `Your lecturer swapped your lab: ${esc(x.labTitle)}` });
         });
         mine(sent).forEach((x) => {

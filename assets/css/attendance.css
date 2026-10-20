@@ -274,3 +274,6 @@ table.at-ses tr.picked td { background: color-mix(in srgb, var(--danger) 8%, tra
 .at-chosen2 { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; background: var(--teal-soft); border: 1px solid var(--teal); border-radius: var(--r-md); padding: 8px 12px; }
 .at-chosen2 span { grid-column: 1; }
 .at-chosen2 .btn { grid-row: 1 / span 2; grid-column: 2; }
+.at-reqpart { border-top: 1px solid var(--rule); padding-top: 8px; margin-top: 8px; }
+.at-stale { margin: 0 0 12px; }
+.at-stale .at-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
