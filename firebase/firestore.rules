@@ -86,7 +86,8 @@ service cloud.firestore {
     }
 
     // A student marks their own attendance: the session must be open, they must be on the class list in that
-    // session's section, and they must give the current (or the previous) security key. Present, or Late when
+    // session's section, before its closing time (closesAt, when the lecturer set one), and they must give the
+    // current (or the previous) security key. Present, or Late when
     // the lecturer switched on automatic Late for the session and its time has passed.
     function selfMark(aid) {
       let d = request.resource.data;
@@ -102,7 +103,7 @@ service cloud.firestore {
         && aid == d.session + '_' + email()
         && d.keys().hasOnly(['session', 'email', 'status', 'by', 'at', 'key', 'semester', 'kind', 'date', 'title'])
         && d.email == email() && d.by == 'self' && d.at == request.time
-        && s.state == 'open' && r.status == 'active' && (s.section == 'all' || s.section == sec)
+        && s.state == 'open' && (s.get('closesAt', null) == null || request.time < s.closesAt) && r.status == 'active' && (s.section == 'all' || s.section == sec)
         && (d.key == k.cur || d.key == k.prev)
         && d.kind == s.kind && d.date == s.date && d.title == s.title && d.semester == s.semester
         && ((late && d.status == 'L') || (!late && d.status == 'P'));

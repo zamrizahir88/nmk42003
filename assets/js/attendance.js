@@ -112,6 +112,9 @@
   const weekOfDate = (iso) => Math.floor((new Date(iso + "T00:00:00Z") - new Date(COURSE.semesterStart + "T00:00:00Z")) / (7 * 86400000)) + 1;
   const weekRange = (w) => { const m = addDays(COURSE.semesterStart, 7 * (w - 1)); return `${fmtDate(m)} to ${fmtDate(addDays(m, 6))}`; };
   const tsMs = (t) => (t && t.toMillis ? t.toMillis() : t ? new Date(t).getTime() : 0);
+  // a session closes by itself at closesAt (set when the lecturer opens it); m:ss for the countdowns
+  const stillOpen = (s) => s.state === "open" && !(s.closesAt && Date.now() >= tsMs(s.closesAt));
+  const mss = (ms) => `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, "0")}`;
   const fmtStamp = (t) => { const ms = tsMs(t); if (!ms) return ""; const d = new Date(ms + 8 * 3600000); return `${fmtDate(d.toISOString().slice(0, 10))}, ${fmtTime(d.toISOString().slice(11, 16))}`; };
 
   /* ---------- forms open inside the page, at the top of the current view ---------- */
@@ -152,7 +155,7 @@
   const profileLink = (email, name) => `<a class="at-pl" href="profile.html?e=${encodeURIComponent(email)}">${esc(name)}</a>`;
 
   // the lecturer's view: what is loaded and what is shown
-  const L = { sessions: [], roster: [], att: [], moves: [], swaps: [], notices: [], users: [], sched: null, tab: "sessions", sid: null, keys: {}, filter: "all", rsec: "all", rkind: "all",
+  const L = { got: {}, sessions: [], roster: [], att: [], moves: [], swaps: [], notices: [], users: [], sched: null, tab: "sessions", sid: null, keys: {}, filter: "all", rsec: "all", rkind: "all",
     rview: "list", q: "", watched: new Set(), edits: {}, openWeek: null, dirSent: "", picked: new Set() };
 
   /* ---------- who is here ---------- */
@@ -229,7 +232,7 @@
 
     unsubs.push(db.collection("sessions").where("semester", "==", SEM).onSnapshot((q) => {
       all = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).sort((a, b) => (a.date + a.start < b.date + b.start ? -1 : 1));
-      open = all.filter((s) => s.state === "open");
+      open = all.filter(stillOpen);
       paintOpen(); paintReqs();
     }, () => { openEl.innerHTML = `<p class="small-note">Could not check for open sessions. Reload the page to try again.</p>`; }));
     unsubs.push(db.collection("attendance").where("email", "==", email).onSnapshot((q) => {
@@ -241,6 +244,12 @@
     unsubs.push(db.collection("swaps").where("fromEmail", "==", email).onSnapshot((q) => { sent = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((x) => x.semester === SEM); paintReqs(); }, () => {}));
     unsubs.push(db.collection("notices").where("email", "==", email).onSnapshot((q) => { notices = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((x) => x.semester === SEM); paintReqs(); paintMine(); }, () => {}));
 
+    // the countdown on an open card; at zero the card goes (the lecturer's page closes the session)
+    timers.push(setInterval(() => {
+      let gone = false;
+      $$(".at-cd[data-until]").forEach((el) => { const left = +el.dataset.until - Date.now(); if (left <= 0) gone = true; else el.textContent = `Closes in ${mss(left)}`; });
+      if (gone) { open = all.filter(stillOpen); paintOpen(); }
+    }, 1000));
     // my section for a session: a lecture is for everyone; a lab follows an approved swap for that lab
     const mySection = (s) => (s.kind === "lab" && moves[slotOf(s)] ? moves[slotOf(s)].section : me && me.section);
     const forMe = (s) => me && (s.section === "all" || s.section === mySection(s));
@@ -255,7 +264,7 @@
       openEl.innerHTML = mine.map((s) => {
         const r = recs[s.id], mv = s.kind === "lab" && moves[slotOf(s)];
         return `<div class="at-card open" data-s="${s.id}"><div class="at-head"><strong>${esc(s.title)}</strong>${r ? chip(r.status) : `<span class="at-live">Open now</span>`}</div>
-          <p class="small-note">${sessionLine(s)}${mv ? ` · ⇄ swapped in for this lab` : ""}</p>
+          <p class="small-note">${sessionLine(s)}${mv ? ` · ⇄ swapped in for this lab` : ""}</p>${!r && s.closesAt ? `<p class="at-cd" data-until="${tsMs(s.closesAt)}"></p>` : ""}
           ${r ? `<p class="at-done">✓ Your attendance is recorded: <strong>${ST[r.status]}</strong>${r.at ? `, ${fmtStamp(r.at)}` : ""}.</p>`
             : `<form class="at-form" novalidate><label for="k-${s.id}">Security key <span>6 letters and numbers, shown on the screen in class</span></label>
               <div class="at-row"><input id="k-${s.id}" class="at-key" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" placeholder="e.g. K7P2QX">
@@ -560,7 +569,7 @@
         closePanel(true); L.tab = st.tab || "sessions"; L.sid = st.sid || null; draw();
       });
     }
-    const load = (name, q, map) => unsubs.push(q.onSnapshot((s) => { L[name] = s.docs.map(map); if (name === "roster") syncDirectory(); if (name === "roster" || name === "users") autoApprove(); if (name === "sessions") { addSlots(); L.sessLoaded = true; } draw(); },
+    const load = (name, q, map) => unsubs.push(q.onSnapshot((s) => { L[name] = s.docs.map(map); L.got[name] = true; if (name === "roster") syncDirectory(); if (name === "roster" || name === "users") autoApprove(); if (name === "sessions") { addSlots(); L.sessLoaded = true; } draw(); },
       (e) => { console.warn("NMK attendance:", name, e.code || e); $(".at-body").innerHTML = `<p class="small-note">Could not load ${name} (${esc(e.code || e)}). If this says permission-denied, publish the latest firebase/firestore.rules in the Firebase console.</p>`; }));
     const withId = (d) => Object.assign({ id: d.id }, d.data());
     load("sessions", db.collection("sessions").where("semester", "==", SEM), withId);
@@ -592,6 +601,7 @@
       if (e.target.matches(".at-rm")) { const tr = e.target.closest("tr[data-em]"); edit(L.sid, tr.dataset.em, { remark: e.target.value }); tr.classList.add("changed"); paintSaveBar(); }
     });
     host.addEventListener("focusout", () => setTimeout(() => { if (L.pending) draw(); }, 50));
+    timers.push(setInterval(autoClose, 2000));
     window.addEventListener("beforeunload", (e) => { if (Object.keys(L.edits).length) { e.preventDefault(); e.returnValue = ""; } });
     draw();
   }
@@ -900,18 +910,20 @@
   function paintKey(el, sid, big) {
     const k = L.keys[sid], s = L.sessions.find((x) => x.id === sid);
     if (!el) return;
-    if (!s || s.state !== "open" || !k || !k.cur) { el.innerHTML = `<p class="small-note">The key appears here when attendance is open.</p>`; return; }
+    if (!s || s.state !== "open" || !k || !k.cur) { el.innerHTML = s && s.state === "closed" ? `<p class="at-closed"><strong>Attendance is closed.</strong></p>` : `<p class="small-note">The key appears here when attendance is open.</p>`; return; }
     const left = k.mode === "rotate" ? Math.max(0, ROTATE_MS - (Date.now() - tsMs(k.changedAt))) : 0;
     const keyEl = $(".at-keyval", el);
     if (!keyEl || keyEl.dataset.k !== k.cur) {
       el.innerHTML = `<div class="at-keybox${big ? " big" : ""}"><div class="at-qr" aria-hidden="true"></div><div><p class="at-kl">Security key</p><p class="at-keyval" data-k="${k.cur}">${k.cur.split("").map((c) => `<span>${c}</span>`).join("")}</p>
-        <p class="at-kt"></p><p class="small-note">Scan the QR code with your phone camera, or open the course site, choose <strong>Attendance</strong> and type the key.</p></div></div>`;
+        <p class="at-closes"></p><p class="at-kt"></p><p class="small-note">Scan the QR code with your phone camera, or open the course site, choose <strong>Attendance</strong> and type the key.</p></div></div>`;
       const q = $(".at-qr", el);
       if (window.QRCode) { try { new QRCode(q, { text: keyUrl(sid, k.cur), width: big ? 320 : 180, height: big ? 320 : 180, correctLevel: QRCode.CorrectLevel.M }); } catch (e) { q.hidden = true; } }
       else q.hidden = true;
     }
     const kt = $(".at-kt", el);
-    if (kt) kt.textContent = k.mode === "rotate" ? `New key in ${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")}` : "This key stays the same until you close attendance.";
+    const ca = s.closesAt ? tsMs(s.closesAt) - Date.now() : null, cl = $(".at-closes", el);
+    if (cl) cl.textContent = ca === null ? "" : ca > 0 ? `Attendance closes in ${mss(ca)}` : "Closing attendance…";
+    if (kt) kt.textContent = ca !== null && ca <= 0 ? "" : k.mode === "rotate" ? (ca !== null && ca <= left ? "" : `New key in ${mss(left)}`) : ca !== null ? "This key stays the same until attendance closes." : "This key stays the same until you close attendance.";
   }
 
   function drawSession(body, s) {
@@ -924,10 +936,12 @@
           <label><input type="radio" name="mode" value="fixed"> Fixed for the whole session</label></fieldset>
         <label class="at-late"><input type="checkbox" name="late"${s.lateAfter > 0 ? " checked" : ""}> Mark students <strong>Late</strong> automatically after <input type="number" name="lateMin" min="1" max="180" value="${s.lateAfter || 15}"> minutes</label>
         <p class="small-note">Leave this unticked to mark Late yourself in the list below.</p>
+        <label class="at-late"><input type="checkbox" name="auto"${s.autoClose === 0 ? "" : " checked"}> Close attendance automatically after <input type="number" name="autoMin" min="1" max="180" value="${s.autoClose || 3}"> minutes</label>
+        <p class="small-note">When it closes, every student not marked yet is marked Absent (Excused with an approved absence notice). You can open it again.</p>
         <button type="button" class="btn" data-open>Open attendance</button></div>`
       : `<div class="at-card open"><div class="at-head"><h3>Attendance Is Open</h3><span class="at-count">${marked} of ${studs.length} marked</span></div><div class="at-keyarea"></div>
         <div class="acc-row"><a class="btn ghost" href="attendance.html?show=${encodeURIComponent(s.id)}" target="_blank" rel="noopener">Show on the projector ↗</a>
-        <button type="button" class="btn" data-close>Close attendance…</button></div></div>`;
+        ${s.closesAt ? `<button type="button" class="btn ghost" data-more>+3 minutes</button>` : ""}<button type="button" class="btn" data-close>Close attendance…</button></div></div>`;
     const rows = studs.map((r, i) => {
       const x = recOf(s.id, r.id), e = L.edits[`${s.id}|${r.id}`] || {}, st = e.status || (x && x.status), rm = e.remark !== undefined ? e.remark : (x && x.remark) || "", nt = noticeOf(s.id, r.id);
       return `<tr data-em="${esc(r.id)}" class="${L.edits[`${s.id}|${r.id}`] ? "changed" : ""}"><td>${i + 1}</td><td>${profileLink(r.id, r.name)}<br><small>${esc(r.matric)}</small>${r.moved ? `<br><small class="at-swn">⇄ from ${SECTION[r.moved.from] ? SEC_SHORT[r.moved.from] : "–"}${r.moved.swap ? " (swap)" : ""}</small>` : ""}${nt ? `<br><small class="at-ntc ${nt.status}" title="${esc(nt.detail)}">✉ ${REASONS[nt.reason] || nt.reason}: ${nt.status}</small>` : ""}</td>
@@ -977,9 +991,11 @@
 
   async function openSession(s) {
     const mode = ($("input[name=mode]:checked") || {}).value || "rotate", late = $("input[name=late]").checked, lateMin = Math.max(1, Math.min(180, +$("input[name=lateMin]").value || 15));
+    const auto = $("input[name=auto]").checked, autoMin = Math.max(1, Math.min(180, +$("input[name=autoMin]").value || 3));
     try {
       await db.collection("sessionKeys").doc(s.id).set({ cur: newKey(), prev: "", mode, changedAt: firebase.firestore.Timestamp.now() });
-      await db.collection("sessions").doc(s.id).update({ state: "open", openedAt: FV.serverTimestamp(), lateAfter: late ? lateMin : 0, openedBy: A.state.user.email.toLowerCase(), slot: slotOf(s) });
+      await db.collection("sessions").doc(s.id).update({ state: "open", openedAt: FV.serverTimestamp(), lateAfter: late ? lateMin : 0, openedBy: A.state.user.email.toLowerCase(), slot: slotOf(s),
+        autoClose: auto ? autoMin : 0, closesAt: auto ? firebase.firestore.Timestamp.fromMillis(Date.now() + autoMin * 60000) : null });
     } catch (ex) { say("Could Not Open Attendance", `${esc(ex.code || ex)}. If this says permission-denied, publish the latest firebase/firestore.rules in the Firebase console.`); }
   }
   function closeSession(s) {
@@ -991,16 +1007,28 @@
       <div class="acc-row"><button type="button" class="btn" data-go>Close attendance</button><button type="button" class="btn ghost" data-x>Cancel</button></div>`);
     $("[data-go]", p).addEventListener("click", async (e) => {
       e.target.disabled = true;
-      try {
-        const b = db.batch();
-        if (un.length && $("[data-abs]", p).checked) un.forEach((r) => {
-          const nt = noticeOf(s.id, r.id), exc = nt && nt.status === "approved";
-          b.set(db.collection("attendance").doc(`${s.id}_${r.id}`), Object.assign(recBase(s, r.id, exc ? "E" : "A", "auto"), { remark: exc ? `${REASONS[nt.reason] || nt.reason}: ${nt.detail}`.slice(0, 200) : nt && nt.status === "pending" ? "Absence notice waiting for approval" : "" }));
-        });
-        b.update(db.collection("sessions").doc(s.id), { state: "closed", closedAt: FV.serverTimestamp() });
-        b.set(db.collection("sessionKeys").doc(s.id), { cur: "", prev: "", mode: "closed", changedAt: firebase.firestore.Timestamp.now() });
-        await b.commit(); closePanel();
-      } catch (ex) { e.target.disabled = false; $(".at-err", p).textContent = `Could not close it (${ex.code || ex}).`; }
+      try { await doClose(s, un.length && $("[data-abs]", p).checked); closePanel(); } catch (ex) { e.target.disabled = false; $(".at-err", p).textContent = `Could not close it (${ex.code || ex}).`; }
+    });
+  }
+  // close a session: students can no longer mark themselves; those not marked become Absent (Excused with an approved notice)
+  async function doClose(s, markAbsent, auto) {
+    const b = db.batch();
+    if (markAbsent) studentsFor(s).filter((r) => !recOf(s.id, r.id)).forEach((r) => {
+      const nt = noticeOf(s.id, r.id), exc = nt && nt.status === "approved";
+      b.set(db.collection("attendance").doc(`${s.id}_${r.id}`), Object.assign(recBase(s, r.id, exc ? "E" : "A", "auto"), { remark: exc ? `${REASONS[nt.reason] || nt.reason}: ${nt.detail}`.slice(0, 200) : nt && nt.status === "pending" ? "Absence notice waiting for approval" : "" }));
+    });
+    b.update(db.collection("sessions").doc(s.id), Object.assign({ state: "closed", closedAt: FV.serverTimestamp() }, auto ? { closedBy: "timer" } : {}));
+    b.set(db.collection("sessionKeys").doc(s.id), { cur: "", prev: "", mode: "closed", changedAt: firebase.firestore.Timestamp.now() });
+    await b.commit();
+  }
+  // the timer: an open session past its closing time is closed by any lecturer page that is open (a few seconds late,
+  // so the marks students made in the last second have arrived; the rules refuse marks after closesAt)
+  const closing = new Set();
+  function autoClose() {
+    if (!["sessions", "roster", "att", "moves", "notices"].every((k) => L.got[k])) return;
+    L.sessions.filter((s) => s.state === "open" && s.closesAt && Date.now() > tsMs(s.closesAt) + 4000 && !closing.has(s.id)).forEach((s) => {
+      closing.add(s.id);
+      doClose(s, true, true).catch((e) => { console.warn("NMK attendance: could not close", s.id, e.code || e); setTimeout(() => closing.delete(s.id), 30000); });
     });
   }
   const recBase = (s, email, status, by) => ({ session: s.id, email, status, by: by || A.state.user.email.toLowerCase(), at: FV.serverTimestamp(), semester: SEM, kind: s.kind, date: s.date, title: s.title });
@@ -1453,6 +1481,7 @@
       return;
     }
     if (b("[data-open]")) return openSession(s);
+    if (b("[data-more]")) return db.collection("sessions").doc(s.id).update({ closesAt: firebase.firestore.Timestamp.fromMillis(Math.max(Date.now(), tsMs(s.closesAt)) + 3 * 60000) }).catch((ex) => say("Could Not Save", esc(ex.code || ex)));
     if (b("[data-close]")) { if (editsFor(s.id).length) { say("Save First", "Save or undo your changes before closing attendance."); return; } return closeSession(s); }
     if (b("[data-all]")) {
       const st = b("[data-all]").dataset.all;
@@ -1493,17 +1522,19 @@
     const ref = db.collection("sessions").doc(sid);
     unsubs.push(ref.onSnapshot((d) => {
       const s = d.exists ? Object.assign({ id: d.id }, d.data()) : null;
-      L.sessions = s ? [s] : [];
+      L.sessions = s ? [s] : []; L.got.sessions = true;
       $(".at-pt").innerHTML = s ? `<strong>${esc(s.title)}</strong><br>${sessionLine(s)}` : "This session no longer exists.";
       paintKey($(".at-keyarea"), sid, true);
       if (s && !L.rosterLoaded) {
         L.rosterLoaded = true;
-        unsubs.push(db.collection("roster").onSnapshot((q) => { L.roster = q.docs.map((x) => Object.assign({ id: x.id }, x.data())); count(); }));
-        unsubs.push(db.collection("labMoves").where("semester", "==", SEM).onSnapshot((q) => { L.moves = q.docs.map((x) => Object.assign({ id: x.id }, x.data())); count(); }));
-        unsubs.push(db.collection("attendance").where("session", "==", sid).onSnapshot((q) => { L.att = q.docs.map((x) => Object.assign({ id: x.id }, x.data())); count(); }));
+        unsubs.push(db.collection("roster").onSnapshot((q) => { L.roster = q.docs.map((x) => Object.assign({ id: x.id }, x.data())); L.got.roster = true; count(); }));
+        unsubs.push(db.collection("labMoves").where("semester", "==", SEM).onSnapshot((q) => { L.moves = q.docs.map((x) => Object.assign({ id: x.id }, x.data())); L.got.moves = true; count(); }));
+        unsubs.push(db.collection("attendance").where("session", "==", sid).onSnapshot((q) => { L.att = q.docs.map((x) => Object.assign({ id: x.id }, x.data())); L.got.att = true; count(); }));
+        unsubs.push(db.collection("notices").where("session", "==", sid).onSnapshot((q) => { L.notices = q.docs.map((x) => Object.assign({ id: x.id }, x.data())); L.got.notices = true; }, () => {}));
       }
       count();
     }));
     keyWatch(sid, () => paintKey($(".at-keyarea"), sid, true));
+    timers.push(setInterval(autoClose, 2000));
   }
 })();
