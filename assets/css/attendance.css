@@ -238,3 +238,34 @@ table.at-ses tr.picked td { background: color-mix(in srgb, var(--danger) 8%, tra
 .at-notebox { margin: 12px 0 0; }
 .at-notebox summary { cursor: pointer; color: var(--teal); font-size: .92rem; }
 .at-notebox .at-in { width: 100%; margin-top: 6px; }
+
+/* My Lab Sessions, the swap guide and Before / After */
+.at-lhead { display: flex; align-items: center; gap: 10px; }
+.at-lhead h2, .at-lhead h3 { margin: 0; }
+.at-info { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--teal); background: var(--surface); color: var(--teal); font: italic 700 .95rem var(--serif); cursor: pointer; display: inline-grid; place-items: center; padding: 0; }
+.at-info[aria-expanded="true"] { background: var(--teal); color: #fff; }
+.at-help { background: var(--teal-soft); border-radius: var(--r-md); padding: 10px 14px; margin: 10px 0; font-size: .92rem; }
+.at-help ol { margin: 6px 0 8px; padding-left: 20px; } .at-help p { margin: 6px 0; }
+.at-mylabs td { vertical-align: top; }
+.at-mylabs td small { color: var(--ink-3); }
+.at-ba th[scope="row"] { white-space: nowrap; }
+.at-ba .at-bapart th { background: var(--grid); text-align: left; font-size: .82rem; }
+.at-radios label { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; }
+.at-radios input { margin-top: 3px; }
+.at-notel { display: grid; gap: 4px; margin-top: 12px; font-weight: 600; }
+.at-notel .at-in { font-weight: 400; width: 100%; }
+.at-bawrap { border: 1px solid var(--rule); border-radius: var(--r-md); background: var(--surface); overflow: hidden; }
+.at-bawrap .at-ba { width: 100%; table-layout: fixed; }
+.at-bawrap .at-ba th[scope="row"] { width: 28%; white-space: normal; overflow-wrap: anywhere; font-size: .82rem; }
+.at-ba td small { display: block; color: var(--ink-3); }
+.at-ba td.at-after { font-weight: 600; background: var(--teal-soft); }
+@media (max-width: 600px) {
+  .at-labsbox .adm-scroll { overflow: visible; border: 0; background: none; }
+  .at-mylabs, .at-mylabs tbody { display: block; }
+  .at-mylabs thead { display: none; }
+  .at-mylabs tr { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; padding: 10px 12px; margin: 0 0 8px; border: 1px solid var(--rule); border-radius: var(--r-md); background: var(--surface); }
+  .at-mylabs td { display: block; padding: 0; border: 0; }
+  .at-mylabs td:first-child { grid-row: span 2; }
+  .at-mylabs td:last-child { grid-column: 1 / -1; margin-top: 6px; }
+  .at-mylabs td:last-child .btn { width: 100%; }
+}
