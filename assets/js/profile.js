@@ -157,21 +157,33 @@
     box.className = "pf-card pf-editbox";
     box.innerHTML = `<h2 class="pf-h">Edit Details</h2><form class="at-dform" novalidate>
       <label>Name<input name="name" value="${esc(r.name)}"></label>
+      <label>Studentmail address<input name="email" type="email" value="${esc(d.email)}" autocomplete="off" spellcheck="false"></label>
+      <p class="small-note">Changing it moves this student's attendance, absence notices, lab swaps and lab marks to the new address. They then sign in with the new address.</p>
       <div class="at-two"><label>Matric number<input name="matric" value="${esc(r.matric)}"></label><label>Lab section<select name="section"><option value="">None</option>${Object.entries(SECTION).map(([v, l]) => `<option value="${v}"${r.section === v ? " selected" : ""}>${l}</option>`).join("")}</select></label></div>
       <div class="at-two"><label>Lab group<input name="group" type="number" min="0" max="30" value="${r.group || ""}"></label><label>Status<select name="status"><option value="active"${r.status === "active" ? " selected" : ""}>Active</option><option value="dropped"${r.status !== "active" ? " selected" : ""}>Dropped</option></select></label></div>
       <div class="at-two"><label>RPS name<input name="rps" value="${esc(r.rps || "")}"></label><label>RPS email<input name="rpsEmail" type="email" value="${esc(r.rpsEmail || "")}"></label></div>
-      <p class="small-note">To change the studentmail address, use <a href="attendance.html">Attendance</a> → Class List → Edit.</p>
       <p class="at-err" aria-live="polite"></p><div class="acc-row"><button type="submit" class="btn">Save</button><button type="button" class="btn ghost" data-cancel>Cancel</button></div></form>`;
     $(".pf-main").prepend(box);
     box.querySelector("input").focus();
     box.querySelector("[data-cancel]").addEventListener("click", () => box.remove());
     box.querySelector("form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const v = Object.fromEntries(new FormData(e.target).entries());
+      const v = Object.fromEntries(new FormData(e.target).entries()), em = v.email.trim().toLowerCase(), err = box.querySelector(".at-err");
+      const data = { name: v.name.trim().toUpperCase(), matric: v.matric.trim(), section: v.section, group: +v.group || 0, status: v.status, rps: v.rps.trim(), rpsEmail: v.rpsEmail.trim().toLowerCase() };
+      if (!/^[^@\s]+@studentmail\.unimap\.edu\.my$/.test(em)) { err.textContent = "The studentmail address must end with @studentmail.unimap.edu.my."; return; }
+      const btn = e.target.querySelector("[type=submit]");
       try {
-        await db.collection("roster").doc(d.email).update({ name: v.name.trim().toUpperCase(), matric: v.matric.trim(), section: v.section, group: +v.group || 0, status: v.status, rps: v.rps.trim(), rpsEmail: v.rpsEmail.trim().toLowerCase() });
+        if (em !== d.email) {
+          if ((await db.collection("roster").doc(em).get()).exists) { err.textContent = "Another student on the class list already has this studentmail address."; return; }
+          if (!confirm(`Change ${r.name}'s studentmail address from ${d.email} to ${em}? Their attendance, absence notices, lab swaps and lab marks move with them.`)) return;
+          btn.disabled = true; err.textContent = "Moving the records…";
+          await A.changeEmail(d.email, em, Object.assign({}, r, data));
+          location.href = `profile.html?e=${encodeURIComponent(em)}`;
+          return;
+        }
+        await db.collection("roster").doc(d.email).update(data);
         location.reload();
-      } catch (ex) { box.querySelector(".at-err").textContent = `Could not save (${ex.code || ex}).`; }
+      } catch (ex) { btn.disabled = false; err.textContent = `Could not save (${ex.code || ex}).`; }
     });
   }
 })();

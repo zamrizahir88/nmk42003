@@ -439,5 +439,22 @@
 
   paint();
   // For admin.html and later pages: read-only access to the signed-in state and the database
-  window.NMKAccount = { db, auth, isAdmin, state, on: (f) => { listeners.push(f); if (state.ready) f(state); }, signIn, loadAttendance, push, SEM, refreshBell };
+  // Lecturers: a student's studentmail address is the id of their class-list entry and part of the id of their records,
+  // so a new address means new records: copy each one to the new id, then delete the old (batches of up to 400 writes).
+  // Used by Class List → Edit (attendance.js) and Edit Details on the profile (profile.js).
+  async function changeEmail(old, em, data) {
+    const ops = [], docs = async (c, f) => (await db.collection(c).where(f, "==", old).get()).docs;
+    ops.push((b) => b.set(db.collection("roster").doc(em), Object.assign({}, data, { email: em })));
+    const move = (c, d, id) => { const x = d.data(); ops.push((b) => b.set(db.collection(c).doc(id(x)), Object.assign({}, x, { email: em }))); ops.push((b) => b.delete(d.ref)); };
+    (await docs("attendance", "email")).forEach((d) => move("attendance", d, (x) => `${x.session}_${em}`));
+    (await docs("notices", "email")).forEach((d) => move("notices", d, (x) => `${x.session}_${em}`));
+    (await docs("labMoves", "email")).forEach((d) => move("labMoves", d, (x) => `${x.slot}_${em}`));
+    (await docs("labmarks", "email")).forEach((d) => move("labmarks", d, () => d.id.slice(0, d.id.length - old.length) + em));
+    (await docs("swaps", "fromEmail")).forEach((d) => ops.push((b) => b.update(d.ref, { fromEmail: em })));
+    // the old entry goes last, so nothing is lost if a batch fails half way
+    for (let i = 0; i < ops.length; i += 400) { const b = db.batch(); ops.slice(i, i + 400).forEach((f) => f(b)); await b.commit(); }
+    await db.collection("roster").doc(old).delete();
+  }
+
+  window.NMKAccount = { db, auth, isAdmin, state, on: (f) => { listeners.push(f); if (state.ready) f(state); }, signIn, loadAttendance, push, SEM, refreshBell, changeEmail };
 })();

@@ -1268,7 +1268,7 @@
     const p = panel(`<h3>${isNew ? "Add a Student" : "Edit Student"}</h3><form class="at-dform" novalidate>
       <label>Name<input name="name" value="${esc(r.name)}" required></label>
       <div class="at-two"><label>Matric number<input name="matric" value="${esc(r.matric)}" required></label><label>Studentmail address<input name="email" type="email" value="${esc(r.id)}" required></label></div>
-      ${isNew ? "" : `<p class="small-note">Changing the studentmail address moves this student's attendance, absence notices and lab swaps to the new address. They then sign in with the new address.</p>`}
+      ${isNew ? "" : `<p class="small-note">Changing the studentmail address moves this student's attendance, absence notices, lab swaps and lab marks to the new address. They then sign in with the new address.</p>`}
       <div class="at-two"><label>Lab section<select name="section"><option value="">None</option>${["mon", "wed", "thu"].map((v) => `<option value="${v}"${r.section === v ? " selected" : ""}>${SECTION[v]}</option>`).join("")}</select></label><label>Lab group<input name="group" type="number" min="0" max="30" value="${r.group || ""}"></label></div>
       <div class="at-two"><label>RPS name<input name="rps" value="${esc(r.rps || "")}"></label><label>RPS email<input name="rpsEmail" type="email" value="${esc(r.rpsEmail || "")}"></label></div>
       <p class="at-err" aria-live="polite"></p>
@@ -1282,9 +1282,10 @@
       try {
         if (!isNew && em !== r.id) {
           if (L.roster.some((x) => x.id === em)) { $(".at-err", p).textContent = "Another student on the class list already has this studentmail address."; return; }
-          if (!confirm(`Change ${r.name}'s studentmail address from ${r.id} to ${em}? Their attendance, absence notices and lab swaps move with them.`)) return;
+          if (!confirm(`Change ${r.name}'s studentmail address from ${r.id} to ${em}? Their attendance, absence notices, lab swaps and lab marks move with them.`)) return;
           $(".at-err", p).textContent = "Moving the records…";
-          await changeEmail(r, em, Object.assign({}, r, data));
+          const keep = Object.assign({}, r, data); delete keep.id;
+          await A.changeEmail(r.id, em, keep);
         } else await db.collection("roster").doc(em).set(data, { merge: true });
         closePanel();
       } catch (ex) { $(".at-err", p).textContent = `Could not save (${ex.code || ex}).`; }
@@ -1294,20 +1295,6 @@
       if (!confirm(`Remove ${r.name} from the class list? Their attendance records are kept. To keep them on the list but out of sessions, set them to Dropped instead.`)) return;
       try { await db.collection("roster").doc(r.id).delete(); closePanel(); } catch (ex) { $(".at-err", p).textContent = `Could not remove (${ex.code || ex}).`; }
     });
-  }
-  // A student's studentmail address is the id of their class-list entry and part of the id of their records, so a new
-  // address means new records: copy each one to the new id, then delete the old (in batches of up to 400 writes).
-  async function changeEmail(r, em, data) {
-    const old = r.id, ops = [];
-    const strip = (x) => { const o = Object.assign({}, x); delete o.id; return o; };
-    ops.push((b) => b.set(db.collection("roster").doc(em), strip(data)));
-    L.att.filter((x) => x.email === old).forEach((x) => { ops.push((b) => b.set(db.collection("attendance").doc(`${x.session}_${em}`), Object.assign(strip(x), { email: em }))); ops.push((b) => b.delete(db.collection("attendance").doc(x.id))); });
-    L.notices.filter((x) => x.email === old).forEach((x) => { ops.push((b) => b.set(db.collection("notices").doc(`${x.session}_${em}`), Object.assign(strip(x), { email: em }))); ops.push((b) => b.delete(db.collection("notices").doc(x.id))); });
-    L.moves.filter((x) => x.email === old).forEach((x) => { ops.push((b) => b.set(db.collection("labMoves").doc(`${x.slot}_${em}`), Object.assign(strip(x), { email: em }))); ops.push((b) => b.delete(db.collection("labMoves").doc(x.id))); });
-    L.swaps.filter((x) => x.fromEmail === old).forEach((x) => ops.push((b) => b.update(db.collection("swaps").doc(x.id), { fromEmail: em })));
-    // the old entry goes last, so nothing is lost if a batch fails half way
-    for (let i = 0; i < ops.length; i += 400) { const b = db.batch(); ops.slice(i, i + 400).forEach((f) => f(b)); await b.commit(); }
-    await db.collection("roster").doc(old).delete();
   }
   // a class list file: our own .json (with lab sections), or URLearn's "List of Student by Course and RPS" (.xls, an HTML table)
   function readList(text) {
