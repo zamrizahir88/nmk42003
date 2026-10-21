@@ -158,6 +158,9 @@ service cloud.firestore {
       allow create: if onRoster() && nid == request.resource.data.session + '_' + email() && request.resource.data.email == email() && request.resource.data.status == 'pending';
       allow update: if isLecturer() || (signedIn() && resource.data.email == email() && resource.data.status == 'pending'
           && request.resource.data.status == 'pending' && request.resource.data.email == email() && request.resource.data.session == resource.data.session);
+      // a notice sent before its document was ready: the student adds the document later, whatever the decision
+      allow update: if signedIn() && resource.data.email == email() && resource.data.get('docLater', false) == true && !('doc' in resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['doc', 'docAddedAt']);
       allow delete: if isLecturer() || (signedIn() && resource.data.email == email() && resource.data.status == 'pending');
     }
 

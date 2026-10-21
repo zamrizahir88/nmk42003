@@ -136,6 +136,10 @@ body.at-show .page-hero, body.at-show .site-footer, body.at-show .chat-fab, body
 .at-list { margin: 0; padding-left: 1.1em; display: grid; gap: 8px; }
 .at-tag { display: inline-block; font-size: .75rem; font-weight: 700; border-radius: 999px; padding: 1px 9px; background: var(--grid); color: var(--ink-2); white-space: nowrap; }
 .at-tag.approved { background: var(--teal-soft); color: var(--teal); }
+.at-doclater { margin: 4px 0 8px; padding: 10px 12px; border-radius: 10px; background: var(--amber-soft); font-size: .9rem; line-height: 1.5; }
+.at-doclater .at-late { margin: 8px 0 0; }
+.at-tag.later { background: var(--amber-soft); color: var(--amber); }
+.at-tag.overdue { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--danger); }
 .at-tag.accepted, .at-tag.pending, .at-tag.requested { background: var(--amber-soft); color: var(--amber); }
 .at-tag.rejected, .at-tag.declined { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--danger); }
 .at-swn { color: var(--teal); font-weight: 600; }

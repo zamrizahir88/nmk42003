@@ -34,6 +34,10 @@
   let uploadOn = null;
   const getUploadOn = async () => { if (uploadOn === null) { try { const d = await db.collection("meta").doc("uploads").get(); uploadOn = !!(d.exists && d.data().on); } catch (e) { uploadOn = false; } } return uploadOn; };
   const DOC_TYPES = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png" }, DOC_MAX = 5 * 1024 * 1024, PART = 900000;
+  // a notice sent before its official document is ready: the student adds it within DOC_DAYS days
+  const DOC_DAYS = 14;
+  const docWait = (n) => n && n.docLater && !n.doc;
+  const docTag = (n, today) => !docWait(n) ? "" : today > n.docDue ? `<span class="at-tag overdue">Document overdue (due ${fmtDate(n.docDue)})</span>` : `<span class="at-tag later">Document to follow (due ${fmtDate(n.docDue)})</span>`;
   const docLink = (d, label) => (d && d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener">📎 ${esc(label || d.name || "Supporting document")}</a>` : "");
   // photos are made smaller first (a phone photo of an MC is several MB; 1600 px is plenty to read it)
   const shrink = (file) => new Promise((ok) => {
@@ -94,7 +98,7 @@
   const SWAP_HELP = `<div class="at-help"><strong>How to swap a lab session</strong><ol>
       <li>Agree with your classmate first (in person or by chat).</li>
       <li>In <strong>My Lab Sessions</strong>, tap <strong>Swap this lab session</strong> on the lab you need.</li>
-      <li>Choose your classmate: tap their section, then their name.</li>
+      <li>Find your classmate: type their name or matric number, then tap them.</li>
       <li>Check the <strong>Before / After</strong> table: who goes where, and when.</li>
       <li>Choose this lab session only, or every lab session until the end of the semester.</li>
       <li>Add a note for your lecturer if you want, then tap <strong>Send the request</strong>.</li>
@@ -314,8 +318,10 @@
           <label>Session<select name="session"${n ? " disabled" : ""}>${past.length ? `<optgroup label="Already held (absent already)">${past.map(opt).join("")}</optgroup>` : ""}${ahead.length ? `<optgroup label="Coming up">${ahead.map(opt).join("")}</optgroup>` : ""}</select></label>
           <label>Reason<select name="reason">${Object.entries(REASONS).map(([v, l]) => `<option value="${v}"${n && n.reason === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>
           <label>Explain briefly<textarea name="detail" rows="3" maxlength="500" required placeholder="e.g. Fever, clinic visit at Pusat Kesihatan UniMAP">${esc(n ? n.detail : "")}</textarea></label>
-          ${uploadOn ? `<label>Supporting document (MC, official letter…)<input type="file" name="doc" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"${n ? "" : " required"}>
+          ${uploadOn ? `<label>Supporting document (MC, official letter…)<input type="file" name="doc" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png">
             <small class="at-sub">PDF, JPG or PNG, up to 5 MB. ${n && n.doc ? `Sent: ${docLink(n.doc)}. Choose a file only to replace it.` : "A clear photo of the document is fine."}</small></label>
+            ${n && n.doc ? "" : `<div class="at-doclater"><strong>No document yet?</strong> If your official supporting document isn't ready today (for example, a letter you're still waiting for), you can send this notice now and add the document later. It must be added within ${DOC_DAYS} days.
+              <label class="at-late"><input type="checkbox" name="later"${docWait(n) ? " checked" : ""}> I'll add my document later${docWait(n) ? ` (by ${fmtDate(n.docDue)})` : ""}</label></div>`}
             <p class="at-note">Your document goes straight to your lecturer. When they approve the notice, your attendance for that session becomes <strong>Excused</strong>.</p>`
           : `<p class="at-note">📎 Email your supporting document (e.g. MC or official letter) to the course coordinator at <a href="mailto:${COORDINATOR}">${COORDINATOR}</a>. This notice only tells your lecturer; it is approved or not after they check it.</p>`}
           <p class="at-err" aria-live="polite"></p>
@@ -326,7 +332,8 @@
         if (!v.detail || v.detail.trim().length < 5) { $(".at-err", p).textContent = "Please explain in a few words."; return; }
         if (!n && notices.some((x) => x.session === sid)) { $(".at-err", p).textContent = "You already sent a notice for this session. Edit it in the list below."; return; }
         const file = uploadOn && e.target.doc && e.target.doc.files[0];
-        if (uploadOn && !file && !(n && n.doc)) { $(".at-err", p).textContent = "Attach your supporting document (PDF, JPG or PNG)."; return; }
+        const later = !!(uploadOn && !file && !(n && n.doc) && v.later);
+        if (uploadOn && !file && !(n && n.doc) && !later) { $(".at-err", p).textContent = "Attach your supporting document (PDF, JPG or PNG), or tick that you'll add it later."; return; }
         if (file && !DOC_TYPES[file.type]) { $(".at-err", p).textContent = "Use a PDF, JPG or PNG file."; return; }
         if (file && file.size > DOC_MAX) { $(".at-err", p).textContent = "The file is larger than 5 MB. Take a smaller photo, or save it as a PDF."; return; }
         const btn = e.target.querySelector("[type=submit]");
@@ -335,9 +342,33 @@
           let doc = n && n.doc ? n.doc : null;
           if (file) { $(".at-err", p).textContent = "Uploading your document…"; doc = await sendDoc(file, { email, notice: `${sid}_${email}`, session: sid, title: s.title, date: s.date, reason: REASONS[v.reason] || v.reason, studentName: me.name, matric: String(me.matric) }); }
           await db.collection("notices").doc(`${sid}_${email}`).set(Object.assign({ semester: SEM, session: sid, email, name: me.name, matric: String(me.matric), kind: s.kind, date: s.date, title: s.title,
-            reason: v.reason, detail: v.detail.trim().slice(0, 500), status: "pending", at: FV.serverTimestamp() }, doc ? { doc } : {}));
+            reason: v.reason, detail: v.detail.trim().slice(0, 500), status: "pending", at: FV.serverTimestamp() }, doc ? { doc } : {},
+            later ? { docLater: true, docDue: (n && n.docDue) || addDays(todayIso(), DOC_DAYS) } : n && n.docLater && doc ? { docLater: true, docDue: n.docDue, docAddedAt: FV.serverTimestamp() } : {}));
           closePanel();
         } catch (ex) { btn.disabled = false; $(".at-err", p).textContent = `Could not send (${ex.code || ex.message || ex}). Please try again.`; }
+      });
+    }
+
+    // the document for a notice sent earlier without it (allowed whatever the lecturer decided)
+    function addDocForm(n) {
+      if (!n) return;
+      const p = panel(`<h3>Add Your Supporting Document</h3><p><strong>${fmtDate(n.date)} · ${esc(n.title)}</strong>: ${REASONS[n.reason] || n.reason}</p>
+        <form class="at-dform" novalidate><label>Supporting document<input type="file" name="doc" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required>
+          <small class="at-sub">PDF, JPG or PNG, up to 5 MB. A clear photo of the document is fine. Add it by ${fmtDate(n.docDue)}.</small></label>
+          <p class="at-err" aria-live="polite"></p>
+          <div class="acc-row"><button type="submit" class="btn">Send the document</button><button type="button" class="btn ghost" data-x>Cancel</button></div></form>`);
+      $(".at-dform", p).addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const file = e.target.doc.files[0], err = $(".at-err", p), btn = e.target.querySelector("[type=submit]");
+        if (!file) { err.textContent = "Choose your document (PDF, JPG or PNG)."; return; }
+        if (!DOC_TYPES[file.type]) { err.textContent = "Use a PDF, JPG or PNG file."; return; }
+        if (file.size > DOC_MAX) { err.textContent = "The file is larger than 5 MB. Take a smaller photo, or save it as a PDF."; return; }
+        btn.disabled = true; err.textContent = "Uploading your document…";
+        try {
+          const doc = await sendDoc(file, { email, notice: n.id, session: n.session, title: n.title, date: n.date, reason: REASONS[n.reason] || n.reason, studentName: me.name, matric: String(me.matric) });
+          await db.collection("notices").doc(n.id).update({ doc, docAddedAt: FV.serverTimestamp() });
+          closePanel();
+        } catch (ex) { btn.disabled = false; err.textContent = `Could not send (${ex.code || ex.message || ex}). Please try again.`; }
       });
     }
 
@@ -480,7 +511,7 @@
             ${items.map((it) => `<div class="at-reqpart"><p class="at-q">${esc(it.x.labTitle)}${it.x.note ? ` <em>“${esc(it.x.note)}”</em>` : ""}</p>${it.html}</div>`).join("")}
             <div class="acc-row">${ok.length ? `<button type="button" class="btn small" data-accall>Accept all${ok.length < xs.length ? ` (${ok.length} that can still be swapped)` : ""}</button>` : ""}<button type="button" class="btn ghost small" data-decall>Decline all</button></div></div>`; }).join("")}</div>` : "")
         + (swaps.length ? `<div class="at-card"><h3>My Lab Swaps</h3><ul class="at-list">${swaps.map(({ x, out }) => `<li data-sw="${x.id}"><strong>${esc(x.labTitle)}</strong>: ${out ? `with ${esc(x.toName)} (${secName(x.toSection)})` : `with ${esc(x.fromName)} (${secName(x.fromSection)})`} · <span class="at-tag ${x.status}">${SWAP_ST[x.status] || x.status}</span>${out && ["requested", "accepted"].includes(x.status) ? ` <button type="button" class="btn ghost small" data-cancel>Cancel request</button>` : ""}</li>`).join("")}</ul></div>` : "")
-        + (notices.length ? `<div class="at-card"><h3>My Absence Notices</h3><ul class="at-list">${notices.slice().sort((a, b) => (a.date < b.date ? 1 : -1)).map((n) => `<li data-n="${n.id}"><strong>${fmtDate(n.date)} · ${esc(n.title)}</strong>: ${REASONS[n.reason] || n.reason} · <span class="at-tag ${n.status}">${NOTE_ST[n.status] || n.status}</span>${n.doc ? ` · ${n.doc.url ? docLink(n.doc, "Document") : "📎 Document sent"}` : ""}${n.note ? `<br><small>Lecturer: ${esc(n.note)}</small>` : ""}${n.status === "pending" ? ` <button type="button" class="btn ghost small" data-nedit>Edit</button> <button type="button" class="btn ghost small" data-ndel>Withdraw</button>` : ""}</li>`).join("")}</ul></div>` : "");
+        + (notices.length ? `<div class="at-card"><h3>My Absence Notices</h3><ul class="at-list">${notices.slice().sort((a, b) => (a.date < b.date ? 1 : -1)).map((n) => `<li data-n="${n.id}"><strong>${fmtDate(n.date)} · ${esc(n.title)}</strong>: ${REASONS[n.reason] || n.reason} · <span class="at-tag ${n.status}">${NOTE_ST[n.status] || n.status}</span>${n.doc ? ` · ${n.doc.url ? docLink(n.doc, "Document") : "📎 Document sent"}` : ""}${docWait(n) ? ` · ${docTag(n, todayIso())} <button type="button" class="btn small" data-nadd>Add document</button>` : ""}${n.note ? `<br><small>Lecturer: ${esc(n.note)}</small>` : ""}${n.status === "pending" ? ` <button type="button" class="btn ghost small" data-nedit>Edit</button> <button type="button" class="btn ghost small" data-ndel>Withdraw</button>` : ""}</li>`).join("")}</ul></div>` : "");
     }
     host.addEventListener("click", async (e) => {
       const t = e.target;
@@ -507,6 +538,7 @@
         if (sw && t.closest("[data-dec]")) await db.collection("swaps").doc(sw.dataset.sw).update({ status: "declined", updatedAt: FV.serverTimestamp() });
         if (sw && t.closest("[data-cancel]")) await db.collection("swaps").doc(sw.dataset.sw).update({ status: "cancelled", updatedAt: FV.serverTimestamp() });
         if (nt && t.closest("[data-nedit]")) noticeForm(notices.find((n) => n.id === nt.dataset.n));
+        if (nt && t.closest("[data-nadd]")) addDocForm(notices.find((n) => n.id === nt.dataset.n));
         if (nt && t.closest("[data-ndel]") && confirm("Withdraw this absence notice?")) await db.collection("notices").doc(nt.dataset.n).delete();
       } catch (ex) { say("Could Not Save", esc(ex.code || ex)); }
     });
@@ -1190,19 +1222,22 @@
 
   /* ---------- absence notices ---------- */
   function drawNotices(body) {
-    const order = { pending: 0, approved: 1, rejected: 2 };
-    const list = L.notices.slice().sort((a, b) => order[a.status] - order[b.status] || (a.date < b.date ? 1 : -1));
+    const order = { pending: 0, approved: 1, rejected: 2 }, today = todayIso(), nf = L.nf || "all";
+    const missing = L.notices.filter((n) => n.status === "approved" && docWait(n));
+    const list = L.notices.filter((n) => nf === "all" || (nf === "pending" ? n.status === "pending" : n.status === "approved" && docWait(n)))
+      .sort((a, b) => order[a.status] - order[b.status] || (a.date < b.date ? 1 : -1));
     const up = L.up || {}, last = up.lastRun && up.lastRun.toMillis ? up.lastRun.toMillis() : 0;
     body.innerHTML = `<p class="widget-lead">Students tell you before or after a session (backdated) why they can't attend, with their supporting document${up.on ? "" : ` (by email to ${COORDINATOR} while the upload below is off)`}. <strong>Approve</strong> marks them Excused; <strong>Reject</strong> leaves them Absent.</p>
       <details class="at-card at-upset"${up.on ? "" : " open"}><summary><strong>Document upload</strong> · ${up.on ? "on" : "off: students email their documents"}${up.on ? ` · ${last ? `your Drive script last ran ${fmtStamp(up.lastRun)}` : "the Drive script hasn't run yet"}` : ""}</summary>
         <label class="at-late"><input type="checkbox" data-upon${up.on ? " checked" : ""}> Students attach their supporting document to the notice (PDF, JPG or PNG, up to 5 MB)</label>
         <p class="small-note at-upmsg" aria-live="polite"></p>
         <p class="small-note">You can open each document here at once. Your Google Apps Script then moves it into your Drive folder every 5 minutes and puts the Drive link on the notice. Set it up once with the steps at the top of <a href="apps-script/notices.gs" target="_blank" rel="noopener">apps-script/notices.gs</a> (no deployment needed).</p></details>
-      ${!list.length ? `<p class="adm-empty">No absence notices yet.</p>` : list.map((n) => { const s = L.sessions.find((x) => x.id === n.session); return `<div class="at-req" data-nid="${n.id}">
+      <div class="adm-tools">${[["all", `All (${L.notices.length})`], ["pending", `Waiting (${L.notices.filter((n) => n.status === "pending").length})`], ["missing", `Accepted, document still missing (${missing.length})`]].map(([v, l]) => `<button type="button" class="chip-btn" data-nf="${v}" aria-pressed="${nf === v}">${l}</button>`).join("")}</div>
+      ${!list.length ? `<p class="adm-empty">${nf === "all" ? "No absence notices yet." : "None."}</p>` : list.map((n) => { const s = L.sessions.find((x) => x.id === n.session); return `<div class="at-req" data-nid="${n.id}">
         <p>${profileLink(n.email, n.name)} (${esc(n.matric)}) · <strong>${fmtDate(n.date)} · ${esc(n.title)}</strong>${s ? ` <small>(${s.state === "closed" ? "held" : s.state === "open" ? "open now" : "not yet held"})</small>` : ""}<br>
-        <strong>${REASONS[n.reason] || n.reason}</strong>: ${esc(n.detail)}${n.doc ? `<br>${n.doc.url ? docLink(n.doc, `View document in Drive (${n.doc.name || "file"})`) : n.doc.upload ? `<button type="button" class="btn ghost small" data-upview="${esc(n.doc.upload)}">📎 View document (${esc(n.doc.name || "file")})</button> <small>moving to your Drive</small>` : ""}` : ""}<br><small>Sent ${fmtStamp(n.at)} · <span class="at-tag ${n.status}">${{ pending: "Waiting", approved: "Approved", rejected: "Not approved" }[n.status]}</span>${n.note ? ` · your note: ${esc(n.note)}` : ""}</small></p>
-        ${n.status === "pending" ? `<div class="at-row"><input class="at-in at-nnote" maxlength="200" placeholder="Note to the student (optional)" aria-label="Note to ${esc(n.name)}"><button type="button" class="btn small" data-nok>Approve</button><button type="button" class="btn ghost small" data-nno>Reject</button></div>`
-          : `<button type="button" class="btn ghost small" data-nre>Change decision</button>`}</div>`; }).join("")}`;
+        <strong>${REASONS[n.reason] || n.reason}</strong>: ${esc(n.detail)}${n.doc ? `<br>${n.doc.url ? docLink(n.doc, `View document in Drive (${n.doc.name || "file"})`) : n.doc.upload ? `<button type="button" class="btn ghost small" data-upview="${esc(n.doc.upload)}">📎 View document (${esc(n.doc.name || "file")})</button> <small>moving to your Drive</small>` : ""}` : ""}${docWait(n) ? `<br>${docTag(n, today)}` : n.docLater && n.doc ? ` <small>(document added later${n.docAddedAt ? `, ${fmtStamp(n.docAddedAt)}` : ""})</small>` : ""}<br><small>Sent ${fmtStamp(n.at)} · <span class="at-tag ${n.status}">${{ pending: "Waiting", approved: "Approved", rejected: "Not approved" }[n.status]}</span>${n.note ? ` · your note: ${esc(n.note)}` : ""}</small></p>
+        ${n.status === "pending" ? `<div class="at-row"><input class="at-in at-nnote" maxlength="200" placeholder="Note to the student (optional)" aria-label="Note to ${esc(n.name)}"><button type="button" class="btn small" data-nok>${docWait(n) ? "Accept now" : "Approve"}</button><button type="button" class="btn ghost small" data-nno>Reject</button></div>`
+          : `<div class="acc-row">${n.status === "approved" ? `<button type="button" class="btn ghost small" data-nabs>Change to Absent</button>` : ""}<button type="button" class="btn ghost small" data-nre>Change decision</button></div>`}</div>`; }).join("")}`;
   }
   async function decideNotice(id, ok, note) {
     const n = L.notices.find((x) => x.id === id);
@@ -1215,6 +1250,7 @@
       if (s && s.state !== "planned") {
         const x = recOf(s.id, n.email);
         if (ok) b.set(db.collection("attendance").doc(`${s.id}_${n.email}`), Object.assign(recBase(s, n.email, "E"), { remark: `${REASONS[n.reason] || n.reason}: ${n.detail}`.slice(0, 200) }));
+        else if (x && x.status === "E" && n.status === "approved") b.set(db.collection("attendance").doc(x.id), Object.assign(recBase(s, n.email, "A"), { remark: "Absence notice not approved" }));
         else if (x && x.remark === "Absence notice waiting for approval") b.update(db.collection("attendance").doc(x.id), { remark: "Absence notice not approved" });
       }
       await b.commit();
@@ -1222,6 +1258,23 @@
   }
 
   /* ---------- the class list and lab groups ---------- */
+  // every lab part in order (Lab 1 Part 1, Lab 1 Part 2, Lab 2 …), with its slots and when it ends
+  const labParts = () => labsByNo(L.sessions).flatMap((l) => l.parts.map((pt) => ({ no: l.no, k: pt.k, key: `${l.no}.${pt.k}`, name: `Lab ${l.no}${l.multi ? ` Part ${pt.k}` : ""}`, slots: partSlots(pt), end: Math.max(...pt.list.map(endMs)) })));
+  const moveIn = (part, email) => L.moves.find((m) => m.email === email && part.slots.includes(m.slot)) || null;
+  // a student's swaps and moves as short lines: "Wednesday Group 7: Lab 1 Part 2 to Lab 5 (swap with …)"
+  function swapLines(r, parts) {
+    const runs = [];
+    parts.forEach((pt, i) => {
+      const m = moveIn(pt, r.id);
+      if (!m) return;
+      const k = `${m.section}|${m.group || 0}|${m.swap || ""}`, last = runs[runs.length - 1];
+      if (last && last.k === k && last.i === i - 1) { last.to = pt.name; last.i = i; } else runs.push({ k, m, from: pt.name, to: "", i });
+    });
+    return runs.map(({ m, from, to }) => {
+      const x = m.swap && L.swaps.find((y) => y.id === m.swap), who = x ? (x.fromEmail === r.id ? x.toName : x.fromName) : "";
+      return `⇄ ${secName(m.section)} Group ${m.group || "–"}: ${from}${to ? ` to ${to}` : ""}${who ? ` (swap with ${esc(who)})` : " (moved by the lecturer)"}`;
+    });
+  }
   function drawRoster(body) {
     const q = L.q.trim().toLowerCase();
     const list = L.roster.filter((r) => (L.rsec === "all" || (L.rsec === "none" ? !r.section : r.section === L.rsec)) && (!q || `${r.name} ${r.matric} ${r.id} ${r.rps}`.toLowerCase().includes(q)))
@@ -1229,6 +1282,7 @@
     const by = (sec) => L.roster.filter((r) => r.status === "active" && (sec === "none" ? !r.section : r.section === sec)).length;
     const acct = Object.fromEntries(L.users.map((u) => [String(u.email || "").toLowerCase(), u]));
     const partner = (r) => L.roster.find((x) => x.id !== r.id && x.status === "active" && r.section && x.section === r.section && r.group && x.group === r.group);
+    const parts = labParts();
     const pct = (r) => { const l = L.att.filter((x) => x.email === r.id); if (!l.length) return "–"; return Math.round((l.reduce((a, x) => a + POINTS[x.status], 0) / (2 * l.length)) * 100) + "%"; };
     const tools = `<div class="adm-tools"><label class="btn ghost small at-file">Load a class list file…<input type="file" accept=".json,.xls,.html,.htm" data-file hidden></label><button type="button" class="btn ghost small" data-addstu>+ Add a student</button>
         <button type="button" class="btn ghost small" data-rcsv>Download CSV</button><input type="search" data-q placeholder="Search name, matric, email or RPS" value="${esc(L.q)}" aria-label="Search the class list"></div>
@@ -1237,15 +1291,24 @@
     if (!L.roster.length) { body.innerHTML = tools + `<p class="adm-empty">The class list is empty. Press <strong>Load a class list file</strong> and choose <code>nmk42003-classlist.json</code> (in your <code>_source</code> folder), or the student list downloaded from URLearn (.xls). Phone numbers are never saved.</p>`; return; }
     if (L.rview === "groups") {
       const secs = (L.rsec === "all" || L.rsec === "none" ? ["mon", "wed", "thu"] : [L.rsec]);
-      body.innerHTML = tools + `<div class="at-groups">${secs.map((sec) => {
-        const studs = L.roster.filter((r) => r.status === "active" && r.section === sec), gs = [...new Set(studs.map((r) => r.group || 0))].sort((a, b) => a - b);
-        return `<div class="at-card"><h3>${SECTION[sec]} <small class="at-sub">${SECTION_TIME[sec]} · ${studs.length} students</small></h3><ol class="at-glist">${gs.map((g) => `<li><span class="at-gn">${g ? `Group ${g}` : "No group"}</span>${studs.filter((r) => (r.group || 0) === g).map((r) => profileLink(r.id, r.name)).join("<br>")}</li>`).join("")}</ol></div>`;
+      // which lab: the class list as loaded ("home"), or one lab part with every swap and move applied (opens on the next lab)
+      if (L.glab === undefined) { const nx = parts.find((pt) => nowMs() <= pt.end); L.glab = nx ? nx.key : "home"; }
+      const part = parts.find((pt) => pt.key === L.glab) || null;
+      const active = L.roster.filter((r) => r.status === "active");
+      const place = (r) => { const m = part && moveIn(part, r.id); return m ? { s: m.section, g: m.group || 0, m } : { s: r.section, g: r.group || 0, m: null }; };
+      const pick = `<div class="adm-tools"><span>For</span>${[["home", "Class list (no swaps)"]].concat(parts.map((pt) => [pt.key, pt.name])).map(([v, l]) => `<button type="button" class="chip-btn" data-glab="${v}" aria-pressed="${L.glab === v}">${l}</button>`).join("")}</div>`;
+      body.innerHTML = tools + pick + (part ? `<p class="small-note">Groups for <strong>${part.name}</strong>, with every swap and move. ⇄ marks a student who swapped in.</p>` : `<p class="small-note">The lab sections and groups on the class list, before any swap. Choose a lab to see who is in each group for it.</p>`)
+        + `<div class="at-groups">${secs.map((sec) => {
+        const studs = active.map((r) => Object.assign({ r }, place(r))).filter((x) => x.s === sec), gs = [...new Set(studs.map((x) => x.g))].sort((a, b) => a - b);
+        const out = part ? active.filter((r) => r.section === sec && place(r).s !== sec) : [];
+        return `<div class="at-card"><h3>${SECTION[sec]} <small class="at-sub">${SECTION_TIME[sec]} · ${studs.length} students</small></h3><ol class="at-glist">${gs.map((g) => `<li><span class="at-gn">${g ? `Group ${g}` : "No group"}</span><div>${studs.filter((x) => x.g === g).map((x) => `${profileLink(x.r.id, x.r.name)}${x.m ? ` <small class="at-swn">⇄ from ${SEC_SHORT[x.r.section] || "–"} G${x.r.group || "–"}</small>` : ""}`).join("<br>")}</div></li>`).join("")}</ol>
+          ${out.length ? `<p class="small-note">Moved out for this lab: ${out.map((r) => { const p2 = place(r); return `${esc(r.name)} (to ${SEC_SHORT[p2.s] || "–"} G${p2.g || "–"})`; }).join(", ")}.</p>` : ""}</div>`;
       }).join("")}</div>`;
       return;
     }
     body.innerHTML = tools + `<div class="adm-scroll"><table class="adm at-ros"><thead><tr><th scope="col">Student</th><th scope="col">Lab section</th><th scope="col">Group</th><th scope="col">Lab partner</th><th scope="col">RPS (student advisor)</th><th scope="col">Account</th><th scope="col">Attendance</th><th scope="col">Status</th><th scope="col"><span class="vh">Edit</span></th></tr></thead><tbody>
       ${list.map((r) => { const u = acct[r.id], pt = partner(r); return `<tr data-em="${esc(r.id)}" class="${r.status === "active" ? "" : "dropped"}"><td>${profileLink(r.id, r.name)}<br><small>${esc(r.matric)} · ${esc(r.id)}</small></td>
-        <td><select data-f="section" aria-label="Lab section of ${esc(r.name)}"><option value=""${!r.section ? " selected" : ""}>None</option>${["mon", "wed", "thu"].map((v) => `<option value="${v}"${r.section === v ? " selected" : ""}>${SECTION[v].replace(" lab", "")}</option>`).join("")}</select></td>
+        <td><select data-f="section" aria-label="Lab section of ${esc(r.name)}"><option value=""${!r.section ? " selected" : ""}>None</option>${["mon", "wed", "thu"].map((v) => `<option value="${v}"${r.section === v ? " selected" : ""}>${SECTION[v].replace(" lab", "")}</option>`).join("")}</select>${swapLines(r, parts).map((t) => `<br><small class="at-swn">${t}</small>`).join("")}</td>
         <td><input type="number" min="0" max="30" data-f="group" value="${r.group || ""}" aria-label="Lab group of ${esc(r.name)}" class="at-grp"></td>
         <td>${pt ? esc(pt.name) : "–"}</td>
         <td>${esc(r.rps || "–")}<br><small>${esc(r.rpsEmail || "")}</small></td>
@@ -1444,6 +1507,7 @@
     if (b("[data-rsec]")) { L.rsec = b("[data-rsec]").dataset.rsec; draw(); return; }
     if (b("[data-rkind]")) { L.rkind = b("[data-rkind]").dataset.rkind; draw(); return; }
     if (b("[data-rview]")) { L.rview = b("[data-rview]").dataset.rview; draw(); return; }
+    if (b("[data-glab]")) { L.glab = b("[data-glab]").dataset.glab; draw(); return; }
     if (b("[data-new]")) return sessionForm(null);
     if (b("[data-bulk]")) return bulkCreate();
     if (b("[data-csv]")) return csv();
@@ -1456,6 +1520,8 @@
     if (b("[data-swno]")) return decideSwap(b("[data-swid]").dataset.swid, false);
     if (b("[data-swundo]")) return undoSwap(b("[data-swid]").dataset.swid);
     if (b("[data-nok]") || b("[data-nno]")) { const box = b("[data-nid]"); return decideNotice(box.dataset.nid, !!b("[data-nok]"), ($(".at-nnote", box) || {}).value || ""); }
+    if (b("[data-nf]")) { L.nf = b("[data-nf]").dataset.nf; draw(); return; }
+    if (b("[data-nabs]")) { const id = b("[data-nid]").dataset.nid, n = L.notices.find((x) => x.id === id); if (n && confirm(`Change ${n.name}'s ${n.title} back to Absent? The notice is marked not approved.`)) decideNotice(id, false, n.note || ""); return; }
     if (b("[data-nre]")) { const id = b("[data-nid]").dataset.nid; db.collection("notices").doc(id).update({ status: "pending" }).catch((ex) => say("Could Not Save", esc(ex.code || ex))); return; }
     if (b("[data-save]")) return saveEdits();
     if (b("[data-undo]")) { editsFor(L.sid).forEach(([k]) => delete L.edits[k]); draw(); return; }

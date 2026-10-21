@@ -328,7 +328,13 @@
       if (isAdmin(em)) {
         const [sw, nt, us] = await Promise.all([db.collection("swaps").where("semester", "==", SEM).get(),
           db.collection("notices").where("status", "==", "pending").get(), db.collection("users").where("status", "==", "pending").get()]);
-        nt.docs.map((d) => d.data()).filter((n) => !n.semester || n.semester === SEM).forEach((n) => add({ todo: true, t: tms(n.at), href: "attendance.html", text: `<strong>${esc(n.name)}</strong> sent an absence notice for ${esc(n.title)}` }));
+        nt.docs.map((d) => d.data()).filter((n) => !n.semester || n.semester === SEM).forEach((n) => add({ todo: true, t: tms(n.at), href: "attendance.html", text: `<strong>${esc(n.name)}</strong> sent an absence notice for ${esc(n.title)}${n.docLater && !n.doc ? " (document to follow)" : ""}` }));
+        // notices sent before their document was ready: the document arrived, or is overdue
+        const later = await db.collection("notices").where("docLater", "==", true).get().catch(() => ({ docs: [] }));
+        later.docs.map((d) => d.data()).filter((n) => (!n.semester || n.semester === SEM) && n.status !== "rejected").forEach((n) => {
+          if (n.doc && n.docAddedAt) add({ t: tms(n.docAddedAt), href: "attendance.html", text: `<strong>${esc(n.name)}</strong> added the supporting document for ${esc(n.title)}` });
+          else if (!n.doc && n.status === "approved" && klToday() > n.docDue) add({ todo: true, t: Date.parse(`${n.docDue}T23:59:00+08:00`), href: "attendance.html", text: `Document overdue: <strong>${esc(n.name)}</strong>, ${esc(n.title)} (due ${esc(n.docDue)})` });
+        });
         us.docs.map((d) => d.data()).forEach((x) => add({ todo: true, t: tms(x.createdAt), href: "admin.html", text: `<strong>${esc(x.nickname || x.email)}</strong> is waiting for account approval` }));
         sw.docs.map((d) => d.data()).forEach((x) => {
           if (x.status === "accepted") add({ todo: true, t: tms(x.updatedAt), href: "attendance.html", text: `Lab swap waiting for your approval: ${esc(x.fromName)} ⇄ ${esc(x.toName)}, ${esc(x.labTitle)}` });
@@ -354,6 +360,7 @@
           else if (x.status === "declined") add({ t: tms(x.updatedAt), href: "attendance.html", text: `<strong>${esc(x.toName)}</strong> declined your swap for ${esc(x.labTitle)}` });
           else if (["rejected", "cancelled", "ended"].includes(x.status) && x.decidedBy) add({ t: tms(x.updatedAt), href: "attendance.html", text: `Your lecturer ${x.status === "rejected" ? "did not approve" : "cancelled"} your swap for ${esc(x.labTitle)}` });
         });
+        mine(nts).filter((n) => n.docLater && !n.doc && n.status !== "rejected").forEach((n) => add({ todo: true, t: tms(n.at), href: "attendance.html", text: `Add your supporting document for <strong>${esc(n.title)}</strong> by ${esc(n.docDue)}` }));
         mine(nts).filter((n) => n.status !== "pending").forEach((n) => add({ t: tms(n.decidedAt), href: "attendance.html", text: `Your absence notice for ${esc(n.title)} was <strong>${n.status === "approved" ? "approved (Excused)" : "not approved"}</strong>${n.note ? `: “${esc(n.note)}”` : ""}` }));
       }
     } catch (e) { console.warn("NMK bell: could not check for notifications", e.code || e); }
