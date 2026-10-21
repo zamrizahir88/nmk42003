@@ -336,6 +336,10 @@
           else if (!n.doc && n.status === "approved" && klToday() > n.docDue) add({ todo: true, t: Date.parse(`${n.docDue}T23:59:00+08:00`), href: "attendance.html", text: `Document overdue: <strong>${esc(n.name)}</strong>, ${esc(n.title)} (due ${esc(n.docDue)})` });
         });
         us.docs.map((d) => d.data()).forEach((x) => add({ todo: true, t: tms(x.createdAt), href: "admin.html", text: `<strong>${esc(x.nickname || x.email)}</strong> is waiting for account approval` }));
+        // attendance warnings waiting for you to send (Manual mode)
+        const [wm, wd] = await Promise.all([db.collection("meta").doc("warnings").get(), db.collection("warnings").where("hasDue", "==", true).get()].map((p) => p.catch(() => null)));
+        const due = wd ? wd.docs.map((d) => d.data()).filter((w) => w.semester === SEM) : [];
+        if (wm && wm.exists && wm.data().mode !== "auto" && due.length) add({ todo: true, t: Math.max(...due.map((w) => tms(w.updatedAt))), href: "attendance.html", text: `<strong>${due.length}</strong> student${due.length === 1 ? " has" : "s have"} attendance warnings waiting to be sent (Attendance > Warnings)` });
         sw.docs.map((d) => d.data()).forEach((x) => {
           if (x.status === "accepted") add({ todo: true, t: tms(x.updatedAt), href: "attendance.html", text: `Lab swap waiting for your approval: ${esc(x.fromName)} ⇄ ${esc(x.toName)}, ${esc(x.labTitle)}` });
           else if (x.status === "requested") add({ t: tms(x.createdAt), href: "attendance.html", text: `Lab swap asked: <strong>${esc(x.fromName)}</strong> (${SEC[x.fromSection] || "–"}) asks <strong>${esc(x.toName)}</strong> (${SEC[x.toSection] || "–"}), ${esc(x.labTitle)}` });
@@ -360,6 +364,12 @@
           else if (x.status === "declined") add({ t: tms(x.updatedAt), href: "attendance.html", text: `<strong>${esc(x.toName)}</strong> declined your swap for ${esc(x.labTitle)}` });
           else if (["rejected", "cancelled", "ended"].includes(x.status) && x.decidedBy) add({ t: tms(x.updatedAt), href: "attendance.html", text: `Your lecturer ${x.status === "rejected" ? "did not approve" : "cancelled"} your swap for ${esc(x.labTitle)}` });
         });
+        // attendance warnings emailed to me and my RPS
+        const wslug = String(SEM).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), WLV = { 1: "Attendance Warning 1", 2: "Attendance Warning 2", 3: "Barring Notification" };
+        const wdoc = await db.collection("warnings").doc(`${wslug}_${em}`).get().catch(() => null);
+        ((wdoc && wdoc.exists && wdoc.data().history) || []).filter((x) => x.mailed).forEach((x) => add({ t: tms(x.at), href: "attendance.html", text: x.type === "withdraw"
+          ? `Your ${WLV[x.level]} (${x.kind === "lab" ? "Labs" : "Lectures"}) is <strong>withdrawn</strong>: your absence notice was approved`
+          : `<strong>${WLV[x.level]} (${x.kind === "lab" ? "Labs" : "Lectures"})</strong> was emailed to you and your RPS. Check your attendance.` }));
         mine(nts).filter((n) => n.docLater && !n.doc && n.status !== "rejected").forEach((n) => add({ todo: true, t: tms(n.at), href: "attendance.html", text: `Add your supporting document for <strong>${esc(n.title)}</strong> by ${esc(n.docDue)}` }));
         mine(nts).filter((n) => n.status !== "pending").forEach((n) => add({ t: tms(n.decidedAt), href: "attendance.html", text: `Your absence notice for ${esc(n.title)} was <strong>${n.status === "approved" ? "approved (Excused)" : "not approved"}</strong>${n.note ? `: “${esc(n.note)}”` : ""}` }));
       }

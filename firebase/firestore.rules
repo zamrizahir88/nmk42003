@@ -202,6 +202,17 @@ service cloud.firestore {
 
     // Missions: the release switch (anyone signed in reads it), and each station's mission file (the questions):
     // lecturers always; students on the class list or approved, only after the lecturer releases the game.
+    // Attendance warnings: the lecturer's Apps Script (warnings.gs) works out who is due and emails them (it uses the
+    // project owner's own access, so these rules don't apply to it); lecturers choose what to send on the Warnings tab;
+    // a student reads their own record (the warnings already emailed to them).
+    match /warnings/{id} {
+      allow read: if isLecturer() || (signedIn() && resource.data.email == email());
+      allow write: if isLecturer();
+    }
+    match /meta/warnings {
+      allow read, write: if isLecturer();
+    }
+
     match /meta/missions {
       allow read: if signedIn();
       allow write: if isLecturer();

@@ -11,6 +11,7 @@
       apps-script/notices.appsscript.json.
    4. Choose "setup" at the top and press Run; allow access. It moves any waiting documents and starts the 5-minute timer.
    5. On the website: Attendance > Notices tab > tick "Students attach their supporting document".
+   The attendance warning emails (warnings.gs) are a second file in this same project: see the steps at its top.
    (If you made a web-app deployment of the earlier version, you can delete it: Deploy > Manage deployments.) */
 
 const FOLDER_ID = "1rBplveeHyXHEgRyaUZ5pQQnEyN91hZYe";
@@ -63,4 +64,12 @@ function moveDocuments() {
     }
   });
   api("patch", "meta/uploads?updateMask.fieldPaths=lastRun", { fields: { lastRun: { timestampValue: new Date().toISOString() } } });
+  // the attendance warnings (warnings.gs, in this same project) run on the same timer
+  if (typeof checkWarnings === "function") {
+    try { checkWarnings(); }
+    catch (err) {
+      Logger.log("Attendance warnings: " + err);
+      try { api("patch", "meta/warnings?updateMask.fieldPaths=lastError", { fields: { lastError: { stringValue: String(err).slice(0, 300) } } }); } catch (e) { /* nothing more to do */ }
+    }
+  }
 }

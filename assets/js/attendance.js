@@ -219,7 +219,7 @@
       <div class="at-labsbox"></div>
       <h2 class="h3 at-gap">My Attendance</h2><div class="at-mine"><p class="small-note">Loading…</p></div></div>`;
     const openEl = $(".at-open"), mineEl = $(".at-mine"), reqEl = $(".at-reqs");
-    let me = null, open = [], all = [], recs = {}, moves = {}, sent = [], got = [], notices = [], mates = [], tried = false;
+    let warned = null, me = null, open = [], all = [], recs = {}, moves = {}, sent = [], got = [], notices = [], mates = [], tried = false;
 
     db.collection("roster").doc(email).get().then((r) => {
       me = r.exists ? r.data() : null;
@@ -572,9 +572,18 @@
       catch (ex) { if (btn) btn.disabled = false; say("Could Not Swap", `${esc(ex.code || ex)}. One of you may already be swapped for one of these labs: ask your lecturer.`); }
     }
 
+    // the attendance warnings emailed to me and my RPS (written by the lecturer's script)
+    unsubs.push(db.collection("warnings").doc(`${semSlug}_${email}`).onSnapshot((d) => { warned = d.exists ? d.data() : null; paintMine(); }, () => {}));
+    const WLV = { 1: "Attendance Warning 1", 2: "Attendance Warning 2", 3: "Barring Notification" };
+    function warnCard() {
+      const h = ((warned && warned.history) || []).filter((x) => x.mailed).slice().reverse();
+      if (!h.length) return "";
+      return `<div class="at-card warn"><h3>Attendance Warnings</h3><ul class="at-list">${h.map((x) => `<li><strong>${WLV[x.level]} (${x.kind === "lab" ? "Labs" : "Lectures"})${x.type === "withdraw" ? ": withdrawn" : ""}</strong> · emailed to you and your RPS, ${fmtStamp(x.at)}</li>`).join("")}</ul>
+        <p class="small-note">If you had a valid reason for an absence, send an absence notice with your supporting document. Once your lecturer approves it, the absence changes to Excused and no longer counts.</p></div>`;
+    }
     function paintMine() {
       const list = Object.values(recs).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-      if (!list.length) { mineEl.innerHTML = `<p class="small-note">No attendance recorded yet this semester.</p>`; return; }
+      if (!list.length) { mineEl.innerHTML = warnCard() + `<p class="small-note">No attendance recorded yet this semester.</p>`; return; }
       const block = (kind, label) => {
         const l = list.filter((r) => r.kind === kind);
         if (!l.length) return "";
@@ -585,7 +594,7 @@
           <tbody>${l.map((r) => { const nt = notices.find((x) => x.session === r.session);
             return `<tr><td>${fmtDate(r.date)}</td><td>${esc(r.title)}</td><td>${chip(r.status)}</td><td>${esc(r.remark || "")}${r.status === "A" && !nt ? `${r.remark ? "<br>" : ""}<button type="button" class="btn ghost small" data-explain="${esc(r.session)}">Explain absence</button>` : nt && r.status === "A" ? `<br><small>Notice: ${NOTE_ST[nt.status] || nt.status}</small>` : ""}</td></tr>`; }).join("")}</tbody></table></div></div>`;
       };
-      mineEl.innerHTML = block("lecture", "Lectures") + block("lab", "Labs") + `<p class="small-note">Present counts 2 points, Late and Excused 1, Absent 0. Each session you attend also earns 10 XP and helps you collect attendance badges.</p>`;
+      mineEl.innerHTML = warnCard() + block("lecture", "Lectures") + block("lab", "Labs") + `<p class="small-note">Present counts 2 points, Late and Excused 1, Absent 0. Each session you attend also earns 10 XP and helps you collect attendance badges.</p>`;
     }
   }
 
@@ -692,11 +701,11 @@
     L.pending = false;
     const pend = (k) => k.filter((x) => x.status === "accepted").length, np = L.notices.filter((x) => x.status === "pending").length;
     const T = [["sessions", "Sessions"], ["roster", `Class List (${L.roster.filter((r) => r.status === "active").length})`], ["swaps", `Swaps${pend(L.swaps) ? ` (${pend(L.swaps)})` : ""}`],
-      ["notices", `Notices${np ? ` (${np})` : ""}`], ["report", "Report"], ["marks", "Lab Marks"], ["schedule", "Schedule"]];
+      ["notices", `Notices${np ? ` (${np})` : ""}`], ["warnings", "Warnings"], ["report", "Report"], ["marks", "Lab Marks"], ["schedule", "Schedule"]];
     tabs.innerHTML = T.map(([v, l]) => `<button type="button" class="chip-btn${/\(\d+\)$/.test(l) && v !== "roster" ? " has" : ""}" data-tab="${v}" aria-pressed="${L.tab === v && !L.sid}">${l}</button>`).join("");
     const keepPanel = panelEl && body.contains(panelEl) ? panelEl : null;
     if (L.sid) { const s = L.sessions.find((x) => x.id === L.sid); if (s) drawSession(body, s); else if (L.sessLoaded) L.sid = null; else body.innerHTML = `<p class="small-note">Loading…</p>`; }
-    if (!L.sid) ({ sessions: drawSessions, roster: drawRoster, swaps: drawSwaps, notices: drawNotices, report: drawReport, schedule: drawSchedule, marks: drawMarks })[L.tab](body);
+    if (!L.sid) ({ sessions: drawSessions, roster: drawRoster, swaps: drawSwaps, notices: drawNotices, report: drawReport, schedule: drawSchedule, marks: drawMarks, warnings: drawWarnings })[L.tab](body);
     if (keepPanel) body.prepend(keepPanel);
     paintSaveBar();
     if (L.typing) { const q = $("[data-q]"); if (q) { q.focus(); q.setSelectionRange(L.q.length, L.q.length); } L.typing = false; }
@@ -1417,6 +1426,10 @@
     return { ses, rows };
   }
   // Lab Marks (lecturers only): the marking itself is in labmarks.js
+  function drawWarnings(body) {
+    if (!window.NMKWarnings) { body.innerHTML = `<p class="small-note">Warnings didn't load. Reload the page.</p>`; return; }
+    NMKWarnings.draw(body, { L, db, FV, A, SEM, semSlug, esc, fmtStamp, profileLink });
+  }
   function drawMarks(body) {
     if (!window.NMKLabMarks) { body.innerHTML = `<p class="small-note">Lab Marks didn't load. Reload the page.</p>`; return; }
     NMKLabMarks.draw(body, { L, db, FV, A, SEM, semSlug, esc, SECTION, fmtDate, slotOf, moveOf, recOf, profileLink });
