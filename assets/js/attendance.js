@@ -526,9 +526,12 @@
       const pl = swapPlan(x);
       if (pl.err) { say("Can't Swap Here", esc(pl.err)); return; }
       if (btn) btn.disabled = true;
+      // an older request names one slot and has no list: it stays that one slot
+      const ok = x.slots ? pl.ok : pl.ok.filter((k) => k === x.slot);
+      if (!ok.length) { if (btn) btn.disabled = false; say("Can't Swap Here", "This lab session has ended, so the swap can't be done here. Ask your lecturer."); return; }
       const b = db.batch();
-      b.update(db.collection("swaps").doc(x.id), { status: "approved", auto: true, updatedAt: FV.serverTimestamp(), slot: pl.ok[0], slots: pl.ok });
-      pl.ok.forEach((k) => {
+      b.update(db.collection("swaps").doc(x.id), Object.assign({ status: "approved", auto: true, updatedAt: FV.serverTimestamp() }, x.slots ? { slot: ok[0], slots: ok } : {}));
+      ok.forEach((k) => {
         const base = { semester: SEM, slot: k, swap: x.id, by: email, at: FV.serverTimestamp() };
         b.set(db.collection("labMoves").doc(`${k}_${x.fromEmail}`), Object.assign({ email: x.fromEmail, section: me.section, group: +me.group || 0 }, base));
         b.set(db.collection("labMoves").doc(`${k}_${email}`), Object.assign({ email, section: x.fromSection, group: +x.fromGroup || 0 }, base));

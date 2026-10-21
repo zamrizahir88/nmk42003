@@ -142,7 +142,8 @@ service cloud.firestore {
         || (onRoster() && resource.data.toMatric == rosterDoc().matric && resource.data.status == 'requested'
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'auto', 'slot', 'slots'])
             // a whole-semester swap may drop labs that started meanwhile, never add any
-            && request.resource.data.get('slots', []).toSet().difference(resource.data.get('slots', []).toSet()).size() == 0
+            // (an older request has no list, only its one slot)
+            && request.resource.data.get('slots', []).toSet().difference(resource.data.get('slots', [resource.data.slot]).toSet()).size() == 0
             && (request.resource.data.slot == resource.data.slot || request.resource.data.slot in resource.data.get('slots', []))
             && (request.resource.data.status == 'declined'
               || (request.resource.data.status == 'approved'
