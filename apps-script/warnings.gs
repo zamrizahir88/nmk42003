@@ -86,6 +86,10 @@ function checkWarnings() {
   listAll_("sessions").forEach((s) => { if (s.semester === sem) sessions[s.id] = s; });
   const notices = {};
   listAll_("notices").forEach((n) => { notices[n.id] = n; });
+  // a lab session the student swapped out of (after it closed) never counts
+  const moved = {};
+  listAll_("labMoves").forEach((m) => { if (m.semester === sem) moved[m.slot + "_" + m.email] = m.section; });
+  const slotOf_ = (s) => s.slot || ((s.id.match(/-(w\d\d-lab)-(mon|wed|thu)$/) || [])[1]) || "";
   // absences that count: the session ended over an hour ago, and no notice is waiting for a decision
   const absent = {};
   listAll_("attendance").forEach((a) => {
@@ -93,6 +97,7 @@ function checkWarnings() {
     if (a.status !== "A" || !s || s.state === "planned" || endMs_(s) + WAIT_MS > now) return;
     const nt = notices[a.session + "_" + a.email];
     if (nt && nt.status === "pending") return;
+    if (s.kind === "lab" && moved[slotOf_(s) + "_" + a.email] && moved[slotOf_(s) + "_" + a.email] !== s.section) return;
     (absent[a.email] = absent[a.email] || []).push(s);
   });
   const old = {};

@@ -93,8 +93,9 @@
   }
   const inSec = (pt, sec) => pt.list.find((x) => x.section === sec) || null;
   const partSlots = (pt) => [...new Set(pt.list.map(slotOf).filter(Boolean))];
-  // a part can still be swapped between two sections until the later of their two sessions ends
-  const partOpen = (pt, secs) => { const ss = secs.map((sec) => inSec(pt, sec)).filter(Boolean); return ss.length > 0 && nowMs() <= Math.max(...ss.map(endMs)); };
+  // a part can be swapped between two sections only until the first of their two sessions ends (lecturer's rule:
+  // after that, one of the two students would be moved into a session that is already over)
+  const partOpen = (pt, secs) => { const ss = secs.map((sec) => inSec(pt, sec)).filter(Boolean); return ss.length > 0 && nowMs() <= Math.min(...ss.map(endMs)); };
   const SWAP_HELP = `<div class="at-help"><strong>How to swap a lab session</strong><ol>
       <li>Agree with your classmate first (in person or by chat).</li>
       <li>In <strong>My Lab Sessions</strong>, tap <strong>Swap this lab session</strong> on the lab you need.</li>
@@ -105,7 +106,7 @@
       <li>Your classmate opens Attendance and taps <strong>Accept</strong>. Done: you swap sections and groups, and your lecturer is told.</li></ol>
       <p><strong>Each swap is between you and one classmate.</strong> Anyone else who wants to move sends their own request.</p>
       <p><strong>Can I cancel?</strong> Yes, while it waits: tap <strong>Cancel request</strong>. After your classmate accepts, ask your lecturer.</p>
-      <p><strong>Is it too late?</strong> You can still swap until the lab session ends, as long as you haven't attended it yet.</p></div>`;
+      <p><strong>Is it too late?</strong> You can swap until the first of the two lab sessions ends (for example, a Wednesday session that ends at 3 PM, when your classmate is on Thursday), as long as you haven't attended it yet.</p></div>`;
 
   /* ---------- dates in Malaysia time ---------- */
   const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -392,7 +393,7 @@
             <tr><th scope="row">You</th><td>${cell(pt, mine, g)}</td><td class="at-after">${cell(pt, oSec, oGroup)}</td></tr>
             <tr><th scope="row">${esc(other)}</th><td>${cell(pt, oSec, oGroup)}</td><td class="at-after">${cell(pt, mine, g)}</td></tr>`; }).join("")}</tbody></table></div>`;
     }
-    const deadline = (parts, secs) => { const ss = parts.flatMap((pt) => secs.map((sec) => inSec(pt, sec))).filter(Boolean); if (!ss.length) return ""; const last = ss.reduce((a, b) => (endMs(b) > endMs(a) ? b : a)); return `${fmtDate(last.date)}, ${fmtTime(last.end)}`; };
+    const deadline = (parts, secs) => { const ss = parts.flatMap((pt) => secs.map((sec) => inSec(pt, sec))).filter(Boolean); if (!ss.length) return ""; const last = ss.reduce((a, b) => (endMs(b) < endMs(a) ? b : a)); return `${fmtDate(last.date)}, ${fmtTime(last.end)}`; };
 
     // My Lab Sessions: Lab 1 to Lab 5 with my own session, and a swap button on each lab still to come
     function paintLabs() {
@@ -613,7 +614,7 @@
         closePanel(true); L.tab = st.tab || "sessions"; L.sid = st.sid || null; draw();
       });
     }
-    const load = (name, q, map) => unsubs.push(q.onSnapshot((s) => { L[name] = s.docs.map(map); L.got[name] = true; if (name === "roster") syncDirectory(); if (name === "roster" || name === "users") autoApprove(); if (name === "sessions") { addSlots(); L.sessLoaded = true; } draw(); },
+    const load = (name, q, map) => unsubs.push(q.onSnapshot((s) => { L[name] = s.docs.map(map); L.got[name] = true; if (name === "roster") syncDirectory(); if (name === "roster" || name === "users") autoApprove(); if (name === "sessions") { addSlots(); L.sessLoaded = true; } if (name === "sessions" || name === "att" || name === "moves") cleanMovedOut(); draw(); },
       (e) => { console.warn("NMK attendance:", name, e.code || e); $(".at-body").innerHTML = `<p class="small-note">Could not load ${name} (${esc(e.code || e)}). If this says permission-denied, publish the latest firebase/firestore.rules in the Firebase console.</p>`; }));
     const withId = (d) => Object.assign({ id: d.id }, d.data());
     load("sessions", db.collection("sessions").where("semester", "==", SEM), withId);
@@ -668,6 +669,18 @@
       approving.add(u.id);
       db.collection("users").doc(u.id).update({ status: "approved", approvedBy: "class list", approvedAt: FV.serverTimestamp() })
         .catch((e) => { approving.delete(u.id); console.warn("NMK attendance: could not approve", u.email, e.code || e); });
+    });
+  }
+  // a student who swaps out of a lab session after it closed keeps no automatic Absent there (the close marked them
+  // before the swap existed); marks a lecturer made by hand stay
+  const cleaning = new Set();
+  function cleanMovedOut() {
+    if (!["sessions", "att", "moves"].every((k) => L.got[k])) return;
+    L.att.filter((x) => x.by === "auto" && x.status === "A" && !cleaning.has(x.id)).forEach((x) => {
+      const s = L.sessions.find((y) => y.id === x.session), m = s && s.kind === "lab" ? moveOf(slotOf(s), x.email) : null;
+      if (!m || m.section === s.section) return;
+      cleaning.add(x.id);
+      db.collection("attendance").doc(x.id).delete().catch((e) => { cleaning.delete(x.id); console.warn("NMK attendance: could not remove", x.id, e.code || e); });
     });
   }
   // lab sessions made before slots existed get theirs from their id, once
