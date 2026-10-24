@@ -6,8 +6,9 @@
    answer checking, coins, hearts, ranks, sound and music. The art is in legends-art.js, the music in legends-music.js.
    A right answer strikes the enemy and earns coins; a wrong one is blocked by the enemy's shield, the enemy strikes
    back (one heart lost) and 2 coins drop (never below 0). No hearts left: the station starts again with new numbers.
-   Saved in this browser (and synced by account.js): nmk-missions (best result of each station), nmk-hero (the
-   character). nmk-msnd (sound), nmk-mus and nmk-musv (music on/off and volume) stay on this device. */
+   Saved in this browser (and synced with the account, so a student can carry on on another device): nmk-missions
+   (best result of each station), nmk-msave (a station in progress: its seed, so the same numbers come back, the
+   question reached, hearts, coins, marks; "cleared" once it is won or lost), nmk-hero (the character). nmk-msnd (sound), nmk-mus and nmk-musv (music on/off and volume) stay on this device. */
 (function () {
   "use strict";
   const page = document.getElementById("missions");
@@ -37,10 +38,23 @@
     if (!isLec) document.dispatchEvent(new CustomEvent("nmk:store", { detail: "nmk-missions" }));
   }
 
+  /* ---------- a station in progress: saved after every answer, so it can be continued later (on any device) ---------- */
+  const saves = () => parse(lsGet("nmk-msave"), {}) || {};
+  const saveOf = (m) => { const s = saves()[m.id]; return s && !s.cleared && s.n === m.steps.length && s.i < s.n ? s : null; };
+  function putSave(id, rec, push) {
+    const all = saves(); all[id] = Object.assign({ at: new Date().toISOString() }, rec);
+    lsSet("nmk-msave", JSON.stringify(all));
+    document.dispatchEvent(new CustomEvent("nmk:store", { detail: "nmk-msave" }));
+    if (push && A && A.push) A.push();
+  }
+  const clearSave = (id) => putSave(id, { cleared: true });
+  // numbers drawn from a saved seed, so a continued station has the same questions
+  const seeded = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+
   /* ---------- sound effects and music: made in the browser (no files) ---------- */
   let soundOn = lsGet("nmk-msnd") !== "0", musicOn = lsGet("nmk-mus") !== "0", musicVol = +(lsGet("nmk-musv") || 60), ac = null;
   const actx = () => { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === "suspended") ac.resume(); return ac; };
-  if (MUS) { MUS.init(actx); MUS.setVolume(musicVol / 100); }
+  if (MUS) { MUS.init(actx); MUS.setStyle("synth"); MUS.setVolume(musicVol / 100); }
   function tone(f, t0, dur, type = "square", vol = 0.08, f2) {
     if (!soundOn) return;
     try {
@@ -174,7 +188,7 @@
     if (MUS) MUS.setMood(rk);
     const lec = isLec ? `<div class="ms-lec">${A.released ? "Released: students can play." : "<strong>Not released yet:</strong> only lecturers can see this page."} Lecturer plays are saved on this device only and never appear on the board. <a href="admin.html">Release or upload on the dashboard ›</a>
       <label class="ms-asstu"><input type="checkbox" data-asstu${asStudent ? " checked" : ""}> Preview as a student: stations unlock one by one, and chapters open in the week they are lectured</label></div>` : "";
-    const stage = battleView ? `<div class="lg-mini"><strong class="lg-mlogo">INSTRUMENTA</strong><span class="lg-mrank">${esc(R.n)}</span><span class="ms-sp"></span>${tools()}</div>`
+    const stage = battleView ? `<div class="lg-mini"><strong class="lg-mlogo">INSTRUMENTA</strong><span class="lg-mrank">${esc(R.n)}</span><span class="ms-sp"></span>${tools()}<button type="button" class="lg-btn lg-save" data-saveexit>💾 Save and exit</button></div>`
       : `<div class="lg-stage">${ART.bg(rk)}<div class="lg-hud">
           <div class="lg-logo"><span>INSTRUMENTA</span><em>Legends</em></div>
           <div class="lg-rank"><span class="lg-rk">Rank ${rk + 1} of ${ART.RANKS.length} · ${esc(R.scene)}</span><strong>${esc(R.n)}</strong>
@@ -212,7 +226,8 @@
           <div class="lg-diff" aria-label="Difficulty ${e.boss ? 3 : i + 1} of 3">${"★".repeat(e.boss ? 3 : i + 1)}${"☆".repeat(3 - (e.boss ? 3 : i + 1))}</div>
           <div class="lg-weak"><b>Weakness:</b> ${esc(e.weak || m.title)}</div>${e.taunt ? `<div class="lg-taunt">“${esc(e.taunt)}”</div>` : ""}
           <div class="lg-res">${r ? `Defeated · ${stars(r.s)} · best ${r.c} coins${r.boss ? ` · ${r.mk}/${r.of} marks` : ""}` : `${m.steps.length} questions`}</div>
-          ${open ? `<button type="button" class="btn${r ? " ghost" : ""}" data-play="${i}">${r ? "Fight again" : "Fight"}</button>` : `<span class="lg-lock">🔒 ${worldOpen(w) ? `Defeat ${esc(enemyOf(prev).name)} first` : `Opens ${fmtDay(opensOn(w).iso)}`}</span>`}</div>`;
+          ${open && saveOf(m) ? `<button type="button" class="btn" data-cont="${i}">Continue · Question ${saveOf(m).i + 1} of ${m.steps.length} · ${saveOf(m).hearts} ♥ · ${saveOf(m).coins} coins</button><button type="button" class="btn ghost small" data-fresh="${i}">Start over</button>`
+            : open ? `<button type="button" class="btn${r ? " ghost" : ""}" data-play="${i}">${r ? "Fight again" : "Fight"}</button>` : `<span class="lg-lock">🔒 ${worldOpen(w) ? `Defeat ${esc(enemyOf(prev).name)} first` : `Opens ${fmtDay(opensOn(w).iso)}`}</span>`}</div>`;
       }).join("")}</div>`);
   }
 
@@ -239,12 +254,15 @@
 
   /* ---------- a station: the battle ---------- */
   const heartSvg = (full, k) => `<svg class="lg-heart${full ? "" : " gone"}" viewBox="0 0 24 22" aria-hidden="true" data-h="${k}"><path d="M12 21 L3 12 A5.5 5.5 0 0 1 12 4.5 A5.5 5.5 0 0 1 21 12 Z" fill="${full ? "#e5484d" : "#d7dce3"}" stroke="#1b2a4a" stroke-width="2" stroke-linejoin="round"/>${full ? `<path d="M7 9 q1.5 -2.5 4 -2" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" opacity=".7"/>` : ""}</svg>`;
-  function battle(w, mi) {
+  function battle(w, mi, cont) {
     cleanup();
-    const m = w.missions[mi], v = m.make(Math.random), steps = m.steps, E = enemyOf(m), boss = E.boss;
+    const m0 = w.missions[mi], saved = cont ? saveOf(m0) : null, seed = saved ? saved.seed : Math.floor(Math.random() * 2147483646) + 1;
+    const m = m0, v = m.make(seeded(seed)), steps = m.steps, E = enemyOf(m), boss = E.boss;
     const HEARTS = boss ? 5 : 4, rk0 = ART.rankOf(totalCoins()), sc = (E.scale || 1) * 0.86;
     let i = 0, tries = 0, coins = 0, firstTry = 0, marks = 0, hearts = HEARTS, done = false, busy = false, tipLayer = null;
     const got = [], timers = [];
+    if (saved) ({ i, tries, coins, firstTry, marks, hearts } = saved), (saved.got || []).forEach((x, k) => { got[k] = x; });
+    const store = (push) => { if (!done) putSave(m.id, { w: w.world, seed, n: steps.length, i, tries, coins, firstTry, marks, hearts, got }, push); };
     const later = (f, ms) => { const t = setTimeout(f, ms); timers.push(t); return t; };
     teardown.push(() => timers.forEach(clearTimeout));
     view = "battle";
@@ -290,7 +308,8 @@
     const startFight = () => { if (!intro.classList.contains("on")) return; intro.classList.remove("on"); if (boss) { SFX.roar(); replay(M, "laugh", 1000); } const a = $("#msA"); if (a) a.focus({ preventScroll: true }); };
     intro.addEventListener("click", startFight);
     intro.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); startFight(); } });
-    later(startFight, boss ? 2600 : 2000);
+    if (saved) { intro.classList.remove("on"); $("#msHp").style.width = `${100 * (steps.length - i) / steps.length}%`; later(() => banner(`Welcome back! Question ${i + 1} of ${steps.length}`), 300); }
+    else later(startFight, boss ? 2600 : 2000);
 
     /* Volt's hint bubble: Volt again, ✕, a tap outside, Esc or the Back button closes it */
     const hideTip = () => { tip.classList.remove("on"); tip.setAttribute("aria-hidden", "true"); };
@@ -319,7 +338,8 @@
 
     const data = m.data ? m.data(v) : null;
     // choice steps show their options in a new order each time
-    const order = steps.map((s) => { if (!s.choice) return null; const n = val(s.choice, v).length, o = [...Array(n).keys()]; for (let k = n - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [o[k], o[j]] = [o[j], o[k]]; } return o; });
+    const orng = seeded(seed + 7919);
+    const order = steps.map((s) => { if (!s.choice) return null; const n = val(s.choice, v).length, o = [...Array(n).keys()]; for (let k = n - 1; k > 0; k--) { const j = Math.floor(orng() * (k + 1)); [o[k], o[j]] = [o[j], o[k]]; } return o; });
 
     function draw(msg = "", cls = "") {
       const s = steps[i], q = esc(asQuestion(val(s.q, v))), u = val(s.unit, v);
@@ -359,27 +379,30 @@
         const c = tries === 0 ? 10 : tries === 1 ? 6 : 3;
         if (tries === 0) firstTry++;
         if (s.marks) marks += s.marks * (tries === 0 ? 1 : tries === 1 ? 0.5 : 0.25);
-        got[i] = raw; tries = 0; VOLT.classList.remove("alert");
+        got[i] = raw; tries = 0; VOLT.classList.remove("alert"); coins += c;
+        const left = steps.length - i - 1;
         later(() => {
           replay(M, "hit", 400); SFX.hit();
-          $("#msHp").style.width = `${Math.max(0, 100 * (steps.length - i - 1) / steps.length)}%`;
+          $("#msHp").style.width = `${Math.max(0, 100 * left / steps.length)}%`;
           pop(c === 10 ? "Critical!" : "Hit!", 73, 28, "#b3261e"); banner(s.choice ? "Correct!" : `Correct: ${fmtAns(s, v)}`);
-          later(() => { coins += c; paintCoins(); pop(`+${c}`, 12, 16, "#b86e00", "coin"); SFX.coin(); }, 250);
+          later(() => { paintCoins(); pop(`+${c}`, 12, 16, "#b86e00", "coin"); SFX.coin(); }, 250);
         }, 470);
         i++;
+        if (i < steps.length) store();
         if (i < steps.length) later(() => { busy = false; draw(s.choice ? "Correct! Next question." : `Correct! ${fmtAns(s, v)}. Next question.`, "ok"); }, 1000);
         else later(victory, 1350);
         return;
       }
       // wrong: the enemy's shield blocks the strike, then it strikes back
-      tries++;
+      tries++; hearts--;
+      const lose = Math.min(2, coins); coins -= lose;
+      if (hearts > 0) store();
       later(() => { replay($("#msShield"), "on", 900); SFX.clang(); pop("Blocked!", 73, 22, "#0f766e"); }, 380);
       later(() => { replay(M, "atk", 600); SFX.strike(); replay($("#msOrb"), "fire", 520); }, 950);
       later(() => {
         replay(H, "hurt", 600); SFX.hurt();
-        hearts--; paintHearts(); const hb = $(`#msHearts [data-h="${hearts}"]`); if (hb) replay(hb, "break", 700);
-        const lose = Math.min(2, coins);
-        if (lose) { coins -= lose; paintCoins(); SFX.drop(); pop(`−${lose}`, 12, 16, "#b23b2e", "coin"); for (let k = 0; k < 3; k++) { const d = document.createElement("span"); d.className = "ms-cdrop"; d.style.left = `${22 + k * 3}%`; d.style.animationDelay = `${k * 0.08}s`; scene.appendChild(d); later(() => d.remove(), 1200); } }
+        paintHearts(); const hb = $(`#msHearts [data-h="${hearts}"]`); if (hb) replay(hb, "break", 700);
+        if (lose) { paintCoins(); SFX.drop(); pop(`−${lose}`, 12, 16, "#b23b2e", "coin"); for (let k = 0; k < 3; k++) { const d = document.createElement("span"); d.className = "ms-cdrop"; d.style.left = `${22 + k * 3}%`; d.style.animationDelay = `${k * 0.08}s`; scene.appendChild(d); later(() => d.remove(), 1200); } }
         banner(sign ? "Check the sign!" : lose ? `Ouch! −1 heart, −${lose} coins` : "Ouch! −1 heart");
       }, 1420);
       later(() => {
@@ -393,7 +416,7 @@
     }
     function overlay(html) { const o = $("#msOver"); o.innerHTML = html; o.hidden = false; return o; }
     function knockOut() {
-      done = true; closeTip();
+      done = true; closeTip(); clearSave(m.id);
       replay(H, "ko", 4000); SFX.ko();
       later(() => {
         const o = overlay(`<div class="ms-ko"><strong>Knocked out!</strong><p>${esc(E.name)} wins this round. Start the station again: every question, with new numbers.</p>
@@ -405,7 +428,7 @@
       }, 900);
     }
     function victory() {
-      done = true;
+      done = true; clearSave(m.id);
       replay(M, "faint", 5000); SFX.faint();
       $("#msSparks").innerHTML = [0, 1, 2, 3, 4].map((k) => `<circle class="ms-spark" cx="${430 + k * 20}" cy="${150 + (k % 2) * 30}" r="10" fill="#ffd34d" style="animation-delay:${k * 0.1}s"/>`).join("");
       later(() => { replay(H, "cheer", 2100); SFX.win(); }, 700);
@@ -440,6 +463,14 @@
       $("[data-okrank]", o).focus({ preventScroll: true });
       $(".lg-mrank") && ($(".lg-mrank").textContent = R.n);
     }
+    $("[data-saveexit]").addEventListener("click", () => {
+      SFX.click();
+      if (!done && (i > 0 || tries > 0)) store(true);
+      go("world", true, w);
+      if (!done && (i > 0 || tries > 0)) { const n = document.createElement("p"); n.className = "lg-saved"; n.setAttribute("role", "status"); n.textContent = `Saved: ${E.name}, question ${i + 1} of ${steps.length}. Continue any time, on any device signed in to your account.`; const v2 = $("#msView"); if (v2) v2.prepend(n); }
+    });
+    const flush = () => { if (document.hidden && !done && (i > 0 || tries > 0) && A && A.push) A.push(); };
+    document.addEventListener("visibilitychange", flush); teardown.push(() => document.removeEventListener("visibilitychange", flush));
     draw();
   }
 
@@ -452,6 +483,8 @@
     if (b.dataset.go) { SFX.click(); return go(b.dataset.go); }
     if (b.dataset.world) { const w = WORLDS.find((x) => x.world === +b.dataset.world); if (w && worldOpen(w)) { SFX.click(); go("world", true, w); } return; }
     if (b.dataset.play) { SFX.click(); battle(openWorld, +b.dataset.play); }
+    if (b.dataset.cont) { SFX.click(); battle(openWorld, +b.dataset.cont, true); }
+    if (b.dataset.fresh) { const m = openWorld.missions[+b.dataset.fresh]; if (confirm(`Start ${enemyOf(m).name} again from question 1? Your hearts and coins for this try go back to the start.`)) { SFX.click(); clearSave(m.id); battle(openWorld, +b.dataset.fresh); } }
   });
   page.addEventListener("change", (e) => { if (e.target.matches("[data-asstu]")) { asStudent = e.target.checked; go(view === "battle" ? "world" : view, false); } });
   page.addEventListener("input", (e) => {
@@ -483,6 +516,7 @@
     go(hs.mview === "room" ? "room" : w ? "world" : "map", false, w);
     if (window.NMKBack) NMKBack.view({ mview: view, mworld: openWorld ? openWorld.world : null }, true);
   }
+  document.addEventListener("nmk:synced", () => { if (WORLDS.length && view !== "battle") go(view, false); });
   if (window.NMKBack) NMKBack.onView((s) => { const w = s.mworld ? WORLDS.find((x) => x.world === s.mworld) : null; go(s.mview === "room" ? "room" : w ? "world" : "map", false, w); });
   let booted = false;
   const boot = () => { if (booted) return; booted = true; A = window.NMKAccount; if (!A) { gate(`<p>The game needs the course account system, which didn't load. Please reload the page.</p>`); return; } A.on((st) => { if (st.ready) start(st); }); };

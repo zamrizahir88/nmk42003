@@ -113,11 +113,15 @@
       const local = ls.get(k);
       if (local === null) ls.set(k, remote[k]);
       else if (k === "nmk-solved") { try { ls.set(k, JSON.stringify([...new Set(JSON.parse(local).concat(JSON.parse(remote[k])))])); } catch (e) { /* keep local */ } }
+      // the game: the best result of each station (the higher score wins), and a station in progress (the newer one wins)
+      else if (k === "nmk-missions") { try { const a = JSON.parse(local), b = JSON.parse(remote[k]); Object.keys(b).forEach((id) => { const x = a[id], y = b[id]; a[id] = !x ? y : Object.assign({}, x, y, { c: Math.max(x.c || 0, y.c || 0), s: Math.max(x.s || 0, y.s || 0), mk: Math.max(x.mk || 0, y.mk || 0), n: Math.max(x.n || 0, y.n || 0), at: (x.c || 0) >= (y.c || 0) ? x.at : y.at }); if (a[id].mk === 0 && !a[id].boss) delete a[id].mk; }); ls.set(k, JSON.stringify(a)); } catch (e) { /* keep local */ } }
+      else if (k === "nmk-msave") { try { const a = JSON.parse(local), b = JSON.parse(remote[k]); Object.keys(b).forEach((id) => { if (!a[id] || String(b[id].at || "") > String(a[id].at || "")) a[id] = b[id]; }); ls.set(k, JSON.stringify(a)); } catch (e) { /* keep local */ } }
       else if (k === EX_KEY) {
         try { const a = JSON.parse(local), b = JSON.parse(remote[k]); Object.keys(b).forEach((id) => { if (!a[id] || (b[id].checks || 0) > (a[id].checks || 0)) a[id] = b[id]; }); ls.set(k, JSON.stringify(a)); } catch (e) { /* keep local */ }
       }
     });
     ls.set(UID_KEY, state.user.uid);
+    if (JSON.stringify(snapshot()) !== before) document.dispatchEvent(new CustomEvent("nmk:synced"));
     await push();
     // the page was drawn from the old records: draw it again once, so lessons show the merged progress
     if (JSON.stringify(snapshot()) !== before && !sessionStorage.getItem("nmk-sync-reloaded")) {

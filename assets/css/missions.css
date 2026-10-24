@@ -31,6 +31,9 @@
 .lg-mrank { font-size: .85rem; font-weight: 600; color: var(--teal); }
 .lg-mini .lg-btn, .lg-mini .ms-pill { background: var(--surface); color: var(--ink); border-color: var(--rule); }
 .lg-mini .lg-btn[aria-pressed="true"] { background: var(--amber-soft); border-color: var(--amber); }
+.lg-mini .lg-save { background: var(--teal); color: #fff; border-color: var(--teal); }
+.lg-saved { background: var(--teal-soft); border: 1px solid var(--teal); border-radius: 10px; padding: 8px 12px; font-weight: 600; }
+.lg-card .btn.small { margin-top: 6px; }
 @media (max-width: 760px) { .lg-hud { grid-template-columns: 1fr; justify-items: start; } .lg-rank { justify-self: stretch; max-width: none; } .lg-tools { justify-content: flex-start; } }
 .lg-lead { max-width: var(--measure); color: var(--ink-2); }
 
