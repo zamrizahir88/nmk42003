@@ -194,7 +194,7 @@
           <div class="lg-rank"><span class="lg-rk">Rank ${rk + 1} of ${ART.RANKS.length} · ${esc(R.scene)}</span><strong>${esc(R.n)}</strong>
             <span class="lg-bar" role="progressbar" aria-label="Progress to the next rank" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${nx ? Math.round(((coins - R.min) / (nx.min - R.min)) * 100) : 100}"><i style="width:${nx ? Math.round(((coins - R.min) / (nx.min - R.min)) * 100) : 100}%"></i></span>
             <small>${nx ? `${nx.min - coins} more coins to ${esc(nx.n)}` : "Top rank reached. Legendary!"}</small></div>
-          <div class="lg-tools">${tools()}<button type="button" class="lg-btn" data-go="room">My Character</button></div></div></div>`;
+          <div class="lg-tools">${tools()}<button type="button" class="lg-btn" data-go="board">🏆 Leaderboard</button><button type="button" class="lg-btn" data-go="room">My Character</button></div></div></div>`;
     page.innerHTML = `${lec}${stage}<div id="msView">${body}</div>`;
   }
   function go(v, push = true, w = openWorld) {
@@ -202,6 +202,7 @@
     view = v; openWorld = w;
     if (push && window.NMKBack) NMKBack.view({ mview: v, mworld: w ? w.world : null });
     if (v === "room") return room();
+    if (v === "board") return boardView();
     if (v === "world" && w) return worldView(w);
     return mapView();
   }
@@ -231,25 +232,106 @@
       }).join("")}</div>`);
   }
 
-  /* ---------- My Character ---------- */
+  /* ---------- My Character: changes are a draft until Save; the newest saved character wins on every device ---------- */
+  let roomUnsaved = null, roomLeave = null;   // set while My Character is open
+  const plain = (h) => { const o = Object.assign({}, h); delete o.at; return JSON.stringify(o); };
   function room() {
     const row = (key, label, list) => `<div class="ms-opt" data-row="${key}"><p class="ms-ol">${label}</p><div class="ms-row">${list.map(([v, l]) => `<button type="button" data-k="${key}" data-v="${v}">${l}</button>`).join("")}</div></div>`;
     const sw = (key, label, list) => `<div class="ms-opt" data-row="${key}"><p class="ms-ol">${label}</p><div class="ms-row">${list.map((c) => `<button type="button" class="ms-sw" data-k="${key}" data-v="${c}" aria-label="${label} ${c}" style="background:${c}"></button>`).join("")}</div></div>`;
     const t = tier(), rk = ART.rankOf(totalCoins());
-    frame(`<p><button type="button" class="btn ghost small" data-go="map">‹ All chapters</button></p><h2 class="h3">My Character</h2><p class="small-note">Change it any time. It's saved to your account.</p>
-      <div class="ms-mk"><div class="ms-pv"><div class="ms-pvs">${ART.bg(rk)}<svg id="msPv" viewBox="-50 -82 168 168" aria-label="Your character"></svg></div><button type="button" class="btn ghost small" data-try>Try the attack</button>
+    let draft = Object.assign({}, hero), layer = null;
+    const dirty = () => plain(draft) !== plain(hero);
+    frame(`<p><button type="button" class="btn ghost small" data-go="map">‹ All chapters</button></p><h2 class="h3">My Character</h2><p class="small-note">Try any look, then press <strong>Save my character</strong>. Your saved character appears on every device you sign in to, and on the leaderboard.</p>
+      <div class="ms-leave" id="msLeave" role="alertdialog" aria-label="Unsaved changes" hidden></div>
+      <div class="ms-mk"><div class="ms-pv"><div class="ms-pvs">${ART.bg(rk)}<svg id="msPv" viewBox="-50 -82 168 168" aria-label="Your character"></svg></div>
+          <button type="button" class="btn" data-hsave>Save my character</button><button type="button" class="btn ghost small" data-try>Try the attack</button>
+          <p class="small-note" id="msHs" aria-live="polite"></p>
           <p class="small-note">Weapon: <strong>${["Basic", "Charged (glowing)", "Calibrated (gold)"][t]}</strong>. ${t < 2 ? (t < 1 ? "Reach journey level 3 to charge it; defeat a boss to make it gold." : "Defeat a boss to make it gold.") : "Earned by defeating a boss."}</p></div>
         <div>${row("look", "Look", OPT.look)}${row("hairM", "Hair", OPT.hairM)}${row("hairF", "Hair", OPT.hairF)}${sw("hair", "Hair colour", HAIRS)}${row("face", "Facial hair", OPT.face)}${row("head", "Headwear", OPT.head)}${sw("tud", "Tudung colour", TUDUNG)}${row("eyes", "Eyewear", OPT.eyes)}${sw("skin", "Skin tone", SKINS)}${sw("color", "Jacket colour", COLORS)}${row("weapon", "Weapon", OPT.weapon)}<p class="small-note" id="msWn"></p></div></div>`);
-    const vis = { hairM: () => hero.look === "m", face: () => hero.look === "m", hairF: () => hero.look === "f", hair: () => hero.look !== "t", head: () => hero.look !== "t", tud: () => hero.look === "t" };
+    const vis = { hairM: () => draft.look === "m", face: () => draft.look === "m", hairF: () => draft.look === "f", hair: () => draft.look !== "t", head: () => draft.look !== "t", tud: () => draft.look === "t" };
+    const dropLayer = () => { if (layer) { const l = layer; layer = null; l.closed(); } };
+    const guard = () => { if (dirty() && !layer && window.NMKBack) layer = NMKBack.layer(() => { layer = null; ask(() => go("map")); }); if (!dirty()) dropLayer(); };
     const paint = () => {
-      $("#msPv").innerHTML = ART.heroSvg(hero, "msPvh", t);
-      $$("[data-k]").forEach((b) => b.setAttribute("aria-pressed", hero[b.dataset.k] === b.dataset.v));
+      $("#msPv").innerHTML = ART.heroSvg(draft, "msPvh", t);
+      $$("[data-k]").forEach((b) => b.setAttribute("aria-pressed", draft[b.dataset.k] === b.dataset.v));
       $$("[data-row]").forEach((r) => { r.hidden = vis[r.dataset.row] ? !vis[r.dataset.row]() : false; });
-      $("#msWn").textContent = NOTE[hero.weapon];
+      $("#msWn").textContent = NOTE[draft.weapon];
+      const d = dirty(), sb = $("[data-hsave]");
+      sb.classList.toggle("dirty", d); sb.textContent = d ? "Save my character (unsaved changes)" : "Saved ✓";
     };
-    $$("[data-k]").forEach((b) => b.addEventListener("click", () => { hero[b.dataset.k] = b.dataset.v; SFX.click(); lsSet("nmk-hero", JSON.stringify(hero)); document.dispatchEvent(new CustomEvent("nmk:store", { detail: "nmk-hero" })); paint(); }));
-    $("[data-try]").addEventListener("click", () => { const g = $("#msPvh"); g.classList.remove("cheer"); void g.getBoundingClientRect(); g.classList.add("cheer"); SFX[hero.weapon](); });
+    const save = () => {
+      hero = Object.assign({}, draft, { at: new Date().toISOString() }); draft = Object.assign({}, hero);
+      lsSet("nmk-hero", JSON.stringify(hero)); document.dispatchEvent(new CustomEvent("nmk:store", { detail: "nmk-hero" })); if (A && A.push) A.push();
+      dropLayer(); $("#msHs").textContent = "Saved. It now shows on all your devices."; SFX.coin(); paint();
+    };
+    const discard = () => { draft = Object.assign({}, hero); dropLayer(); paint(); };
+    // leaving with unsaved changes: Save, Leave without saving, or Stay
+    function ask(next) {
+      const box = $("#msLeave");
+      box.innerHTML = `<p><strong>You have unsaved changes to your character.</strong> Save them, or they will be lost.</p><div class="ms-row"><button type="button" class="btn" data-lsave>Save and continue</button><button type="button" class="btn ghost" data-ldrop>Leave without saving</button><button type="button" class="btn ghost" data-lstay>Stay here</button></div>`;
+      box.hidden = false; box.scrollIntoView({ block: "nearest" }); $("[data-lsave]", box).focus({ preventScroll: true });
+      $("[data-lsave]", box).addEventListener("click", () => { save(); next(); });
+      $("[data-ldrop]", box).addEventListener("click", () => { discard(); next(); });
+      $("[data-lstay]", box).addEventListener("click", () => { box.hidden = true; guard(); });
+    }
+    $$("[data-k]").forEach((b) => b.addEventListener("click", () => { draft[b.dataset.k] = b.dataset.v; SFX.click(); $("#msHs").textContent = ""; paint(); guard(); }));
+    $("[data-hsave]").addEventListener("click", () => { if (dirty()) save(); });
+    $("[data-try]").addEventListener("click", () => { const g = $("#msPvh"); g.classList.remove("cheer"); void g.getBoundingClientRect(); g.classList.add("cheer"); SFX[draft.weapon](); });
+    const bu = (e) => { if (dirty()) { e.preventDefault(); e.returnValue = ""; } };
+    addEventListener("beforeunload", bu);
+    roomUnsaved = dirty; roomLeave = ask;
+    teardown.push(() => { removeEventListener("beforeunload", bu); if (layer) { layer.drop(); layer = null; } roomUnsaved = null; roomLeave = null; });
     paint();
+  }
+
+  /* ---------- the INSTRUMENTA leaderboard (game coins only; from the board summaries account.js writes) ---------- */
+  const ago = (iso) => { if (!iso) return "–"; const d = Math.floor((Date.now() - Date.parse(iso)) / 86400000); return d <= 0 ? "today" : d === 1 ? "yesterday" : d < 30 ? `${d} days ago` : new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" }); };
+  const SECN = { mon: "Monday", wed: "Wednesday", thu: "Thursday" };
+  const avatar = (h) => { let o = null; try { o = h ? JSON.parse(h) : null; } catch (e) { o = null; } return `<svg class="lg-av" viewBox="-36 -66 72 76" aria-hidden="true" focusable="false">${ART.heroSvg(Object.assign({}, HERO0, o || {}), "", 0)}</svg>`; };
+  let boardSec = "all";
+  async function boardView() {
+    frame(`<p><button type="button" class="btn ghost small" data-go="map">‹ All chapters</button></p><h2 class="h3">🏆 INSTRUMENTA Leaderboard</h2>
+      <p class="small-note">Ranked by game coins. It updates each time a player's progress syncs. Points never count towards grades.</p><div id="lgBoard"><p class="small-note">Loading…</p></div>`);
+    const host = $("#lgBoard");
+    let docs = [], roster = [];
+    try {
+      const q = await A.db.collection("board").where("semester", "==", A.SEM).get();
+      docs = q.docs.map((d) => Object.assign({ uid: d.id }, d.data()));
+      if (isLec) roster = (await A.db.collection("roster").get()).docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((r) => r.status === "active");
+    } catch (e) { host.innerHTML = `<p class="small-note">Could not load the leaderboard (${esc(e.code || e)}).</p>`; return; }
+    if (view !== "board") return;
+    const total = WORLDS.reduce((a, w) => a + w.missions.length, 0), bossesT = WORLDS.reduce((a, w) => a + w.missions.filter((m) => m.boss).length, 0);
+    const players = docs.filter((d) => d.role !== "lecturer" && d.game && (d.game.coins || d.game.cleared || d.game.started))
+      .sort((a, b) => (b.game.coins - a.game.coins) || (b.game.cleared - a.game.cleared) || String(b.game.last || "").localeCompare(String(a.game.last || "")));
+    const me = A.state.user ? A.state.user.uid : "";
+    const medal = (k) => (k === 0 ? "🥇" : k === 1 ? "🥈" : k === 2 ? "🥉" : `#${k + 1}`);
+    const row = (d, k) => { const g = d.game, R = ART.RANKS[ART.rankOf(g.coins || 0)];
+      return `<tr class="${d.uid === me ? "me" : ""}"><td class="lg-pos">${medal(k)}</td><td><span class="lg-who">${avatar(g.hero)}<span><a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname || "Student")}</a>${d.nickname && d.name ? `<small>${esc(d.nickname)}</small>` : ""}</span></span></td>
+        <td>${esc(R.n)}</td><td class="lg-num"><strong>${g.coins || 0}</strong></td><td class="lg-num">${g.cleared || 0} / ${total}</td><td class="lg-num">${g.bosses || 0} / ${bossesT}</td><td class="lg-num">${g.stars || 0} ★</td>
+        ${isLec ? `${WORLDS.map((w) => `<td class="lg-num">${((g.ch || {})[w.world] || 0)} / ${w.missions.length}</td>`).join("")}<td>${esc(SECN[d.section] || "–")}</td>` : ""}<td>${ago(g.last)}</td></tr>`; };
+    const head = `<tr><th scope="col">#</th><th scope="col">Player</th><th scope="col">Rank</th><th scope="col">Coins</th><th scope="col">Stations</th><th scope="col">Bosses</th><th scope="col">Stars</th>${isLec ? `${WORLDS.map((w) => `<th scope="col">Ch ${w.chapter}</th>`).join("")}<th scope="col">Section</th>` : ""}<th scope="col">Last played</th></tr>`;
+    if (!isLec) {
+      const at = players.findIndex((d) => d.uid === me), n = players.length;
+      const show = n <= 14 ? players.map((d, k) => [d, k]) : players.slice(0, 10).map((d, k) => [d, k]).concat([[null, -1]], players.slice(n - 4).map((d, k) => [d, n - 4 + k]));
+      const above = at > 0 ? players[at - 1].game.coins - players[at].game.coins : 0;
+      host.innerHTML = `<div class="lg-mine">${at >= 0 ? `You: <strong>${medal(at)} of ${n}</strong> · ${players[at].game.coins} coins${at > 0 ? ` · ${above + 1} more to pass ${esc(players[at - 1].name || players[at - 1].nickname || "the player above")}` : " · you're leading!"}` : "Play a station to join the leaderboard."}</div>
+        ${n ? `<div class="adm-scroll"><table class="adm lg-tab"><thead>${head}</thead><tbody>${show.map(([d, k]) => (d ? row(d, k) : `<tr class="lg-gap"><td colspan="8">⋯</td></tr>`)).join("")}</tbody></table></div>` : `<p class="adm-empty">Nobody has played yet. Be the first!</p>`}`;
+      return;
+    }
+    const list = players.filter((d) => boardSec === "all" || d.section === boardSec), played = new Set(players.map((d) => String(d.matric)));
+    const notYet = roster.filter((r) => !played.has(String(r.matric)) && (boardSec === "all" || r.section === boardSec)).sort((a, b) => (a.name < b.name ? -1 : 1));
+    host.innerHTML = `<div class="adm-tools">${[["all", "All"], ["mon", "Monday"], ["wed", "Wednesday"], ["thu", "Thursday"]].map(([v, l]) => `<button type="button" class="chip-btn" data-bsec="${v}" aria-pressed="${boardSec === v}">${l}</button>`).join("")}<button type="button" class="btn ghost small" data-bcsv>Download CSV</button></div>
+      <p class="small-note">${list.length} playing · ${notYet.length} not started yet${boardSec === "all" ? "" : ` (${SECN[boardSec]} section)`}. Lecturer plays never appear here.</p>
+      ${list.length ? `<div class="adm-scroll"><table class="adm lg-tab"><thead>${head}</thead><tbody>${list.map((d) => row(d, players.indexOf(d))).join("")}</tbody></table></div>` : `<p class="adm-empty">Nobody in this section has played yet.</p>`}
+      <h3 class="h3 lg-nyh">Not Started Yet (${notYet.length})</h3>${notYet.length ? `<ul class="lg-ny">${notYet.map((r) => `<li><a href="profile.html?e=${encodeURIComponent(r.id)}">${esc(r.name)}</a> <small>${esc(r.matric)} · ${esc(SECN[r.section] || "–")}</small></li>`).join("")}</ul>` : `<p class="small-note">Everyone has started. 🎉</p>`}`;
+    $$("[data-bsec]", host).forEach((b) => b.addEventListener("click", () => { boardSec = b.dataset.bsec; boardView(); }));
+    $("[data-bcsv]", host).addEventListener("click", () => {
+      const q = (x) => `"${String(x == null ? "" : x).replace(/"/g, '""')}"`;
+      const lines = [["Position", "Name", "Matric", "Section", "Rank", "Coins", "Stations cleared", "Bosses", "Stars", ...WORLDS.map((w) => `Chapter ${w.chapter}`), "Last played"].map(q).join(",")]
+        .concat(players.map((d, k) => [k + 1, d.name || d.nickname, d.matric, SECN[d.section] || "", ART.RANKS[ART.rankOf(d.game.coins || 0)].n, d.game.coins || 0, d.game.cleared || 0, d.game.bosses || 0, d.game.stars || 0, ...WORLDS.map((w) => (d.game.ch || {})[w.world] || 0), d.game.last ? d.game.last.slice(0, 10) : ""].map(q).join(",")))
+        .concat(roster.filter((r) => !played.has(String(r.matric))).map((r) => ["", r.name, r.matric, SECN[r.section] || "", "Not started", 0, 0, 0, 0, ...WORLDS.map(() => 0), ""].map(q).join(",")));
+      const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\n")], { type: "text/csv" })); a.download = `INSTRUMENTA leaderboard ${new Date().toISOString().slice(0, 10)}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    });
   }
 
   /* ---------- a station: the battle ---------- */
@@ -480,7 +562,7 @@
     if (!b || b.disabled) return;
     if (b.hasAttribute("data-snd")) { soundOn = !soundOn; lsSet("nmk-msnd", soundOn ? "1" : "0"); $$("[data-snd]").forEach((x) => { x.setAttribute("aria-pressed", soundOn); x.textContent = soundOn ? "🔊 Sound on" : "🔇 Sound off"; }); SFX.click(); return; }
     if (b.hasAttribute("data-mus")) { setMusic(!musicOn); return; }
-    if (b.dataset.go) { SFX.click(); return go(b.dataset.go); }
+    if (b.dataset.go) { SFX.click(); if (view === "room" && roomUnsaved && roomUnsaved()) { const to = b.dataset.go; return roomLeave(() => go(to)); } return go(b.dataset.go); }
     if (b.dataset.world) { const w = WORLDS.find((x) => x.world === +b.dataset.world); if (w && worldOpen(w)) { SFX.click(); go("world", true, w); } return; }
     if (b.dataset.play) { SFX.click(); battle(openWorld, +b.dataset.play); }
     if (b.dataset.cont) { SFX.click(); battle(openWorld, +b.dataset.cont, true); }
@@ -513,11 +595,11 @@
     } catch (e) { gate(`<p>Could not load the chapters (${esc(e.code || e)}). ${isLec ? "If this says permission-denied, publish the latest firebase/firestore.rules." : "Please try again later."}</p>`); return; }
     const hs = history.state || {};
     const w = hs.mworld ? WORLDS.find((x) => x.world === hs.mworld) : null;
-    go(hs.mview === "room" ? "room" : w ? "world" : "map", false, w);
+    go(hs.mview === "room" ? "room" : hs.mview === "board" ? "board" : w ? "world" : "map", false, w);
     if (window.NMKBack) NMKBack.view({ mview: view, mworld: openWorld ? openWorld.world : null }, true);
   }
-  document.addEventListener("nmk:synced", () => { if (WORLDS.length && view !== "battle") go(view, false); });
-  if (window.NMKBack) NMKBack.onView((s) => { const w = s.mworld ? WORLDS.find((x) => x.world === s.mworld) : null; go(s.mview === "room" ? "room" : w ? "world" : "map", false, w); });
+  document.addEventListener("nmk:synced", () => { const h = parse(lsGet("nmk-hero"), null); if (h && String(h.at || "") > String(hero.at || "")) hero = Object.assign({}, HERO0, h); if (WORLDS.length && view !== "battle" && !(view === "room" && roomUnsaved && roomUnsaved())) go(view, false); });
+  if (window.NMKBack) NMKBack.onView((s) => { const w = s.mworld ? WORLDS.find((x) => x.world === s.mworld) : null; go(s.mview === "room" ? "room" : s.mview === "board" ? "board" : w ? "world" : "map", false, w); });
   let booted = false;
   const boot = () => { if (booted) return; booted = true; A = window.NMKAccount; if (!A) { gate(`<p>The game needs the course account system, which didn't load. Please reload the page.</p>`); return; } A.on((st) => { if (st.ready) start(st); }); };
   if (window.NMKAccount) boot(); else window.addEventListener("load", boot);

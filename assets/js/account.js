@@ -90,12 +90,18 @@
       await db.collection("progress").doc(state.user.uid).set({ keys, semester: SEM, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       if (window.NMKGame) {   // the small public summary for the progress board
         const G = window.NMKGame, g = G.compute(keys), p = state.profile, r = state.roster || {};
+        // INSTRUMENTA: the game-only numbers for its leaderboard, and the saved character for the avatar
+        const pj = (x, d) => { try { return JSON.parse(x) || d; } catch (e) { return d; } };
+        const mis = pj(keys["nmk-missions"], {}), msv = pj(keys["nmk-msave"], {}), ids = Object.keys(mis).filter((id) => /^w\d+-s\d+$/.test(id));
+        const game = { coins: ids.reduce((a, id) => a + (mis[id].c || 0), 0), cleared: ids.length, bosses: ids.filter((id) => mis[id].boss).length, stars: ids.reduce((a, id) => a + (mis[id].s || 0), 0),
+          ch: ids.reduce((o, id) => { const w = id.match(/^w(\d+)/)[1]; o[w] = (o[w] || 0) + 1; return o; }, {}), started: ids.length > 0 || Object.values(msv).some((x) => x && !x.cleared),
+          last: ids.map((id) => mis[id].at).concat(Object.values(msv).map((x) => x && x.at)).filter(Boolean).sort().pop() || null, hero: keys["nmk-hero"] || "" };
         // the public profile: classmates see the real name, matric and lab section from the class list, and the Google account photo
         await db.collection("board").doc(state.user.uid).set({ nickname: p.nickname || "", role: p.role || "student", semester: SEM, xp: g.xp, level: g.level, levelNo: g.levelNo,
           badges: g.badges.map((b) => b.id), streak: g.streak, solved: g.solved, lastActive: g.lastActive || null,
           stops: Object.fromEntries(g.stops.filter((s) => s.total).map((s) => [s.label, s.pct])), prog: G.summaryProg ? G.summaryProg(g) : {}, feed: G.feed ? G.feed(g, 20) : [],
           name: r.name || p.name || "", matric: r.matric || "", section: r.section || "", group: r.group || 0, photo: state.user.photoURL || "",
-          since: p.createdAt || null, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+          since: p.createdAt || null, game, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       }
       await db.collection("users").doc(state.user.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() });
     } catch (e) { console.warn("NMK sync: could not save progress", e.code || e); }
@@ -115,6 +121,7 @@
       else if (k === "nmk-solved") { try { ls.set(k, JSON.stringify([...new Set(JSON.parse(local).concat(JSON.parse(remote[k])))])); } catch (e) { /* keep local */ } }
       // the game: the best result of each station (the higher score wins), and a station in progress (the newer one wins)
       else if (k === "nmk-missions") { try { const a = JSON.parse(local), b = JSON.parse(remote[k]); Object.keys(b).forEach((id) => { const x = a[id], y = b[id]; a[id] = !x ? y : Object.assign({}, x, y, { c: Math.max(x.c || 0, y.c || 0), s: Math.max(x.s || 0, y.s || 0), mk: Math.max(x.mk || 0, y.mk || 0), n: Math.max(x.n || 0, y.n || 0), at: (x.c || 0) >= (y.c || 0) ? x.at : y.at }); if (a[id].mk === 0 && !a[id].boss) delete a[id].mk; }); ls.set(k, JSON.stringify(a)); } catch (e) { /* keep local */ } }
+      else if (k === "nmk-hero") { try { if (String(JSON.parse(remote[k]).at || "") > String(JSON.parse(local).at || "")) ls.set(k, remote[k]); } catch (e) { /* keep local */ } }
       else if (k === "nmk-msave") { try { const a = JSON.parse(local), b = JSON.parse(remote[k]); Object.keys(b).forEach((id) => { if (!a[id] || String(b[id].at || "") > String(a[id].at || "")) a[id] = b[id]; }); ls.set(k, JSON.stringify(a)); } catch (e) { /* keep local */ } }
       else if (k === EX_KEY) {
         try { const a = JSON.parse(local), b = JSON.parse(remote[k]); Object.keys(b).forEach((id) => { if (!a[id] || (b[id].checks || 0) > (a[id].checks || 0)) a[id] = b[id]; }); ls.set(k, JSON.stringify(a)); } catch (e) { /* keep local */ }
