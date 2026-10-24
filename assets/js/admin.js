@@ -157,11 +157,11 @@
     if (ms.err) return `<div class="callout warn"><strong>Could not load the missions</strong>${esc(ms.err)}. If this says permission-denied, publish the latest firebase/firestore.rules in the Firebase console.</div>`;
     const played = approved().filter((u) => Object.keys(parse(((progress[u.uid] || {}).keys || {})["nmk-missions"], {})).length).length;
     return `<div class="adm-sum"><div><strong>${ms.released ? "On" : "Off"}</strong><span>released to students</span></div><div><strong>${ms.worlds.length}</strong><span>stations uploaded</span></div><div><strong>${played}</strong><span>students have played</span></div></div>
-      <div class="ms-adm"><label class="ms-rel"><input type="checkbox" data-mrel${ms.released ? " checked" : ""}> <span><strong>Release Missions to students</strong><br><small>Off: only lecturers can open the Missions page (to test). On: signed-in, approved students can play, and Missions appears in their account menu. Each station still opens in the week its chapter is lectured.</small></span></label>
+      <div class="ms-adm"><label class="ms-rel"><input type="checkbox" data-mrel${ms.released ? " checked" : ""}> <span><strong>Release INSTRUMENTA: Legends (Missions) to students</strong><br><small>Off: only lecturers can open the Missions page (to test). On: signed-in, approved students can play, and Missions appears in their account menu. Each chapter still opens in the week it is lectured. Upload one file per chapter (three stations each; the third is the boss).</small></span></label>
         <p class="ms-amsg small-note" aria-live="polite">${esc(msMsg)}</p>
         <h3 class="h3">Stations</h3>
         ${ms.worlds.length ? `<div class="adm-scroll"><table class="adm"><thead><tr><th>Station</th><th>Chapter</th><th>Missions</th><th>Uploaded</th></tr></thead><tbody>${ms.worlds.map((w) => `<tr><td>${esc(w.title || w.id)}</td><td>${w.chapter || ""}</td><td>${w.count || ""}</td><td>${fmt(w.updatedAt && w.updatedAt.toDate ? w.updatedAt.toDate().toISOString() : null)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="adm-empty">No stations uploaded yet.</p>`}
-        <p><label class="btn ghost">Upload a mission file (.js)<input type="file" accept=".js,text/javascript" data-mup hidden></label> <a class="btn ghost" href="missions.html">Open Missions ›</a></p>
+        <p><label class="btn ghost">Upload a mission file (.js)<input type="file" accept=".js,text/javascript" data-mup hidden></label> <a class="btn ghost" href="missions.html">Open INSTRUMENTA ›</a></p>
         <p class="small-note">Uploading a station again replaces it. Students keep their coins and stars.</p></div>`;
   }
   async function uploadMissions(file) {
