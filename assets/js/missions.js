@@ -38,7 +38,7 @@
   }
 
   /* ---------- sound effects and music: made in the browser (no files) ---------- */
-  let soundOn = lsGet("nmk-msnd") !== "0", musicOn = lsGet("nmk-mus") === "1", musicVol = +(lsGet("nmk-musv") || 60), ac = null;
+  let soundOn = lsGet("nmk-msnd") !== "0", musicOn = lsGet("nmk-mus") !== "0", musicVol = +(lsGet("nmk-musv") || 60), ac = null;
   const actx = () => { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === "suspended") ac.resume(); return ac; };
   if (MUS) { MUS.init(actx); MUS.setVolume(musicVol / 100); }
   function tone(f, t0, dur, type = "square", vol = 0.08, f2) {
@@ -144,6 +144,8 @@
     if (a !== 0 && Math.abs(r.x + a) <= tol) return { sign: true };
     return { no: true };
   }
+  // a short number question ("Absolute error, e") reads as a full question ("What is the absolute error, e?")
+  const asQuestion = (q) => { q = String(q).trim(); if (/[?.]$/.test(q)) return q; const w = q.split(/[\s,]/)[0]; return `What is ${w.length > 2 && /^[A-Z][a-z]/.test(w) ? `the ${q[0].toLowerCase()}${q.slice(1)}` : q}?`; };
   const fmtAns = (s, v) => `${s.ans(v).toFixed(s.dp)}${val(s.unit, v) ? ` ${val(s.unit, v)}` : ""}`;
 
   /* ---------- unlocking: a chapter opens in the week it is lectured; a station after the one before it ---------- */
@@ -153,8 +155,10 @@
     const d = new Date(COURSE.semesterStart + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + 7 * (wk - 1));
     return { iso: d.toISOString().slice(0, 10), week: wk };
   }
-  const worldOpen = (w) => isLec || opensOn(w).iso <= todayISO();
-  const missionOpen = (w, i) => { if (isLec) return true; if (!worldOpen(w)) return false; const b = best(); return w.missions.slice(0, i).every((m) => b[m.id]); };
+  let asStudent = false;   // a lecturer previewing the student's locks (this visit only)
+  const free = () => isLec && !asStudent;
+  const worldOpen = (w) => free() || opensOn(w).iso <= todayISO();
+  const missionOpen = (w, i) => { if (free()) return true; if (!worldOpen(w)) return false; const b = best(); return w.missions.slice(0, i).every((m) => b[m.id]); };
   const fmtDay = (iso) => { const d = new Date(iso + "T00:00:00Z"); return `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getUTCDay()]} ${d.getUTCDate()} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getUTCMonth()]}`; };
   const stars = (n, of = 3) => `<span class="ms-stars" aria-label="${n} of ${of} stars">${"★".repeat(n)}${"☆".repeat(of - n)}</span>`;
 
@@ -168,7 +172,8 @@
   function frame(body, battleView) {
     const coins = totalCoins(), rk = ART.rankOf(coins), R = ART.RANKS[rk], nx = ART.RANKS[rk + 1];
     if (MUS) MUS.setMood(rk);
-    const lec = isLec ? `<div class="ms-lec">${A.released ? "Released: students can play." : "<strong>Not released yet:</strong> only lecturers can see this page."} Lecturer plays are saved on this device only and never appear on the board. <a href="admin.html">Release or upload on the dashboard ›</a></div>` : "";
+    const lec = isLec ? `<div class="ms-lec">${A.released ? "Released: students can play." : "<strong>Not released yet:</strong> only lecturers can see this page."} Lecturer plays are saved on this device only and never appear on the board. <a href="admin.html">Release or upload on the dashboard ›</a>
+      <label class="ms-asstu"><input type="checkbox" data-asstu${asStudent ? " checked" : ""}> Preview as a student: stations unlock one by one, and chapters open in the week they are lectured</label></div>` : "";
     const stage = battleView ? `<div class="lg-mini"><strong class="lg-mlogo">INSTRUMENTA</strong><span class="lg-mrank">${esc(R.n)}</span><span class="ms-sp"></span>${tools()}</div>`
       : `<div class="lg-stage">${ART.bg(rk)}<div class="lg-hud">
           <div class="lg-logo"><span>INSTRUMENTA</span><em>Legends</em></div>
@@ -217,7 +222,7 @@
     const sw = (key, label, list) => `<div class="ms-opt" data-row="${key}"><p class="ms-ol">${label}</p><div class="ms-row">${list.map((c) => `<button type="button" class="ms-sw" data-k="${key}" data-v="${c}" aria-label="${label} ${c}" style="background:${c}"></button>`).join("")}</div></div>`;
     const t = tier(), rk = ART.rankOf(totalCoins());
     frame(`<p><button type="button" class="btn ghost small" data-go="map">‹ All chapters</button></p><h2 class="h3">My Character</h2><p class="small-note">Change it any time. It's saved to your account.</p>
-      <div class="ms-mk"><div class="ms-pv"><div class="ms-pvs">${ART.bg(rk)}<svg id="msPv" viewBox="-62 -82 144 150" aria-label="Your character"></svg></div><button type="button" class="btn ghost small" data-try>Try the attack</button>
+      <div class="ms-mk"><div class="ms-pv"><div class="ms-pvs">${ART.bg(rk)}<svg id="msPv" viewBox="-50 -82 168 168" aria-label="Your character"></svg></div><button type="button" class="btn ghost small" data-try>Try the attack</button>
           <p class="small-note">Weapon: <strong>${["Basic", "Charged (glowing)", "Calibrated (gold)"][t]}</strong>. ${t < 2 ? (t < 1 ? "Reach journey level 3 to charge it; defeat a boss to make it gold." : "Defeat a boss to make it gold.") : "Earned by defeating a boss."}</p></div>
         <div>${row("look", "Look", OPT.look)}${row("hairM", "Hair", OPT.hairM)}${row("hairF", "Hair", OPT.hairF)}${sw("hair", "Hair colour", HAIRS)}${row("face", "Facial hair", OPT.face)}${row("head", "Headwear", OPT.head)}${sw("tud", "Tudung colour", TUDUNG)}${row("eyes", "Eyewear", OPT.eyes)}${sw("skin", "Skin tone", SKINS)}${sw("color", "Jacket colour", COLORS)}${row("weapon", "Weapon", OPT.weapon)}<p class="small-note" id="msWn"></p></div></div>`);
     const vis = { hairM: () => hero.look === "m", face: () => hero.look === "m", hairF: () => hero.look === "f", hair: () => hero.look !== "t", head: () => hero.look !== "t", tud: () => hero.look === "t" };
@@ -317,13 +322,13 @@
     const order = steps.map((s) => { if (!s.choice) return null; const n = val(s.choice, v).length, o = [...Array(n).keys()]; for (let k = n - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [o[k], o[j]] = [o[j], o[k]]; } return o; });
 
     function draw(msg = "", cls = "") {
-      const s = steps[i], q = esc(val(s.q, v)), u = val(s.unit, v);
+      const s = steps[i], q = esc(asQuestion(val(s.q, v))), u = val(s.unit, v);
       panel.innerHTML = `<div class="ms-track">${steps.map((_, k) => `<i class="${k < i ? "done" : k === i ? "now" : ""}"></i>`).join("")}</div>
-        <p class="ms-step">Question ${i + 1} of ${steps.length}${s.marks ? ` · ${s.marks} marks` : ""} · ${q}</p>
+        <div class="ms-sit"><p class="ms-sitl">The situation</p><p class="ms-story">${esc(val(m.story, v))}</p>${data ? `<div class="ms-data">${data.map((d) => `<span>${esc(d)}</span>`).join("")}</div>` : ""}</div>
+        <p class="ms-ql">Question ${i + 1} of ${steps.length}${s.marks ? ` · ${s.marks} marks` : ""}</p><p class="ms-step">${q}</p>
         ${s.choice ? `<div class="ms-choices" role="group" aria-label="${q}">${order[i].map((k) => `<button type="button" class="btn ghost" data-c="${k}">${esc(val(s.choice, v)[k])}</button>`).join("")}</div>`
           : `<form class="ms-row" id="msF" novalidate><input type="text" id="msA" inputmode="decimal" autocomplete="off" aria-label="${q}" placeholder="Your answer"><span>${esc(u)}</span><button class="btn">Attack</button></form>`}
         <p class="ms-msg ${cls}" id="msMsg" aria-live="polite">${msg}</p>
-        <p class="ms-story">${esc(val(m.story, v))}</p>${data ? `<div class="ms-data">${data.map((d) => `<span>${esc(d)}</span>`).join("")}</div>` : ""}
         ${s.hints.slice(0, Math.min(tries, 2)).map((h, k) => `<div class="ms-hint"><strong>Volt's hint ${k + 1}:</strong> ${hintOf(s, k)}</div>`).join("")}
         <p class="small-note">${s.choice ? "Choose one." : `Give ${s.dp} decimal place${s.dp === 1 ? "" : "s"}.`} Right: +10 coins first try, +6 after one hint, +3 after that. Wrong: blocked, −1 heart and −2 coins.</p>`;
       if (s.choice) $$("[data-c]", panel).forEach((b) => b.addEventListener("click", () => answer(+b.dataset.c === s.correct, b.textContent)));
@@ -408,17 +413,19 @@
       const bonus = (st === 3 ? 10 : 0) + (boss ? 50 : 0), total = coins + bonus, mk = Math.round(marks * 2) / 2;
       const before = best()[m.id];
       saveBest(w, m, { c: total, s: st, mk });
-      const rk1 = ART.rankOf(totalCoins());
+      const rk1 = ART.rankOf(totalCoins()), nextM = w.missions[mi + 1] && missionOpen(w, mi + 1) ? w.missions[mi + 1] : null;
       later(() => {
         const nb = before && before.c >= total ? `Your best is still ${before.c} coins.` : before ? "A new best!" : "";
         panel.innerHTML = `<div class="ms-win"><p class="ms-step" style="font-size:1.2rem">${boss ? "Boss defeated!" : "Station cleared!"} ${esc(E.name)} is fixed.</p>
           <div class="ms-big">${stars(st)}</div>
           <p>You earned <strong>${total} coins</strong>${bonus ? ` (with a ${bonus}-coin bonus)` : ""}. ${firstTry} of ${steps.length} questions right on the first try. ${nb}</p>
           ${boss ? `<p class="ms-mock">Boss score: <strong>${mk} / ${m.marks || 30}</strong> <span class="small-note">(full marks for a first-try answer, half after one hint, a quarter after that)</span></p>` : ""}</div>
-          <div class="ms-working"><p><strong>Full working</strong> (compare with your paper)</p>${steps.map((s, k) => `<p><strong>${esc(val(s.q, v))}</strong><br>${s.choice ? `Answer: ${esc(val(s.choice, v)[s.correct])}${s.why ? `<br><span class="small-note">${esc(val(s.why, v))}</span>` : ""}` : `${esc(s.formula)}<br>${esc(s.sub(v))} = <strong>${esc(fmtAns(s, v))}</strong>`}${got[k] && !s.choice ? ` <span class="small-note">(you: ${esc(got[k])})</span>` : ""}</p>`).join("")}</div>
-          <div class="ms-row ms-center"><button type="button" class="btn" data-again>Fight again (new numbers)</button><button type="button" class="btn ghost" data-back-world>Back to the chapter</button></div>`;
+          <div class="ms-working"><p><strong>Full working</strong> (compare with your paper)</p>${steps.map((s, k) => `<p><strong>${esc(asQuestion(val(s.q, v)))}</strong><br>${s.choice ? `Answer: ${esc(val(s.choice, v)[s.correct])}${s.why ? `<br><span class="small-note">${esc(val(s.why, v))}</span>` : ""}` : `${esc(s.formula)}<br>${esc(s.sub(v))} = <strong>${esc(fmtAns(s, v))}</strong>`}${got[k] && !s.choice ? ` <span class="small-note">(you: ${esc(got[k])})</span>` : ""}</p>`).join("")}</div>
+          <div class="ms-row ms-center">${nextM ? `<button type="button" class="btn" data-next>Next: face ${esc(enemyOf(nextM).name)} ›</button><button type="button" class="btn ghost" data-back-world>Back to the chapter</button>` : `<button type="button" class="btn" data-back-world>Back to the chapter</button>`}<button type="button" class="btn ghost" data-again>Fight again (new numbers)</button></div>`;
         $("[data-again]", panel).addEventListener("click", () => { SFX.click(); battle(w, mi); });
         $("[data-back-world]", panel).addEventListener("click", () => { SFX.click(); go("world", true, w); });
+        if (nextM) $("[data-next]", panel).addEventListener("click", () => { SFX.click(); battle(w, mi + 1); });
+        ($("[data-next]", panel) || $("[data-back-world]", panel)).focus({ preventScroll: true });
         const cp = $("#msCoins"); if (cp) cp.textContent = totalCoins();
         if (rk1 > rk0) rankUp(rk1);
       }, 1600);
@@ -446,6 +453,7 @@
     if (b.dataset.world) { const w = WORLDS.find((x) => x.world === +b.dataset.world); if (w && worldOpen(w)) { SFX.click(); go("world", true, w); } return; }
     if (b.dataset.play) { SFX.click(); battle(openWorld, +b.dataset.play); }
   });
+  page.addEventListener("change", (e) => { if (e.target.matches("[data-asstu]")) { asStudent = e.target.checked; go(view === "battle" ? "world" : view, false); } });
   page.addEventListener("input", (e) => {
     if (!e.target.matches(".lg-vol")) return;
     musicVol = +e.target.value; lsSet("nmk-musv", String(musicVol)); if (MUS) MUS.setVolume(musicVol / 100);
