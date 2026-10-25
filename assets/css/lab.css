@@ -8,7 +8,7 @@ html { scroll-padding-top: 124px; }
 
 /* ---------- Sticky section nav ---------- */
 .lab-nav {
-  position: -webkit-sticky; position: sticky; top: 60px; z-index: 40;
+  position: -webkit-sticky; position: sticky; top: 64px; z-index: 40;
   background: var(--paper); /* fallback for browsers without color-mix (older Huawei/Android WebViews) */
   background: color-mix(in srgb, var(--paper) 90%, transparent);
   -webkit-backdrop-filter: saturate(1.2) blur(8px);

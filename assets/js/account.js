@@ -193,7 +193,7 @@
     } catch (e) { console.warn("NMK account: could not load the profile", e.code || e); }
     paint(); changed(); loadBell(false);
     // is the Missions game released to students? (for the menu link)
-    if (state.profile && state.profile.status === "approved") db.collection("meta").doc("missions").get().then((d) => { missionsOpen = !!(d.exists && d.data().released); }).catch(() => {});
+    if (state.profile && state.profile.status === "approved") db.collection("meta").doc("missions").get().then((d) => { missionsOpen = !!(d.exists && d.data().released); navMine(); }).catch(() => {});
     if (canSync()) { pull(); queuePush(); loadAttendance(); db.collection("users").doc(u.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp(), photo: u.photoURL || "" }).catch(() => {}); }
   });
 
@@ -266,10 +266,11 @@
     if (!u) { btn.innerHTML = `${ICON}<span class="acc-t">Sign in</span>`; btn.setAttribute("aria-label", "Sign in with Google"); btn.className = "icon-btn acc-btn out"; }
     else {
       const initial = ((p && p.nickname) || u.displayName || u.email || "?").trim()[0].toUpperCase();
-      btn.innerHTML = `${u.photoURL ? `<img class="acc-av" src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer">` : `<span class="acc-av">${esc(initial)}</span>`}${p && p.status !== "approved" ? '<span class="acc-dot" aria-hidden="true"></span>' : ""}`;
-      btn.setAttribute("aria-label", `Your account: ${p ? STATUS[p.status] || p.status : "signed in"}`);
+      btn.innerHTML = `${u.photoURL ? `<img class="acc-av" src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer">` : `<span class="acc-av">${esc(initial)}</span>`}<span class="acc-t">My Class <span aria-hidden="true">▾</span></span>${p && p.status !== "approved" ? '<span class="acc-dot" aria-hidden="true"></span>' : ""}`;
+      btn.setAttribute("aria-label", `My Class menu. Your account: ${p ? STATUS[p.status] || p.status : "signed in"}`);
       btn.className = "icon-btn acc-btn in";
     }
+    navMine();
     banner();
   }
   function banner() {
@@ -285,19 +286,28 @@
     const h = $(".site-header");
     if (h) h.insertAdjacentElement("afterend", b);
   }
+  // the pages that need a login: in the My Class menu, and on phones in the main menu
+  function myLinks() {
+    const u = state.user, lec = u && isAdmin(u.email);
+    return [["attendance.html", "✅", lec ? "Attendance (lecturer)" : "Attendance"], ["kalam.html", "💬", "Kalam Feed"],
+      lec || missionsOpen ? ["missions.html", "⚔️", `INSTRUMENTA: Legends${lec && !missionsOpen ? " (not released)" : ""}`] : null,
+      ["board.html", "🏆", "Class Board and My Progress"], ["gallery.html", "📷", "Class Moments"], ["notifications.html", "🔔", "Notifications"],
+      lec ? ["admin.html", "🛠", "Lecturer dashboard"] : ["profile.html", "👤", "My Profile"]].filter(Boolean);
+  }
+  function navMine() {
+    const box = $("#navMine");
+    if (!box) return;
+    box.hidden = !state.user;
+    box.innerHTML = state.user ? `<span class="nav-h">My Class</span>${myLinks().map(([h, , t]) => `<a href="${h}">${esc(t)}</a>`).join("")}` : "";
+  }
   function openMenu() {
     const u = state.user, p = state.profile;
     menu.innerHTML = `<div class="acc-who"><strong>${esc((p && p.nickname) || u.displayName || "")}</strong><span>${esc(u.email)}</span>
         <span class="acc-st ${p ? p.status : ""}">${p ? STATUS[p.status] || p.status : "Setting up…"}</span></div>
       ${p && p.status === "approved" ? `<p class="acc-note">Your progress is saved to your account and follows you to any device.</p>` : ""}
-      ${isAdmin(u.email) ? "" : `<a class="acc-item" href="profile.html">My profile</a>`}
-      <a class="acc-item" href="notifications.html">Notifications</a>
-      <a class="acc-item" href="board.html">Progress board</a>
-      <a class="acc-item" href="gallery.html">Class Moments</a>
-      ${isAdmin(u.email) || missionsOpen ? `<a class="acc-item" href="missions.html">INSTRUMENTA: Legends${isAdmin(u.email) && !missionsOpen ? " (not released)" : ""}</a>` : ""}
-      <a class="acc-item" href="attendance.html">${isAdmin(u.email) ? "Attendance (lecturer)" : "Attendance"}</a>
-      ${isAdmin(u.email) ? `<a class="acc-item" href="admin.html">Lecturer dashboard</a>` : ""}
-      <button type="button" class="acc-item" data-out>Sign out</button>`;
+      <p class="acc-h">My Class</p>
+      ${myLinks().map(([h, i, t]) => `<a class="acc-item" href="${h}"><span class="acc-ic" aria-hidden="true">${i}</span>${esc(t)}</a>`).join("")}
+      <button type="button" class="acc-item acc-outb" data-out><span class="acc-ic" aria-hidden="true">↩</span>Sign out</button>`;
     const r = btn.getBoundingClientRect();
     menu.style.top = `${Math.round(r.bottom + 8)}px`;
     menu.style.right = `${Math.max(8, Math.round(innerWidth - r.right))}px`;

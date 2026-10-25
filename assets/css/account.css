@@ -86,3 +86,11 @@ table.adm { width: 100%; border-collapse: collapse; font-size: .9rem; font-varia
 .ms-rel { display: flex; gap: 10px; align-items: flex-start; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 12px 14px; }
 .ms-rel input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--teal); }
 .ms-rel small { color: var(--ink-2); }
+/* My Class: the account button and menu (2026/27 redesign) */
+.acc-btn.in { width: auto; padding: 3px 12px 3px 3px; gap: 8px; display: inline-flex; align-items: center; border-radius: 999px; font: 600 .88rem var(--sans); }
+.acc-btn.in .acc-t { white-space: nowrap; }
+@media (max-width: 980px) { .acc-btn.in { padding: 3px; } .acc-btn.in .acc-t { display: none; } }
+.acc-h { font: 700 .72rem var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); margin: 8px 10px 4px; }
+.acc-item { display: flex; align-items: center; gap: 10px; }
+.acc-ic { width: 28px; height: 28px; border-radius: 8px; background: var(--teal-soft); display: grid; place-items: center; font-size: .9rem; flex: none; }
+.acc-outb { border-top: 1px solid var(--rule); border-radius: 0 0 var(--r-sm) var(--r-sm); margin-top: 6px; padding-top: 11px; }

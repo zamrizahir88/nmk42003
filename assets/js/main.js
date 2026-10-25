@@ -192,16 +192,15 @@
   if (footer) {
     const d = COURSE.developer;
     footer.innerHTML = `
-      <div class="wrap foot-grid">
-        <a class="foot-logo" href="https://www.unimap.edu.my" target="_blank" rel="noopener"><img src="assets/img/unimap-logo.png" alt="Universiti Malaysia Perlis (UniMAP)" width="640" height="299" loading="lazy"></a>
-        <div class="foot-dev">
-          Developed by <strong>${d.link ? `<a href="${esc(d.link)}" target="_blank" rel="noopener">${esc(d.name)}</a>` : esc(d.name)}</strong>,
-          ${esc(d.affiliation)}.
-          <div class="foot-meta">${esc(COURSE.code)} ${esc(COURSE.name)} is offered under ${esc(COURSE.programme)}.</div>
-          <div class="foot-meta">&copy; ${new Date().getFullYear()} ${esc(COURSE.code)} ${esc(COURSE.name)}, ${esc(COURSE.university)}. For teaching and learning use.</div>
-        </div>
-        <div class="foot-meta">${esc(COURSE.session)}<br>Last updated ${esc(COURSE.lastUpdated)}</div>
-      </div>`;
+      <div class="wrap foot-cols">
+        <div class="foot-about"><a class="foot-logo" href="https://www.unimap.edu.my" target="_blank" rel="noopener"><img src="assets/img/unimap-logo.png" alt="Universiti Malaysia Perlis (UniMAP)" width="640" height="299" loading="lazy"></a>
+          <p>${esc(COURSE.code)} ${esc(COURSE.name)}<br>${esc(COURSE.faculty || "Faculty of Electronic Engineering & Technology")}, ${esc(COURSE.university)}</p></div>
+        <nav aria-label="Course pages"><h2 class="foot-h">Course</h2><a href="chapters.html">Chapters</a><a href="labs.html">Labs</a><a href="project.html">Mini Project</a><a href="schedule.html">Schedule</a><a href="assessment.html">Assessment</a></nav>
+        <nav aria-label="My Class"><h2 class="foot-h">My Class</h2><a href="attendance.html">Attendance</a><a href="missions.html">INSTRUMENTA: Legends</a><a href="board.html">Class Board</a><a href="gallery.html">Class Moments</a><a href="kalam.html">Kalam Feed</a></nav>
+        <nav aria-label="Help"><h2 class="foot-h">Help</h2><a href="index.html#team">Teaching team</a><a href="notifications.html">Notifications</a></nav>
+      </div>
+      <div class="foot-copy"><div class="wrap"><span>Developed by <strong>${d.link ? `<a href="${esc(d.link)}" target="_blank" rel="noopener">${esc(d.name)}</a>` : esc(d.name)}</strong>, ${esc(d.affiliation)}.</span>
+        <span>&copy; ${new Date().getFullYear()} ${esc(COURSE.code)} ${esc(COURSE.name)}, ${esc(COURSE.university)} · ${esc(COURSE.session)} · Updated ${esc(COURSE.lastUpdated)}</span></div></div>`;
   }
 
   /* ---------- Study progress (saved on this device) ---------- */
@@ -213,6 +212,21 @@
   const statusLabel = { soon: "Coming soon", notes: "Notes available", interactive: "Interactive", building: "Interactive, in progress" };
   // A topic links to its own page once built, otherwise to the placeholder.
   const pageOf = (t) => t.page || `topic.html?ch=${t.no}`;
+
+  /* ---------- The header: a thin faculty strip, the course brand and the public pages ----------
+     Pages that need a login (attendance, the game, the board, Class Moments, profiles) are in the account's
+     "My Class" menu (account.js), and in the phone menu under My Class. */
+  const NAV = [["index.html", "Home"], ["chapters.html", "Chapters"], ["labs.html", "Labs"], ["project.html", "Mini Project"], ["schedule.html", "Schedule"], ["assessment.html", "Assessment"]];
+  const navEl = $("#nav"), headEl = $(".site-header");
+  if (navEl) navEl.innerHTML = `${NAV.map(([h, t]) => `<a href="${h}">${t}</a>`).join("")}<div class="nav-mine" id="navMine" hidden></div>`;
+  const brandEl = $(".site-header .brand");
+  if (brandEl) brandEl.innerHTML = `<img class="brand-logo" src="assets/img/unimap-logo.png" alt="" width="640" height="299"><span class="brand-t"><span class="brand-code">${esc(COURSE.code)} ${esc(COURSE.name)}</span><span class="brand-name">Course website</span></span>`;
+  if (headEl && !$(".util-bar")) {
+    const u = document.createElement("div");
+    u.className = "util-bar";
+    u.innerHTML = `<div class="wrap"><span>Faculty of Electronic Engineering &amp; Technology</span><span class="u-wide" aria-hidden="true">·</span><span class="u-wide">${esc(COURSE.university)}</span><span class="u-sp"></span><span class="u-wide">${esc(COURSE.session)}</span></div>`;
+    headEl.parentNode.insertBefore(u, headEl);
+  }
 
   /* ---------- Active link in the main menu ---------- */
   const here = (location.pathname.split("/").pop() || "index.html").toLowerCase();
@@ -479,43 +493,56 @@
   }
 
   /* ---------- Topics ---------- */
-  function exProgress(t) {
-    const ex = t.exercises;
-    if (!ex) return "";
+  // a flash card (chapters and labs): the whole card is the link; on a computer it flips on hover (or with ⟲) to show what's inside
+  function flashCard(o) {
+    const n = String(o.no).padStart(2, "0");
+    return `<li class="fc${o.href ? "" : " fc-off"}">
+      <div class="fc-in">
+        <div class="fc-f">
+          <span class="fc-num" aria-hidden="true">${n}</span><span class="fc-k">${esc(o.kind)} ${o.no} · ${esc(o.weeks)}</span>
+          <h3>${o.href ? `<a class="fc-a" href="${esc(o.href)}"><span class="sr-only">${esc(o.kind)} ${o.no}: </span>${esc(o.title)}</a>` : esc(o.title)}</h3>
+          <p class="fc-sum">${esc(o.summary)}</p>
+          <div class="fc-meta">${o.meta}</div>${o.pct === null ? "" : `<div class="fc-bar" aria-hidden="true"><i style="width:${o.pct}%"></i></div>`}
+          ${o.extra || ""}
+        </div>
+        <div class="fc-b" aria-hidden="true">
+          <span class="fc-k">${esc(o.backTitle)}</span><p>${esc(o.summary)}</p>
+          <div class="fc-bfoot">${o.href ? `<a class="fc-open" href="${esc(o.href)}" tabindex="-1">${esc(o.go)} →</a>` : `<span class="fc-open off">${esc(o.go)}</span>`}${o.extra || ""}</div>
+        </div>
+      </div>
+      <button type="button" class="fc-rot" aria-label="Flip the card: ${esc(o.title)}" title="Flip">⟲</button>
+    </li>`;
+  }
+  function solvedOf(t) {
+    if (!t.exercises) return null;
     let solved = [];
-    try { solved = JSON.parse(localStorage.getItem("nmk-solved") || "[]"); } catch (e) {}
-    const n = solved.filter((id) => String(id).startsWith(ex.prefix)).length, pct = Math.round((n / ex.count) * 100);
-    return `<div class="ex-prog"><span class="ex-bar" role="progressbar" aria-valuenow="${n}" aria-valuemin="0" aria-valuemax="${ex.count}" aria-label="Exercises solved"><i style="width:${pct}%"></i></span><span>${n} of ${ex.count} exercises solved</span></div>`;
+    try { solved = JSON.parse(localStorage.getItem("nmk-solved") || "[]"); } catch (e) { /* private mode */ }
+    return solved.filter((id) => String(id).startsWith(t.exercises.prefix)).length;
+  }
+  function wireFlip(list) {
+    list.addEventListener("click", (e) => { const r = e.target.closest(".fc-rot"); if (r) r.closest(".fc").classList.toggle("flip"); });
   }
   function renderTopics() {
     const list = $("#topicList"), search = $("#topicSearch");
+    list.classList.add("fc-grid");
     const draw = () => {
       const q = search.value.trim().toLowerCase();
       const done = store.get();
       const items = COURSE.topics.filter((t) => !q || (t.title + " " + t.summary).toLowerCase().includes(q));
       list.innerHTML = items.length ? items.map((t) => {
-        const on = done.includes(t.no);
-        const featured = t.status === "building" || t.status === "interactive";
-        return `
-          <li class="topic${featured ? " featured" : ""}">
-            <div class="topic-no" aria-hidden="true">${t.no}</div>
-            <div>
-              <h3><a href="${esc(pageOf(t))}"><span class="sr-only">Chapter ${t.no}: </span>${esc(t.title)}</a></h3>
-              <p class="topic-summary">${esc(t.summary)}</p>
-              <div class="topic-meta"><span>${esc(t.weeks)}</span><span class="badge ${t.status}">${statusLabel[t.status]}</span></div>
-              ${exProgress(t)}
-            </div>
-            <button class="study-toggle" data-no="${t.no}" aria-pressed="${on}">
-              <span class="box" aria-hidden="true"></span>${on ? "Studied" : "Mark as studied"}
-            </button>
-          </li>`;
-      }).join("") : `<li class="topic-empty">No topics match "${esc(search.value)}". Try a broader word, such as "signal".</li>`;
+        const on = done.includes(t.no), n = solvedOf(t), of = t.exercises ? t.exercises.count : 0;
+        const study = `<button type="button" class="study-toggle" data-no="${t.no}" aria-pressed="${on}"><span class="box" aria-hidden="true"></span>${on ? "Studied" : "Mark as studied"}</button>`;
+        return flashCard({ no: t.no, kind: "Chapter", weeks: t.weeks, title: t.title, summary: t.summary, href: pageOf(t), backTitle: "What you'll learn", go: "Open the chapter",
+          meta: `<span class="badge ${t.status}">${n !== null && n >= of && of ? "✓ Done" : statusLabel[t.status]}</span>${n !== null ? `<span>${n} of ${of} exercises</span>` : ""}`,
+          pct: n === null ? null : Math.round((100 * n) / of), extra: study });
+      }).join("") : `<li class="topic-empty">No chapters match "${esc(search.value)}". Try a broader word, such as "signal".</li>`;
       const n = done.length;
       $("#studySummary").textContent = n
-        ? `You've marked ${n} of ${COURSE.topics.length} topics as studied. This is saved in this browser only.`
-        : "Mark topics as studied to track your revision. This is saved in this browser only.";
+        ? `You've marked ${n} of ${COURSE.topics.length} chapters as studied. This is saved in this browser only.`
+        : "Mark chapters as studied to track your revision. This is saved in this browser only.";
     };
     search.addEventListener("input", draw);
+    wireFlip(list);
     list.addEventListener("click", (e) => {
       const b = e.target.closest(".study-toggle");
       if (!b) return;
@@ -594,14 +621,14 @@
 
   /* ---------- Labs, team ---------- */
   function renderLabs() {
-    // A lab with a virtual lab page becomes a link card; the others stay plain rows.
-    $("#labList").innerHTML = COURSE.labs.map((l) => l.page
-      ? `<li class="lab-link"><a href="${esc(l.page)}">
-          <span class="ll-top"><span class="ll-title">${esc(l.title)}${l.openEnded ? '<span class="oe">Open-ended</span>' : ""}</span><span class="muted">${esc(l.weeks)}</span></span>
-          ${l.summary ? `<span class="ll-sum">${esc(l.summary)}</span>` : ""}
-          <span class="ll-go">Open the virtual lab <span aria-hidden="true">→</span></span></a></li>`
-      : `<li><span>${esc(l.title)}${l.openEnded ? '<span class="oe">Open-ended</span>' : ""}</span><span class="muted">${esc(l.weeks)}</span></li>`
-    ).join("");
+    // every lab is a flash card; a lab with a virtual lab page links to it
+    const list = $("#labList");
+    list.className = "fc-grid";
+    list.innerHTML = COURSE.labs.map((l) => flashCard({ no: l.no, kind: "Lab", weeks: l.weeks, title: l.title.replace(/^Lab \d+:\s*/, ""), href: l.page || "",
+      summary: l.summary || `Carried out in the laboratory in ${l.weeks.toLowerCase()}. Its virtual lab is not ready yet.`, backTitle: l.page ? "In this virtual lab" : "In the lab",
+      go: l.page ? "Open the virtual lab" : "Virtual lab coming later", pct: null,
+      meta: `${l.page ? '<span class="badge interactive">Virtual lab</span>' : '<span class="badge soon">In the lab</span>'}${l.openEnded ? '<span class="badge building">Open-ended</span>' : ""}` })).join("");
+    wireFlip(list);
   }
 
   function renderTeam() {
