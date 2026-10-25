@@ -264,7 +264,8 @@
           <div class="lg-weak"><b>Weakness:</b> ${esc(e.weak || m.title)}</div>${e.taunt ? `<div class="lg-taunt">“${esc(e.taunt)}”</div>` : ""}
           <div class="lg-res">${r ? `Defeated · ${stars(r.s)} · best ${r.c} coins${r.boss ? ` · ${r.mk}/${r.of} marks` : ""}` : `${m.steps.length} questions`}</div>
           ${open && saveOf(m) ? `<button type="button" class="btn" data-cont="${i}">Continue · Question ${saveOf(m).i + 1} of ${m.steps.length} · ${saveOf(m).hearts} ♥ · ${saveOf(m).coins} coins</button><button type="button" class="btn ghost small" data-fresh="${i}">Start over</button>`
-            : open ? `<button type="button" class="btn${r ? " ghost" : ""}" data-play="${i}">${r ? "Fight again" : "Fight"}</button>` : `<span class="lg-lock">🔒 ${worldOpen(w) ? `Defeat ${esc(enemyOf(prev).name)} first` : `Opens ${fmtDay(opensOn(w).iso)}`}</span>`}</div>`;
+            : open ? `<button type="button" class="btn${r ? " ghost" : ""}" data-play="${i}">${r ? "Fight again" : "Fight"}</button>` : `<span class="lg-lock">🔒 ${worldOpen(w) ? `Defeat ${esc(enemyOf(prev).name)} first` : `Opens ${fmtDay(opensOn(w).iso)}`}</span>`}
+          ${r ? `<button type="button" class="btn ghost small" data-sharest="${i}">📤 Share my win</button>` : ""}</div>`;
       }).join("")}</div>`);
   }
 
@@ -415,6 +416,14 @@
     });
   }
   const playCard = () => { const rk = ART.rankOf(totalCoins()); return { kind: "play", hero, tier: tier(), name: heroLabel(), rank: rk, rankName: ART.RANKS[rk].n, coins: totalCoins() }; };
+  // a defeated station's card (from its best result), shared from the chapter page at any time
+  function shareStation(w, i) {
+    const m = w.missions[i], r = best()[m.id], E = enemyOf(m), rk = ART.rankOf(totalCoins());
+    if (!r) return;
+    share({ kind: "win", hero, tier: tier(), name: heroLabel(), rank: rk, rankName: ART.RANKS[rk].n, coins: r.c, where: `CHAPTER ${w.chapter} · STATION ${i + 1}${E.boss ? " · BOSS" : ""}`,
+      title: `I defeated ${E.name}!`, enemySvg: E.svg, enemyScale: E.scale || 1, stars: "★".repeat(r.s || 0) + "☆".repeat(3 - (r.s || 0)), extra: r.boss ? `${r.mk}/${r.of} marks` : "Defeated ✓" },
+      `I defeated ${E.name} in INSTRUMENTA: Legends, ${BY} Can you beat my score? #INSTRUMENTALegends #UniMAP ${SHARE_URL}`, "win");
+  }
   const sharePlay = () => share(playCard(), `Let's play INSTRUMENTA: Legends, ${BY} Join me in NMK42003! #INSTRUMENTALegends #UniMAP ${SHARE_URL}`, "play");
   function share(d, text, tag) {
     const sh = document.createElement("div");
@@ -692,6 +701,7 @@
     if (b.hasAttribute("data-snd")) { soundOn = !soundOn; lsSet("nmk-msnd", soundOn ? "1" : "0"); $$("[data-snd]").forEach((x) => { x.setAttribute("aria-pressed", soundOn); x.textContent = soundOn ? "🔊" : "🔇"; }); SFX.click(); return; }
     if (b.hasAttribute("data-mus")) { setMusic(!musicOn); return; }
     if (b.hasAttribute("data-sharegame") || b.hasAttribute("data-shareme")) { SFX.click(); return sharePlay(); }
+    if (b.dataset.sharest) { SFX.click(); return shareStation(openWorld, +b.dataset.sharest); }
     if (b.dataset.go) { SFX.click(); if (view === "room" && roomUnsaved && roomUnsaved()) { const to = b.dataset.go; return roomLeave(() => go(to)); } return go(b.dataset.go); }
     if (b.dataset.world) { const w = WORLDS.find((x) => x.world === +b.dataset.world); if (w && worldOpen(w)) { SFX.click(); go("world", true, w); } return; }
     if (b.dataset.play) { SFX.click(); battle(openWorld, +b.dataset.play); }
