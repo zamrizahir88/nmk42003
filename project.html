@@ -8,12 +8,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=2610131">
-  <link rel="stylesheet" href="assets/css/assistant.css?v=2610131">
-  <link rel="stylesheet" href="assets/css/lab.css?v=2610131">
-  <link rel="stylesheet" href="assets/css/account.css?v=2610131">
-  <link rel="stylesheet" href="assets/css/game.css?v=2610131">
-  <link rel="stylesheet" href="assets/css/project.css?v=2610131">
+  <link rel="stylesheet" href="assets/css/style.css?v=2610133">
+  <link rel="stylesheet" href="assets/css/assistant.css?v=2610133">
+  <link rel="stylesheet" href="assets/css/lab.css?v=2610133">
+  <link rel="stylesheet" href="assets/css/account.css?v=2610133">
+  <link rel="stylesheet" href="assets/css/game.css?v=2610133">
+  <link rel="stylesheet" href="assets/css/project.css?v=2610133">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0b6e6e">
   <link rel="apple-touch-icon" href="assets/img/icon-180.png">
@@ -56,37 +56,28 @@
 
   <main id="main">
     <div class="wrap page-hero">
-      <a class="crumb" href="assessment.html">← Assessment</a>
-      <h1>Mini Project</h1>
-      <p class="page-lead">IoT in Industry: your group selects, builds, programs, calibrates and tests a working IoT instrumentation prototype, and shows that you can use engineering tools with precision. Register your group, propose your title, and see which titles are already taken.</p>
-      <p class="pj-map"><span>CO3</span><span>P4 Mechanism</span><span>PO5 Tool Usage</span><span>15% of your grade</span></p>
+      <a class="crumb" href="index.html">← Home</a>
+      <h1>Mini Project: IoT in Industry</h1>
+      <p class="page-lead">Your group selects, builds, programs, calibrates and tests a working IoT instrumentation prototype. Read the guidelines, register your group and title, and log your progress each week.</p>
+      <p class="pj-map"><span>CO3</span><span>P4 Mechanism</span><span>PO5 Tool Usage</span><span>15% of your grade</span><span>Groups of 3 to 4</span></p>
+      <nav class="pj-ptabs" role="tablist" aria-label="Mini project">
+        <a href="#guidelines" role="tab" data-ptab="guidelines"><i>1</i><span>Guidelines</span></a>
+        <a href="#group" role="tab" data-ptab="group"><i>2</i><span>Group<span class="pj-tl2"> and Title</span><span class="pj-tl"> Submission</span></span></a>
+        <a href="#progress" role="tab" data-ptab="progress"><i>3</i><span>Progress<span class="pj-tl"> Monitoring</span></span></a>
+      </nav>
     </div>
 
-    <nav class="lab-nav" aria-label="Mini project sections">
-      <div class="wrap">
-        <a href="#register">Group and Title</a>
-        <a href="#brief">Brief</a>
-        <a href="#requirements">Requirements</a>
-        <a href="#calibration">Calibration</a>
-        <a href="#technical">Technical Notes</a>
-        <a href="#timeline">Timeline</a>
-        <a href="#report">Report</a>
-        <a href="#assessment">Assessment and Rubric</a>
-        <a href="#examples">Example Titles</a>
-      </div>
-    </nav>
 
-    <section class="lab-group" id="register" aria-labelledby="register-h">
+    <section class="pj-panel" id="guidelines" role="tabpanel" aria-label="Guidelines">
       <div class="wrap">
-        <div class="group-head"><h2 id="register-h">Group and Title</h2>
-          <p>Form your group, submit your title proposal, and follow your lecturer's review here. Approved titles are shown to the whole class, so you can see which ideas are already taken.</p></div>
-        <div class="pj-dates" id="pjDates"></div>
-        <div id="project"><p class="small-note">Loading…</p></div>
-      </div>
-    </section>
-
-    <section class="lab-group" id="brief" aria-labelledby="brief-h">
-      <div class="wrap pj-doc">
+        <div class="pj-gcols">
+          <nav class="pj-toc" aria-label="Guideline sections">
+            <a href="#brief">Brief and Theme</a><a href="#requirements">Design Requirements</a><a href="#calibration">Sensor Calibration</a><a href="#technical">Technical Notes and Safety</a>
+            <a href="#timeline">Timeline</a><a href="#report">Technical Report</a><a href="#assessment">Assessment and Rubric</a><a href="#examples">Example Titles</a>
+          </nav>
+          <div class="pj-gdoc">
+    <section class="pj-gsec" id="brief" aria-labelledby="brief-h">
+      <div class="pj-doc">
         <div class="group-head"><h2 id="brief-h">Brief</h2>
           <p>The mini project lets your group apply what you learn in this course to a real IoT instrumentation system. You will select, build, program, calibrate and test a working prototype, and show that you can use engineering tools with precision.</p></div>
         <div class="pj-scroll"><table class="pj-table">
@@ -124,8 +115,8 @@
       </div>
     </section>
 
-    <section class="lab-group" id="requirements" aria-labelledby="req-h">
-      <div class="wrap pj-doc">
+    <section class="pj-gsec" id="requirements" aria-labelledby="req-h">
+      <div class="pj-doc">
         <div class="group-head"><h2 id="req-h">Design Requirements</h2><p>All of these are compulsory. The proposal form on this page checks the first four before you can submit.</p></div>
         <ol class="pj-reqs">
           <li><b>Controller and standalone operation.</b> Use an ESP32 as the main controller. The prototype must run on its own power supply as an all-in-one unit, without a PC connected during operation.</li>
@@ -140,8 +131,8 @@
       </div>
     </section>
 
-    <section class="lab-group" id="calibration" aria-labelledby="cal-h">
-      <div class="wrap pj-doc">
+    <section class="pj-gsec" id="calibration" aria-labelledby="cal-h">
+      <div class="pj-doc">
         <div class="group-head"><h2 id="cal-h">Sensor Calibration</h2><p>Compulsory. At least one sensor in your system must be calibrated, following the method in Chapter 7 (Transducer Calibration).</p></div>
         <ol class="pj-steps">
           <li><b>Choose a known reference</b>, for example a multimeter, a ruler or measuring tape, a protractor, known temperatures (such as ice water and room temperature), a known weight, known resistor values, or a reference sensor of stated accuracy.</li>
@@ -154,8 +145,8 @@
       </div>
     </section>
 
-    <section class="lab-group" id="technical" aria-labelledby="tech-h">
-      <div class="wrap pj-doc">
+    <section class="pj-gsec" id="technical" aria-labelledby="tech-h">
+      <div class="pj-doc">
         <div class="group-head"><h2 id="tech-h">Technical Notes and Safety</h2></div>
         <h3 class="h3">Component Specifications</h3>
         <p>Know the specifications of every component you use, from its datasheet: for example the supply voltage, output range and accuracy of each sensor; the relay type (mechanical or solid-state), coil voltage and contact rating; the rating of the power supply or AC-to-DC adapter; current-limiting resistors for LEDs; and level shifting (a voltage divider or line buffer) for 5 V signals.</p>
@@ -175,15 +166,15 @@
       </div>
     </section>
 
-    <section class="lab-group" id="timeline" aria-labelledby="time-h">
-      <div class="wrap pj-doc">
+    <section class="pj-gsec" id="timeline" aria-labelledby="time-h">
+      <div class="pj-doc">
         <div class="group-head"><h2 id="time-h">Timeline</h2><p>Week numbers follow the academic calendar (week 9 is the mid-term break). The exact demonstration schedule will be announced on URLearn.</p></div>
         <ol class="pj-time" id="pjTime"></ol>
       </div>
     </section>
 
-    <section class="lab-group" id="report" aria-labelledby="rep-h">
-      <div class="wrap pj-doc">
+    <section class="pj-gsec" id="report" aria-labelledby="rep-h">
+      <div class="pj-doc">
         <div class="group-head"><h2 id="rep-h">Technical Report</h2><p>Submitted on URLearn in week 15.</p></div>
         <ul>
           <li>Use the IEEE conference paper format: a maximum of 7 pages including references. Datasheets and the full program code may be added as appendices.</li>
@@ -204,8 +195,8 @@
       </div>
     </section>
 
-    <section class="lab-group" id="assessment" aria-labelledby="as-h">
-      <div class="wrap pj-doc">
+    <section class="pj-gsec" id="assessment" aria-labelledby="as-h">
+      <div class="pj-doc">
         <div class="group-head"><h2 id="as-h">Assessment and Rubric</h2>
           <p>Your group receives one group mark out of 100. Each student's mark is the group mark multiplied by an individual factor.</p></div>
         <div class="pj-scroll"><table class="pj-table pj-marks">
@@ -275,26 +266,43 @@
       </div>
     </section>
 
-    <section class="lab-group" id="examples" aria-labelledby="ex-h">
-      <div class="wrap pj-doc">
-        <div class="group-head"><h2 id="ex-h">Example Titles</h2><p>Examples only. Each meets the minimum hardware rule (★ marks the sensor to calibrate). You may propose your own title, subject to the lecturers' approval. Titles already approved for other groups are listed under <a href="#register">Approved Titles</a>.</p></div>
+    <section class="pj-gsec" id="examples" aria-labelledby="ex-h">
+      <div class="pj-doc">
+        <div class="group-head"><h2 id="ex-h">Example Titles</h2><p>Examples only. Each meets the minimum hardware rule (★ marks the sensor to calibrate). You may propose your own title, subject to the lecturers' approval. Titles already approved for other groups are listed under <a href="#group">Approved Titles</a>.</p></div>
         <div id="pjExamples"></div>
+      </div>
+    </section>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pj-panel" id="group" role="tabpanel" aria-label="Group and Title Submission" hidden>
+      <div class="wrap">
+        <div class="pj-dates" id="pjDates"></div>
+        <div id="project"><p class="small-note">Loading…</p></div>
+      </div>
+    </section>
+
+    <section class="pj-panel" id="progress" role="tabpanel" aria-label="Progress Monitoring" hidden>
+      <div class="wrap">
+        <div id="projectProg"><p class="small-note">Loading…</p></div>
       </div>
     </section>
   </main>
 
   <footer class="site-footer" id="footer"></footer>
 
-  <script src="assets/js/data.js?v=2610131"></script>
+  <script src="assets/js/data.js?v=2610133"></script>
 
-  <script src="assets/js/schedule.js?v=2610131"></script>
-  <script src="assets/js/main.js?v=2610131"></script>
+  <script src="assets/js/schedule.js?v=2610133"></script>
+  <script src="assets/js/main.js?v=2610133"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
-  <script src="assets/js/game.js?v=2610131" defer></script>
-  <script src="assets/js/account.js?v=2610131" defer></script>
-  <script src="assets/js/project.js?v=2610131" defer></script>
-  <script src="assets/js/assistant.js?v=2610131" defer></script>
+  <script src="assets/js/game.js?v=2610133" defer></script>
+  <script src="assets/js/account.js?v=2610133" defer></script>
+  <script src="assets/js/project.js?v=2610133" defer></script>
+  <script src="assets/js/assistant.js?v=2610133" defer></script>
 </body>
 </html>

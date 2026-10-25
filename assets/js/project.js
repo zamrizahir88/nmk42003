@@ -9,9 +9,11 @@
    Names come from the class list (meta/classmates for students, roster for lecturers). */
 (function () {
   "use strict";
-  const host = document.getElementById("project");
+  // the page has three tabs: Guidelines, Group and Title Submission (#project), Progress Monitoring (#projectProg)
+  const host = document.getElementById("project"), host2 = document.getElementById("projectProg");
   if (!host || typeof COURSE === "undefined") return;
-  const $ = (s, r = host) => r.querySelector(s), $$ = (s, r = host) => [...r.querySelectorAll(s)];
+  const root = document.querySelector("main") || document;
+  const $ = (s, r = root) => r.querySelector(s), $$ = (s, r = root) => [...r.querySelectorAll(s)];
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const SEM = COURSE.semesterId, SLUG = String(SEM).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const SEC = { mon: "Monday", wed: "Wednesday", thu: "Thursday" };
@@ -131,6 +133,30 @@
       <tbody>${rows.map((r) => `<tr><th scope="row">${esc(r[0])}</th>${r.slice(1).map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`).join("");
   })();
 
+  /* ---------- the page's three tabs: #guidelines, #group, #progress (a guideline section's own link opens Guidelines) ---------- */
+  const PTABS = ["guidelines", "group", "progress"];
+  let pageTab = "guidelines";
+  function showTab(t) {
+    pageTab = t;
+    $$(".pj-panel").forEach((p) => { p.hidden = p.id !== t; });
+    $$("[data-ptab]").forEach((a) => { a.setAttribute("aria-selected", String(a.dataset.ptab === t)); if (a.dataset.ptab === t) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    document.dispatchEvent(new CustomEvent("pj:tab", { detail: t }));
+  }
+  // with no tab in the address: Guidelines until week 7, Group and Title until week 9, then Progress Monitoring
+  const tabNow = () => { const w = Math.floor((Date.now() - Date.parse(`${COURSE.semesterStart}T00:00:00+08:00`)) / 604800000) + 1; return w >= 10 ? "progress" : w >= 7 ? "group" : "guidelines"; };
+  function fromHash() {
+    const h = decodeURIComponent(location.hash.slice(1));
+    if (PTABS.includes(h)) return showTab(h);
+    if (h === "register") return showTab("group");
+    const el = h && document.getElementById(h), panel = el && el.closest(".pj-panel");
+    if (panel) { showTab(panel.id); el.scrollIntoView(); return; }
+    showTab(tabNow());
+  }
+  $$("[data-ptab]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); if (pageTab === a.dataset.ptab) return; history.pushState(history.state, "", `#${a.dataset.ptab}`); showTab(a.dataset.ptab); }));
+  addEventListener("hashchange", fromHash);
+  addEventListener("popstate", () => { const h = location.hash.slice(1); if (PTABS.includes(h) && h !== pageTab) showTab(h); });
+  fromHash();
+
   /* ---------- start: who sees what ---------- */
   function boot() {
     A = window.NMKAccount;
@@ -154,8 +180,7 @@
     student();
   }
   function gate(html) {
-    host.innerHTML = `<div class="pj-gate">${html}</div>`;
-    const b = $("[data-signin]"); if (b) b.addEventListener("click", () => A.signIn());
+    [host, host2].forEach((h) => { if (!h) return; h.innerHTML = `<div class="pj-gate">${html}</div>`; const b = $("[data-signin]", h); if (b) b.addEventListener("click", () => A.signIn()); });
   }
   const nameOf = (m) => { const x = mates.find((y) => String(y.m) === String(m)); return x ? x.n : `Matric ${m}`; };
   const secOf = (m) => { const x = mates.find((y) => String(y.m) === String(m)); return x && x.s ? SEC[x.s] : ""; };
@@ -212,17 +237,14 @@
      STUDENTS
      ===================================================================== */
   function student() {
-    host.innerHTML = `<div class="pj-tabs" role="tablist"><button type="button" role="tab" data-tab="mine" aria-selected="true">My Group</button><button type="button" role="tab" data-tab="titles" aria-selected="false">Approved Titles</button></div>
-      <div id="pjView"><p class="small-note">Loading…</p></div><div id="pjLog"></div><div id="pjPeer"></div>`;
-    let tab = (history.state && history.state.ptab) || "mine", mineG = null, invites = [], claims = {}, titles = [], editing = false, draft = null, shown = "";
+    host.innerHTML = `<div id="pjView"><p class="small-note">Loading…</p></div><section class="pj-tsec" aria-labelledby="pjTitlesH"><span class="pj-over">For the whole class</span><h2 class="pj-h2" id="pjTitlesH">Approved Titles</h2><div id="pjTitles"></div></section>`;
+    if (host2) host2.innerHTML = `<div id="pjLog"></div><div id="pjPeer"></div>`;
+    let mineG = null, invites = [], claims = {}, titles = [], editing = false, draft = null, shown = "";
     let logs = {}, logSubs = [], logGid = null, logWeek = null, logEditing = false;
-    $$("[data-tab]").forEach((b) => b.addEventListener("click", () => { tab = b.dataset.tab; if (window.NMKBack) NMKBack.view({ ptab: tab }); paint(); }));
-    if (window.NMKBack) NMKBack.onView((s) => { tab = s.ptab || "mine"; paint(); });
     function fail(e) { $("#pjView").innerHTML = `<p class="small-note">Could not load your group (${esc(e.code || e)}). Reload the page to try again.</p>`; }
     function paint() {
-      $$("[data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
-      const v = $("#pjView");
-      if (tab === "titles") { v.innerHTML = titleList(titles, false); paintLog(); paintPeer(); return; }
+      const v = $("#pjView"), tt = $("#pjTitles");
+      if (tt) tt.innerHTML = titleList(titles, false);
       // keep a half-typed proposal: only redraw the form when the group itself changed
       const sig = JSON.stringify([mineG && [mineG.id, mineG.status, mineG.memberM, mineG.inviteM, mineG.declinedM, mineG.leader, mineG.review, mineG.version, mineG.no, editing ? 0 : mineG.proposal], invites.map((g) => [g.id, g.memberM, g.inviteM]), editing]);
       if (editing && sig === shown && $("#pjForm")) { checks(); return; }
@@ -242,7 +264,7 @@
     function paintLog(force) {
       const box = $("#pjLog");
       if (!box) return;
-      if (!mineG || tab !== "mine") { box.innerHTML = ""; return; }
+      if (!mineG) { box.innerHTML = `<div class="pj-card"><h2 class="h3">Progress Logbook</h2><p>Join or create a group first, in <a href="#group" data-goto="group">Group and Title Submission</a>. Your group's weekly logbook appears here from week ${LOG_WEEKS[0]}.</p></div>`; return; }
       if (logEditing && !force) return;
       const g = mineG, cw = curWeek();
       if (cw < LOG_WEEKS[0]) { box.innerHTML = `<div class="pj-card"><h2 class="h3">Progress Logbook</h2><p>Your group's weekly logbook opens in week ${LOG_WEEKS[0]} (${dayOf(weekStart(LOG_WEEKS[0]))}). Each week, one of you writes what the group did, who did what, the problems you met and the plan for next week. Each entry is due on Sunday at 11:59 PM.</p></div>`; return; }
@@ -284,7 +306,7 @@
     function paintPeer() {
       const box = $("#pjPeer");
       if (!box) return;
-      if (!mineG || tab !== "mine" || mineG.memberM.length < 2) { box.innerHTML = ""; return; }
+      if (!mineG || mineG.memberM.length < 2) { box.innerHTML = ""; return; }
       const g = mineG, others = g.memberM.filter((m) => m !== me.m);
       if (!meta.peer) { box.innerHTML = curWeek() >= 15 ? `<div class="pj-card"><h2 class="h3">Peer Evaluation</h2><p>The peer evaluation opens here when your lecturer opens it, in week 15.</p></div>` : ""; return; }
       if (peerGid !== g.id) { peerGid = g.id; peerDoc = undefined; db.collection("ppeer").doc(`${SLUG}_${me.m}`).get().then((d) => { peerDoc = d.exists ? d.data() : null; paintPeer(); }).catch(() => { peerDoc = null; paintPeer(); }); }
@@ -347,7 +369,12 @@
       const pend = g.inviteM.map((m) => `<li>${esc(nameOf(m))} <span class="pj-tag wait">Invited, waiting</span>${team ? ` <button type="button" class="pj-x" data-uninvite="${esc(m)}">Cancel invitation</button>` : ""}</li>`).join("");
       const dec = (g.declinedM || []).filter((m) => !g.inviteM.includes(m) && !g.memberM.includes(m)).map((m) => `<li class="pj-dec">${esc(nameOf(m))} declined</li>`).join("");
       const canInvite = team && n + g.inviteM.length < MAX;
-      const head = `<div class="pj-card"><div class="pj-gh"><h2 class="h3">${g.no ? esc(gname(g)) : "Your Group"}</h2><span class="pj-st ${g.status}">${STATUS[g.status]}</span></div>${g.no ? "" : `<p class="small-note">Your group gets its number when the title is approved.</p>`}
+      const full = n >= MIN && !g.inviteM.length, wrote = !!(g.proposal && g.proposal.title), st = g.status;
+      const steps = [["Group formed", full ? `${n} members` : `${n} of ${MIN} to ${MAX} members`, full], ["Proposal written", st === "forming" ? (wrote ? "In progress" : "Not started") : "Submitted", st !== "forming"],
+        ["Lecturer's review", st === "submitted" ? "Waiting for review" : st === "amend" ? "Amendment requested" : st === "approved" ? "Done" : "After you submit", st === "approved"], ["Approved", st === "approved" ? gname(g) : "Group number given", st === "approved"]];
+      const cur = steps.findIndex((x) => !x[2]);
+      const tracker = `<ol class="pj-steps" aria-label="Your progress">${steps.map(([t, d, ok], i) => `<li class="${ok ? "done" : i === cur ? "now" : ""}"${i === cur ? ' aria-current="step"' : ""}><b>${i + 1} · ${t}</b><span>${esc(d)}</span></li>`).join("")}</ol>`;
+      const head = tracker + `<div class="pj-card"><div class="pj-gh"><h2 class="h3">${g.no ? esc(gname(g)) : "Your Group"}</h2><span class="pj-st ${g.status}">${STATUS[g.status]}</span></div>${g.no ? "" : `<p class="small-note">Your group gets its number when the title is approved.</p>`}
         <ul class="pj-mem">${members}${pend}${dec}</ul>
         ${canInvite ? `<div class="pj-invite" id="pjInvite"></div>` : ""}
         <p class="small-note">${n + g.inviteM.length}/${MAX} places used. ${n < MIN ? `Your group needs at least ${MIN} members before it can submit.` : n === MIN ? "Groups of 3 only where the class numbers require it: your lecturer may ask you to take a fourth member." : ""}</p>
@@ -420,7 +447,7 @@
       // the closest approved title (other groups)
       const near = titles.filter((t) => t.id !== mineG.id).map((t) => [t, similarity(draft, t)]).sort((a, b) => b[1] - a[1])[0];
       $("#pjClash").innerHTML = near && draft.title.trim().length > 5 && level(near[1]) !== "green"
-        ? `<p class="pj-clash ${level(near[1])}">${level(near[1]) === "red" ? "This looks like an approved title:" : "Similar to an approved title:"} <strong>${esc(gtag(near[0].no))} · ${esc(near[0].title)}</strong>. Choose a different application, industry or sensor so your project is your own. <a href="#" data-tabgo="titles">See the approved titles</a></p>` : "";
+        ? `<p class="pj-clash ${level(near[1])}">${level(near[1]) === "red" ? "This looks like an approved title:" : "Similar to an approved title:"} <strong>${esc(gtag(near[0].no))} · ${esc(near[0].title)}</strong>. Choose a different application, industry or sensor so your project is your own. <a href="#pjTitlesH">See the approved titles</a></p>` : "";
     }
     let saveT = 0;
     const saveDraft = () => {
@@ -434,7 +461,6 @@
     function wire() {
       const v = $("#pjView"), g = mineG;
       const on = (sel, f) => $$(sel, v).forEach((b) => b.addEventListener("click", f));
-      on("[data-tabgo]", (e) => { e.preventDefault(); tab = e.currentTarget.dataset.tabgo; if (window.NMKBack) NMKBack.view({ ptab: tab }); paint(); });
       on("[data-create]", async (e) => {
         e.target.disabled = true;
         const ref = db.collection("pgroups").doc(), b = db.batch();
@@ -571,12 +597,24 @@
      LECTURERS
      ===================================================================== */
   function lecturer() {
-    host.innerHTML = `<div class="pj-tabs" role="tablist"><button type="button" role="tab" data-tab="groups" aria-selected="true">Groups</button><button type="button" role="tab" data-tab="clash" aria-selected="false">Possible Clashes</button><button type="button" role="tab" data-tab="log" aria-selected="false">Logbook</button><button type="button" role="tab" data-tab="peer" aria-selected="false">Peer Evaluation</button><button type="button" role="tab" data-tab="marks" aria-selected="false">Marks</button>
-      <button type="button" role="tab" data-tab="nogroup" aria-selected="false">Not in a Group</button><button type="button" role="tab" data-tab="titles" aria-selected="false">Approved Titles</button></div>
+    const SETS = { group: [["groups", "Groups"], ["clash", "Possible Clashes"], ["nogroup", "Not in a Group"], ["titles", "Approved Titles"]], progress: [["log", "Logbook"], ["peer", "Peer Evaluation"], ["marks", "Marks"]] };
+    const lec = document.createElement("div");
+    lec.innerHTML = `<div class="pj-tabs" role="tablist" aria-label="Lecturer views">${[...SETS.group, ...SETS.progress].map(([k, t]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="false">${t}</button>`).join("")}</div>
       <div class="pj-review" id="pjRev" hidden></div><div id="pjView"><p class="small-note">Loading…</p></div>`;
+    host.innerHTML = ""; host.appendChild(lec);
+    if (host2) host2.innerHTML = "";
     let tab = (history.state && history.state.ptab) || "groups", groups = [], roster = [], claims = {}, titles = [], filter = "all", openId = null, layer = null, logsAll = {}, peers = [], marks = {};
-    $$("[data-tab]").forEach((b) => b.addEventListener("click", () => { tab = b.dataset.tab; closeRev(); if (window.NMKBack) NMKBack.view({ ptab: tab }); paint(); }));
-    if (window.NMKBack) NMKBack.onView((s) => { tab = s.ptab || "groups"; paint(); });
+    $$("[data-tab]", lec).forEach((b) => b.addEventListener("click", () => { tab = b.dataset.tab; closeRev(); if (window.NMKBack) NMKBack.view({ ptab: tab }); paint(); }));
+    if (window.NMKBack) NMKBack.onView((s) => { if (s.ptab) { tab = s.ptab; place(); } });
+    // show the lecturer's views that belong to the open page tab (Guidelines keeps the box under Group and Title)
+    function place() {
+      const set = pageTab === "progress" ? "progress" : "group", target = set === "progress" && host2 ? host2 : host;
+      if (lec.parentNode !== target) { (lec.parentNode || target).innerHTML = ""; target.appendChild(lec); }
+      $$("[data-tab]", lec).forEach((b) => { b.hidden = !SETS[set].some(([k]) => k === b.dataset.tab); });
+      if (!SETS[set].some(([k]) => k === tab)) tab = SETS[set][0][0];
+      if (groups.length || roster.length) paint();
+    }
+    document.addEventListener("pj:tab", () => { closeRev(); place(); });
     const N = () => roster.length, threesAllowed = () => { const n = N(); return n ? Math.max(0, MAX * Math.ceil(n / MAX) - n) : 0; };
     // every pair of proposals, most alike first
     const pairs = () => { const ps = groups.filter((g) => g.proposal && g.proposal.title && g.status !== "forming"), out = [];
@@ -835,6 +873,7 @@
     unsubs.push(db.collection("plog").where("semester", "==", SEM).onSnapshot((q) => { logsAll = {}; q.docs.forEach((d) => { const x = d.data(); (logsAll[x.gid] = logsAll[x.gid] || {})[x.week] = x; }); if (tab === "log" && !$("#pjLc")) paint(); }, () => {}));
     unsubs.push(db.collection("ppeer").where("semester", "==", SEM).onSnapshot((q) => { peers = q.docs.map((d) => d.data()); if (tab === "peer") paint(); else if (tab === "marks") $$(".pj-mk").forEach(calc); }, () => {}));
     unsubs.push(db.collection("pmarks").where("semester", "==", SEM).onSnapshot((q) => { q.docs.forEach((d) => { if (!saveT[d.id]) marks[d.id] = d.data(); }); if (tab === "marks" && !(document.activeElement && document.activeElement.closest && document.activeElement.closest(".pj-mk"))) paint(); }, () => {}));
+    place();
   }
 
   /* ---------- the AI's second opinion (through the Ask Dr. Zamri connection) ---------- */
