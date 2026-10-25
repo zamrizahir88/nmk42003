@@ -8,12 +8,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=2610125">
-  <link rel="stylesheet" href="assets/css/assistant.css?v=2610125">
-  <link rel="stylesheet" href="assets/css/lab.css?v=2610125">
-  <link rel="stylesheet" href="assets/css/account.css?v=2610125">
-  <link rel="stylesheet" href="assets/css/game.css?v=2610125">
-  <link rel="stylesheet" href="assets/css/project.css?v=2610125">
+  <link rel="stylesheet" href="assets/css/style.css?v=2610126">
+  <link rel="stylesheet" href="assets/css/assistant.css?v=2610126">
+  <link rel="stylesheet" href="assets/css/lab.css?v=2610126">
+  <link rel="stylesheet" href="assets/css/account.css?v=2610126">
+  <link rel="stylesheet" href="assets/css/game.css?v=2610126">
+  <link rel="stylesheet" href="assets/css/project.css?v=2610126">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0b6e6e">
   <link rel="apple-touch-icon" href="assets/img/icon-180.png">
@@ -58,28 +58,243 @@
     <div class="wrap page-hero">
       <a class="crumb" href="assessment.html">← Assessment</a>
       <h1>Mini Project</h1>
-      <p class="page-lead">IoT in Industry: your group selects, builds, programs, calibrates and tests a working IoT instrumentation prototype. Register your group, propose your title, and see which titles are already taken.</p>
+      <p class="page-lead">IoT in Industry: your group selects, builds, programs, calibrates and tests a working IoT instrumentation prototype, and shows that you can use engineering tools with precision. Register your group, propose your title, and see which titles are already taken.</p>
+      <p class="pj-map"><span>CO3</span><span>P4 Mechanism</span><span>PO5 Tool Usage</span><span>15% of your grade</span></p>
     </div>
-    <section class="page-body">
+
+    <nav class="lab-nav" aria-label="Mini project sections">
       <div class="wrap">
+        <a href="#register">Group and Title</a>
+        <a href="#brief">Brief</a>
+        <a href="#requirements">Requirements</a>
+        <a href="#calibration">Calibration</a>
+        <a href="#technical">Technical Notes</a>
+        <a href="#timeline">Timeline</a>
+        <a href="#report">Report</a>
+        <a href="#assessment">Assessment and Rubric</a>
+        <a href="#examples">Example Titles</a>
+      </div>
+    </nav>
+
+    <section class="lab-group" id="register" aria-labelledby="register-h">
+      <div class="wrap">
+        <div class="group-head"><h2 id="register-h">Group and Title</h2>
+          <p>Form your group, submit your title proposal, and follow your lecturer's review here. Approved titles are shown to the whole class, so you can see which ideas are already taken.</p></div>
         <div class="pj-dates" id="pjDates"></div>
         <div id="project"><p class="small-note">Loading…</p></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="brief" aria-labelledby="brief-h">
+      <div class="wrap pj-doc">
+        <div class="group-head"><h2 id="brief-h">Brief</h2>
+          <p>The mini project lets your group apply what you learn in this course to a real IoT instrumentation system. You will select, build, program, calibrate and test a working prototype, and show that you can use engineering tools with precision.</p></div>
+        <div class="pj-scroll"><table class="pj-table">
+          <tbody>
+            <tr><th scope="row">Course outcome</th><td>CO3: Ability to operate engineering tools to implement instrumentation design in electronic system applications with precision</td></tr>
+            <tr><th scope="row">Level of complexity</th><td>P4 (Mechanism): perform the tasks confidently and independently</td></tr>
+            <tr><th scope="row">Programme outcome</th><td>PO5 Tool Usage: select and apply, and recognise the limitations of, appropriate techniques, resources and modern engineering and IT tools</td></tr>
+            <tr><th scope="row">Problem attributes</th><td>SP3 Depth of analysis; SP7 Interdependence</td></tr>
+            <tr><th scope="row">Contribution</th><td>15% of the final grade (a group assessment with an individual factor)</td></tr>
+          </tbody></table></div>
+
+        <h3 class="h3">Groups</h3>
+        <ul>
+          <li>Each group has 3 to 4 students, from any lab section (groups of 3 only where the class numbers require it).</li>
+          <li>Every member takes part in all project activities and owns at least one part of the system: for example a sensor and its calibration, the condition logic, the actuators and hardware, or the WiFi and Bluetooth applications.</li>
+          <li>Register your group and submit your title proposal on this page by Sunday of week 8, 11:59 PM.</li>
+        </ul>
+
+        <h3 class="h3">Theme: IoT in Industry</h3>
+        <p>Your project must address ONE of these industries. You may propose your own title; every title must be approved by the lecturers. See the <a href="#examples">example titles</a>.</p>
+        <div class="pj-inds">
+          <div class="pj-indc"><b>(a) Electronics industry</b><p>Smart device integration, automated testing, product inspection and real-time fault detection in electronics manufacturing.</p></div>
+          <div class="pj-indc"><b>(b) Semiconductor industry</b><p>Monitoring of process equipment and facilities, and predictive maintenance of equipment.</p></div>
+          <div class="pj-indc"><b>(c) Energy management</b><p>Energy efficiency, smart metering, load management and renewable energy monitoring.</p></div>
+        </div>
+
+        <h3 class="h3">Tools</h3>
+        <ul>
+          <li>ESP32 with TUNIOT or the Arduino IDE.</li>
+          <li>MIT App Inventor (the Bluetooth application).</li>
+          <li>ThingSpeak, or an equivalent IoT platform such as Blynk (the WiFi dashboard and analytics).</li>
+          <li>A multimeter and other laboratory instruments for testing and calibration.</li>
+        </ul>
+        <p>Other tools may be used if you can explain how they work and what their limitations are.</p>
+      </div>
+    </section>
+
+    <section class="lab-group" id="requirements" aria-labelledby="req-h">
+      <div class="wrap pj-doc">
+        <div class="group-head"><h2 id="req-h">Design Requirements</h2><p>All of these are compulsory. The proposal form on this page checks the first four before you can submit.</p></div>
+        <ol class="pj-reqs">
+          <li><b>Controller and standalone operation.</b> Use an ESP32 as the main controller. The prototype must run on its own power supply as an all-in-one unit, without a PC connected during operation.</li>
+          <li><b>Minimum hardware.</b> Use at least TWO (2) sensors, at least one of which is analog and calibrated, and at least TWO (2) different types of actuator or output device (for example a relay with a fan or pump, a servo motor, a buzzer, an LED, an LCD).</li>
+          <li><b>Three conditions.</b> At least one sensor must define THREE (3) or more conditions (for example Normal, Warning and Critical). Each condition must produce a different system response, and at least two of these responses must use different actuators or actions (for example an alarm, switching or movement), not only different LED colours.</li>
+          <li><b>WiFi.</b> Send the data through WiFi to a cloud dashboard (ThingSpeak or an equivalent IoT platform such as Blynk) or to a webpage hosted by the ESP32. The dashboard must include analytics, for example a trend chart and the minimum, maximum or average value.</li>
+          <li><b>Bluetooth.</b> Provide a mobile application through Bluetooth (MIT App Inventor or equivalent) to display the system status and/or control the system.</li>
+          <li><b>Local operation without WiFi.</b> If WiFi is lost, the system must keep measuring and must still respond locally to the three conditions (for example the alarm or the relay still works). Readings may be stored and uploaded when WiFi returns.</li>
+          <li><b>Sensor calibration.</b> See <a href="#calibration">Sensor Calibration</a>.</li>
+          <li><b>Limitations.</b> State the limitations of the sensors, tools and platform you used (for example accuracy, range, WiFi dependence or the free-plan limits of the IoT platform).</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="lab-group" id="calibration" aria-labelledby="cal-h">
+      <div class="wrap pj-doc">
+        <div class="group-head"><h2 id="cal-h">Sensor Calibration</h2><p>Compulsory. At least one sensor in your system must be calibrated, following the method in Chapter 7 (Transducer Calibration).</p></div>
+        <ol class="pj-steps">
+          <li><b>Choose a known reference</b>, for example a multimeter, a ruler or measuring tape, a protractor, known temperatures (such as ice water and room temperature), a known weight, known resistor values, or a reference sensor of stated accuracy.</li>
+          <li><b>Record a calibration table</b> of the sensor output (ADC count or voltage) against the reference value at no fewer than 5 points across the working range. Repeat each point to check repeatability.</li>
+          <li><b>Obtain the calibration equation</b>, for example a linear fit y = mx + c (a spreadsheet trendline or two end points), or a correction in code (offset and gain).</li>
+          <li><b>Use the equation in the ESP32 program</b>, so that readings are shown in real units (°C, V, A, cm and so on).</li>
+          <li><b>Check and report.</b> From your data, report at least TWO (2) of: sensitivity, repeatability, accuracy (the error at check points not used in the fit) or linearity. State the limitations of your calibration.</li>
+        </ol>
+        <div class="callout"><strong>Good to know</strong>The equation or correction must come from your own measured data against a reference, not from a tutorial or datasheet alone. In the demonstration, you will be asked to show a reading next to the reference.</div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="technical" aria-labelledby="tech-h">
+      <div class="wrap pj-doc">
+        <div class="group-head"><h2 id="tech-h">Technical Notes and Safety</h2></div>
+        <h3 class="h3">Component Specifications</h3>
+        <p>Know the specifications of every component you use, from its datasheet: for example the supply voltage, output range and accuracy of each sensor; the relay type (mechanical or solid-state), coil voltage and contact rating; the rating of the power supply or AC-to-DC adapter; current-limiting resistors for LEDs; and level shifting (a voltage divider or line buffer) for 5 V signals.</p>
+        <h3 class="h3">ESP32 Practical Notes</h3>
+        <ul>
+          <li>The ESP32 uses 3.3 V logic. Signals above 3.3 V (for example the HC-SR04 echo pin or an ACS712 output) must be reduced with a voltage divider or level shifter.</li>
+          <li>Use the ADC1 pins (GPIO32 to GPIO39) for analog sensors. The ADC2 pins cannot be used while WiFi is on.</li>
+        </ul>
+        <h3 class="h3">Safety</h3>
+        <ul>
+          <li>Use low-voltage DC loads only (5 V or 12 V fans, pumps, lamps and LED strips).</li>
+          <li>Do not connect any 240 V mains wiring without the approval and supervision of the laboratory engineer.</li>
+          <li>Return borrowed laboratory components after the final demonstration. Groups are responsible for any damaged components.</li>
+        </ul>
+        <h3 class="h3">Originality</h3>
+        <p>Your design must be your own. Do not copy the reference projects shown in class or a complete project from the internet. Cite any code, libraries or designs you use from other sources in your report.</p>
+      </div>
+    </section>
+
+    <section class="lab-group" id="timeline" aria-labelledby="time-h">
+      <div class="wrap pj-doc">
+        <div class="group-head"><h2 id="time-h">Timeline</h2><p>Week numbers follow the academic calendar (week 9 is the mid-term break). The exact demonstration schedule will be announced on URLearn.</p></div>
+        <ol class="pj-time" id="pjTime"></ol>
+      </div>
+    </section>
+
+    <section class="lab-group" id="report" aria-labelledby="rep-h">
+      <div class="wrap pj-doc">
+        <div class="group-head"><h2 id="rep-h">Technical Report</h2><p>Submitted on URLearn in week 15.</p></div>
+        <ul>
+          <li>Use the IEEE conference paper format: a maximum of 7 pages including references. Datasheets and the full program code may be added as appendices.</li>
+          <li>Reports that do not follow the IEEE format will be returned for correction before they are assessed.</li>
+        </ul>
+        <p>The report must include:</p>
+        <ul class="pj-cols">
+          <li>Introduction and problem statement</li>
+          <li>Block diagram, schematic and flowchart</li>
+          <li>Selection of components and tools, with reasons</li>
+          <li>Calibration table, graph, equation and the characteristics reported</li>
+          <li>Test results for the three conditions and for operation without WiFi</li>
+          <li>Dashboard and mobile application screens</li>
+          <li>Discussion, including how the parts of the system depend on each other, and the limitations</li>
+          <li>Conclusion and references</li>
+          <li>Individual contribution table: which member did which part (signed by all members)</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="lab-group" id="assessment" aria-labelledby="as-h">
+      <div class="wrap pj-doc">
+        <div class="group-head"><h2 id="as-h">Assessment and Rubric</h2>
+          <p>Your group receives one group mark out of 100. Each student's mark is the group mark multiplied by an individual factor.</p></div>
+        <div class="pj-scroll"><table class="pj-table pj-marks">
+          <thead><tr><th scope="col">Component</th><th scope="col">Assessed by</th><th scope="col">Marks</th></tr></thead>
+          <tbody>
+            <tr><td><b>A. Prototype and demonstration</b>: design requirements; measurement and calibration; reliability and safety</td><td>Lecturers, during the demonstration</td><td>50</td></tr>
+            <tr><td><b>B. Technical report</b></td><td>Lecturers</td><td>30</td></tr>
+            <tr><td><b>C. Group technical demonstration</b>: live operation through all conditions; fault-finding or modification on request</td><td>Lecturers, during the demonstration</td><td>20</td></tr>
+            <tr class="tot"><td><b>Group mark</b></td><td></td><td><b>100</b></td></tr>
+          </tbody></table></div>
+        <div class="pj-formula"><p><b>Individual mark</b> = Group mark × Individual factor (0.6 to 1.0)</p><p><b>Contribution to your grade</b> = Individual mark × 15 / 100</p></div>
+        <p>P4 (Mechanism) means you perform the tasks with confidence and without step-by-step guidance. The descriptors below describe that level of independence.</p>
+
+        <h3 class="h3">Part A: Prototype and Demonstration (50 Marks)</h3>
+        <div class="pj-scroll"><table class="pj-table pj-rub">
+          <thead><tr><th scope="col">Criterion</th><th scope="col">Excellent</th><th scope="col">Good</th><th scope="col">Fair</th><th scope="col">Poor</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">A1 Design requirements (20)</th><td><b>17–20</b> All requirements met: 2 sensors, 2 actuator types, 3 conditions with different responses, WiFi dashboard with analytics, Bluetooth app, standalone, and local operation without WiFi.</td><td><b>12–16</b> All main requirements met; one minor feature incomplete (for example limited analytics).</td><td><b>6–11</b> Several requirements missing or not working (for example no Bluetooth app or no local operation).</td><td><b>0–5</b> Most requirements not met, or the prototype does not work.</td></tr>
+            <tr><th scope="row">A2 Measurement and calibration (15)</th><td><b>13–15</b> Suitable reference; at least 5 points with repeats; equation used in the code; two or more characteristics reported and explained; reading agrees with the reference in the live check.</td><td><b>9–12</b> Equation used in the code and two characteristics reported, but little explanation or not shown live.</td><td><b>5–8</b> Calibration table and equation, but not used in the code, or only one characteristic reported.</td><td><b>0–4</b> No calibration, or readings never compared with a reference.</td></tr>
+            <tr><th scope="row">A3 Reliability, build quality and safety (15)</th><td><b>13–15</b> Runs reliably through repeated tests; neat, secure wiring; correct voltage levels; low-voltage loads; safe to leave running.</td><td><b>9–12</b> Runs reliably with minor faults; wiring mostly neat; safe.</td><td><b>5–8</b> Runs with frequent faults or loose wiring; minor safety concerns.</td><td><b>0–4</b> Does not run reliably, or is unsafe (for example unprotected mains wiring).</td></tr>
+          </tbody></table></div>
+
+        <h3 class="h3">Part B: Technical Report (30 Marks)</h3>
+        <p class="small-note">The IEEE format and page limit are submission requirements and are not marked. Reports that do not follow them are returned for correction before marking.</p>
+        <div class="pj-scroll"><table class="pj-table pj-rub">
+          <thead><tr><th scope="col">Criterion</th><th scope="col">Excellent</th><th scope="col">Good</th><th scope="col">Fair</th><th scope="col">Poor</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">B1 Tool and component selection, system design (10)</th><td><b>9–10</b> Clear block diagram, schematic and flowchart; every tool and component justified with its specification.</td><td><b>6–8</b> Diagrams complete; most choices explained.</td><td><b>3–5</b> Diagrams incomplete or choices not explained.</td><td><b>0–2</b> Little or no design information.</td></tr>
+            <tr><th scope="row">B2 Test and calibration results with analysis (SP3) (12)</th><td><b>10–12</b> Complete calibration and test data for all conditions; results analysed and compared with the requirements; errors explained.</td><td><b>7–9</b> Data complete; analysis mostly correct.</td><td><b>4–6</b> Data incomplete or analysis shallow.</td><td><b>0–3</b> No meaningful test or calibration data.</td></tr>
+            <tr><th scope="row">B3 Limitations and interdependence (SP7, PO5) (8)</th><td><b>7–8</b> Limitations of the sensors, tools and platform clearly stated; explains how the parts depend on each other and what happens when one fails.</td><td><b>5–6</b> Main limitations and dependencies stated.</td><td><b>2–4</b> Limitations listed with little explanation.</td><td><b>0–1</b> No limitations or dependencies discussed.</td></tr>
+          </tbody></table></div>
+
+        <h3 class="h3">Part C: Group Technical Demonstration (20 Marks)</h3>
+        <div class="pj-scroll"><table class="pj-table pj-rub">
+          <thead><tr><th scope="col">Criterion</th><th scope="col">Excellent</th><th scope="col">Good</th><th scope="col">Fair</th><th scope="col">Poor</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">C1 Live operation (10)</th><td><b>9–10</b> Demonstrates all three conditions, the WiFi dashboard, the Bluetooth app and operation without WiFi, smoothly and confidently.</td><td><b>6–8</b> Demonstrates all functions with minor hesitation or faults.</td><td><b>3–5</b> Some functions cannot be demonstrated.</td><td><b>0–2</b> Little of the system can be demonstrated.</td></tr>
+            <tr><th scope="row">C2 Fault-finding or modification on request (10)</th><td><b>9–10</b> Completes the requested change (for example a new threshold) or finds a fault quickly and independently.</td><td><b>6–8</b> Completes it with minor help.</td><td><b>3–5</b> Completes it only with substantial help.</td><td><b>0–2</b> Cannot complete it.</td></tr>
+          </tbody></table></div>
+
+        <h3 class="h3">Part D: Individual Factor (0.6 to 1.0)</h3>
+        <p>The individual factor shares the group mark fairly among the members. It is not a separate assessment of another programme outcome. It comes from two sources.</p>
+        <h4 class="pj-h4">D1 Individual Oral Verification (During the Demonstration)</h4>
+        <p>Each student explains and operates their own part of the system and answers 2 to 3 questions on it, plus one question on another part.</p>
+        <div class="pj-scroll"><table class="pj-table">
+          <thead><tr><th scope="col">Level</th><th scope="col">Description</th><th scope="col">Base factor</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Full</th><td>Explains and operates own part correctly and confidently; answers all questions; understands how it connects to the rest of the system.</td><td>1.0</td></tr>
+            <tr><th scope="row">Good</th><td>Explains own part correctly with minor gaps.</td><td>0.9</td></tr>
+            <tr><th scope="row">Partial</th><td>Explains own part with several errors or needs prompting.</td><td>0.8</td></tr>
+            <tr><th scope="row">Weak</th><td>Explains only small parts of own work.</td><td>0.7</td></tr>
+            <tr><th scope="row">None</th><td>Cannot explain or operate own part.</td><td>0.6</td></tr>
+          </tbody></table></div>
+        <h4 class="pj-h4">D2 Confidential Peer Evaluation (On This Page, in Week 15)</h4>
+        <p>Each student rates every other member of their group, never themselves, on three items, 1 to 5 each (total out of 15). A short reason is needed for any score of 2 or below. Your ratings are never shown to your group.</p>
+        <ol>
+          <li><b>Commitment:</b> attended meetings and laboratory sessions, met deadlines and was responsible for agreed tasks.</li>
+          <li><b>Collaboration:</b> worked well with the group, shared information and helped solve problems.</li>
+          <li><b>Contribution:</b> the amount and quality of work in hardware, programming, calibration, testing and the report.</li>
+        </ol>
+        <p class="small-note">Scale: 5 Excellent (led or contributed far beyond what was expected) · 4 Good (contributed fully and reliably) · 3 Satisfactory (contributed what was asked) · 2 Poor (contributed less than expected) · 1 Very poor (contributed little or nothing).</p>
+        <div class="pj-scroll"><table class="pj-table">
+          <thead><tr><th scope="col">Average rating received (out of 15)</th><th scope="col">Adjustment to the base factor</th></tr></thead>
+          <tbody><tr><td>9.0 and above</td><td>No change</td></tr><tr><td>6.0 to 8.9</td><td>−0.1</td></tr><tr><td>Below 6.0</td><td>−0.2</td></tr></tbody></table></div>
+        <div class="pj-formula"><p><b>Individual factor</b> = Base factor (D1) + Peer adjustment (D2), limited to the range 0.6 to 1.0</p></div>
+        <p class="small-note">The lecturers may review a peer rating that is not supported by the evidence (for example the individual contribution table or the oral verification).</p>
+      </div>
+    </section>
+
+    <section class="lab-group" id="examples" aria-labelledby="ex-h">
+      <div class="wrap pj-doc">
+        <div class="group-head"><h2 id="ex-h">Example Titles</h2><p>Examples only. Each meets the minimum hardware rule (★ marks the sensor to calibrate). You may propose your own title, subject to the lecturers' approval. Titles already approved for other groups are listed under <a href="#register">Approved Titles</a>.</p></div>
+        <div id="pjExamples"></div>
       </div>
     </section>
   </main>
 
   <footer class="site-footer" id="footer"></footer>
 
-  <script src="assets/js/data.js?v=2610125"></script>
+  <script src="assets/js/data.js?v=2610126"></script>
 
-  <script src="assets/js/schedule.js?v=2610125"></script>
-  <script src="assets/js/main.js?v=2610125"></script>
+  <script src="assets/js/schedule.js?v=2610126"></script>
+  <script src="assets/js/main.js?v=2610126"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
-  <script src="assets/js/game.js?v=2610125" defer></script>
-  <script src="assets/js/account.js?v=2610125" defer></script>
-  <script src="assets/js/project.js?v=2610125" defer></script>
-  <script src="assets/js/assistant.js?v=2610125" defer></script>
+  <script src="assets/js/game.js?v=2610126" defer></script>
+  <script src="assets/js/account.js?v=2610126" defer></script>
+  <script src="assets/js/project.js?v=2610126" defer></script>
+  <script src="assets/js/assistant.js?v=2610126" defer></script>
 </body>
 </html>

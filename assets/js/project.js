@@ -90,16 +90,45 @@
     "ACS712 current sensor", "Voltage divider (to the ADC)", "LDR (light)", "BH1750 lux sensor", "PIR motion sensor", "MQ-2 gas sensor", "MQ-135 air quality sensor", "Vibration sensor (SW-420)",
     "MPU6050 accelerometer", "Dust sensor (GP2Y1010)", "Capacitive soil moisture sensor", "Potentiometer (angle or position)", "Load cell with HX711", "Water flow sensor (YF-S201)", "Water level sensor", "Flame sensor", "BMP280 pressure sensor"];
   const OUTS = ["Relay with fan", "Relay with pump", "Relay cuts the load", "Servo motor", "DC motor", "Buzzer", "LED", "RGB LED", "LCD 16x2 (I2C)", "OLED display", "PWM fan", "Solenoid valve", "Stepper motor"];
+  // the guideline's example titles (★ = the sensor to calibrate)
+  const EXAMPLES = [
+    ["a", [["Product sorting and jam detection on a conveyor", "★ Ultrasonic (product height); IR obstacle (counter)", "Undersize / OK / Oversize", "Servo reject arm; buzzer; relay stops the conveyor motor", "Ruler"],
+      ["PCB test-jig voltage and current checker", "★ Voltage divider to the ADC; ACS712 current", "Under / OK / Over voltage", "Relay cuts power; buzzer; LCD result", "Multimeter"],
+      ["Production machine health monitor", "★ LM35 or thermistor; vibration sensor", "Normal / Warning / Critical", "Fan relay; buzzer; relay stops the motor", "Known temperatures or DS18B20"],
+      ["ESD-safe workstation humidity monitor", "★ Thermistor; DHT22", "Too dry / Normal / Too humid", "Humidifier or fan relay; buzzer; LED", "Known temperatures or DS18B20"]]],
+    ["b", [["Wet-bench tank temperature and level controller (water as the liquid)", "★ Ultrasonic or capacitive level; DS18B20", "Low / Normal / Overflow", "Pump relay; buzzer; servo valve", "Ruler on the tank"],
+      ["Gas cabinet leak and temperature monitor", "★ Thermistor; MQ-2 gas sensor", "Safe / Warning / Danger", "Exhaust fan relay; buzzer; servo closes the valve", "Known temperatures or DS18B20"],
+      ["Vacuum pump predictive maintenance", "★ ACS712 current; vibration sensor", "Normal / Worn / Fault", "Relay shuts down the pump; buzzer; app alert", "Multimeter"],
+      ["Cleanroom air quality and airflow control", "★ Potentiometer airflow flap; dust sensor", "Clean / Moderate / Contaminated", "PWM fan; relay; buzzer", "Protractor"]]],
+    ["c", [["Solar panel monitor with smart load switching", "★ Voltage divider (panel); LDR or BH1750", "Low / Medium / High generation", "Load relay; LED; fan", "Multimeter"],
+      ["Smart DC energy meter with overload protection", "★ ACS712 current; voltage divider", "Normal / Warning / Overload", "Relay cuts the load; buzzer; LCD", "Multimeter"],
+      ["Classroom lighting and fan energy saver", "★ LDR; PIR; DHT22", "Bright / Dim / Dark", "PWM LED lamp; fan relay; buzzer", "BH1750 lux sensor"],
+      ["Battery bank state-of-charge monitor", "★ Voltage divider; thermistor", "Full / Normal / Low", "Charger or load relay; buzzer; LED", "Multimeter"],
+      ["Water tank pump energy saver", "★ Ultrasonic level; ACS712", "Low / Normal / Full", "Pump relay; buzzer; LCD", "Ruler"]]]
+  ];
 
-  /* ---------- the key dates (week numbers include the mid-term break) ---------- */
-  (function dates() {
-    const box = document.getElementById("pjDates");
-    if (!box) return;
-    const wkOf = (iso) => Math.floor((Date.parse(`${iso}T00:00:00+08:00`) - Date.parse(`${COURSE.semesterStart}T00:00:00+08:00`)) / 604800000) + 1;
+  /* ---------- the key dates, the timeline and the example titles (week numbers include the mid-term break) ---------- */
+  (function pageText() {
+    const day0 = Date.parse(`${COURSE.semesterStart}T00:00:00+08:00`), wkOf = (iso) => Math.floor((Date.parse(`${iso}T00:00:00+08:00`) - day0) / 604800000) + 1;
     const q = new URLSearchParams(location.search).get("today"), now = q && /^\d{4}-\d{2}-\d{2}$/.test(q) ? q : new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10), w = wkOf(now);
-    box.innerHTML = [[7, 7, "Week 7", "Released: the brief, group registration and title proposals"], [8, 8, "Week 8", "Groups formed; proposal due Sunday, 11:59 PM"],
+    const M = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], dd = (t) => { const d = new Date(t); return `${d.getUTCDate()} ${M[d.getUTCMonth()]}`; };
+    const span = (a, b) => { const s = day0 + 7 * (a - 1) * 86400000 + 8 * 3600000, e = day0 + (7 * b - 1) * 86400000 + 8 * 3600000; return `${dd(s)} to ${dd(e)} ${new Date(e).getUTCFullYear()}`; };
+    const box = document.getElementById("pjDates");
+    if (box) box.innerHTML = [[7, 7, "Week 7", "Released: the brief, group registration and title proposals"], [8, 8, "Week 8", "Groups formed; proposal due Sunday, 11:59 PM"],
       [10, 14, "Weeks 10 to 14", "Weekly progress logbook"], [15, 15, "Week 15", "Demonstration, oral verification and peer evaluation"]]
       .map(([a, b, t, d]) => `<div class="pj-date${w >= a && w <= b ? " now" : ""}"><b>${t}</b><span>${d}</span></div>`).join("");
+    const tl = document.getElementById("pjTime");
+    if (tl) tl.innerHTML = [[7, 7, "Release", "The brief, group registration and title proposals open on this page."],
+      [8, 8, "Groups and title proposals", "Mini project briefing. Register your group and submit your title proposal on this page by Sunday, 11:59 PM."],
+      [9, 9, "Block diagram (mid-term break)", "The block diagram of your system, submitted on URLearn."],
+      [10, 14, "Progress logbook", "One logbook entry per group each week on this page: what was done, by whom, problems met and the plan for next week."],
+      [12, 12, "Progress check", "Sensors read by the ESP32; calibration started."],
+      [14, 14, "Discussion", "Mini project discussion with the lecturers."],
+      [15, 15, "Demonstration", "Group technical demonstration and individual oral verification. Submit the report on URLearn, and the peer evaluation on this page."]]
+      .map(([a, b, t, d]) => `<li class="${w >= a && w <= b ? "now" : w > b ? "past" : ""}"><span class="pj-tw">Week ${a}${b > a ? ` to ${b}` : ""}<small>${span(a, b)}</small></span><span><b>${t}</b>${d}</span></li>`).join("");
+    const ex = document.getElementById("pjExamples");
+    if (ex) ex.innerHTML = EXAMPLES.map(([ind, rows]) => `<h3 class="h3">${IND[ind]}</h3><div class="pj-scroll"><table class="pj-table pj-ex"><thead><tr><th scope="col">Title</th><th scope="col">Sensors</th><th scope="col">3 conditions</th><th scope="col">Actuators and outputs</th><th scope="col">Calibration reference</th></tr></thead>
+      <tbody>${rows.map((r) => `<tr><th scope="row">${esc(r[0])}</th>${r.slice(1).map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`).join("");
   })();
 
   /* ---------- start: who sees what ---------- */
@@ -120,7 +149,7 @@
     if (isLec) return lecturer();
     me = st.roster && st.roster.status === "active" ? { m: String(st.roster.matric), n: st.roster.name, s: st.roster.section || "" } : null;
     if (!me) { gate(`<p><strong>You are not on the NMK42003 class list.</strong> The mini project is for students of this course. If you take NMK42003, please tell your lecturer.</p>`); return; }
-    if (!meta.released) { gate(`<p><strong>Group registration opens in week 7.</strong> Your lecturer will open it here. Read the brief below in the meantime.</p>`); return; }
+    if (!meta.released) { gate(`<p><strong>Group registration opens in week 7.</strong> Your lecturer will open it here. Read the brief, requirements and rubric below in the meantime.</p>`); return; }
     try { const d = await db.collection("meta").doc("classmates").get(); mates = d.exists ? (d.data().list || []) : []; } catch (e) { mates = []; }
     student();
   }
