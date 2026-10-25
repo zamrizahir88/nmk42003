@@ -149,5 +149,67 @@
     return `<svg class="lg-bg" viewBox="0 0 640 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">${d}</svg>`;
   }
 
-  window.NMKLegendsArt = { RANKS, rankOf, heroSvg, weaponSvg, ENEMIES, bg, INK };
+  /* ---------- the brand: logo, Zamm Studio™ mark, the Creator, and the 9:16 share cards ---------- */
+  // the game's colours: signal cyan, reward gold, deep navy, energy violet
+  const C = { cyan: "#38e1c9", blue: "#2f8cff", gold: "#ffd84d", orange: "#ff9f1c", navy: "#14213d", violet: "#8b5cf6" };
+  let uid = 0;
+  // "INSTRUMENTA:" with "Legends" centred under it (viewBox 470 x 150); inner = no <svg> wrapper (to place inside a card)
+  function logo(inner) {
+    const k = `lgL${++uid}`;
+    const g = `<defs><linearGradient id="${k}c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7ff3e3"/><stop offset=".45" stop-color="${C.cyan}"/><stop offset="1" stop-color="${C.blue}"/></linearGradient>
+      <linearGradient id="${k}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0a3"/><stop offset=".5" stop-color="${C.gold}"/><stop offset="1" stop-color="${C.orange}"/></linearGradient></defs>
+      <g text-anchor="middle"><text x="235" y="71" font-family="Georgia, 'Times New Roman', serif" font-weight="900" font-size="51" letter-spacing="1" fill="${C.navy}" opacity=".5">INSTRUMENTA:</text>
+      <text x="235" y="68" font-family="Georgia, 'Times New Roman', serif" font-weight="900" font-size="51" letter-spacing="1" fill="url(#${k}c)" stroke="${C.navy}" stroke-width="7" paint-order="stroke" stroke-linejoin="round">INSTRUMENTA:</text>
+      <text x="235" y="131" font-family="Georgia, serif" font-style="italic" font-weight="800" font-size="46" letter-spacing="3" fill="${C.navy}" opacity=".5">Legends</text>
+      <text x="235" y="128" font-family="Georgia, serif" font-style="italic" font-weight="800" font-size="46" letter-spacing="3" fill="url(#${k}g)" stroke="${C.navy}" stroke-width="6" paint-order="stroke" stroke-linejoin="round">Legends</text></g>`;
+    return inner ? g : `<svg class="lg-logo-svg" viewBox="0 0 470 150" role="img" aria-label="INSTRUMENTA: Legends">${g}</svg>`;
+  }
+  // Zamm Studio™: ZA, a signal-waveform M, M; STUDIO under it (viewBox 300 x 110)
+  function zamm(dark, inner) {
+    const t = dark ? "#fff" : C.navy, s = dark ? "#c9d2e3" : "#4a5a75";
+    const g = `<text x="18" y="66" font-family="'Arial Black', 'Segoe UI Black', Arial, sans-serif" font-weight="900" font-size="60" fill="${t}">ZA</text>
+      <polyline points="116,66 116,16 141,52 166,16 166,66" fill="none" stroke="${C.cyan}" stroke-width="12" stroke-linejoin="miter" stroke-linecap="square"/>
+      <path d="M100 41 H110 M172 41 H182" stroke="${C.cyan}" stroke-width="5" stroke-linecap="round"/>
+      <text x="186" y="66" font-family="'Arial Black', 'Segoe UI Black', Arial, sans-serif" font-weight="900" font-size="60" fill="${t}">M</text>
+      <circle cx="141" cy="76" r="5" fill="${C.gold}"/>
+      <text x="150" y="98" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="15" letter-spacing="11" fill="${s}">STUDIO</text>
+      <text x="270" y="30" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="${s}">™</text>`;
+    return inner ? g : `<svg class="lg-zamm" viewBox="0 0 300 110" role="img" aria-label="Zamm Studio">${g}</svg>`;
+  }
+  // the Creator: Ts. Dr. Zamri Zahir as an INSTRUMENTA hero, with the gold (calibrated) Probe Sword
+  const CREATOR = { look: "m", hairM: "neat", hairF: "long", face: "beard", head: "none", eyes: "none", hair: "#1f1a17", skin: "#e3ad80", color: "#1e3a5f", tud: "#cfe0f2", weapon: "sword" };
+  const SITE = "zamrizahir88.github.io/nmk42003";
+  // a 9:16 share card (1080 x 1920), drawn for an image file (system fonts, no outside images).
+  // d: { kind: "win" | "play", hero, tier, name, rank, rankName, coins; win also: where, title, enemySvg, enemyScale, stars, extra }
+  function card(d) {
+    const N = C.navy, esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const tx = (y, size, t, o = {}) => `<text x="540" y="${y}" text-anchor="middle" font-family="${o.serif ? "Georgia, serif" : "Arial, sans-serif"}" font-weight="${o.w || 700}" font-size="${size}" fill="${o.fill || "#fff"}"${o.sw === 0 ? "" : ` stroke="${o.st || N}" stroke-width="${o.sw || Math.round(size / 5)}" paint-order="stroke" stroke-linejoin="round"`}>${t}</text>`;
+    const chip = (x, t) => `<rect x="${x}" y="1550" width="260" height="86" rx="43" fill="#fff" stroke="${N}" stroke-width="5"/><text x="${x + 130}" y="${t.length > 10 ? 1604 : 1608}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="${t.length > 10 ? 31 : 40}" fill="${N}">${t}</text>`;
+    const scene = bg(d.rank).replace(/^<svg[^>]*>/, `<svg x="0" y="0" width="1080" height="1920" viewBox="0 0 640 300" preserveAspectRatio="xMidYMid slice">`);
+    const top = `<g transform="translate(115 70) scale(1.83)">${logo(true)}</g>${tx(380, 34, "NMK42003 Instrumentation · UniMAP", { fill: N, st: "#fff", sw: 8 })}`;
+    const foot = `<rect x="0" y="1740" width="1080" height="180" fill="${N}" opacity=".92"/><g transform="translate(60 1772) scale(.62)">${zamm(true, true)}</g>
+      <text x="1020" y="1812" text-anchor="end" font-family="Arial, sans-serif" font-size="34" fill="#fff">Created by <tspan font-weight="700">Ts. Dr. Zamri Zahir</tspan></text>
+      <text x="1020" y="1862" text-anchor="end" font-family="Arial, sans-serif" font-size="30" fill="${C.cyan}">${SITE}</text>`;
+    // the hero name at 92 px, smaller when a wide name would run off the card
+    const em = [...String(d.name)].reduce((a, c) => a + (/[WM]/.test(c) ? 1.2 : /[A-Z0-9]/.test(c) ? 0.8 : c === " " ? 0.3 : /[mw]/.test(c) ? 0.95 : 0.6), 0);
+    const nameSize = Math.min(92, Math.floor(940 / Math.max(em, 1)));
+    let mid;
+    if (d.kind === "win") {
+      mid = `<rect x="90" y="430" width="900" height="150" rx="30" fill="${N}" opacity=".85"/>${tx(490, 38, esc(d.where), { fill: C.cyan, sw: 0 })}
+        ${tx(555, d.title.length > 28 ? 44 : 56, esc(d.title), { serif: true, w: 800, fill: C.gold, sw: 0 })}
+        <g transform="translate(360 1080) scale(4.2)">${heroSvg(d.hero, "", d.tier || 0)}</g>
+        ${d.enemySvg ? `<g transform="translate(810 1060) scale(${(1.9 * (d.enemyScale || 1)).toFixed(2)})" opacity=".55">${d.enemySvg}</g>` : ""}
+        ${tx(1440, nameSize, esc(d.name), { serif: true, w: 900, sw: 12 })}${tx(1505, 42, esc(d.rankName), { fill: C.gold, sw: 8 })}
+        ${chip(110, esc(d.stars))}${chip(410, `+${d.coins} coins`)}${chip(710, esc(d.extra))}
+        ${tx(1702, 34, "Can you beat my score?", { sw: 7 })}`;
+    } else {
+      mid = `<rect x="160" y="430" width="760" height="120" rx="60" fill="${C.cyan}" stroke="${N}" stroke-width="6"/>${tx(510, 54, "Let's play!", { serif: true, w: 800, fill: N, sw: 0 })}
+        <g transform="translate(480 1040) scale(5)">${heroSvg(d.hero, "", d.tier || 0)}</g>
+        ${tx(1460, nameSize, esc(d.name), { serif: true, w: 900, sw: 12 })}${tx(1530, 42, `${esc(d.rankName)} · ${d.coins} coins`, { fill: C.gold, sw: 8 })}
+        ${tx(1660, 40, "Join me in NMK42003!", { sw: 8 })}`;
+    }
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">${scene}<rect width="1080" height="1920" fill="${N}" opacity="${d.kind === "win" ? 0.18 : 0.12}"/>${top}${mid}${foot}</svg>`;
+  }
+
+  window.NMKLegendsArt = { RANKS, rankOf, heroSvg, weaponSvg, ENEMIES, bg, INK, C, logo, zamm, CREATOR, SITE, card };
 })();

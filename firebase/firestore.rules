@@ -217,6 +217,11 @@ service cloud.firestore {
       allow read: if signedIn();
       allow write: if isLecturer();
     }
+    // INSTRUMENTA hero names removed by a lecturer (bans: {uid: name}); every player's game reads it
+    match /meta/heronames {
+      allow read: if signedIn();
+      allow write: if isLecturer();
+    }
     match /missions/{id} {
       allow read: if isLecturer() || ((onRoster() || approved())
         && exists(/databases/$(database)/documents/meta/missions) && get(/databases/$(database)/documents/meta/missions).data.get('released', false) == true);
