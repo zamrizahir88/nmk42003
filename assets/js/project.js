@@ -192,12 +192,28 @@
     window.print();
   }
 
+  /* ---------- peer evaluation and marks (the rubric's Part D) ---------- */
+  const PEER_ITEMS = [["Commitment", "attended meetings and laboratory sessions, met deadlines and was responsible for agreed tasks"],
+    ["Collaboration", "worked well with the group, shared information and helped solve problems"],
+    ["Contribution", "the amount and quality of work in hardware, programming, calibration, testing and the report"]];
+  const SCALE = { 5: "Excellent: led or contributed far beyond what was expected", 4: "Good: contributed fully and reliably", 3: "Satisfactory: contributed what was asked", 2: "Poor: contributed less than expected", 1: "Very poor: contributed little or nothing" };
+  const D1 = [["full", "Full", 1.0], ["good", "Good", 0.9], ["partial", "Partial", 0.8], ["weak", "Weak", 0.7], ["none", "None", 0.6]];
+  const PARTS = [["A1", "Design requirements", 20], ["A2", "Measurement and calibration", 15], ["A3", "Reliability, build quality and safety", 15], ["B1", "Tool and component selection, system design", 10],
+    ["B2", "Test and calibration results with analysis", 12], ["B3", "Limitations and interdependence", 8], ["C1", "Live operation", 10], ["C2", "Fault-finding or modification on request", 10]];
+  // the average total (out of 15) a student received from the other members, and the adjustment it gives
+  function peerOf(m, g, peers) {
+    const got = peers.filter((p) => p.gid === g.id && p.m !== m && p.ratings && p.ratings[m]).map((p) => p.ratings[m].reduce((a, b) => a + (+b || 0), 0));
+    const avg = got.length ? got.reduce((a, b) => a + b, 0) / got.length : null;
+    return { n: got.length, avg, adj: avg === null ? 0 : avg >= 9 ? 0 : avg >= 6 ? -0.1 : -0.2 };
+  }
+  const round2 = (x) => Math.round(x * 100) / 100;
+
   /* =====================================================================
      STUDENTS
      ===================================================================== */
   function student() {
     host.innerHTML = `<div class="pj-tabs" role="tablist"><button type="button" role="tab" data-tab="mine" aria-selected="true">My Group</button><button type="button" role="tab" data-tab="titles" aria-selected="false">Approved Titles</button></div>
-      <div id="pjView"><p class="small-note">Loading…</p></div><div id="pjLog"></div>`;
+      <div id="pjView"><p class="small-note">Loading…</p></div><div id="pjLog"></div><div id="pjPeer"></div>`;
     let tab = (history.state && history.state.ptab) || "mine", mineG = null, invites = [], claims = {}, titles = [], editing = false, draft = null, shown = "";
     let logs = {}, logSubs = [], logGid = null, logWeek = null, logEditing = false;
     $$("[data-tab]").forEach((b) => b.addEventListener("click", () => { tab = b.dataset.tab; if (window.NMKBack) NMKBack.view({ ptab: tab }); paint(); }));
@@ -206,13 +222,13 @@
     function paint() {
       $$("[data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
       const v = $("#pjView");
-      if (tab === "titles") { v.innerHTML = titleList(titles, false); paintLog(); return; }
+      if (tab === "titles") { v.innerHTML = titleList(titles, false); paintLog(); paintPeer(); return; }
       // keep a half-typed proposal: only redraw the form when the group itself changed
       const sig = JSON.stringify([mineG && [mineG.id, mineG.status, mineG.memberM, mineG.inviteM, mineG.declinedM, mineG.leader, mineG.review, mineG.version, mineG.no, editing ? 0 : mineG.proposal], invites.map((g) => [g.id, g.memberM, g.inviteM]), editing]);
       if (editing && sig === shown && $("#pjForm")) { checks(); return; }
       shown = sig;
       v.innerHTML = mineG ? groupView(mineG) : noGroup();
-      wire(); paintLog();
+      wire(); paintLog(); paintPeer();
     }
     /* the logbook card, under the group */
     function watchLogs() {
@@ -261,6 +277,53 @@
           : ref.set(Object.assign(d, { semester: SEM, gid: g.id, week: sel, by: me.m, byName: me.n, at: FV.serverTimestamp() }));
         $("button.btn", f).disabled = true;
         job.then(() => { logEditing = false; paintLog(true); }).catch((err) => { $("button.btn", f).disabled = false; $("#pjLerr", f).textContent = `Not saved (${err.code || err}).`; });
+      });
+    }
+    /* the confidential peer evaluation (open when the lecturer opens it, in week 15) */
+    let peerDoc = null, peerGid = null, peerEditing = false;
+    function paintPeer() {
+      const box = $("#pjPeer");
+      if (!box) return;
+      if (!mineG || tab !== "mine" || mineG.memberM.length < 2) { box.innerHTML = ""; return; }
+      const g = mineG, others = g.memberM.filter((m) => m !== me.m);
+      if (!meta.peer) { box.innerHTML = curWeek() >= 15 ? `<div class="pj-card"><h2 class="h3">Peer Evaluation</h2><p>The peer evaluation opens here when your lecturer opens it, in week 15.</p></div>` : ""; return; }
+      if (peerGid !== g.id) { peerGid = g.id; peerDoc = undefined; db.collection("ppeer").doc(`${SLUG}_${me.m}`).get().then((d) => { peerDoc = d.exists ? d.data() : null; paintPeer(); }).catch(() => { peerDoc = null; paintPeer(); }); }
+      if (peerDoc === undefined) { box.innerHTML = `<div class="pj-card"><p class="small-note">Loading the peer evaluation…</p></div>`; return; }
+      if (peerEditing && $("#pjPeerF", box)) return;
+      const p = (peerDoc && peerDoc.gid === g.id) ? peerDoc : null, parts = (g.proposal && g.proposal.parts) || {};
+      const intro = `<h2 class="h3">Peer Evaluation</h2><p><strong>Confidential.</strong> Rate every other member of your group, not yourself, on the three items (1 to 5 each). Your ratings are never shown to your group. They are used only to share the group mark fairly (the individual factor).</p>`;
+      if (p && !peerEditing) {
+        box.innerHTML = `<div class="pj-card ok">${intro}<p><strong>✓ Submitted ${esc(when(p.at))}.</strong> You can change it until your lecturer closes the peer evaluation.</p><p class="pj-row"><button type="button" class="btn ghost small" data-pedit>Change my ratings</button></p></div>`;
+        $("[data-pedit]", box).addEventListener("click", () => { peerEditing = true; paintPeer(); });
+        return;
+      }
+      const val = (m, i) => (p && p.ratings && p.ratings[m] ? p.ratings[m][i] : "");
+      box.innerHTML = `<form class="pj-card pj-peer" id="pjPeerF" novalidate>${intro}
+        <details class="pj-scale"><summary>The rating scale</summary><ul>${[5, 4, 3, 2, 1].map((k) => `<li><b>${k}</b> ${esc(SCALE[k])}</li>`).join("")}</ul><ol>${PEER_ITEMS.map(([t, d]) => `<li><b>${t}:</b> ${esc(d)}.</li>`).join("")}</ol></details>
+        ${others.map((m) => `<fieldset class="pj-prate"><legend><strong>${esc(nameOf(m))}</strong>${parts[m] ? ` <span class="small-note">Own part: ${esc(parts[m])}</span>` : ""}</legend>
+          <div class="pj-items">${PEER_ITEMS.map(([t], i) => `<label>${t}<select class="pj-in" name="r_${esc(m)}_${i}"><option value="">–</option>${[5, 4, 3, 2, 1].map((k) => `<option value="${k}"${+val(m, i) === k ? " selected" : ""}>${k}</option>`).join("")}</select></label>`).join("")}<span class="pj-tot" data-tot="${esc(m)}"></span></div>
+          <label class="pj-l">Comment <span>(needed for any score of 2 or below)</span><input class="pj-in" name="c_${esc(m)}" value="${esc(p && p.comments ? p.comments[m] || "" : "")}"></label></fieldset>`).join("")}
+        <label class="pj-radio"><input type="checkbox" name="decl"${p ? " checked" : ""}> I declare that these ratings are honest and based on each member's actual work in this project.</label>
+        <div class="pj-row"><button class="btn">${p ? "Save my changes" : "Submit my ratings"}</button>${p ? `<button type="button" class="btn ghost" data-pcancel>Cancel</button>` : ""}</div><p class="pj-err" id="pjPerr" role="alert"></p></form>`;
+      const f = $("#pjPeerF", box);
+      const totals = () => others.forEach((m) => { const r = [0, 1, 2].map((i) => +f.elements[`r_${m}_${i}`].value || 0); $(`[data-tot="${m}"]`, f).textContent = r.every(Boolean) ? `Total ${r.reduce((a, b) => a + b, 0)} / 15` : ""; });
+      f.addEventListener("input", () => { peerEditing = true; totals(); });
+      totals();
+      const cn = $("[data-pcancel]", f); if (cn) cn.addEventListener("click", () => { peerEditing = false; paintPeer(); });
+      f.addEventListener("submit", (ev) => {
+        ev.preventDefault();
+        const ratings = {}, comments = {}, err = (t) => { $("#pjPerr", f).textContent = t; };
+        for (const m of others) {
+          const r = [0, 1, 2].map((i) => +f.elements[`r_${m}_${i}`].value || 0), c = f.elements[`c_${m}`].value.trim();
+          if (!r.every(Boolean)) return err(`Rate ${nameOf(m)} on all three items.`);
+          if (r.some((x) => x <= 2) && c.length < 5) return err(`Give a short reason for the score of 2 or below for ${nameOf(m)}.`);
+          ratings[m] = r; comments[m] = c;
+        }
+        if (!f.elements.decl.checked) return err("Tick the declaration.");
+        const d = { semester: SEM, gid: g.id, m: me.m, ratings, comments, at: FV.serverTimestamp() };
+        $("button.btn", f).disabled = true;
+        db.collection("ppeer").doc(`${SLUG}_${me.m}`).set(d).then(() => { peerDoc = Object.assign({}, d, { at: Date.now() }); peerEditing = false; paintPeer(); })
+          .catch((e2) => { $("button.btn", f).disabled = false; err(`Not saved (${e2.code || e2}). The peer evaluation may have closed.`); });
       });
     }
     /* no group yet: invitations, or start one */
@@ -449,7 +512,7 @@
         const near = titles.filter((t) => t.id !== g.id).map((t) => [t, similarity(draft, t)]).sort((a, b) => b[1] - a[1])[0];
         if (near && level(near[1]) === "red" && !confirm(`Your proposal looks like ${gtag(near[0].no)} · “${near[0].title}”, which is already approved. Your lecturer will see this. Submit anyway?`)) return;
         $("#pjSubmit").disabled = true;
-        const p = Object.assign({}, draft, { sensors: draft.sensors.filter((s) => s.name.trim()), outs: draft.outs.map((o) => o.trim()).filter(Boolean) });
+        const p = Object.assign({}, draft, { title: draft.title.trim().replace(/\s+/g, " "), synopsis: draft.synopsis.trim(), sensors: draft.sensors.filter((s) => s.name.trim()).map((s) => Object.assign({}, s, { name: s.name.trim() })), outs: draft.outs.map((o) => o.trim()).filter(Boolean) });
         ref.update({ proposal: p, status: "submitted", submittedAt: FV.serverTimestamp(), version: (g.version || 0) + 1, updatedAt: FV.serverTimestamp(), history: hist(Object.assign({}, g, { proposal: p }), g.status === "approved" ? "asked for a title change" : g.status === "amend" ? "submitted the amended proposal" : "submitted the proposal") })
           .then(() => { editing = false; draft = null; shown = ""; })
           .catch((err) => { $("#pjSubmit").disabled = false; alertIn(v, `Could not submit (${err.code || err}).`); });
@@ -508,10 +571,10 @@
      LECTURERS
      ===================================================================== */
   function lecturer() {
-    host.innerHTML = `<div class="pj-tabs" role="tablist"><button type="button" role="tab" data-tab="groups" aria-selected="true">Groups</button><button type="button" role="tab" data-tab="clash" aria-selected="false">Possible Clashes</button><button type="button" role="tab" data-tab="log" aria-selected="false">Logbook</button>
+    host.innerHTML = `<div class="pj-tabs" role="tablist"><button type="button" role="tab" data-tab="groups" aria-selected="true">Groups</button><button type="button" role="tab" data-tab="clash" aria-selected="false">Possible Clashes</button><button type="button" role="tab" data-tab="log" aria-selected="false">Logbook</button><button type="button" role="tab" data-tab="peer" aria-selected="false">Peer Evaluation</button><button type="button" role="tab" data-tab="marks" aria-selected="false">Marks</button>
       <button type="button" role="tab" data-tab="nogroup" aria-selected="false">Not in a Group</button><button type="button" role="tab" data-tab="titles" aria-selected="false">Approved Titles</button></div>
       <div class="pj-review" id="pjRev" hidden></div><div id="pjView"><p class="small-note">Loading…</p></div>`;
-    let tab = (history.state && history.state.ptab) || "groups", groups = [], roster = [], claims = {}, titles = [], filter = "all", openId = null, layer = null, logsAll = {};
+    let tab = (history.state && history.state.ptab) || "groups", groups = [], roster = [], claims = {}, titles = [], filter = "all", openId = null, layer = null, logsAll = {}, peers = [], marks = {};
     $$("[data-tab]").forEach((b) => b.addEventListener("click", () => { tab = b.dataset.tab; closeRev(); if (window.NMKBack) NMKBack.view({ ptab: tab }); paint(); }));
     if (window.NMKBack) NMKBack.onView((s) => { tab = s.ptab || "groups"; paint(); });
     const N = () => roster.length, threesAllowed = () => { const n = N(); return n ? Math.max(0, MAX * Math.ceil(n / MAX) - n) : 0; };
@@ -531,6 +594,8 @@
       $$("[data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
       const v = $("#pjView");
       if (tab === "titles") { v.innerHTML = titleList(titles, true); return; }
+      if (tab === "peer") return peerTab(v);
+      if (tab === "marks") return marksTab(v);
       if (tab === "log") {
         const gs = groups.filter((g) => g.memberM.length).sort((a, b) => (a.no || 99) - (b.no || 99));
         const count = (w) => gs.filter((g) => (logsAll[g.id] || {})[w]).length;
@@ -642,6 +707,83 @@
         ref.update({ status: "amend", review: { note, at: Date.now(), by: A.state.user.email }, updatedAt: FV.serverTimestamp(), history: hist(g, "asked for an amendment", note) }).catch((e2) => err(`Could not send (${e2.code || e2}).`));
       });
     }
+    /* the peer evaluation: who rated whom (lecturers only) */
+    function peerTab(v) {
+      const gs = groups.filter((g) => g.memberM.length > 1).sort((a, b) => (a.no || 99) - (b.no || 99));
+      const done = new Set(peers.map((p) => p.m)), all = gs.flatMap((g) => g.memberM), left = all.filter((m) => !done.has(m));
+      v.innerHTML = `<div class="pj-card pj-set"><label class="pj-sw"><input type="checkbox" data-peeropen${meta.peer ? " checked" : ""}> <strong>Peer evaluation open</strong> <span>${meta.peer ? "Students can submit and change their ratings." : "Open it in week 15; close it after the demonstrations so the ratings stay final."}</span></label>
+        <p class="pj-stats"><span><b>${done.size}</b> of ${all.length} students have submitted</span>${left.length ? `<span>Still to submit: ${left.map((m) => esc(nameOf(m))).join(", ")}</span>` : ""}</p></div>
+        <p class="small-note">Each cell is the total (out of 15) the rater gave: Commitment + Collaboration + Contribution. Scores of 2 or below are marked ⚠, with the rater's reason. Students never see these.</p>
+        ${gs.map((g) => { const ps = peers.filter((p) => p.gid === g.id);
+          return `<div class="pj-card pj-pg"><h3 class="h3">${g.no ? esc(gtag(g.no)) : "–"} · ${esc((g.proposal && g.proposal.title) || "")}</h3><div class="pj-scroll"><table class="pj-table"><thead><tr><th scope="col">Rater ↓ / rated →</th>${g.memberM.map((m) => `<th scope="col">${esc(nameOf(m))}</th>`).join("")}</tr></thead><tbody>
+            ${g.memberM.map((r) => { const p = ps.find((x) => x.m === r);
+              return `<tr><th scope="row">${esc(nameOf(r))}${p ? `<small class="pj-sub">${esc(when(p.at))}</small>` : '<small class="pj-sub pj-warn">not submitted</small>'}</th>${g.memberM.map((t) => { if (t === r) return `<td class="pj-self">–</td>`; const x = p && p.ratings && p.ratings[t];
+                return `<td>${x ? `<b>${x.reduce((a, b) => a + b, 0)}</b> <small>(${x.join(" + ")})</small>${x.some((y) => y <= 2) ? ` ⚠` : ""}${p.comments && p.comments[t] ? `<br><small class="pj-note">“${esc(p.comments[t])}”</small>` : ""}` : "–"}</td>`; }).join("")}</tr>`; }).join("")}
+            <tr class="tot"><th scope="row">Average received</th>${g.memberM.map((m) => { const q = peerOf(m, g, peers); return `<td><b>${q.avg === null ? "–" : round2(q.avg)}</b> <small>${q.n} rating${q.n === 1 ? "" : "s"} · ${q.avg === null ? "no change" : q.adj ? q.adj.toFixed(1) : "no change"}</small></td>`; }).join("")}</tr></tbody></table></div></div>`; }).join("") || `<p class="pj-empty">No groups yet.</p>`}`;
+      $("[data-peeropen]", v).addEventListener("change", (e) => {
+        const on = e.target.checked;
+        db.collection("meta").doc("project").set({ peer: on }, { merge: true }).then(() => { meta.peer = on; paint(); }).catch((err) => { e.target.checked = !on; alertIn(v, `Could not change it (${err.code || err}).`); });
+      });
+    }
+    /* Project Marks: the group mark (A1 to C2) and each student's individual factor; saves as you type */
+    const factorOf = (m, g, mk) => {
+      const base = (D1.find((d) => d[0] === ((mk.d1 || {})[m])) || [0, 0, null])[2], q = peerOf(m, g, peers), ov = (mk.d2 || {})[m];
+      const adj = ov === undefined || ov === "" ? q.adj : +ov;
+      return { base, q, adj, auto: ov === undefined || ov === "", f: base === null ? null : Math.min(1, Math.max(0.6, round2(base + adj))) };
+    };
+    const groupMark = (mk) => PARTS.reduce((a, [k, , max]) => a + Math.min(max, Math.max(0, +((mk.parts || {})[k]) || 0)), 0);
+    function marksTab(v) {
+      const gs = groups.filter((g) => g.memberM.length).sort((a, b) => (a.no || 99) - (b.no || 99));
+      v.innerHTML = `<p class="small-note">Only lecturers see this. Group mark = A1 to C2 (out of 100). Individual factor = D1 base factor (oral verification) + D2 peer adjustment, limited to 0.6 to 1.0. Individual mark = group mark × factor; grade = individual mark × 15 / 100. Everything saves as you type.</p>
+        <p class="pj-row"><button type="button" class="btn ghost small" data-mcsv>Download the mark sheet (CSV)</button><span class="small-note" id="pjMkMsg" aria-live="polite"></span></p>
+        ${gs.map((g) => { const mk = marks[g.id] || {};
+          return `<div class="pj-card pj-mk" data-mg="${g.id}"><div class="pj-gh"><h3 class="h3">${g.no ? esc(gtag(g.no)) : "–"} · ${esc((g.proposal && g.proposal.title) || "No title yet")}</h3><span class="pj-gm">Group mark <b data-gm>${groupMark(mk)}</b> / 100</span></div>
+            <div class="pj-mparts">${PARTS.map(([k, t, max]) => `<label><span>${k} ${esc(t)}</span><span class="pj-mx"><input type="number" class="pj-in" min="0" max="${max}" step="0.5" inputmode="decimal" data-mp="${k}" value="${(mk.parts || {})[k] === undefined ? "" : esc(mk.parts[k])}"> / ${max}</span></label>`).join("")}</div>
+            <div class="pj-scroll"><table class="pj-table pj-mt"><thead><tr><th scope="col">Student</th><th scope="col">D1 oral verification</th><th scope="col">Peer average</th><th scope="col">D2 adjustment</th><th scope="col">Factor</th><th scope="col">Individual mark</th><th scope="col">Grade (15%)</th></tr></thead><tbody>
+              ${g.memberM.map((m) => `<tr data-mm="${esc(m)}"><th scope="row">${esc(nameOf(m))}<small class="pj-sub">${esc(m)}</small></th>
+                <td><select class="pj-in" data-d1="${esc(m)}"><option value="">Choose…</option>${D1.map(([k, l, f]) => `<option value="${k}"${(mk.d1 || {})[m] === k ? " selected" : ""}>${l} (${f.toFixed(1)})</option>`).join("")}</select></td>
+                <td data-pa></td><td><select class="pj-in" data-d2="${esc(m)}"><option value="">From the ratings</option>${["0", "-0.1", "-0.2"].map((x) => `<option value="${x}"${(mk.d2 || {})[m] === x ? " selected" : ""}>${x === "0" ? "No change" : x} (reviewed)</option>`).join("")}</select><small class="pj-sub" data-d2a></small></td>
+                <td data-f></td><td data-im></td><td data-gr></td></tr>`).join("")}</tbody></table></div></div>`; }).join("") || `<p class="pj-empty">No groups yet.</p>`}`;
+      $$(".pj-mk", v).forEach(calc);
+      if (!v.dataset.mk) { v.dataset.mk = "1"; v.addEventListener("input", onMark); v.addEventListener("change", onMark); }
+      $("[data-mcsv]", v).addEventListener("click", markCsv);
+    }
+    function calc(card) {
+      const g = groups.find((x) => x.id === card.dataset.mg), mk = marks[g.id] || {}, gm = groupMark(mk);
+      $("[data-gm]", card).textContent = round2(gm);
+      $$("[data-mp]", card).forEach((i) => { const x = i.value === "" ? null : +i.value; i.classList.toggle("bad", x !== null && (isNaN(x) || x < 0 || x > +i.max)); });
+      $$("tr[data-mm]", card).forEach((tr) => {
+        const m = tr.dataset.mm, r = factorOf(m, g, mk);
+        $("[data-pa]", tr).innerHTML = r.q.avg === null ? `– <small class="pj-sub">no ratings yet</small>` : `${round2(r.q.avg)} / 15<small class="pj-sub">${r.q.n} rating${r.q.n === 1 ? "" : "s"}</small>`;
+        $("[data-d2a]", tr).textContent = r.auto ? `= ${r.q.adj ? r.q.adj.toFixed(1) : "no change"}` : "";
+        $("[data-f]", tr).textContent = r.f === null ? "–" : r.f.toFixed(2);
+        $("[data-im]", tr).textContent = r.f === null ? "–" : round2(gm * r.f);
+        $("[data-gr]", tr).textContent = r.f === null ? "–" : round2(gm * r.f * 0.15);
+      });
+    }
+    const saveT = {};
+    function onMark(e) {
+      const card = e.target.closest(".pj-mk"); if (!card) return;
+      const id = card.dataset.mg, mk = marks[id] = marks[id] || { semester: SEM, gid: id };
+      if (e.target.dataset.mp) { mk.parts = Object.assign({}, mk.parts); if (e.target.value === "") delete mk.parts[e.target.dataset.mp]; else mk.parts[e.target.dataset.mp] = +e.target.value; }
+      else if (e.target.dataset.d1 !== undefined) { mk.d1 = Object.assign({}, mk.d1, { [e.target.dataset.d1]: e.target.value }); }
+      else if (e.target.dataset.d2 !== undefined) { mk.d2 = Object.assign({}, mk.d2, { [e.target.dataset.d2]: e.target.value }); }
+      else return;
+      calc(card);
+      const msg = $("#pjMkMsg"); if (msg) msg.textContent = "Saving…";
+      clearTimeout(saveT[id]);
+      saveT[id] = setTimeout(() => db.collection("pmarks").doc(id).set({ semester: SEM, gid: id, parts: mk.parts || {}, d1: mk.d1 || {}, d2: mk.d2 || {}, updatedAt: FV.serverTimestamp(), by: A.state.user.email })
+        .then(() => { delete saveT[id]; if (msg) msg.textContent = "Saved"; }).catch((err) => { delete saveT[id]; if (msg) msg.textContent = `Not saved (${err.code || err})`; }), 700);
+    }
+    function markCsv() {
+      const q = (x) => `"${String(x == null ? "" : x).replace(/"/g, '""')}"`;
+      const rows = [["Group", "Title", ...PARTS.map(([k, , max]) => `${k} (${max})`), "Group mark (100)", "Student name", "Matric no.", "D1 base factor", "Peer average (15)", "D2 peer adjustment", "Individual factor", "Individual mark (100)", "Grade (15%)"].map(q).join(",")];
+      groups.filter((g) => g.memberM.length).sort((a, b) => (a.no || 99) - (b.no || 99)).forEach((g) => { const mk = marks[g.id] || {}, gm = groupMark(mk);
+        g.memberM.forEach((m) => { const r = factorOf(m, g, mk);
+          rows.push([g.no ? gtag(g.no) : "", (g.proposal && g.proposal.title) || "", ...PARTS.map(([k]) => (mk.parts || {})[k] === undefined ? "" : mk.parts[k]), round2(gm), nameOf(m), m,
+            r.base === null ? "" : r.base.toFixed(1), r.q.avg === null ? "" : round2(r.q.avg), r.adj.toFixed(1), r.f === null ? "" : r.f.toFixed(2), r.f === null ? "" : round2(gm * r.f), r.f === null ? "" : round2(gm * r.f * 0.15)].map(q).join(",")); }); });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + rows.join("\n")], { type: "text/csv" })); a.download = `NMK42003 mini project marks ${new Date().toISOString().slice(0, 10)}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }
     /* one logbook entry, with the lecturer's comment */
     function logPanel(gid, w) {
       const g = groups.find((x) => x.id === gid), e = (logsAll[gid] || {})[w];
@@ -691,6 +833,8 @@
     unsubs.push(db.collection("pmember").where("semester", "==", SEM).onSnapshot((q) => { claims = {}; q.docs.forEach((d) => { claims[d.data().m] = d.data().gid; }); paint(); }, () => {}));
     unsubs.push(db.collection("ptitles").where("semester", "==", SEM).onSnapshot((q) => { titles = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).sort((a, b) => a.no - b.no); paint(); }, () => {}));
     unsubs.push(db.collection("plog").where("semester", "==", SEM).onSnapshot((q) => { logsAll = {}; q.docs.forEach((d) => { const x = d.data(); (logsAll[x.gid] = logsAll[x.gid] || {})[x.week] = x; }); if (tab === "log" && !$("#pjLc")) paint(); }, () => {}));
+    unsubs.push(db.collection("ppeer").where("semester", "==", SEM).onSnapshot((q) => { peers = q.docs.map((d) => d.data()); if (tab === "peer") paint(); else if (tab === "marks") $$(".pj-mk").forEach(calc); }, () => {}));
+    unsubs.push(db.collection("pmarks").where("semester", "==", SEM).onSnapshot((q) => { q.docs.forEach((d) => { if (!saveT[d.id]) marks[d.id] = d.data(); }); if (tab === "marks" && !(document.activeElement && document.activeElement.closest && document.activeElement.closest(".pj-mk"))) paint(); }, () => {}));
   }
 
   /* ---------- the AI's second opinion (through the Ask Dr. Zamri connection) ---------- */

@@ -295,6 +295,23 @@ service cloud.firestore {
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['gid', 'week', 'semester', 'comment', 'at', 'by', 'byName']));
       allow delete: if isLecturer();
     }
+    // The confidential peer evaluation: ppeer/{semKey}_{rater matric}. A student rates every other member of their own
+    // group while the lecturer keeps it open (meta/project.peer), and reads back only their own ratings.
+    function pjPeerOk() {
+      let n = request.resource.data;
+      let g = get(/databases/$(database)/documents/pgroups/$(n.gid)).data;
+      return onRoster() && pjMeta().get('peer', false) == true && n.m == myM() && myM() in g.memberM
+        && n.ratings.keys().toSet() == g.memberM.toSet().difference([myM()].toSet());
+    }
+    match /ppeer/{id} {
+      allow read: if isLecturer() || (onRoster() && resource.data.m == myM());
+      allow create, update: if isLecturer() || (pjPeerOk() && id.matches('^.+_' + myM() + '$'));
+      allow delete: if isLecturer();
+    }
+    // Mini project marks (Parts A to D): lecturers only. Students never read them.
+    match /pmarks/{id} {
+      allow read, write: if isLecturer();
+    }
     // Approved titles, for the whole class (written by lecturers when they approve)
     match /ptitles/{gid} {
       allow read: if isLecturer() || onRoster() || approved();
