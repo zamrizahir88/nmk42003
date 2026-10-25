@@ -185,7 +185,7 @@
     const pending = students().filter((u) => u.status === "pending").length;
     const view = tab === "overview" ? overview() : tab === "heatmap" ? heatmap() : tab === "exercises" ? difficulty() : tab === "board" ? board() : tab === "missions" ? missionsTab() : people(tab === "pending");
     host.innerHTML = `<div class="adm-top"><div class="adm-tabs" role="group" aria-label="Dashboard view">${TABS.map(([v, l]) => `<button type="button" class="chip-btn" data-tab="${v}" aria-pressed="${tab === v}">${l}${v === "pending" && pending ? ` (${pending})` : ""}</button>`).join("")}</div>
-        ${sems.length > 1 ? `<label class="adm-sem">Semester <select data-sem>${sems.map((s) => `<option${s === sem ? " selected" : ""}>${esc(s)}</option>`).join("")}</select></label>` : `<span class="adm-sem">${esc(sem)}</span>`}<a class="btn ghost small" href="attendance.html">Attendance ›</a></div>${view}`;
+        ${sems.length > 1 ? `<label class="adm-sem">Semester <select data-sem>${sems.map((s) => `<option${s === sem ? " selected" : ""}>${esc(s)}</option>`).join("")}</select></label>` : `<span class="adm-sem">${esc(sem)}</span>`}<a class="btn ghost small" href="evidence.html">Teaching Evidence ›</a><a class="btn ghost small" href="attendance.html">Attendance ›</a></div>${view}`;
     const s = host.querySelector("[data-q]");
     if (s && typing) { s.focus(); s.setSelectionRange(filter.length, filter.length); }
     typing = false;

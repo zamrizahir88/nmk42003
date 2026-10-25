@@ -432,6 +432,12 @@
     }).join("");
   }
 
+  // the course outcome this exercise practises (constructive alignment, from data.js through main.js)
+  function coTag(id) {
+    const co = window.NMKCO ? NMKCO.of(id) : "", o = co && NMKCO.info(co);
+    return co ? `<span class="ex-co" title="${o ? esc(`${o.id} (${o.level}): ${o.text}`) : co}">${co}${o ? ` · ${esc(o.level.split(" ")[0])}` : ""}</span>` : "";
+  }
+
   function buildExercise(ex) {
     const el = document.createElement("article");
     el.className = "ex";
@@ -441,7 +447,7 @@
     const loads = ex.sec ? runs.map((r, i) => `<button type="button" class="btn ghost" data-load="${i}" disabled>Load into calculator${runs.length > 1 ? ` (${r.label.replace("At ", "")})` : ""}</button>`).join("") : "";
     const hints = ex.hints || [];
     el.innerHTML = `
-      <div class="ex-head"><h3 id="${ex.id}-h">${ex.title}</h3><span class="ex-badge" hidden>✓ Solved</span></div>
+      <div class="ex-head"><h3 id="${ex.id}-h">${ex.title}</h3>${coTag(ex.id)}<span class="ex-badge" hidden>✓ Solved</span></div>
       <div class="q">${ex.q}</div>
       <form class="ex-answers" novalidate>
         ${ex.ans.map((a, i) => `<div class="ans">

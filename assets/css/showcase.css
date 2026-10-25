@@ -1,0 +1,37 @@
+/* NMK42003 showcase (showcase.html); the figure tiles reuse evidence.css */
+.sc-head { margin: 0 0 14px; }
+.sc-tag { display: inline-block; font-size: .78rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--teal); }
+.sc-name { font: 600 clamp(1.4rem, 3.2vw, 2rem) / 1.2 var(--serif); margin: 4px 0 6px; }
+.sc-head p { color: var(--ink-2); margin: 0; }
+.sc-toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; }
+.sc-toc .chip-btn { text-decoration: none; }
+.sc-sec { padding: 22px 0 8px; border-top: 1px solid var(--rule); scroll-margin-top: 70px; }
+.sc-sec > h2 { margin-top: 0; }
+.sc-why { display: grid; gap: 4px; max-width: var(--measure); color: var(--ink-2); font-size: 1.02rem; }
+.sc-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 12px; }
+.sc-card { display: flex; flex-direction: column; gap: 6px; padding: 16px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); }
+.sc-card h3 { margin: 0; font: 600 1.05rem var(--serif); }
+.sc-card p { margin: 0; color: var(--ink-2); font-size: .93rem; flex: 1; }
+.sc-card a, .sc-note { font-size: .88rem; font-weight: 600; }
+.sc-note { color: var(--ink-3); font-weight: 500; }
+.sc-ic { font-size: 1.5rem; }
+.sc-loop { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 6px; counter-reset: sc; }
+.sc-loop span { counter-increment: sc; position: relative; padding: 8px 14px 8px 36px; background: var(--teal-soft); border-radius: 999px; font-size: .9rem; font-weight: 500; }
+.sc-loop span::before { content: counter(sc); position: absolute; left: 8px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--teal); color: var(--surface); font-size: .75rem; font-weight: 700; }
+.sc-align td { vertical-align: top; min-width: 180px; }
+.sc-align td small { display: inline; color: var(--ink-3); }
+.sc-cot { display: block; margin-top: 2px; }
+.sc-bar { display: grid; grid-template-columns: minmax(70px, 180px) minmax(80px, 1fr) minmax(0, 2fr); gap: 4px 12px; align-items: center; margin: 6px 0; font-size: .9rem; }
+.sc-bl { font-weight: 600; }
+.sc-bt { height: 10px; border-radius: 5px; background: var(--grid); overflow: hidden; }
+.sc-bt i { display: block; height: 100%; background: var(--teal); }
+.sc-bv { color: var(--ink-2); }
+.sc-try { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; max-width: 760px; }
+.sc-try li { display: grid; gap: 2px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); }
+.sc-try a { font-weight: 600; }
+.sc-try span { color: var(--ink-2); font-size: .9rem; }
+.sc-princ { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 12px; }
+.sc-princ div { padding: 12px 14px; border-left: 3px solid var(--teal); background: var(--surface); border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+.sc-princ span { margin-right: 6px; }
+.sc-princ p { margin: 4px 0 0; color: var(--ink-2); font-size: .9rem; }
+@media (max-width: 560px) { .sc-bar { grid-template-columns: 1fr; } .sc-bt { order: 3; } }

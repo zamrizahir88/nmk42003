@@ -80,6 +80,12 @@ const COURSE = {
     }
   ],
 
+  /* ---------------- Constructive alignment: which course outcome each piece of practice supports ----------------
+     Every exercise of a chapter takes its chapter's `co`, every lab exercise its lab's `co`, and each INSTRUMENTA
+     station its chapter's. coMap overrides single exercises (id → "CO2"). Used for the CO tag on each exercise, the
+     lecturer's Teaching Evidence page (CO attainment) and the showcase page.                                     */
+  coMap: {},
+
   /* ---------------- Assessment (TLP v1.2, section D) ---------------- */
   assessment: [
     { name: "Final examination", pct: 40, kind: "final",
@@ -99,33 +105,33 @@ const COURSE = {
      page:   optional link to a built chapter page, e.g. "chapter-5.html".
              Leave it out to use the placeholder page topic.html?ch=N.      */
   topics: [
-    { no: 1, title: "Introduction to Electronic Instrumentation", weeks: "Week 1", status: "interactive", page: "chapter-1.html", exercises: { count: 6, prefix: "c1-" },
+    { no: 1, title: "Introduction to Electronic Instrumentation", weeks: "Week 1", status: "interactive", page: "chapter-1.html", co: "CO1", exercises: { count: 6, prefix: "c1-" },
       summary: "Characteristics and types of instruments and indicators, standard units, measurement error, precision, and error limits." },
-    { no: 2, title: "Embedded Controller", weeks: "Weeks 2 to 3", status: "interactive", page: "chapter-2.html", exercises: { count: 10, prefix: "c2-" },
+    { no: 2, title: "Embedded Controller", weeks: "Weeks 2 to 3", status: "interactive", page: "chapter-2.html", co: "CO1", exercises: { count: 10, prefix: "c2-" },
       summary: "Types of embedded controllers, interfacing through digital I/O, analog, UART, SPI and I²C, Bluetooth and WiFi connectivity, and programming tools." },
-    { no: 3, title: "Transducers, Sensors and Actuators", weeks: "Week 4", status: "interactive", page: "chapter-3.html", exercises: { count: 12, prefix: "c3-" },
+    { no: 3, title: "Transducers, Sensors and Actuators", weeks: "Week 4", status: "interactive", page: "chapter-3.html", co: "CO1", exercises: { count: 12, prefix: "c3-" },
       summary: "Sensor parameters shown in real situations, passive (resistive, capacitive, inductive) and active (piezoelectric, photodiode, Hall effect) sensors, and actuators (LED, DC motor, servo, relay)." },
-    { no: 4, title: "Transduction Techniques", weeks: "Week 5", status: "interactive", page: "chapter-4.html", exercises: { count: 12, prefix: "c4-" },
+    { no: 4, title: "Transduction Techniques", weeks: "Week 5", status: "interactive", page: "chapter-4.html", co: "CO1", exercises: { count: 12, prefix: "c4-" },
       summary: "Transduction circuits for passive sensors (voltage divider, Wheatstone bridge, 555 timing circuit, LC tuned circuit) and for active sensors (the piezo and its resistor)." },
-    { no: 5, title: "Signal Conditioning (Amplifiers & Filters)", weeks: "Week 5", status: "interactive", page: "chapter-5.html", exercises: { count: 7, prefix: "ex-" },
+    { no: 5, title: "Signal Conditioning (Amplifiers & Filters)", weeks: "Week 5", status: "interactive", page: "chapter-5.html", co: "CO1", exercises: { count: 7, prefix: "ex-" },
       summary: "Op-amp amplifiers (voltage follower, inverting, non-inverting, differential) and passive and active low-pass, high-pass, band-pass and band-stop filters." },
-    { no: 6, title: "Data Conversion and Acquisition", weeks: "Week 6", status: "interactive", page: "chapter-6.html", exercises: { count: 12, prefix: "c6-" },
+    { no: 6, title: "Data Conversion and Acquisition", weeks: "Week 6", status: "interactive", page: "chapter-6.html", co: "CO1", exercises: { count: 12, prefix: "c6-" },
       summary: "Digital codes, binary-weighted and R-2R DACs, counter and successive-approximation ADCs, ADC resolution and output code, and the ESP32's own DAC and ADC." },
-    { no: 7, title: "Transducer Calibration", weeks: "Week 7", status: "interactive", page: "chapter-7.html", exercises: { count: 6, prefix: "c7-" },
+    { no: 7, title: "Transducer Calibration", weeks: "Week 7", status: "interactive", page: "chapter-7.html", co: "CO1", exercises: { count: 6, prefix: "c7-" },
       summary: "What calibration is and why, the five calibration steps, and a virtual lab to calibrate a potentiometer angle sensor and a capacitive water-level sensor with the ESP32." }
   ],
 
   /* ---------------- Labs (TLP v1.2, section B4) ---------------- */
   // page: the lab's virtual lab (simulation) page, once built
   labs: [
-    { no: 1, title: "Lab 1: Introduction (Software & Hardware)", weeks: "Weeks 1 to 2", openEnded: false, page: "lab-1.html",
+    { no: 1, title: "Lab 1: Introduction (Software & Hardware)", weeks: "Weeks 1 to 2", openEnded: false, co: "CO3", page: "lab-1.html",
       summary: "Power and program the ESP32, blink its LED, upload over Wi-Fi (OTA), and switch LEDs from a phone by Bluetooth, an MIT App Inventor app and a web page." },
-    { no: 2, title: "Lab 2: Transduction and Conversion Calibration", weeks: "Week 4", openEnded: true, page: "lab-2.html",
+    { no: 2, title: "Lab 2: Transduction and Conversion Calibration", weeks: "Week 4", openEnded: true, co: "CO3", page: "lab-2.html",
       summary: "Turn a potentiometer into an angle sensor: power it safely, read the ESP32's ADC, calibrate it against a protractor with a straight-line fit, and show the angle on a phone and a web page." },
-    { no: 3, title: "Lab 3: Smart Sensors", weeks: "Week 6", openEnded: true, page: "lab-3.html",
+    { no: 3, title: "Lab 3: Smart Sensors", weeks: "Week 6", openEnded: true, co: "CO3", page: "lab-3.html",
       summary: "Read RFID cards with a phone and with an RC522 reader on the ESP32, show text on an I2C 16 × 4 LCD, and merge the two into a standalone card reader and a security system." },
-    { no: 4, title: "Lab 4: Local Data Acquisition (DAQ)", weeks: "Week 11", openEnded: false },
-    { no: 5, title: "Lab 5: Cloud Storage and IoT Instrumentation", weeks: "Week 13", openEnded: false }
+    { no: 4, title: "Lab 4: Local Data Acquisition (DAQ)", weeks: "Week 11", openEnded: false, co: "CO3" },
+    { no: 5, title: "Lab 5: Cloud Storage and IoT Instrumentation", weeks: "Week 13", openEnded: false, co: "CO3" }
   ],
 
   references: [

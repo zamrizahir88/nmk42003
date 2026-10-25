@@ -194,6 +194,8 @@
     paint(); changed(); loadBell(false);
     // is the Missions game released to students? (for the menu link)
     if (state.profile && state.profile.status === "approved") db.collection("meta").doc("missions").get().then((d) => { missionsOpen = !!(d.exists && d.data().released); navMine(); }).catch(() => {});
+    // is a round of the course survey open? (for the menu link)
+    if (state.profile && state.profile.status === "approved") db.collection("meta").doc("survey").get().then((d) => { surveyOpen = (d.exists && d.data().open) || ""; navMine(); }).catch(() => {});
     if (canSync()) { pull(); queuePush(); loadAttendance(); db.collection("users").doc(u.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp(), photo: u.photoURL || "" }).catch(() => {}); }
   });
 
@@ -260,7 +262,7 @@
   document.body.appendChild(menu);
 
   const STATUS = { approved: "Approved", pending: "Waiting for approval", rejected: "Not approved" };
-  let missionsOpen = false;
+  let missionsOpen = false, surveyOpen = "";
   function paint() {
     const u = state.user, p = state.profile;
     if (!u) { btn.innerHTML = `${ICON}<span class="acc-t">Sign in</span>`; btn.setAttribute("aria-label", "Sign in with Google"); btn.className = "icon-btn acc-btn out"; }
@@ -292,6 +294,8 @@
     return [["attendance.html", "✅", lec ? "Attendance (lecturer)" : "Attendance"], ["kalam.html", "💬", "Kalam Feed"],
       lec || missionsOpen ? ["missions.html", "⚔️", `INSTRUMENTA: Legends${lec && !missionsOpen ? " (not released)" : ""}`] : null,
       ["board.html", "🏆", "Class Board and My Progress"], ["gallery.html", "📷", "Class Moments"], ["notifications.html", "🔔", "Notifications"],
+      lec || surveyOpen ? ["survey.html", "📝", lec ? "Course Survey" : "Course Survey (open now)"] : null,
+      lec ? ["evidence.html", "📊", "Teaching Evidence"] : null,
       lec ? ["admin.html", "🛠", "Lecturer dashboard"] : ["profile.html", "👤", "My Profile"]].filter(Boolean);
   }
   function navMine() {
@@ -412,6 +416,13 @@
             lg.filter((x) => x && x.comment && x.comment.text).forEach((x) => add({ t: x.comment.at, href: "project.html", text: `Your lecturer commented on your logbook, week ${x.week}: “${esc(x.comment.text)}”` }));
           }
           if ((!g || g.status === "forming") && due && Date.now() < due) add({ todo: true, t: tms(pm.data().updatedAt) || Date.now(), href: "project.html", text: `${g ? "Submit your mini project title proposal" : "Join or create a mini project group"} by <strong>${noteDate(due)}</strong>` });
+        }
+        // the course survey: a round is open and I haven't answered it yet
+        const sv = await db.collection("meta").doc("survey").get().catch(() => null), svr = sv && sv.exists && sv.data().open;
+        if (svr) {
+          const skey = String(SEM).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+          const mineSv = await db.collection("survey").doc(`${skey}_${svr}_${u.uid}`).get().catch(() => null);
+          if (mineSv && !mineSv.exists) add({ todo: true, t: tms(sv.data().updatedAt) || Date.now(), href: "survey.html", text: "The <strong>course survey</strong> is open: a few minutes, no marks, and it helps improve the course" });
         }
         // attendance warnings emailed to me and my RPS
         const wslug = String(SEM).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), WLV = { 1: "Attendance Warning 1", 2: "Attendance Warning 2", 3: "Barring Notification" };

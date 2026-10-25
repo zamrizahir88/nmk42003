@@ -1,0 +1,38 @@
+/* NMK42003 course survey (survey.html) */
+.sv-intro { max-width: var(--measure); margin: 0 0 18px; }
+.sv-round { display: inline-block; font-size: .8rem; font-weight: 600; color: var(--teal); background: var(--teal-soft); border-radius: 999px; padding: 2px 12px; }
+.sv-done { color: var(--teal); font-weight: 600; }
+.sv-form { max-width: 760px; }
+.sv-form h2 { margin: 26px 0 6px; }
+.sv-item { border: 1px solid var(--rule); border-radius: var(--r-md); background: var(--surface); padding: 12px 14px; margin: 0 0 10px; min-width: 0; }
+.sv-item.miss { border-color: var(--amber); background: var(--amber-soft); }
+.sv-item legend { float: left; width: 100%; padding: 0; margin: 0 0 8px; font-weight: 500; line-height: 1.45; }
+.sv-item legend .ex-co { margin-right: 6px; }
+.sv-item legend + * { clear: both; }
+.sv-sub { margin: 6px 0 4px; font-size: .82rem; font-weight: 600; color: var(--ink-3); clear: both; }
+.sv-scale { display: flex; flex-wrap: wrap; gap: 6px; clear: both; }
+.sv-scale label { position: relative; }
+.sv-scale input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.sv-scale span { display: grid; place-items: center; min-width: 44px; height: 40px; padding: 0 10px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); cursor: pointer; font-weight: 600; }
+.sv-scale .sv-na span { font-weight: 400; font-size: .85rem; color: var(--ink-2); }
+.sv-scale input:checked + span { background: var(--teal); border-color: var(--teal); color: #fff; }
+[data-theme="dark"] .sv-scale input:checked + span { color: #0e1720; }
+.sv-scale input:focus-visible + span { outline: 3px solid var(--focus); outline-offset: 2px; }
+.sv-ends { display: flex; justify-content: space-between; gap: 10px; max-width: 300px; margin-top: 4px; font-size: .75rem; color: var(--ink-3); }
+.sv-open { display: grid; gap: 6px; margin: 0 0 12px; }
+.sv-open span { font-weight: 500; }
+.sv-open textarea { font: inherit; padding: 8px 10px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); resize: vertical; }
+.sv-consent { display: flex; gap: 10px; align-items: flex-start; margin: 18px 0 8px; padding: 12px 14px; background: var(--teal-soft); border-radius: var(--r-md); font-size: .92rem; }
+.sv-consent input { width: 20px; height: 20px; margin-top: 2px; flex: none; }
+.sv-err { color: var(--amber); font-weight: 500; min-height: 1.4em; }
+.sv-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.sv-lec { max-width: 760px; }
+.sv-rounds { display: grid; gap: 8px; margin: 10px 0; }
+.sv-rd { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border: 1px solid var(--rule); border-radius: var(--r-md); background: var(--surface); cursor: pointer; }
+.sv-rd.on { border-color: var(--teal); background: var(--teal-soft); }
+.sv-rd input { width: 18px; height: 18px; flex: none; }
+.sv-rd small { display: block; color: var(--ink-3); font-size: .82rem; }
+.sv-preview { margin-top: 18px; border-top: 1px solid var(--rule); padding-top: 10px; }
+.sv-preview summary { cursor: pointer; font-weight: 600; color: var(--teal); }
+.sv-preview .sv-form { opacity: .85; }
+@media (max-width: 480px) { .sv-scale span { min-width: 40px; padding: 0 6px; } }

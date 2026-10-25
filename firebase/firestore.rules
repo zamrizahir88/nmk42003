@@ -358,6 +358,34 @@ service cloud.firestore {
       allow write: if isLecturer();
     }
 
+    // The course survey (survey.html). meta/survey.open: the round open now ("pre", "mid", "post" or ""). A student on the
+    // class list (or approved) writes only their own answers, survey/{semKey}_{round}_{uid}, and only while that round is
+    // open; they may change them until it closes. Lecturers read all of them.
+    match /meta/survey {
+      allow read: if signedIn();
+      allow write: if isLecturer();
+    }
+    match /survey/{id} {
+      allow read: if isLecturer() || (signedIn() && id.matches('^.+_' + request.auth.uid + '$'));
+      allow create, update: if (onRoster() || approved())
+        && request.resource.data.uid == request.auth.uid
+        && id == request.resource.data.semKey + '_' + request.resource.data.round + '_' + request.auth.uid
+        && exists(/databases/$(database)/documents/meta/survey)
+        && request.resource.data.round == get(/databases/$(database)/documents/meta/survey).data.get('open', '')
+        && request.resource.data.keys().hasOnly(['semKey', 'semester', 'round', 'uid', 'consent', 'a', 'at'])
+        && request.resource.data.consent is bool && request.resource.data.a is map;
+      allow delete: if isLecturer();
+    }
+    // Teaching Evidence (evidence.html): pasted assessment marks and the previous cohort's figures. Lecturers only.
+    match /evidence/{id} {
+      allow read, write: if isLecturer();
+    }
+    // The class-level figures published to the public showcase (showcase.html): everyone reads, lecturers write.
+    match /meta/showcase {
+      allow read: if true;
+      allow write: if isLecturer();
+    }
+
     // Everything else stays closed.
     match /{document=**} {
       allow read, write: if false;

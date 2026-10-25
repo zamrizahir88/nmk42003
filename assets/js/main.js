@@ -53,6 +53,24 @@
     };
   })();
 
+  /* ---------- Course outcomes: which CO an exercise or INSTRUMENTA station supports (data.js: co, coMap) ---------- */
+  window.NMKCO = (() => {
+    const outcomes = COURSE.outcomes || [];
+    const prefix = (t) => (t.exercises && t.exercises.prefix) || `c${t.no}-`;
+    function of(id) {
+      id = String(id || "");
+      if (COURSE.coMap && COURSE.coMap[id]) return COURSE.coMap[id];
+      const w = id.match(/^w(\d+)-s\d+$/);           // an INSTRUMENTA station: its chapter's outcome
+      if (w) { const t = COURSE.topics.find((x) => x.no === +w[1]); return (t && t.co) || ""; }
+      const l = id.match(/^l(\d+)-/);
+      if (l) { const lab = COURSE.labs.find((x) => x.no === +l[1]); return (lab && lab.co) || ""; }
+      const t = COURSE.topics.find((x) => id.startsWith(prefix(x)));
+      return (t && t.co) || "";
+    }
+    const info = (co) => outcomes.find((o) => o.id === co) || null;
+    return { of, info, outcomes };
+  })();
+
   /* ---------- Dates ---------- */
   function parseYMD(s) { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); }
   const START = parseYMD(COURSE.semesterStart);
@@ -197,7 +215,7 @@
           <p>${esc(COURSE.code)} ${esc(COURSE.name)}<br>${esc(COURSE.faculty || "Faculty of Electronic Engineering & Technology")}, ${esc(COURSE.university)}</p></div>
         <nav aria-label="Course pages"><h2 class="foot-h">Course</h2><a href="chapters.html">Chapters</a><a href="labs.html">Labs</a><a href="project.html">Mini Project</a><a href="schedule.html">Schedule</a><a href="assessment.html">Assessment</a></nav>
         <nav aria-label="My Class"><h2 class="foot-h">My Class</h2><a href="attendance.html">Attendance</a><a href="missions.html">INSTRUMENTA: Legends</a><a href="board.html">Class Board</a><a href="gallery.html">Class Moments</a><a href="kalam.html">Kalam Feed</a></nav>
-        <nav aria-label="Help"><h2 class="foot-h">Help</h2><a href="index.html#team">Teaching team</a><a href="notifications.html">Notifications</a></nav>
+        <nav aria-label="Help"><h2 class="foot-h">Help</h2><a href="index.html#team">Teaching team</a><a href="notifications.html">Notifications</a><a href="showcase.html">About this innovation</a></nav>
       </div>
       <div class="foot-copy"><div class="wrap"><span>Developed by <strong>${d.link ? `<a href="${esc(d.link)}" target="_blank" rel="noopener">${esc(d.name)}</a>` : esc(d.name)}</strong>, ${esc(d.affiliation)}.</span>
         <span>&copy; ${new Date().getFullYear()} ${esc(COURSE.code)} ${esc(COURSE.name)}, ${esc(COURSE.university)} · ${esc(COURSE.session)} · Updated ${esc(COURSE.lastUpdated)}</span></div></div>`;

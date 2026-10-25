@@ -1,0 +1,54 @@
+/* NMK42003 Teaching Evidence (evidence.html) */
+.ev-nav { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; position: sticky; top: 0; z-index: 5; padding: 10px 0; background: var(--paper); border-bottom: 1px solid var(--rule); margin-bottom: 8px; }
+.ev-nav .chip-btn { text-decoration: none; }
+.ev-nav [data-reload] { margin-left: auto; }
+@media (max-width: 640px) { .ev-nav { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .ev-nav > * { flex: none; } }
+.ev-sec { padding: 18px 0 8px; scroll-margin-top: 70px; }
+.ev-sec + .ev-sec { border-top: 1px solid var(--rule); }
+.ev-sec > h2 { margin-top: 0; }
+.ev-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(140px, 100%), 1fr)); gap: 10px; margin: 8px 0 14px; }
+.ev-tile { display: grid; gap: 2px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); }
+.ev-tile strong { font: 700 1.55rem var(--serif); color: var(--ink); }
+.ev-tile strong small { font-size: .9rem; color: var(--ink-3); font-weight: 600; }
+.ev-tile span { font-size: .84rem; color: var(--ink-3); line-height: 1.35; }
+.ev-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 14px; }
+.ev-two .adm-chart { max-width: none; }
+.ev-stack { display: flex; min-height: 34px; border-radius: var(--r-sm); overflow: hidden; margin: 0 0 8px; font-size: .78rem; }
+.ev-stack span { display: flex; align-items: center; padding: 4px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; color: #fff; }
+.ev-stack .first { background: var(--teal); }
+.ev-stack .few { background: color-mix(in srgb, var(--teal) 70%, var(--surface)); }
+.ev-stack .many { background: color-mix(in srgb, var(--teal) 45%, var(--surface)); color: var(--ink); }
+.ev-stack .open { background: var(--grid); color: var(--ink-2); }
+[data-theme="dark"] .ev-stack .first, [data-theme="dark"] .ev-stack .few { color: #0e1720; }
+.ev-stack b { margin-right: 4px; }
+.adm td .ex-co, .bd-h .ex-co { margin: 0; }
+.ev-set { margin: 0 0 18px; }
+.ev-prev { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 0; padding: 10px 12px; border: 1px dashed var(--rule); border-radius: var(--r-md); font-size: .9rem; }
+.ev-prev-t { font-weight: 600; }
+.ev-prev label, .ev-irow label { display: inline-flex; align-items: center; gap: 6px; }
+.ev-prev input, .ev-irow input, .ev-irow select, .ev-paste textarea { font: inherit; height: 36px; padding: 0 8px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); }
+.ev-prev input[type=number] { width: 80px; }
+.ev-diff { flex-basis: 100%; color: var(--teal); font-weight: 600; }
+.ev-msg { color: var(--ink-2); font-size: .88rem; }
+.ev-del { margin: 6px 0 0; }
+.ev-import { margin: 16px 0 0; padding: 12px 14px; border: 1px solid var(--rule); border-radius: var(--r-md); background: var(--surface); }
+.ev-import summary { cursor: pointer; font-weight: 600; color: var(--teal); }
+.ev-import form { display: grid; gap: 12px; margin-top: 12px; }
+.ev-irow { display: flex; flex-wrap: wrap; gap: 10px 16px; }
+.ev-irow input[name=name] { width: 220px; max-width: 100%; }
+.ev-irow input[type=number] { width: 90px; }
+.ev-paste { display: grid; gap: 6px; font-size: .9rem; }
+.ev-paste textarea { height: auto; padding: 8px; font-family: ui-monospace, Consolas, monospace; }
+.ev-import form .btn { justify-self: start; }
+.ev-quotes h4 { margin: 12px 0 4px; font-size: .95rem; }
+.ev-quotes ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; max-width: var(--measure); }
+.ev-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+.ev-chk { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+.ev-chk input { width: 18px; height: 18px; }
+@media print {
+  .ev-noprint, .ev-nav, .ev-import, .ev-prev button, .ev-del, .site-header, .acc-banner { display: none !important; }
+  .ev-sec { break-inside: avoid-page; }
+  .adm-scroll { overflow: visible; border: 0; }
+  .ev-prev { border: 0; padding: 0; }
+  .ev-prev input { border: 0; width: auto; }
+}
