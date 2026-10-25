@@ -228,6 +228,68 @@ service cloud.firestore {
       allow write: if isLecturer();
     }
 
+    // The mini project (project.html). meta/project: the switch that opens it to students, and the proposal deadline.
+    function pjMeta() { return get(/databases/$(database)/documents/meta/project).data; }
+    function pjOpen() { return exists(/databases/$(database)/documents/meta/project) && pjMeta().get('released', false) == true; }
+    function pjBeforeDue() { return request.time < pjMeta().get('dueAt', timestamp.value(0)); }
+    function myM() { return string(rosterDoc().matric); }
+    match /meta/project {
+      allow read: if signedIn();
+      allow write: if isLecturer();
+    }
+    // A group. memberM / inviteM: matric numbers. Members edit the proposal, invite and leave; an invited student only
+    // accepts or declines; only lecturers approve, ask for an amendment or give the group number.
+    function pjMemberEdit(gid) {
+      let o = resource.data;
+      let n = request.resource.data;
+      return myM() in o.memberM
+        && !n.diff(o).affectedKeys().hasAny(['semester', 'semKey', 'no', 'review', 'approvedAt', 'createdAt', 'ai'])
+        && o.memberM.hasAll(n.memberM) && n.memberM.size() + n.inviteM.size() <= 4 && n.leader in n.memberM
+        && ((n.memberM == o.memberM && n.inviteM == o.inviteM) || o.status in ['forming', 'amend'])
+        && (pjBeforeDue() || o.status in ['amend', 'approved'])
+        && (o.status == 'approved'
+          ? (n.status == 'submitted' && n.memberM == o.memberM && n.inviteM == o.inviteM)
+          : (n.status in ['forming', 'submitted'] || n.status == o.status));
+    }
+    function pjAnswer(gid) {
+      let o = resource.data;
+      let n = request.resource.data;
+      let m = myM();
+      return m in o.inviteM && o.status != 'approved'
+        && n.diff(o).affectedKeys().hasOnly(['memberM', 'inviteM', 'declinedM', 'updatedAt', 'history'])
+        && n.inviteM.toSet() == o.inviteM.toSet().difference([m].toSet())
+        && ((n.memberM.toSet() == o.memberM.toSet().union([m].toSet()) && n.memberM.size() <= 4
+             && getAfter(/databases/$(database)/documents/pmember/$(o.semKey + '_' + m)).data.gid == gid)
+          || n.memberM == o.memberM);
+    }
+    match /pgroups/{gid} {
+      allow read: if isLecturer() || (onRoster() && (myM() in resource.data.memberM || myM() in resource.data.inviteM));
+      allow create: if onRoster() && pjOpen() && pjBeforeDue()
+        && request.resource.data.leader == myM() && request.resource.data.memberM == [myM()] && request.resource.data.inviteM.size() == 0
+        && request.resource.data.status == 'forming' && request.resource.data.no == null
+        && getAfter(/databases/$(database)/documents/pmember/$(request.resource.data.semKey + '_' + myM())).data.gid == gid;
+      allow update: if isLecturer() || (onRoster() && pjOpen() && (pjMemberEdit(gid) || pjAnswer(gid)));
+      allow delete: if isLecturer() || (onRoster() && resource.data.memberM == [myM()] && resource.data.status != 'approved');
+    }
+    // One per student and semester ({semKey}_{matric}): the group they are in, so nobody joins two groups.
+    function pjFreed(c) {
+      let gp = /databases/$(database)/documents/pgroups/$(c.gid);
+      return (c.m == myM() || (exists(gp) && myM() in get(gp).data.memberM))
+        && (!existsAfter(gp) || !(c.m in getAfter(gp).data.memberM));
+    }
+    match /pmember/{id} {
+      allow read: if isLecturer() || onRoster();
+      allow create: if isLecturer() || (onRoster() && pjOpen() && request.resource.data.m == myM() && id.matches('^.+_' + myM() + '$')
+        && myM() in getAfter(/databases/$(database)/documents/pgroups/$(request.resource.data.gid)).data.memberM);
+      allow update: if isLecturer();
+      allow delete: if isLecturer() || (onRoster() && pjFreed(resource.data));
+    }
+    // Approved titles, for the whole class (written by lecturers when they approve)
+    match /ptitles/{gid} {
+      allow read: if isLecturer() || onRoster() || approved();
+      allow write: if isLecturer();
+    }
+
     // Lab marks (demo and report of each lab) and their weights: lecturers only. Students never read them.
     match /labmarks/{id} {
       allow read, write: if isLecturer();

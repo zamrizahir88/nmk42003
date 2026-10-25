@@ -9,6 +9,7 @@
 
   const ENDPOINT = "https://fuzzy-ai-proxy.zamrizahir.workers.dev/";
   const MODEL = "openai/gpt-oss-120b";
+  window.NMKAI = { ENDPOINT, MODEL };   // also used by the mini project's title-clash check (lecturers)
   const MAX_INPUT = 500, MAX_TURNS = 6, DAY_LIMIT = 40, GAP_MS = 4000; // the free service is shared by everyone, so each browser is rationed
   const HIST_KEY = "nmk-chat", OPEN_KEY = "nmk-chat-open", DAY_KEY = "nmk-chat-day";
 

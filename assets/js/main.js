@@ -253,6 +253,7 @@
     const I = {
       book: '<path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19"/><path d="M9 7h6"/>',
       cal: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+      team: '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M14.5 14.6a4.2 4.2 0 0 1 6 4.4"/>',
       chart: '<path d="M5 20V11M12 20V5M19 20v-6"/><path d="M3 20h18"/>',
       flask: '<path d="M9 3h6M10 3v6l-5 8.5A2 2 0 0 0 6.7 21h10.6a2 2 0 0 0 1.7-3.5L14 9V3"/><path d="M7.5 15h9"/>',
       refs: '<path d="M6 3h12v18l-6-4-6 4z"/>',
@@ -264,6 +265,7 @@
       { i: "book", t: "Chapters", d: "Interactive lecture notes with animations, calculators with step-by-step working, and exercises for every chapter.", b: `${COURSE.topics.length} chapters · ${built} interactive`, h: "chapters.html", extra: pills },
       { i: "cal", t: "Weekly Schedule", d: "Topics, labs and assessments for every week of the semester.", b: `${LEARN_WEEKS} learning weeks`, h: "schedule.html" },
       { i: "chart", t: "Assessment and Outcomes", d: "How your grade is made up, and the course outcomes.", b: `${COURSE.assessment.length} parts · ${COURSE.outcomes.length} outcomes`, h: "assessment.html" },
+      { i: "team", t: "Mini Project", d: "IoT in industry: register your group, propose your title, and see the brief, requirements and rubric.", b: "15% · groups of 3 to 4", h: "project.html" },
       { i: "cam", t: "Class Moments", d: "Photos from our lectures and labs, sorted by class.", b: "Photos", h: "gallery.html" },
       { i: "flask", t: "Laboratory Experiments", d: "The lab experiments and the weeks they run in, with virtual labs to try before you come to the lab.", b: `${COURSE.labs.length} labs · ${COURSE.labs.filter((l) => l.page).length} virtual`, h: "labs.html#labs" }
     ];
@@ -576,13 +578,13 @@
         `<button class="seg ${a.kind}" style="flex:${a.pct}" data-k="${a.kind}" aria-pressed="${a.kind === sel}" aria-label="${esc(a.name)}, ${a.pct} percent">${a.pct >= 20 ? `${short[a.kind]} ` : ""}${a.pct}%</button>`
       ).join("");
       const a = parts.find((p) => p.kind === sel);
-      $("#assessDetail").innerHTML = `<strong>${esc(a.name)}, ${a.pct}%</strong><p>${esc(a.detail)}</p>`;
+      $("#assessDetail").innerHTML = `<strong>${esc(a.name)}, ${a.pct}%</strong><p>${esc(a.detail)}</p>${a.page ? `<p><a href="${esc(a.page)}">Open the ${esc(a.name.toLowerCase())} page →</a></p>` : ""}`;
     };
     bar.addEventListener("click", (e) => { const b = e.target.closest(".seg"); if (b) { sel = b.dataset.k; draw(); bar.querySelector(`[data-k="${sel}"]`).focus(); } });
     draw();
     const list = document.createElement("ul");
     list.className = "assess-list";
-    list.innerHTML = parts.map((a) => `<li><span><i class="key seg ${a.kind}" aria-hidden="true"></i>${esc(a.name)}</span><span>${a.pct}%</span></li>`).join("");
+    list.innerHTML = parts.map((a) => `<li><span><i class="key seg ${a.kind}" aria-hidden="true"></i>${a.page ? `<a href="${esc(a.page)}">${esc(a.name)}</a>` : esc(a.name)}</span><span>${a.pct}%</span></li>`).join("");
     $("#assessDetail").after(list);
 
     $("#coList").innerHTML = COURSE.outcomes.map((c) =>
