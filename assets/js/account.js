@@ -388,6 +388,10 @@
           else if (x.status === "declined") add({ t: tms(x.updatedAt), href: "attendance.html", text: `<strong>${esc(x.toName)}</strong> declined your swap for ${esc(x.labTitle)}` });
           else if (["rejected", "cancelled", "ended"].includes(x.status) && x.decidedBy) add({ t: tms(x.updatedAt), href: "attendance.html", text: `Your lecturer ${x.status === "rejected" ? "did not approve" : "cancelled"} your swap for ${esc(x.labTitle)}` });
         });
+        // Kalam Feed: new posts from Dr. Zamri (the last 30 days)
+        const kf = await db.collection("kalam").where("semester", "==", SEM).get().catch(() => ({ docs: [] }));
+        kf.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((p) => Date.now() - tms(p.at) < 30 * 86400000)
+          .forEach((p) => add({ t: tms(p.at), href: `kalam.html#kf-${p.id}`, text: `New in <strong>Kalam Feed</strong>: ${esc(p.title || String(p.body || "").slice(0, 80))}` }));
         // the mini project: invitations, the lecturer's decision, and the proposal deadline
         const pm = await db.collection("meta").doc("project").get().catch(() => null);
         if (pm && pm.exists && pm.data().released) {

@@ -318,6 +318,32 @@ service cloud.firestore {
       allow write: if isLecturer();
     }
 
+    // Kalam Feed: Dr. Zamri posts; students on the class list (and lecturers) read, reply and react. A reaction changes
+    // only the reader's own key in reacts. Lecturers delete any reply; a student deletes their own.
+    function isZamri() { return verified() && email() == 'zamrizahir@unimap.edu.my'; }
+    function kReader() { return isLecturer() || onRoster(); }
+    function kReact() {
+      let n = request.resource.data;
+      let o = resource.data;
+      return n.diff(o).affectedKeys().hasOnly(['reacts'])
+        && n.get('reacts', {}).diff(o.get('reacts', {})).affectedKeys().hasOnly([request.auth.uid])
+        && (!(request.auth.uid in n.get('reacts', {})) || n.reacts[request.auth.uid] in ['👍', '❤️', '😂', '😮', '👏']);
+    }
+    match /kalam/{pid} {
+      allow read: if kReader();
+      allow create, delete: if isZamri();
+      allow update: if isZamri() || (kReader() && kReact());
+      match /replies/{rid} {
+        allow read: if kReader();
+        allow create: if kReader() && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000
+          && request.resource.data.role == (isLecturer() ? 'lecturer' : 'student')
+          && (isLecturer() || request.resource.data.name == rosterDoc().name) && request.resource.data.reacts.size() == 0;
+        allow update: if kReader() && kReact();
+        allow delete: if isLecturer() || (signedIn() && resource.data.uid == request.auth.uid);
+      }
+    }
+
     // Lab marks (demo and report of each lab) and their weights: lecturers only. Students never read them.
     match /labmarks/{id} {
       allow read, write: if isLecturer();
