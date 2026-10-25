@@ -9,7 +9,7 @@
    Saved in this browser (and synced with the account, so a student can carry on on another device): nmk-missions
    (best result of each station), nmk-msave (a station in progress: its seed, so the same numbers come back, the
    question reached, hearts, coins, marks; "cleared" once it is won or lost), nmk-hero (the character and its hero name).
-   Also here: the splash screen (once per browser session), the Credits (About) view and the 9:16 share cards. nmk-msnd (sound), nmk-mus and nmk-musv (music on/off and volume) stay on this device. */
+   Also here: the splash screen (5 s, each time the page opens), the Credits (About) view and the 9:16 share cards. nmk-msnd (sound), nmk-mus and nmk-musv (music on/off and volume) stay on this device. */
 (function () {
   "use strict";
   const page = document.getElementById("missions");
@@ -18,11 +18,9 @@
   if (!ART) { page.innerHTML = `<p class="small-note">The game didn't load. Please reload the page.</p>`; return; }
   const reduceM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  /* ---------- the splash: once per browser session, about 1.5 s; a tap (or a key) skips it ---------- */
+  /* ---------- the splash: every time the game page opens, 5 s; a tap (or a key) skips it ---------- */
   (function splash() {
-    let seen = false;
-    try { seen = sessionStorage.getItem("nmk-lgsplash") === "1"; sessionStorage.setItem("nmk-lgsplash", "1"); } catch (e) { seen = false; }
-    if (seen || new URLSearchParams(location.search).has("nosplash")) return;
+    if (new URLSearchParams(location.search).has("nosplash")) return;
     const s = document.createElement("div");
     s.className = "lg-splash"; s.setAttribute("aria-hidden", "true");
     s.innerHTML = `<div class="lg-spin"><div class="lg-sp1">${ART.zamm(true)}</div><p class="lg-sp2">presents</p><div class="lg-sp3">${ART.logo()}</div>
@@ -30,7 +28,7 @@
     document.body.appendChild(s);
     const end = () => { if (s.classList.contains("out")) return; s.classList.add("out"); document.removeEventListener("keydown", end); setTimeout(() => s.remove(), reduceM ? 0 : 450); };
     s.addEventListener("click", end); document.addEventListener("keydown", end);
-    setTimeout(end, reduceM ? 1200 : 1700);
+    setTimeout(end, 5000);
   })();
   const $ = (s, r = page) => r.querySelector(s), $$ = (s, r = page) => [...r.querySelectorAll(s)];
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
