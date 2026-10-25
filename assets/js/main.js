@@ -251,7 +251,11 @@
     ].map(([v, k]) => `<div class="stat"><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("");
     $("#heroProg").textContent = `Offered under ${COURSE.programme}`;
     $("#heroMeta").innerHTML = `<span>Prerequisites: ${esc(COURSE.prerequisites.join(", "))}</span><span>${built} of ${COURSE.topics.length} chapters interactive</span>`;
+    const now = curWeek >= 1 && curWeek <= TOTAL_WEEKS ? COURSE.topics.filter((t) => weekNumbers(t.weeks).includes(curWeek)) : [];
+    const first = now[0] || (curWeek === 0 ? COURSE.topics[0] : null);
+    if ($("#heroBtns")) $("#heroBtns").innerHTML = `${first ? `<a class="hbtn main" href="${esc(pageOf(first))}">▶ ${curWeek === 0 ? "Start with" : "This week:"} Chapter ${first.no}</a>` : `<a class="hbtn main" href="chapters.html">Browse the chapters</a>`}<a class="hbtn alt" href="schedule.html">View the schedule</a>`;
   }
+  if ($("#weekCard")) renderWeekCard();
   if ($("#nowNote")) renderNowNote();
   if ($("#continueNote")) renderContinue();
   if ($("#scope")) renderScope();
@@ -271,17 +275,18 @@
       chart: '<path d="M5 20V11M12 20V5M19 20v-6"/><path d="M3 20h18"/>',
       flask: '<path d="M9 3h6M10 3v6l-5 8.5A2 2 0 0 0 6.7 21h10.6a2 2 0 0 0 1.7-3.5L14 9V3"/><path d="M7.5 15h9"/>',
       refs: '<path d="M6 3h12v18l-6-4-6 4z"/>',
-      cam: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'
+      cam: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+      game: '<path d="M14.5 3.5 20 9l-9.5 9.5-3 1 1-3z"/><path d="M5 19l-2 2M12.5 5.5l6 6M4 13l7 7"/>'
     };
     const built = COURSE.topics.filter((t) => t.page).length;
     const pills = `<span class="mc-pills">${COURSE.topics.map((t) => `<span class="pill${t.page ? " on" : ""}" title="Chapter ${t.no}">${t.no}</span>`).join("")}</span>`;
     const cards = [
-      { i: "book", t: "Chapters", d: "Interactive lecture notes with animations, calculators with step-by-step working, and exercises for every chapter.", b: `${COURSE.topics.length} chapters · ${built} interactive`, h: "chapters.html", extra: pills },
-      { i: "cal", t: "Weekly Schedule", d: "Topics, labs and assessments for every week of the semester.", b: `${LEARN_WEEKS} learning weeks`, h: "schedule.html" },
-      { i: "chart", t: "Assessment and Outcomes", d: "How your grade is made up, and the course outcomes.", b: `${COURSE.assessment.length} parts · ${COURSE.outcomes.length} outcomes`, h: "assessment.html" },
-      { i: "team", t: "Mini Project", d: "IoT in industry: register your group, propose your title, and see the brief, requirements and rubric.", b: "15% · groups of 3 to 4", h: "project.html" },
-      { i: "cam", t: "Class Moments", d: "Photos from our lectures and labs, sorted by class.", b: "Photos", h: "gallery.html" },
-      { i: "flask", t: "Laboratory Experiments", d: "The lab experiments and the weeks they run in, with virtual labs to try before you come to the lab.", b: `${COURSE.labs.length} labs · ${COURSE.labs.filter((l) => l.page).length} virtual`, h: "labs.html#labs" }
+      { i: "book", t: "Chapters", d: "Interactive lecture notes with animations, calculators with step-by-step working, and exercises.", b: `${built} interactive`, h: "chapters.html", extra: pills },
+      { i: "flask", t: "Labs", d: "The five lab experiments, with virtual labs to try before you come to the lab.", b: `${COURSE.labs.filter((l) => l.page).length} virtual labs`, h: "labs.html" },
+      { i: "team", t: "Mini Project", d: "IoT in industry: the guidelines, group and title submission, and progress monitoring.", b: "Groups of 3 to 4", h: "project.html" },
+      { i: "cal", t: "Schedule", d: "Topics, labs and assessments for every week of the semester.", b: `${LEARN_WEEKS} learning weeks`, h: "schedule.html" },
+      { i: "chart", t: "Assessment", d: "How your grade is made up, and the course outcomes.", b: `${COURSE.assessment.length} parts`, h: "assessment.html" },
+      { i: "game", t: "INSTRUMENTA: Legends", d: "The NMK42003 game: practise each chapter, station by station.", b: "Sign in to play", h: "missions.html" }
     ];
     $("#menuCards").innerHTML = cards.map((c) => `
       <a class="mcard${c.wide ? " wide" : ""}" href="${esc(c.h)}">
@@ -290,6 +295,29 @@
         <span class="mc-desc">${esc(c.d)}</span>${c.extra || ""}
         <span class="mc-foot"><span class="mc-badge">${esc(c.b)}</span><span class="mc-go" aria-hidden="true">→</span></span>
       </a>`).join("");
+  }
+
+  /* ---------- "This week" on the home page: the topic, what to do and what is due ---------- */
+  function renderWeekCard() {
+    const box = $("#weekCard");
+    const done = (w) => COURSE.weeks.filter((x) => x.w <= w).reduce((a, x) => a + (x.weight || 0), 0);
+    if (curWeek === 0) {
+      box.innerHTML = `<span class="wc-over">Coming soon</span><h2 class="wc-h">Week 1 begins ${esc(fmtLong(START))}</h2><p class="wc-sub">First up: Chapter 1, ${esc(COURSE.topics[0].title)}.</p>
+        <ul class="wc-list"><li><a href="${esc(pageOf(COURSE.topics[0]))}"><span aria-hidden="true">📘</span> Read Chapter 1 before the first lecture <em>Chapter</em></a></li></ul>`;
+      return;
+    }
+    if (curWeek > TOTAL_WEEKS) { box.innerHTML = `<span class="wc-over">Semester complete</span><h2 class="wc-h">All teaching and exam weeks have ended</h2><p class="wc-sub">Thank you, and all the best.</p>`; return; }
+    const w = COURSE.weeks[curWeek - 1], ts = COURSE.topics.filter((t) => weekNumbers(t.weeks).includes(curWeek)), items = [];
+    ts.forEach((t) => items.push([pageOf(t), "📘", `Read Chapter ${t.no} and try the exercises`, "Chapter", ""]));
+    (w.activities || []).filter((a) => /^Lab/.test(a)).forEach((a) => items.push(["labs.html", "🔬", `${a} this week: try its virtual lab first`, "Lab", ""]));
+    (w.assessments || []).forEach((a) => items.push([/mini project/i.test(a) ? "project.html" : "assessment.html", "📝", a, "Due", "due"]));
+    (w.notes || []).filter((n) => /mini project/i.test(n)).forEach((n) => items.push(["project.html", "👥", n, "Mini project", "due"]));
+    const other = (w.notes || []).filter((n) => !/mini project/i.test(n));
+    const pct = Math.round(done(curWeek - 1));
+    box.innerHTML = `<span class="wc-over">This week · Week ${curWeek}</span><h2 class="wc-h">${esc(w.topic)}</h2><p class="wc-sub">${esc(range(curWeek))}${other.length ? ` · ${other.map(esc).join(" · ")}` : ""}</p>
+      ${items.length ? `<ul class="wc-list">${items.map(([h, i, t, b, c]) => `<li><a href="${esc(h)}"><span aria-hidden="true">${i}</span> ${esc(t)} <em class="${c}">${esc(b)}</em></a></li>`).join("")}</ul>` : `<p class="wc-sub">No lecture topic or assessment this week.</p>`}
+      <div class="wc-bar" role="progressbar" aria-label="Assessment completed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
+      <p class="wc-foot">Week ${curWeek} of ${TOTAL_WEEKS} · ${pct}% of the assessment done · <a href="schedule.html#wk-${curWeek}">This week in the schedule →</a></p>`;
   }
 
   /* ---------- One-line "now" note and "continue" link in the semester section ---------- */

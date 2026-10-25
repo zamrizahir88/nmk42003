@@ -8,11 +8,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=2610133">
-  <link rel="stylesheet" href="assets/css/assistant.css?v=2610133">
-  <link rel="stylesheet" href="assets/css/account.css?v=2610133">
-  <link rel="stylesheet" href="assets/css/game.css?v=2610133">
-  <link rel="stylesheet" href="assets/css/gallery.css?v=2610133">
+  <link rel="stylesheet" href="assets/css/style.css?v=2610135">
+  <link rel="stylesheet" href="assets/css/assistant.css?v=2610135">
+  <link rel="stylesheet" href="assets/css/account.css?v=2610135">
+  <link rel="stylesheet" href="assets/css/game.css?v=2610135">
+  <link rel="stylesheet" href="assets/css/gallery.css?v=2610135">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0b6e6e">
   <link rel="apple-touch-icon" href="assets/img/icon-180.png">
@@ -62,14 +62,44 @@
 
   <main id="main">
     <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <p class="hero-kicker" id="heroKicker"></p>
+          <h1><span class="hero-code" id="heroCode"></span><span id="heroName"></span></h1>
+          <p class="hero-prog" id="heroProg"></p>
+          <p class="synopsis" id="synopsis"></p>
+          <p class="hero-btns" id="heroBtns"></p>
+          <dl class="stats" id="facts"></dl>
+          <p class="hero-meta" id="heroMeta"></p>
+        </div>
+        <aside class="week-card" id="weekCard" aria-label="This week"></aside>
+      </div>
+    </section>
+
+    <section class="block kalam-home" id="kalam" aria-labelledby="kalam-h">
       <div class="wrap">
-        <a class="hero-logo" href="https://www.unimap.edu.my" target="_blank" rel="noopener"><img src="assets/img/unimap-logo.png" alt="Universiti Malaysia Perlis (UniMAP)" width="640" height="299"></a>
-        <p class="hero-kicker" id="heroKicker"></p>
-        <h1><span class="hero-code" id="heroCode"></span><span id="heroName"></span></h1>
-        <p class="hero-prog" id="heroProg"></p>
-        <p class="synopsis" id="synopsis"></p>
-        <dl class="stats" id="facts"></dl>
-        <p class="hero-meta" id="heroMeta"></p>
+        <div class="block-head">
+          <div>
+            <span class="overline">For NMK42003 students</span>
+            <h2 id="kalam-h">Kalam Feed <span class="kf-new" id="kalamNew" hidden></span></h2>
+            <p>News from Dr. Zamri. Reply, ask and react with your classmates. Only signed-in NMK42003 students can see it.</p>
+          </div>
+          <a class="block-link" href="kalam.html">See all posts →</a>
+        </div>
+        <div class="kf-home" id="kalamHome"><div class="kf-teaser"><span aria-hidden="true">💬</span><div><b>Kalam Feed</b>: news and discussion for NMK42003 students. Sign in with your studentmail account to join.</div></div></div>
+      </div>
+    </section>
+
+    <section class="block alt" id="explore">
+      <div class="wrap">
+        <div class="block-head">
+          <div>
+            <span class="overline">Course</span>
+            <h2>Quick Access</h2>
+            <p>Everything for NMK42003 in one place.</p>
+          </div>
+        </div>
+        <nav class="menu-cards" id="menuCards" aria-label="Course sections"></nav>
       </div>
     </section>
 
@@ -77,6 +107,7 @@
       <div class="wrap">
         <div class="block-head">
           <div>
+            <span class="overline">People</span>
             <h2>Teaching Team</h2>
             <p>For questions about the course, contact your lecturer by email. Course announcements are posted on URLearn and the course Telegram group.</p>
           </div>
@@ -89,6 +120,7 @@
       <div class="wrap">
         <div class="block-head">
           <div>
+            <span class="overline">Semester</span>
             <h2>The Semester at a Glance</h2>
             <p>The trace climbs as each assessment is completed, from 0% in week 1 to 100% after the final exam. Tap any week to see what happens in it.</p>
           </div>
@@ -110,6 +142,7 @@
       <div class="wrap">
         <div class="block-head">
           <div>
+            <span class="overline">Progress</span>
             <h2>Your Course Journey</h2>
             <p>Every chapter and lab is a stop on the way. Solve exercises and pass the Pre-Lab Checks to earn XP, level up and collect badges. Sign in to keep your progress on every device and to appear on the progress board.</p>
           </div>
@@ -122,6 +155,7 @@
       <div class="wrap">
         <div class="block-head">
           <div>
+            <span class="overline">Class</span>
             <h2>Class Moments</h2>
             <p>The latest photos from our lectures and labs.</p>
           </div>
@@ -131,31 +165,20 @@
       </div>
     </section>
 
-    <section class="block" id="explore">
-      <div class="wrap">
-        <div class="block-head">
-          <div>
-            <h2>Explore the Course</h2>
-            <p>Everything else about NMK42003, one tap away.</p>
-          </div>
-        </div>
-        <nav class="menu-cards" id="menuCards" aria-label="Course sections"></nav>
-      </div>
-    </section>
   </main>
 
   <footer class="site-footer" id="footer"></footer>
 
-  <script src="assets/js/data.js?v=2610133"></script>
+  <script src="assets/js/data.js?v=2610135"></script>
 
-  <script src="assets/js/schedule.js?v=2610133"></script>
-  <script src="assets/js/main.js?v=2610133"></script>
+  <script src="assets/js/schedule.js?v=2610135"></script>
+  <script src="assets/js/main.js?v=2610135"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
-  <script src="assets/js/game.js?v=2610133" defer></script>
-  <script src="assets/js/account.js?v=2610133" defer></script>
-  <script src="assets/js/gallery.js?v=2610133" defer></script>
-  <script src="assets/js/assistant.js?v=2610133" defer></script>
+  <script src="assets/js/game.js?v=2610135" defer></script>
+  <script src="assets/js/account.js?v=2610135" defer></script>
+  <script src="assets/js/gallery.js?v=2610135" defer></script>
+  <script src="assets/js/assistant.js?v=2610135" defer></script>
 </body>
 </html>
