@@ -138,3 +138,32 @@ textarea.pj-in { resize: vertical; }
 @media (max-width: 560px) { .pj-time li { grid-template-columns: 1fr; gap: 2px; } }
 .pj-cols { columns: 2 280px; }
 .pj-cols li { break-inside: avoid; }
+
+/* the progress logbook */
+.pj-weeks { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 12px; }
+.pj-wk { font: inherit; font-weight: 600; display: grid; text-align: left; min-width: 96px; padding: 6px 10px; border-radius: var(--r-sm); border: 1px solid var(--rule); border-left-width: 4px; background: var(--paper); color: var(--ink); cursor: pointer; }
+.pj-wk small { font-weight: 400; font-size: .76rem; color: var(--ink-2); }
+.pj-wk[aria-pressed="true"] { outline: 2px solid var(--ink); outline-offset: 1px; }
+.pj-wk:focus-visible, .pj-cell:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.pj-wk.ok, .pj-cell.ok { border-left-color: var(--teal); }
+.pj-wk.late, .pj-cell.late { border-left-color: var(--amber); }
+.pj-wk.missing, .pj-cell.missing { border-left-color: var(--danger); }
+.pj-wk.open, .pj-cell.open { border-left-color: var(--focus); }
+.pj-wd { font-family: var(--sans); font-weight: 400; font-size: .85rem; color: var(--ink-2); }
+.pj-cmt { background: var(--teal-soft); border-left: 4px solid var(--teal); border-radius: var(--r-sm); padding: 8px 12px; margin: 8px 0; }
+.pj-cmt small { color: var(--ink-2); }
+.pj-lgrid th small { display: block; font-weight: 400; color: var(--ink-2); }
+.pj-lgrid tbody th { text-align: left; min-width: 180px; }
+.pj-lgrid tbody th span { display: block; font-weight: 400; font-size: .85rem; color: var(--ink-2); }
+.pj-cell { font: inherit; font-size: .82rem; font-weight: 600; width: 100%; min-width: 92px; padding: 6px 8px; border-radius: var(--r-sm); border: 1px solid var(--rule); border-left-width: 4px; background: var(--paper); color: var(--ink); cursor: pointer; text-align: left; }
+.pj-cell.ok { background: var(--teal-soft); } .pj-cell.late { background: var(--amber-soft); } .pj-cell.missing { background: rgba(166, 61, 47, .12); color: var(--danger); }
+.pj-cell:disabled { cursor: default; opacity: .6; }
+/* printing a logbook: only the logbook */
+#pjPrint { display: none; }
+@media print {
+  body.pj-print > *:not(#pjPrint) { display: none !important; }
+  body.pj-print #pjPrint { display: block; color: #000; font: 11pt/1.4 Arial, sans-serif; }
+  #pjPrint h1 { font-size: 16pt; margin: 0 0 6pt; } #pjPrint h2 { font-size: 12.5pt; margin: 14pt 0 4pt; border-bottom: 1px solid #999; }
+  #pjPrint .pj-dl { display: grid; grid-template-columns: 34mm 1fr; gap: 3pt 10pt; } #pjPrint dt { font-weight: 700; } #pjPrint dd { margin: 0; }
+  #pjPrint .pj-cmt { border-left: 3px solid #555; padding: 3pt 8pt; background: none; }
+}

@@ -161,26 +161,107 @@
   const secOf = (m) => { const x = mates.find((y) => String(y.m) === String(m)); return x && x.s ? SEC[x.s] : ""; };
   const hist = (g, act, note) => (g.history || []).concat([{ at: Date.now(), by: isLec ? "Lecturer" : me.n, act, note: note || "", title: g.proposal ? g.proposal.title : "" }]).slice(-60);
 
+  /* ---------- the weekly progress logbook (weeks 10 to 14): one entry per group per week, plog/{group}_w{week} ---------- */
+  const LOG_WEEKS = [10, 11, 12, 13, 14];
+  const DAY0 = Date.parse(`${COURSE.semesterStart}T00:00:00+08:00`);
+  const nowMs = () => { const q = new URLSearchParams(location.search).get("today"); return q && /^\d{4}-\d{2}-\d{2}$/.test(q) ? Date.parse(`${q}T12:00:00+08:00`) : Date.now(); };
+  const weekStart = (w) => DAY0 + 7 * (w - 1) * 86400000, weekEnd = (w) => weekStart(w + 1) - 1000;   // Monday 00:00 to Sunday 23:59:59
+  const curWeek = () => Math.floor((nowMs() - DAY0) / 604800000) + 1;
+  // on time (written by Sunday of its week), late, missing (the week is over), this week, or not open yet
+  const logState = (e, w) => (e ? (ms(e.at) <= weekEnd(w) ? "ok" : "late") : nowMs() > weekEnd(w) ? "missing" : nowMs() >= weekStart(w) ? "open" : "soon");
+  const LOGS = { ok: "✓ On time", late: "Written late", missing: "Missing", open: "This week", soon: "Not open yet" };
+  const dayOf = (t) => { const d = new Date(t + 8 * 3600000); return `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getUTCDay()]} ${d.getUTCDate()} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getUTCMonth()]}`; };
+  function logEntry(e, g, w, names) {
+    const nm = names || ((m) => m);
+    return `<dl class="pj-dl"><dt>What we did</dt><dd>${esc(e.done)}</dd>
+      <dt>Who did what</dt><dd><ul>${g.memberM.map((m) => `<li><strong>${esc(nm(m))}</strong>: ${esc((e.members || {})[m] || "–")}</li>`).join("")}</ul></dd>
+      <dt>Problems</dt><dd>${esc(e.problems || "–")}</dd><dt>Plan for next week</dt><dd>${esc(e.next || "–")}</dd></dl>
+      <p class="small-note">Written by ${esc(e.byName || e.by)}, ${esc(when(e.at))}${logState(e, w) === "late" ? " (late)" : ""}${e.editedAt ? ` · edited ${esc(when(e.editedAt))}${e.editedByName ? ` by ${esc(e.editedByName)}` : ""}` : ""}</p>
+      ${e.comment && e.comment.text ? `<div class="pj-cmt"><strong>Lecturer's comment:</strong> ${esc(e.comment.text)} <small>${esc(when(e.comment.at))}</small></div>` : ""}`;
+  }
+  // print the whole logbook, or save it as a PDF, for the report
+  function printLog(g, logs, names) {
+    const old = document.getElementById("pjPrint"); if (old) old.remove();
+    const box = document.createElement("div");
+    box.id = "pjPrint";
+    box.innerHTML = `<h1>Mini Project Progress Logbook</h1><p><strong>${esc(gname(g))}</strong>: ${esc((g.proposal && g.proposal.title) || "")}<br>Members: ${g.memberM.map((m) => esc(names(m))).join(", ")}<br>NMK42003 Instrumentation, ${esc(SEM)}</p>
+      ${LOG_WEEKS.map((w) => `<h2>Week ${w} <small>(${dayOf(weekStart(w))} to ${dayOf(weekEnd(w))})</small></h2>${logs[w] ? logEntry(logs[w], g, w, names) : "<p>No entry.</p>"}`).join("")}`;
+    document.body.appendChild(box); document.body.classList.add("pj-print");
+    const done = () => { box.remove(); document.body.classList.remove("pj-print"); removeEventListener("afterprint", done); };
+    addEventListener("afterprint", done);
+    window.print();
+  }
+
   /* =====================================================================
      STUDENTS
      ===================================================================== */
   function student() {
     host.innerHTML = `<div class="pj-tabs" role="tablist"><button type="button" role="tab" data-tab="mine" aria-selected="true">My Group</button><button type="button" role="tab" data-tab="titles" aria-selected="false">Approved Titles</button></div>
-      <div id="pjView"><p class="small-note">Loading…</p></div>`;
+      <div id="pjView"><p class="small-note">Loading…</p></div><div id="pjLog"></div>`;
     let tab = (history.state && history.state.ptab) || "mine", mineG = null, invites = [], claims = {}, titles = [], editing = false, draft = null, shown = "";
+    let logs = {}, logSubs = [], logGid = null, logWeek = null, logEditing = false;
     $$("[data-tab]").forEach((b) => b.addEventListener("click", () => { tab = b.dataset.tab; if (window.NMKBack) NMKBack.view({ ptab: tab }); paint(); }));
     if (window.NMKBack) NMKBack.onView((s) => { tab = s.ptab || "mine"; paint(); });
     function fail(e) { $("#pjView").innerHTML = `<p class="small-note">Could not load your group (${esc(e.code || e)}). Reload the page to try again.</p>`; }
     function paint() {
       $$("[data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
       const v = $("#pjView");
-      if (tab === "titles") { v.innerHTML = titleList(titles, false); return; }
+      if (tab === "titles") { v.innerHTML = titleList(titles, false); paintLog(); return; }
       // keep a half-typed proposal: only redraw the form when the group itself changed
       const sig = JSON.stringify([mineG && [mineG.id, mineG.status, mineG.memberM, mineG.inviteM, mineG.declinedM, mineG.leader, mineG.review, mineG.version, mineG.no, editing ? 0 : mineG.proposal], invites.map((g) => [g.id, g.memberM, g.inviteM]), editing]);
       if (editing && sig === shown && $("#pjForm")) { checks(); return; }
       shown = sig;
       v.innerHTML = mineG ? groupView(mineG) : noGroup();
-      wire();
+      wire(); paintLog();
+    }
+    /* the logbook card, under the group */
+    function watchLogs() {
+      const id = mineG ? mineG.id : null;
+      if (id === logGid) return;
+      logSubs.splice(0).forEach((f) => f()); logs = {}; logGid = id; logEditing = false; logWeek = null;
+      if (!id) return;
+      LOG_WEEKS.forEach((w) => logSubs.push(db.collection("plog").doc(`${id}_w${w}`).onSnapshot((d) => { if (d.exists) logs[w] = d.data(); else delete logs[w]; paintLog(); }, () => {})));
+    }
+    unsubs.push(() => logSubs.splice(0).forEach((f) => f()));
+    function paintLog(force) {
+      const box = $("#pjLog");
+      if (!box) return;
+      if (!mineG || tab !== "mine") { box.innerHTML = ""; return; }
+      if (logEditing && !force) return;
+      const g = mineG, cw = curWeek();
+      if (cw < LOG_WEEKS[0]) { box.innerHTML = `<div class="pj-card"><h2 class="h3">Progress Logbook</h2><p>Your group's weekly logbook opens in week ${LOG_WEEKS[0]} (${dayOf(weekStart(LOG_WEEKS[0]))}). Each week, one of you writes what the group did, who did what, the problems you met and the plan for next week. Each entry is due on Sunday at 11:59 PM.</p></div>`; return; }
+      const sel = logWeek || Math.min(LOG_WEEKS[LOG_WEEKS.length - 1], Math.max(LOG_WEEKS[0], cw)), e = logs[sel], st = logState(e, sel);
+      const chips = LOG_WEEKS.map((w) => { const s2 = logState(logs[w], w); return `<button type="button" class="pj-wk ${s2}" data-lw="${w}" aria-pressed="${w === sel}">Week ${w}<small>${LOGS[s2]}</small></button>`; }).join("");
+      let body;
+      if (st === "soon") body = `<p class="small-note">Week ${sel} opens on ${dayOf(weekStart(sel))}.</p>`;
+      else if (e && !logEditing) body = `<h3 class="h3">Week ${sel} <small class="pj-wd">${dayOf(weekStart(sel))} to ${dayOf(weekEnd(sel))}</small></h3>${logEntry(e, g, sel, nameOf)}<p class="pj-row"><button type="button" class="btn ghost small" data-ledit>Edit this entry</button></p>`;
+      else body = `<form id="pjLogF" novalidate><h3 class="h3">Week ${sel} <small class="pj-wd">${dayOf(weekStart(sel))} to ${dayOf(weekEnd(sel))}${st === "missing" ? " · now late" : ""}</small></h3>
+        <label class="pj-l" for="pjLd">What the group did this week</label><textarea id="pjLd" class="pj-in" rows="4" name="done">${esc(e ? e.done : "")}</textarea>
+        <fieldset class="pj-fs"><legend class="pj-l">Who did what</legend>${g.memberM.map((m) => `<label class="pj-part"><span>${esc(nameOf(m))}</span><input class="pj-in" name="m_${esc(m)}" value="${esc(e ? (e.members || {})[m] || "" : "")}"></label>`).join("")}</fieldset>
+        <label class="pj-l" for="pjLp">Problems we met <span>(and how we solved them, or what we still need)</span></label><textarea id="pjLp" class="pj-in" rows="3" name="problems">${esc(e ? e.problems : "")}</textarea>
+        <label class="pj-l" for="pjLn">Plan for next week</label><textarea id="pjLn" class="pj-in" rows="3" name="next">${esc(e ? e.next : "")}</textarea>
+        <div class="pj-row"><button class="btn">Save the entry</button>${e ? `<button type="button" class="btn ghost" data-lcancel>Cancel</button>` : ""}</div><p class="pj-err" id="pjLerr" role="alert"></p></form>`;
+      box.innerHTML = `<div class="pj-card pj-log"><div class="pj-gh"><h2 class="h3">Progress Logbook</h2><button type="button" class="btn ghost small" data-lprint>🖨 Print or save as PDF</button></div>
+        <p class="small-note">One entry per group each week, due on Sunday at 11:59 PM. Any member can write or edit it; the logbook shows who wrote it.</p><div class="pj-weeks">${chips}</div><div class="pj-lw">${body}</div></div>`;
+      $$("[data-lw]", box).forEach((b) => b.addEventListener("click", () => { if (logEditing && !confirm("Leave this entry without saving?")) return; logWeek = +b.dataset.lw; logEditing = false; paintLog(true); }));
+      $("[data-lprint]", box).addEventListener("click", () => printLog(g, logs, nameOf));
+      const ed = $("[data-ledit]", box); if (ed) ed.addEventListener("click", () => { logEditing = true; paintLog(true); });
+      const cn = $("[data-lcancel]", box); if (cn) cn.addEventListener("click", () => { logEditing = false; paintLog(true); });
+      const f = $("#pjLogF", box);
+      if (!f) return;
+      f.addEventListener("input", () => { logEditing = true; });
+      f.addEventListener("submit", (ev) => {
+        ev.preventDefault();
+        const val = (n) => (f.elements[n] ? f.elements[n].value.trim() : ""), members = {};
+        g.memberM.forEach((m) => { members[m] = val(`m_${m}`); });
+        if (val("done").length < 15) { $("#pjLerr", f).textContent = "Write what the group did this week (at least a sentence)."; return; }
+        if (val("next").length < 5) { $("#pjLerr", f).textContent = "Write the plan for next week."; return; }
+        const ref = db.collection("plog").doc(`${g.id}_w${sel}`), d = { done: val("done"), members, problems: val("problems"), next: val("next") };
+        const job = e ? ref.update(Object.assign(d, { editedAt: FV.serverTimestamp(), editedBy: me.m, editedByName: me.n }))
+          : ref.set(Object.assign(d, { semester: SEM, gid: g.id, week: sel, by: me.m, byName: me.n, at: FV.serverTimestamp() }));
+        $("button.btn", f).disabled = true;
+        job.then(() => { logEditing = false; paintLog(true); }).catch((err) => { $("button.btn", f).disabled = false; $("#pjLerr", f).textContent = `Not saved (${err.code || err}).`; });
+      });
     }
     /* no group yet: invitations, or start one */
     function noGroup() {
@@ -394,7 +475,7 @@
     }
     const mine = db.collection("pgroups").where("memberM", "array-contains", me.m), inv = db.collection("pgroups").where("inviteM", "array-contains", me.m);
     const sems = (q) => q.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((g) => g.semester === SEM);
-    unsubs.push(mine.onSnapshot((q) => { mineG = sems(q)[0] || null; if (!editing) draft = null; paint(); }, (e) => fail(e)));
+    unsubs.push(mine.onSnapshot((q) => { mineG = sems(q)[0] || null; if (!editing) draft = null; watchLogs(); paint(); }, (e) => fail(e)));
     unsubs.push(inv.onSnapshot((q) => { invites = sems(q); paint(); }, () => {}));
     unsubs.push(db.collection("pmember").where("semester", "==", SEM).onSnapshot((q) => { claims = {}; q.docs.forEach((d) => { claims[d.data().m] = d.data().gid; }); paint(); }, () => {}));
     unsubs.push(db.collection("ptitles").where("semester", "==", SEM).onSnapshot((q) => { titles = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).sort((a, b) => a.no - b.no); paint(); }, () => {}));
@@ -427,10 +508,10 @@
      LECTURERS
      ===================================================================== */
   function lecturer() {
-    host.innerHTML = `<div class="pj-tabs" role="tablist"><button type="button" role="tab" data-tab="groups" aria-selected="true">Groups</button><button type="button" role="tab" data-tab="clash" aria-selected="false">Possible Clashes</button>
+    host.innerHTML = `<div class="pj-tabs" role="tablist"><button type="button" role="tab" data-tab="groups" aria-selected="true">Groups</button><button type="button" role="tab" data-tab="clash" aria-selected="false">Possible Clashes</button><button type="button" role="tab" data-tab="log" aria-selected="false">Logbook</button>
       <button type="button" role="tab" data-tab="nogroup" aria-selected="false">Not in a Group</button><button type="button" role="tab" data-tab="titles" aria-selected="false">Approved Titles</button></div>
       <div class="pj-review" id="pjRev" hidden></div><div id="pjView"><p class="small-note">Loading…</p></div>`;
-    let tab = (history.state && history.state.ptab) || "groups", groups = [], roster = [], claims = {}, titles = [], filter = "all", openId = null, layer = null;
+    let tab = (history.state && history.state.ptab) || "groups", groups = [], roster = [], claims = {}, titles = [], filter = "all", openId = null, layer = null, logsAll = {};
     $$("[data-tab]").forEach((b) => b.addEventListener("click", () => { tab = b.dataset.tab; closeRev(); if (window.NMKBack) NMKBack.view({ ptab: tab }); paint(); }));
     if (window.NMKBack) NMKBack.onView((s) => { tab = s.ptab || "groups"; paint(); });
     const N = () => roster.length, threesAllowed = () => { const n = N(); return n ? Math.max(0, MAX * Math.ceil(n / MAX) - n) : 0; };
@@ -450,6 +531,16 @@
       $$("[data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
       const v = $("#pjView");
       if (tab === "titles") { v.innerHTML = titleList(titles, true); return; }
+      if (tab === "log") {
+        const gs = groups.filter((g) => g.memberM.length).sort((a, b) => (a.no || 99) - (b.no || 99));
+        const count = (w) => gs.filter((g) => (logsAll[g.id] || {})[w]).length;
+        v.innerHTML = `<p class="small-note">One entry per group each week (weeks ${LOG_WEEKS[0]} to ${LOG_WEEKS[LOG_WEEKS.length - 1]}), due on Sunday at 11:59 PM. Green: on time · amber: written late · red: missing after the week ended. Tap a cell to read the entry and comment on it.</p>
+          ${gs.length ? `<div class="adm-scroll"><table class="adm pj-lgrid"><thead><tr><th scope="col">Group</th>${LOG_WEEKS.map((w) => `<th scope="col">Week ${w}<small>${count(w)}/${gs.length} written</small></th>`).join("")}</tr></thead><tbody>
+            ${gs.map((g) => `<tr><th scope="row">${g.no ? esc(gtag(g.no)) : "–"} <span>${esc((g.proposal && g.proposal.title) || g.memberM.map(nameOf).join(", "))}</span></th>${LOG_WEEKS.map((w) => { const e = (logsAll[g.id] || {})[w], st = logState(e, w);
+              return `<td><button type="button" class="pj-cell ${st}" data-lcell="${g.id}|${w}"${!e && st === "soon" ? " disabled" : ""}>${LOGS[st]}${e && e.comment && e.comment.text ? " 💬" : ""}</button></td>`; }).join("")}</tr>`).join("")}</tbody></table></div>` : `<p class="pj-empty">No groups yet.</p>`}`;
+        $$("[data-lcell]", v).forEach((b) => b.addEventListener("click", () => { const [gid, w] = b.dataset.lcell.split("|"); logPanel(gid, +w); }));
+        return;
+      }
       if (tab === "nogroup") {
         const free = roster.filter((r) => !claims[String(r.matric)]).sort((a, b) => (a.name < b.name ? -1 : 1));
         v.innerHTML = `<p class="small-note">${free.length} of ${N()} students are not in a group yet. To place one, open a group and use “Add a student”.</p>
@@ -551,6 +642,22 @@
         ref.update({ status: "amend", review: { note, at: Date.now(), by: A.state.user.email }, updatedAt: FV.serverTimestamp(), history: hist(g, "asked for an amendment", note) }).catch((e2) => err(`Could not send (${e2.code || e2}).`));
       });
     }
+    /* one logbook entry, with the lecturer's comment */
+    function logPanel(gid, w) {
+      const g = groups.find((x) => x.id === gid), e = (logsAll[gid] || {})[w];
+      if (!g) return;
+      openId = null;
+      const r = panel(`<h2 class="h3">${esc(gname(g))}: Week ${w} <small class="pj-wd">${dayOf(weekStart(w))} to ${dayOf(weekEnd(w))}</small></h2><p class="small-note">${esc((g.proposal && g.proposal.title) || "")}</p>
+        ${e ? `${logEntry(e, g, w, nameOf)}<label class="pj-l" for="pjLc">Your comment to the group</label><textarea id="pjLc" class="pj-in" rows="3">${esc((e.comment && e.comment.text) || "")}</textarea>
+          <div class="pj-row"><button type="button" class="btn" data-lsave>Save the comment</button><span class="small-note" id="pjLcMsg" aria-live="polite"></span></div>` : `<p class="pj-warn">No entry for this week${nowMs() > weekEnd(w) ? ": it is missing." : " yet."}</p>`}
+        <p class="pj-row"><button type="button" class="btn ghost small" data-lprint2>🖨 Print this group's logbook</button></p>`);
+      $("[data-lprint2]", r).addEventListener("click", () => printLog(g, logsAll[gid] || {}, nameOf));
+      const sv = $("[data-lsave]", r);
+      if (sv) sv.addEventListener("click", () => {
+        const text = $("#pjLc", r).value.trim();
+        db.collection("plog").doc(`${gid}_w${w}`).update({ comment: { text, by: A.state.user.email, at: Date.now() } }).then(() => { $("#pjLcMsg", r).textContent = text ? "Saved. The group sees it under this week." : "Comment removed."; }).catch((err) => { $("#pjLcMsg", r).textContent = `Not saved (${err.code || err})`; });
+      });
+    }
     /* two proposals side by side, with the AI's second opinion */
     function compare(aId, bId) {
       const a = groups.find((x) => x.id === aId), b = groups.find((x) => x.id === bId);
@@ -583,6 +690,7 @@
     unsubs.push(db.collection("pgroups").where("semester", "==", SEM).onSnapshot((q) => { groups = q.docs.map((d) => Object.assign({ id: d.id }, d.data())); paint(); if (openId) review(openId, true); }, (e) => { $("#pjView").innerHTML = `<p class="small-note">Could not load the groups (${esc(e.code || e)}). If this says permission-denied, publish the latest firebase/firestore.rules.</p>`; }));
     unsubs.push(db.collection("pmember").where("semester", "==", SEM).onSnapshot((q) => { claims = {}; q.docs.forEach((d) => { claims[d.data().m] = d.data().gid; }); paint(); }, () => {}));
     unsubs.push(db.collection("ptitles").where("semester", "==", SEM).onSnapshot((q) => { titles = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).sort((a, b) => a.no - b.no); paint(); }, () => {}));
+    unsubs.push(db.collection("plog").where("semester", "==", SEM).onSnapshot((q) => { logsAll = {}; q.docs.forEach((d) => { const x = d.data(); (logsAll[x.gid] = logsAll[x.gid] || {})[x.week] = x; }); if (tab === "log" && !$("#pjLc")) paint(); }, () => {}));
   }
 
   /* ---------- the AI's second opinion (through the Ask Dr. Zamri connection) ---------- */

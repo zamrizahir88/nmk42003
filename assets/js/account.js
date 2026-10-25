@@ -386,6 +386,12 @@
           if (!g) mine(pi).filter((x) => x.status !== "approved").forEach((x) => add({ todo: true, t: tms(x.updatedAt), href: "project.html", text: `You are invited to join a mini project group${x.proposal && x.proposal.title ? `: <strong>${esc(x.proposal.title)}</strong>` : ""}` }));
           if (g && g.status === "amend") add({ todo: true, t: (g.review && g.review.at) || tms(g.updatedAt), href: "project.html", text: `Your lecturer asks for an <strong>amendment</strong> to your mini project proposal${g.review && g.review.note ? `: “${esc(g.review.note)}”` : ""}` });
           if (g && g.status === "approved") add({ t: tms(g.approvedAt), href: "project.html", text: `Your mini project title is <strong>approved</strong>: Group ${String(g.no).padStart(2, "0")}, ${esc(g.proposal.title)}` });
+          if (g) {   // the weekly logbook (weeks 10 to 14): this week's entry, and the lecturer's comments
+            const day0 = Date.parse(`${COURSE.semesterStart}T00:00:00+08:00`), cw = Math.floor((Date.now() - day0) / 604800000) + 1;
+            const lg = await Promise.all([10, 11, 12, 13, 14].map((w) => db.collection("plog").doc(`${g.id}_w${w}`).get().then((d) => (d.exists ? d.data() : null)).catch(() => null)));
+            if (cw >= 10 && cw <= 14 && !lg[cw - 10]) add({ todo: true, t: day0 + 7 * (cw - 1) * 86400000, href: "project.html", text: `Write your group's mini project logbook entry for <strong>week ${cw}</strong> by Sunday, 11:59 PM` });
+            lg.filter((x) => x && x.comment && x.comment.text).forEach((x) => add({ t: x.comment.at, href: "project.html", text: `Your lecturer commented on your logbook, week ${x.week}: “${esc(x.comment.text)}”` }));
+          }
           if ((!g || g.status === "forming") && due && Date.now() < due) add({ todo: true, t: tms(pm.data().updatedAt) || Date.now(), href: "project.html", text: `${g ? "Submit your mini project title proposal" : "Join or create a mini project group"} by <strong>${noteDate(due)}</strong>` });
         }
         // attendance warnings emailed to me and my RPS

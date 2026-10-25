@@ -284,6 +284,17 @@ service cloud.firestore {
       allow update: if isLecturer();
       allow delete: if isLecturer() || (onRoster() && pjFreed(resource.data));
     }
+    // The weekly progress logbook: plog/{group}_w{week}, weeks 10 to 14. Members of the group write it; only
+    // lecturers add a comment. The first save time (at) is kept, so the lecturers see whether it was on time.
+    function pjMemberOf(gid) { return onRoster() && myM() in get(/databases/$(database)/documents/pgroups/$(gid)).data.memberM; }
+    match /plog/{id} {
+      allow read: if isLecturer() || pjMemberOf(resource.data.gid);
+      allow create: if pjMemberOf(request.resource.data.gid) && id == request.resource.data.gid + '_w' + string(request.resource.data.week)
+        && request.resource.data.week >= 10 && request.resource.data.week <= 14 && !('comment' in request.resource.data);
+      allow update: if isLecturer() || (pjMemberOf(resource.data.gid)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['gid', 'week', 'semester', 'comment', 'at', 'by', 'byName']));
+      allow delete: if isLecturer();
+    }
     // Approved titles, for the whole class (written by lecturers when they approve)
     match /ptitles/{gid} {
       allow read: if isLecturer() || onRoster() || approved();
