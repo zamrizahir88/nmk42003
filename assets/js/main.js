@@ -6,6 +6,8 @@
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const DAY = 86400000;
   const TOTAL_WEEKS = COURSE.weeks.length;
+  // learning weeks only: the mid-term break, study week and exam weeks are not counted
+  const LEARN_WEEKS = COURSE.weeks.filter((w) => !(w.tags || []).some((t) => ["break", "study", "exam"].includes(t))).length;
 
   /* ---------- The browser's Back button ----------
      A link to a part of the same page scrolls there without adding a step to the history, so Back leaves the page.
@@ -231,7 +233,7 @@
     $("#synopsis").textContent = COURSE.synopsis;
     const built = COURSE.topics.filter((t) => t.page).length;
     $("#facts").innerHTML = [
-      [COURSE.credits, "credits"], [COURSE.topics.length, "chapters"], [TOTAL_WEEKS, "weeks"], [COURSE.mode, "delivery"]
+      [COURSE.credits, "credits"], [COURSE.topics.length, "chapters"], [LEARN_WEEKS, "learning weeks"], [COURSE.mode, "delivery"]
     ].map(([v, k]) => `<div class="stat"><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("");
     $("#heroProg").textContent = `Offered under ${COURSE.programme}`;
     $("#heroMeta").innerHTML = `<span>Prerequisites: ${esc(COURSE.prerequisites.join(", "))}</span><span>${built} of ${COURSE.topics.length} chapters interactive</span>`;
@@ -260,7 +262,7 @@
     const pills = `<span class="mc-pills">${COURSE.topics.map((t) => `<span class="pill${t.page ? " on" : ""}" title="Chapter ${t.no}">${t.no}</span>`).join("")}</span>`;
     const cards = [
       { i: "book", t: "Chapters", d: "Interactive lecture notes with animations, calculators with step-by-step working, and exercises for every chapter.", b: `${COURSE.topics.length} chapters · ${built} interactive`, h: "chapters.html", extra: pills },
-      { i: "cal", t: "Weekly Schedule", d: "Topics, labs and assessments for every week of the semester.", b: `${TOTAL_WEEKS} weeks`, h: "schedule.html" },
+      { i: "cal", t: "Weekly Schedule", d: "Topics, labs and assessments for every week of the semester.", b: `${LEARN_WEEKS} learning weeks`, h: "schedule.html" },
       { i: "chart", t: "Assessment and Outcomes", d: "How your grade is made up, and the course outcomes.", b: `${COURSE.assessment.length} parts · ${COURSE.outcomes.length} outcomes`, h: "assessment.html" },
       { i: "cam", t: "Class Moments", d: "Photos from our lectures and labs, sorted by class.", b: "Photos", h: "gallery.html" },
       { i: "flask", t: "Laboratory Experiments", d: "The lab experiments and the weeks they run in, with virtual labs to try before you come to the lab.", b: `${COURSE.labs.length} labs · ${COURSE.labs.filter((l) => l.page).length} virtual`, h: "labs.html#labs" }
