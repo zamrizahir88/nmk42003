@@ -1,5 +1,5 @@
 /* NMK42003 attendance warnings: the Warnings tab of the lecturer attendance page (attendance.js calls NMKWarnings.draw).
-   The lecturer's Apps Script (apps-script/warnings.gs, every 5 minutes) works out who is due and writes it to Firestore
+   The lecturer's Apps Script (apps-script/warnings.gs, a full check every hour, or within 5 minutes after Send / Mark) works out who is due and writes it to Firestore
    warnings/{semester}_{email}: the absence counts, the levels already emailed, the emails due (with their text, for
    Preview) and the history. In Manual mode (the default) nothing is sent until the lecturer presses Send (the tab writes
    the due keys to "go"; "Mark as sent" writes them to "skip"); in Automatic mode the script sends at its next check.
@@ -31,7 +31,7 @@
       <div class="at-card wn-set"><h3>How Warnings Are Sent</h3>
         <div class="at-fs at-radios" role="radiogroup" aria-label="Sending mode">
           <label><input type="radio" name="wnmode" value="manual"${auto ? "" : " checked"}><span><strong>Manual.</strong> Due emails wait below until you send them.</span></label>
-          <label><input type="radio" name="wnmode" value="auto"${auto ? " checked" : ""}><span><strong>Automatic.</strong> Due emails go out at the next check, within 5 minutes.</span></label></div>
+          <label><input type="radio" name="wnmode" value="auto"${auto ? " checked" : ""}><span><strong>Automatic.</strong> Due emails go out at the script's hourly check.</span></label></div>
         <p class="small-note">${last ? `Your script last checked ${C.fmtStamp(meta.lastRun)}${meta.lastSent ? ` and sent ${meta.lastSent} email${meta.lastSent === 1 ? "" : "s"}` : ""}.` : `Your script hasn't checked yet. Set it up once with the steps at the top of <a href="apps-script/warnings.gs" target="_blank" rel="noopener">apps-script/warnings.gs</a>.`}
           ${meta.lastError ? `<br><span class="at-warn">Last error: ${esc(meta.lastError)}</span>` : ""}</p>
         <div class="acc-row"><button type="button" class="btn ghost small" data-wtest>Send a test to me</button>
@@ -79,6 +79,7 @@
     try {
       const b = C.db.batch();
       list.forEach((w) => b.update(C.db.collection("warnings").doc(w.id), { [field]: w.due.map((i) => i.key) }));
+      b.set(C.db.collection("meta").doc("warnings"), { poke: C.FV.serverTimestamp() }, { merge: true });   // the script's next run acts on it
       await b.commit();
       st.sel.clear();
       st.msg = field === "go" ? "Queued: your script sends them within 5 minutes." : "Marked: your script records them at its next check (within 5 minutes).";
