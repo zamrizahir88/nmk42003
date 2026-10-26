@@ -235,6 +235,17 @@
 .bc-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
 @media (max-width: 900px) { .bc-grid { grid-template-columns: minmax(0, 1fr); } }
 .bc-grid > div { min-width: 0; }
+/* real block pictures exported from TUNIOT and App Inventor: always on white, as in the editors; tap for full size */
+.bc-grid:has(.bk-shot) { grid-template-columns: minmax(0, 1fr); }
+.bk-shot { margin: 0; display: grid; gap: 8px; justify-items: start; min-width: 0; }
+.bk-shot-in { display: block; max-width: 100%; box-sizing: border-box; background: #fff; border: 1px solid var(--rule); border-radius: var(--r-md); padding: 10px; cursor: zoom-in; }
+.bk-shot-in:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.bk-shot img { display: block; max-width: 100%; height: auto; }
+.bk-shot figcaption { font-size: .9rem; line-height: 1.55; color: var(--ink-2); max-width: 75ch; }
+.bk-shot figcaption p { margin: 0 0 6px; }
+.bk-shot figcaption .what { margin: 0 0 6px; }
+.bk-shot figcaption code { overflow-wrap: anywhere; }
+.bk-shot-in.pulse { animation: pulse 1s ease-out; }
 .bc-grid .code { margin-top: 0; }
 .bc-grid .code pre { max-height: 520px; }
 .what { color: var(--ink-2); max-width: var(--measure); padding-left: 1.3em; margin: 14px 0 0; }

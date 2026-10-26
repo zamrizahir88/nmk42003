@@ -7,7 +7,8 @@
   "use strict";
 
   const { esc, num, step, stepsHtml, reduceMotion, store, chips, wireChips, codeBlock, fold, player, poly, axes, svg, dot } = Lab;
-  const { $, T, sleep, clamp, every, W_, pinXY, board, serialBox, phoneFrame, bf, bs, bn, inl, bk, ws, HEAD } = LabKit;
+  const { $, T, sleep, clamp, every, W_, pinXY, board, serialBox, phoneFrame, shot, SER, where, HEAD } = LabKit;
+  const BIMG = "assets/img/lab-2/blocks/";
 
   const IP = "192.168.43.45", MAC = "08:3A:F2:6C:1D:94";
   const f1 = (x) => x.toFixed(1), f2 = (x) => x.toFixed(2);
@@ -77,7 +78,7 @@
   const setMc = (v) => { MC = v; store.set(MC_KEY, v); mcListeners.forEach((f) => f()); };
   // The angle the student's program would show for a count (their m and c, or the simulation's line until then)
   const shown = (count) => (MC ? MC.m * count + MC.c : BOOK.f(count));
-  const eqC = (v) => (v ? `(${cnum(v.m)} * ADC) ${v.c < 0 ? "-" : "+"} ${cnum(Math.abs(v.c), 4)}` : "(m * ADC) + c");
+  const eqT = (v) => (v ? `${cnum(v.m)} * ADC + ${cnum(v.c, 4)}` : "m * ADC + c");   // as TUNIOT writes it
   const eqText = (v) => `Angle = ${num(v.m, 5)} × ADC ${v.c < 0 ? "−" : "+"} ${num(Math.abs(v.c), 4)}`;
 
   /* =====================================================================
@@ -239,8 +240,7 @@
     const o = el.querySelector(".serial-o"), lines = [];
     return { add(t) { lines.push(t); if (lines.length > max) lines.shift(); o.textContent = lines.join("\n") + "\n"; o.scrollTop = o.scrollHeight; }, clear() { lines.length = 0; o.textContent = ""; } };
   }
-  const blocksAndCode = (blocks, code, file, label) => `<div class="bc-grid"><div>${ws(blocks, label)}</div><div>${codeBlock(code, file)}</div></div>
-    <p class="small-note">TUNIOT may name a few blocks slightly differently. What matters is that your Arduino code does the same.</p>`;
+  const blocksAndCode = (pic, code, file) => `<div class="bc-grid"><div>${pic}</div><div>${codeBlock(code, file)}</div></div>`;
 
   /* =====================================================================
      BEFORE YOU START
@@ -513,35 +513,35 @@
   /* =====================================================================
      LESSON 3: read the ADC count
      ===================================================================== */
-  const readBlocks = () =>
-    bk("root", "Setup", bk("var", `Declare ${bf("ADC")} as long Value ${bn(0)}`) + bk("print", `Serial begin baudrate ${bn(115200)}`)) +
-    bk("root", "Main loop",
-      bk("var", `set ${bf("ADC")} to ${inl("pin", `Analog read PIN# ${bf("VP")}`)}`) +
-      bk("print", `Print on new line ${inl("var", bf("ADC"))}`) +
-      bk("delay", `Delay Ms ${bn(500)}`));
+  const readShot = () => shot(BIMG + "tuniot-adc.png", 353, 232, "TUNIOT blocks: read the ADC count and print it",
+    SER + where(`<em>Various</em> (Arduino Code, Delay Ms), <em>Variables</em> (Declare, set), <em>IN/OUT › Analog</em> (AnalogRead PIN#: choose <strong>D36</strong>, which is the VP pin), <em>Serial</em> (Print on new line).`));
   const readCode = () => `${HEAD}
-long ADC;
 
+long  ADC;
 void setup()
 {
 ADC = 0;
-Serial.begin(115200);
+Serial.begin(9600);
+
+  Serial.begin(115200);
+
 }
+
 
 void loop()
 {
 
-    ADC = analogRead(36);          // VP is GPIO36: gives 0 to 4095
+    ADC = analogRead(36);
     Serial.println(ADC);
     delay(500);
 
 }`;
   function mountReadBlocks(el) {
-    el.innerHTML = blocksAndCode(readBlocks(), readCode(), "read_adc.ino (from TUNIOT)", "TUNIOT blocks: read the ADC count and print it") +
+    el.innerHTML = blocksAndCode(readShot(), readCode(), "read_adc.ino (from TUNIOT)") +
       `<ol class="what">
+        <li><strong>Arduino Code: Serial.begin(115200);</strong> Opens the link to the Serial Monitor at 115200. TUNIOT also writes <code>Serial.begin(9600);</code> by itself just before it: the line after it wins. Set the Serial Monitor to 115200 baud.</li>
         <li><strong>Declare ADC as long.</strong> A whole-number variable to hold the count.</li>
-        <li><strong>Serial begin 115200.</strong> Opens the link to the Serial Monitor. Set the Serial Monitor to the same baud rate.</li>
-        <li><strong>set ADC to Analog read VP.</strong> Measures the voltage on VP (GPIO36) and stores the count, 0 to 4095.</li>
+        <li><strong>set ADC to AnalogRead PIN# D36.</strong> Measures the voltage on VP (D36 is GPIO36, the pin marked VP) and stores the count, 0 to 4095.</li>
         <li><strong>Print on new line, then Delay 500 ms.</strong> Prints the count twice a second, slowly enough to read.</li>
       </ol>`;
   }
@@ -665,30 +665,29 @@ void loop()
   /* =====================================================================
      LESSON 6: use the equation in the program
      ===================================================================== */
-  const mathBlock = (v) => inl("math", `${inl("math", `${bn(v ? cnum(v.m) : "m")} × ${bf("ADC")}`)} + ${bn(v ? cnum(v.c, 4) : "c")}`);
-  const applyBlocks = (v) =>
-    bk("root", "Setup", bk("var", `Declare ${bf("ADC")} as long Value ${bn(0)}`) + bk("var", `Declare ${bf("Angle")} as float Value ${bn(0)}`) + bk("print", `Serial begin baudrate ${bn(115200)}`)) +
-    bk("root", "Main loop",
-      bk("var", `set ${bf("ADC")} to ${inl("pin", `Analog read PIN# ${bf("VP")}`)}`) +
-      bk("var", `set ${bf("Angle")} to ${mathBlock(v)}`) +
-      bk("print", `Print on new line ${inl("var", bf("Angle"))}`) +
-      bk("delay", `Delay Ms ${bn(1000)}`));
+  const mcCap = (v) => `<p>The picture shows an example line, m = 0.0659 and c = −135. <strong>Type your own m and c</strong>${v ? `: <code>${cnum(v.m)}</code> and <code>${cnum(v.c, 4)}</code>` : ` from Lesson 5`}.</p>`;
+  const applyShot = (v) => shot(BIMG + "tuniot-angle.png", 512, 317, "TUNIOT blocks: turn the ADC count into an angle",
+    SER + where(`<em>Various</em>, <em>Variables</em> (Declare with type float for Angle), <em>IN/OUT › Analog</em> (AnalogRead PIN# D36), <em>Math</em> (the arithmetic block twice: × inside +, and number blocks), <em>Serial</em> (Print on new line).`) + mcCap(v));
   const applyCode = (v) => `${HEAD}
-long ADC;
-float Angle;
 
+long  ADC;
+float  Angle;
 void setup()
 {
 ADC = 0;
 Angle = 0;
-Serial.begin(115200);
+Serial.begin(9600);
+
+  Serial.begin(115200);
+
 }
+
 
 void loop()
 {
 
     ADC = analogRead(36);
-    Angle = ${eqC(v)};${v ? "" : "        // put your own m and c here"}
+    Angle = ${eqT(v)};
     Serial.println(Angle);
     delay(1000);
 
@@ -708,7 +707,7 @@ void loop()
     const mIn = $("#mcM", el), cIn = $("#mcC", el), noteEl = $(".mc-note", el), codeEl = $(".ap-code", el), errEl = $(".ap-err", el), read = $(".ap-read", el);
     const log = logBox($(".serial", el));
     if (MC) { mIn.value = cnum(MC.m); cIn.value = cnum(MC.c, 4); }
-    const paintCode = () => { codeEl.innerHTML = blocksAndCode(applyBlocks(MC), applyCode(MC), "angle_serial.ino (from TUNIOT)", "TUNIOT blocks: turn the ADC count into an angle"); };
+    const paintCode = () => { codeEl.innerHTML = blocksAndCode(applyShot(MC), applyCode(MC), "angle_serial.ino (from TUNIOT)"); };
     const paintErr = () => {
       if (!MC) { errEl.innerHTML = `<p class="small-note">Enter m and c above to see the error at each angle.</p>`; return; }
       const rows = [0, 30, 60, 90, 120, 150, 180].map((a) => { const n = readAdc(a, { quiet: true }), s = MC.m * n + MC.c; return [a, n, s, s - a]; });
@@ -752,51 +751,52 @@ void loop()
      LESSON 7: display the angle wirelessly (Bluetooth, then a web page)
      ===================================================================== */
   const noMc = () => (MC ? "" : `<p class="small-note">You haven't entered m and c in <a href="#apply">Lesson 6</a> yet, so this page uses the simulation's own line for now.</p>`);
-  const btBlocks = () =>
-    bk("root", "Setup", bk("var", `Declare ${bf("ADC")} as long Value ${bn(0)}`) + bk("var", `Declare ${bf("Angle")} as float Value ${bn(0)}`) +
-      bk("bt", `Start Internal Bluetooth<br>Name ${bs(esc(btName()))}`)) +
-    bk("root", "Main loop",
-      bk("var", `set ${bf("ADC")} to ${inl("pin", `Analog read PIN# ${bf("VP")}`)}`) +
-      bk("var", `set ${bf("Angle")} to ${mathBlock(MC)}`) +
-      bk("bt", `SerialBT print on new line ${inl("var", bf("Angle"))}`) +
-      bk("delay", `Delay Ms ${bn(1000)}`));
+  const btShot = () => shot(BIMG + "tuniot-bluetooth.png", 512, 342, "TUNIOT blocks: send the angle by Bluetooth",
+    `<p><strong>Sending a line by Bluetooth:</strong> TUNIOT has no "SerialBT print on new line" block. Use an <strong>Arduino Code</strong> block (drawer <em>Various</em>) and type <code>SerialBT.println(Angle);</code>. <code>println</code> ends each number with a new line, so the app knows where one reading ends.</p>` +
+    where(`<em>Variables</em>, <em>IN/OUT › Internal Bluetooth</em> (Start Internal Bluetooth), <em>IN/OUT › Analog</em> (AnalogRead PIN# D36), <em>Math</em>, <em>Various</em> (Arduino Code, Delay Ms).`) +
+    `<p>Type your own Bluetooth name: <code>${esc(btName())}</code>.</p>` + mcCap(MC));
   const btCode = () => `${HEAD}#include "BluetoothSerial.h"
 
-long ADC;
-float Angle;
-BluetoothSerial SerialBT;
+long  ADC;
+float  Angle;
+#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
+#error Bluetooth is not enabled! Please run \`make menuconfig\` to and enable it
+#endif
 
+BluetoothSerial SerialBT;
 void setup()
 {
 ADC = 0;
 Angle = 0;
-SerialBT.begin("${btName()}");
+  SerialBT.begin("${btName()}");
+
 }
+
 
 void loop()
 {
 
     ADC = analogRead(36);
-    Angle = ${eqC(MC)};
+    Angle = ${eqT(MC)};
     SerialBT.println(Angle);
     delay(1000);
 
 }`;
-  const AI_ANGLE = () => bk("ai-ev", `when ${bf("Clock1")} .Timer`,
-    bk("ai-ctl", `if ${inl("ai-call", `${inl("ai-get", `${bf("BluetoothClient1")} . ${bf("IsConnected")}`)} and ${inl("ai-get", `${bf("BluetoothClient1")} . ${bf("BytesAvailableToReceive")}`)} &gt; ${bn(0)}`)}`,
-      bk("ai-set", `then set ${bf("Label_Angle")} . ${bf("Text")} to ${inl("ai-text", `join “ Angle: ” ${inl("ai-text", `trim ${inl("ai-call", `call ${bf("BluetoothClient1")} .ReceiveText<br>numberOfBytes ${bn(-1)}`)}`)} “ ° ”`)}`)));
+  // App Inventor: BytesAvailableToReceive is a purple "call" block (a method), not a property
+  const aiShot = () => shot(BIMG + "ai-angle.png", 984, 213, "App Inventor: when Clock1.Timer, if BluetoothClient1.IsConnected and call BluetoothClient1.BytesAvailableToReceive > 0, then set Label_Angle.Text to join Angle:, trim call BluetoothClient1.ReceiveText numberOfBytes -1, and °",
+    `<p><strong>Where to find the blocks:</strong> <em>Clock1</em> (when Clock1.Timer), <em>Control</em> (if), <em>BluetoothClient1</em> (IsConnected, <strong>call</strong> BluetoothClient1.BytesAvailableToReceive, <strong>call</strong> BluetoothClient1.ReceiveText), <em>Logic</em> (and), <em>Math</em> (the compare block: change = to &gt;, and 0), <em>Label_Angle</em> (set Label_Angle.Text), <em>Text</em> (join, trim, " "). <em>join</em> starts with two sockets: tap its blue gear and drag in a third <em>string</em> for the "°".</p>`);
 
   function mountBt(el) {
     let connected = false, list = false, status = "Not Connected", label = "Angle: --";
     el.innerHTML = `<div class="sw-blocks"></div>
       <h4 class="sub-h">The Phone App</h4>
       <p class="explain-p">Use a Bluetooth terminal app to see the numbers arrive, or extend your Lab 1 app: add a label <code>Label_Angle</code> and a <strong>Clock</strong> (TimerInterval 200 ms), set <code>BluetoothClient1</code>'s <strong>DelimiterByte to 10</strong>, and add this block. It works the same way as the switch monitor in <a href="lab-1.html#t82">Lab 1, Lesson 5</a>.</p>
-      ${ws(AI_ANGLE(), "App Inventor block that receives the angle and shows it in a label")}
+      ${aiShot()}
       <h4 class="sub-h">Try It: The Angle on a Phone via Bluetooth</h4>
       <div class="sim-grid"><div class="sim-phone">${phoneFrame("Phone app")}</div>
         <div class="sim-side"><div class="bt-rig"></div><div class="mc-warn"></div><p class="pv-read bt-read"></p></div></div>`;
     const screen = $(".ph-screen", el), read = $(".bt-read", el);
-    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(btBlocks(), btCode(), "angle_bluetooth.ino (from TUNIOT)", "TUNIOT blocks: send the angle by Bluetooth"); $(".mc-warn", el).innerHTML = noMc(); };
+    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(btShot(), btCode(), "angle_bluetooth.ino (from TUNIOT)"); $(".mc-warn", el).innerHTML = noMc(); };
     const render = () => {
       const lst = list ? `<div class="ai-list" role="dialog" aria-label="Choose a device"><p class="ai-list-h">Choose a device</p><button type="button" class="ai-li" data-pick="esp">${esc(MAC)} ${esc(btName())}</button><button type="button" class="ai-li cancel" data-pick="">Cancel</button></div>` : "";
       screen.innerHTML = `<div class="ai-app"><div class="app-bar ai">Screen1</div><div class="ai-body">
@@ -830,46 +830,48 @@ void loop()
     read.innerHTML = `Tap <strong>Connect Bluetooth</strong> on the phone and choose your ESP32. Bluetooth Classic needs an Android phone, as in Lab 1.`;
   }
 
-  const webBlocks = () =>
-    bk("root", "Setup", bk("var", `Declare ${bf("ADC")} as long Value ${bn(0)}`) + bk("var", `Declare ${bf("Angle")} as float Value ${bn(0)}`) +
-      bk("print", `Serial begin baudrate ${bn(115200)}`) + bk("wifi", `Connect Network ssid ${bs(esc(hotspot()))} password ${bs("Password")}`) +
-      bk("print", `Print on new line ${inl("wifi", "Local IP")}`) + bk("wifi", `Start Server Port ${bn(80)}`)) +
-    bk("root", "Main loop",
-      bk("var", `set ${bf("ADC")} to ${inl("pin", `Analog read PIN# ${bf("VP")}`)}`) +
-      bk("var", `set ${bf("Angle")} to ${mathBlock(MC)}`) +
-      bk("wifi", "Wait Connection") + bk("wifi", "client flush") +
-      bk("wbk", "Answer Web page",
-        bk("wbk", `Head ${inl("wbk", `Web page HTML ${bs("&lt;meta http-equiv='refresh' content='1'&gt;&lt;title&gt;Angle Monitor&lt;/title&gt;")}`)}`) +
-        bk("wbk", `Body ${inl("wbk", `Heading ${bf("1")} Text ${bs("Angle Monitor")}`)}`) +
-        bk("wbk", `${inl("wbk", `Heading ${bf("2")} Text ${inl("var", `join ${bs("Angle: ")} ${bf("Angle")} ${bs(" deg")}`)}`)}`)));
+  const webShot = () => shot(BIMG + "tuniot-web.png", 621, 758, "TUNIOT blocks: show the angle on a web page",
+    SER + where(`<em>Various</em> (Arduino Code, Delay Ms), <em>Variables</em>, <em>IOT › IOT Station</em> (Disconnect, Connect Network, Is Connected?, Local IP), <em>Serial</em> (Print on new line), <em>Loops</em> and <em>Logic</em> (repeat while, not), <em>IOT › IOT Server</em> (Start Server, Wait Connection, client flush), <em>IN/OUT › Analog</em>, <em>Math</em>, <em>IOT › Web page</em> (Answer Web page, Web page HTML, Heading).`) +
+    `<p><strong>Type in full</strong> (TUNIOT shortens long text on screen):</p><ul class="what">
+      <li>Web page HTML: <code>&lt;meta http-equiv='refresh' content='1'&gt;&lt;title&gt;Angle Monitor&lt;/title&gt;</code></li>
+      <li>Arduino Code: <code>client.println("&lt;h2&gt;Angle: " + String(Angle) + " deg&lt;/h2&gt;");</code></li></ul>
+    <p>TUNIOT has no block that joins text to a number inside a heading, so that line is an <strong>Arduino Code</strong> block (drawer <em>Various</em>) in the Body. Type your own hotspot name (<code>${esc(hotspot())}</code>) and password.</p>` + mcCap(MC));
   const webCode = () => `${HEAD}#include <WiFi.h>
 
-long ADC;
-float Angle;
+long  ADC;
+float  Angle;
 WiFiServer server(80);
+
 WiFiClient client;
 
 void setup()
 {
 ADC = 0;
 Angle = 0;
-Serial.begin(115200);
+Serial.begin(9600);
+
+  Serial.begin(115200);
   WiFi.disconnect();
   delay(1000);
-  WiFi.begin("${hotspot()}","Password");      // your phone's hotspot
+  Serial.println("Searching for an access point (AP)");
+  WiFi.begin("${hotspot()}","Password");
   while ((!(WiFi.status() == WL_CONNECTED))){
     delay(1000);
     Serial.println("Waiting for an IP address");
+
   }
   Serial.println("Obtained an IP address");
   Serial.println((WiFi.localIP()));
   server.begin();
+
 }
+
 
 void loop()
 {
-    ADC = analogRead(36);               // read the sensor first, every loop
-    Angle = ${eqC(MC)};
+
+    ADC = analogRead(36);
+    Angle = ${eqT(MC)};
     client = server.available();
     if (!client) { return; }
     while(!client.available()){  delay(1); }
@@ -880,15 +882,17 @@ void loop()
     client.println("<!DOCTYPE HTML>");
     client.println("<html>");
     client.println("<head>");
-    client.println("<meta http-equiv='refresh' content='1'><title>Angle Monitor</title>");
+      client.println("<meta http-equiv=\\'refresh\\' content=\\'1\\'><title>Angle Monitor</title>");
     client.println("</head>");
     client.println("<body>");
-    client.println("<h1>Angle Monitor</h1>");
-    client.println("<h2>Angle: " + String(Angle) + " deg</h2>");
+      client.println("<h1 style=""color:#000000"">");
+      client.println("Angle Monitor");
+      client.println("</h1>");
+      client.println("<h2>Angle: " + String(Angle) + " deg</h2>");
     client.println("</body>");
     client.println("</html>");
-    client.stop();
     delay(1);
+
 }`;
   function mountWeb(el) {
     let loaded = false, auto = true, loads = 0, page = 0;
@@ -900,7 +904,7 @@ void loop()
           ${serialBox()}<div class="mc-warn"></div><p class="pv-read wb-read"></p></div></div>`;
     const screen = $(".ph-screen", el), read = $(".wb-read", el), log = logBox($(".serial", el));
     const boot = () => { log.clear(); ["Waiting for an IP address", "Obtained an IP address", IP].forEach((x) => log.add(x)); };
-    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(webBlocks(), webCode(), "angle_web.ino (from TUNIOT)", "TUNIOT blocks: show the angle on a web page"); $(".mc-warn", el).innerHTML = noMc(); };
+    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(webShot(), webCode(), "angle_web.ino (from TUNIOT)"); $(".mc-warn", el).innerHTML = noMc(); };
     screen.innerHTML = `<form class="br-bar ph" data-go><input type="text" inputmode="url" aria-label="Address" autocomplete="off" autocapitalize="off" spellcheck="false" value="${IP}"><button type="submit" class="go-b">Go</button></form><div class="br-view"></div>`;
     const view = $(".br-view", screen);
     // Only the page area changes, so typing in the address bar is never interrupted

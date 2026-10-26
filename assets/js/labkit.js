@@ -133,12 +133,18 @@
     ? `<div class="bk ${c}"><div class="bk-h">${head}</div></div>`
     : `<div class="bk ${c} cb"><div class="bk-h">${head}</div><div class="bk-in">${kids || `<span class="bk-empty">(empty)</span>`}</div><div class="bk-foot"></div></div>`;
   const ws = (inner, label) => `<div class="bk-ws" role="img" aria-label="${esc(label)}">${inner}</div>`;
+  // The real blocks: pictures exported from TUNIOT (easycoding.tn) and App Inventor, so what students see here is
+  // exactly what they find in the editors. Tap a picture to open it full size.
+  const shot = (src, w, h, alt, cap) => `<figure class="bk-shot"><a class="bk-shot-in" href="${src}" target="_blank" rel="noopener" title="Open the picture full size"><img src="${src}" width="${w}" height="${h}" alt="${esc(alt)}" loading="lazy" decoding="async"></a>${cap ? `<figcaption>${cap}</figcaption>` : ""}</figure>`;
+  // TUNIOT has no "Serial begin" block, and its Print blocks start the Serial Monitor at 9600 by themselves
+  const SER = `<p><strong>Serial at 115200:</strong> TUNIOT has no "Serial begin" block, and its Print blocks set 9600 by themselves. The first block in Setup is an <strong>Arduino Code</strong> block (drawer <em>Various</em>) with <code>Serial.begin(115200);</code> typed in. It switches the Serial Monitor to 115200, the speed we use: set the Serial Monitor to <strong>115200 baud</strong>.</p>`;
+  const where = (h) => `<p><strong>Where to find the blocks:</strong> ${h}</p>`;
 
-  const HEAD = `////////////////////////////////
+  const HEAD = `/////////////////////////////////
 // Generated with a lot of love//
 // with TUNIOT FOR ESP32     //
 // Website: Easycoding.tn      //
-////////////////////////////////
+/////////////////////////////////
 `;
 
   /* =====================================================================
@@ -349,6 +355,6 @@
   window.LabKit = {
     $, T, sleep, clamp, every, W_, nameBox,
     TOP, BOT, pinXY, board, laptop, router, phoneIco, btMark, fly, serialBox, serialOut, phoneFrame,
-    bf, bs, bn, inl, bk, ws, HEAD, kit, gate, stepCaption, stepsBox
+    bf, bs, bn, inl, bk, ws, shot, SER, where, HEAD, kit, gate, stepCaption, stepsBox
   };
 })();

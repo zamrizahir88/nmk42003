@@ -73,4 +73,8 @@ All Chapter 7 animations, circuit sketches and the virtual calibration lab are o
 
 ## Lab 1 virtual lab
 
-Lab 1 (`lab-1.html`) reuses the Chapter 2 screenshots `tuniot-menu.png`, `tuniot-workspace.png`, `ide-board-port.png`, `ide-ota-example.png` and `ota-upload-page.png` (credits above). The ESP32 board, breadboard circuits, TUNIOT and App Inventor blocks, phone apps, browser and Arduino IDE mock-ups are original drawings made for this site.
+Lab 1 (`lab-1.html`) reuses the Chapter 2 screenshots `tuniot-menu.png`, `tuniot-workspace.png`, `ide-board-port.png`, `ide-ota-example.png` and `ota-upload-page.png` (credits above). The ESP32 board, breadboard circuits, the Lesson 1 block builder, phone apps, browser and Arduino IDE mock-ups are original drawings made for this site; the block programs are pictures exported from TUNIOT and App Inventor (below).
+
+## Lab block pictures (assets/img/lab-1/blocks, lab-2/blocks, lab-3/blocks)
+Pictures of block programs built for this course and exported from the editors the students use:
+TUNIOT for ESP32 (easycoding.tn) and MIT App Inventor (appinventor.mit.edu). No third-party photos.

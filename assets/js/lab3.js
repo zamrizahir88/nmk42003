@@ -7,7 +7,7 @@
   "use strict";
 
   const { esc, step, reduceMotion, store, chips, wireChips, codeBlock, fold, player } = Lab;
-  const { $, T, sleep, clamp, every, W_, pinXY, board, serialBox, phoneFrame, bf, bs, bn, bk, ws, HEAD } = LabKit;
+  const { $, T, sleep, clamp, every, W_, pinXY, board, serialBox, phoneFrame, bf, bs, bn, bk, shot, where, HEAD } = LabKit;
 
   const f1 = (x) => x.toFixed(1);
   const row = (label) => `[aria-label="${label}"]`;
@@ -273,7 +273,7 @@
     const SAMPLES = [
       [bk("delay", `Delay Ms ${bn(1000)}`), "delay(1000);"],
       [bk("pin", `DigitalWrite PIN# ${bf("D2")} STAT ${bf("HIGH")}`), "digitalWrite(2,HIGH);"],
-      [bk("lcd", `LCD I2C print ${bs("Hello")}`), `lcd.print("Hello");`]
+      [bk("lcd", `LCD PRINT ${bs("Hello")}`), `lcd.print("Hello");`]
     ];
     const HAS = [["Inputs and outputs", 1], ["Serial Monitor", 1], ["Servo motor", 1], ["I2C LCD", 1], ["OLED display", 1], ["Wi-Fi and Bluetooth", 1], ["RFID RC522", 0]];
     const STEPS = ["Build what you can in TUNIOT", "Take TUNIOT's code into the Arduino IDE", "Install the library for the device TUNIOT doesn't cover", "Add that device's code by hand"];
@@ -449,23 +449,27 @@
      ===================================================================== */
   const LCD_KEY = "nmk-lab3-lcd";
   const cleanRow = (s) => String(s || "").replace(/["\\<>]/g, "").slice(0, 20);
-  const lcdBlocks = (rows, addr) =>
-    bk("root", "Setup", bk("lcd", `LCD I2C setup address ${bn(addr)} columns ${bn(16)} rows ${bn(4)}`) +
-      rows.map((r, i) => (r ? bk("lcd", `LCD I2C set cursor column ${bn(0)} row ${bn(i)}`) + bk("lcd", `LCD I2C print ${bs(esc(r))}`) : "")).join("")) +
-    bk("root", "Main loop", "");
+  const lcdShot = (addr) => shot("assets/img/lab-3/blocks/tuniot-lcd.png", 533, 434, "TUNIOT blocks: show four rows of text on the I2C LCD",
+    where(`<em>Display › Serial LCD I2C</em> (SETUP SERIAL LCD I2C, LCD set Cursor, LCD PRINT), <em>Math</em> (number blocks), <em>Text</em> (" ").`) +
+    `<p>The picture shows the example text. <strong>Type your own</strong> four rows${addr !== "0x27" ? `, and choose address <code>${addr}</code> in the setup block` : ""}. Rows are numbered 0 to 3 from the top.</p>`);
   const lcdCode = (rows, addr) => `${HEAD}#include <Wire.h>
 #include <LiquidCrystal_I2C.h>
+//SDA -> D21
+//SCL -> D22
 
-LiquidCrystal_I2C lcd(${addr},16,4);  // LCD address ${addr}, 16 characters, 4 rows
+LiquidCrystal_I2C lcd(${addr},16,4);
 
 void setup()
 {
-  lcd.init();                      // start the LCD
-  lcd.backlight();                 // switch its light on
-${rows.map((r, i) => (r ? `  lcd.setCursor(0,${i});\n  lcd.print("${r}");\n` : "")).join("")}}
+lcd.begin();
+
+${rows.map((r, i) => (r ? `  lcd.setCursor(0, ${i});\n  lcd.print("${r}");\n` : "")).join("")}
+}
+
 
 void loop()
 {
+
 
 }`;
   /* Lesson 3 is one job in steps, so its three widgets share this state:
@@ -511,10 +515,11 @@ void loop()
         <li>Open it in the Arduino IDE, or paste it into a new sketch (<em>File → New</em>).</li>
         <li>The code should match the listing below, with your own text in it.</li></ol>
       <div class="lc-code"></div>
-      <p class="small-note">TUNIOT may name a few blocks slightly differently. What matters is that your Arduino code does the same.</p>`;
+      ${fold("If the IDE Stops at lcd.begin()", `<p>If compiling stops with <code>no matching function for call to 'LiquidCrystal_I2C::begin()'</code>, the library you installed starts the LCD with a different command. In the Arduino IDE, replace the line <code>lcd.begin();</code> with these two lines, then compile again:</p>
+        ${codeBlock("lcd.init();\nlcd.backlight();", "Replace lcd.begin(); with")}`)}`;
     const draw = () => {
       el.querySelectorAll(".lc-row").forEach((r, i) => { const n = LCDS.rows[i].length, s = $(".lc-n", r); s.textContent = `${n}/16`; s.classList.toggle("bad", n > 16); });
-      $(".lc-blocks", el).innerHTML = ws(lcdBlocks(LCDS.rows, LCDS.addr), "TUNIOT blocks: show four rows of text on the I2C LCD");
+      $(".lc-blocks", el).innerHTML = lcdShot(LCDS.addr);
       $(".lc-code", el).innerHTML = codeBlock(lcdCode(LCDS.rows, LCDS.addr), "lcd_name.ino (from TUNIOT)");
     };
     el.querySelectorAll("input[data-r]").forEach((inp) => { inp.value = LCDS.rows[+inp.dataset.r]; });

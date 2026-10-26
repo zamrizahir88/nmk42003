@@ -151,12 +151,19 @@
     ? `<div class="bk ${c}"><div class="bk-h">${head}</div></div>`
     : `<div class="bk ${c} cb"><div class="bk-h">${head}</div><div class="bk-in">${kids || `<span class="bk-empty">(empty)</span>`}</div><div class="bk-foot"></div></div>`;
   const ws = (inner, label) => `<div class="bk-ws" role="img" aria-label="${esc(label)}">${inner}</div>`;
+  // The real blocks: pictures exported from TUNIOT (easycoding.tn) and App Inventor, so what students see here is
+  // exactly what they find in the editors. Tap a picture to open it full size.
+  const shot = (src, w, h, alt, cap) => `<figure class="bk-shot"><a class="bk-shot-in" href="${src}" target="_blank" rel="noopener" title="Open the picture full size"><img src="${src}" width="${w}" height="${h}" alt="${esc(alt)}" loading="lazy" decoding="async"></a>${cap ? `<figcaption>${cap}</figcaption>` : ""}</figure>`;
+  const BIMG = "assets/img/lab-1/blocks/";
+  // TUNIOT has no "Serial begin" block, and its Print blocks start the Serial Monitor at 9600 by themselves
+  const SER = `<p><strong>Serial at 115200:</strong> TUNIOT has no "Serial begin" block, and its Print blocks set 9600 by themselves. The first block in Setup is an <strong>Arduino Code</strong> block (drawer <em>Various</em>) with <code>Serial.begin(115200);</code> typed in. It switches the Serial Monitor to 115200, the speed we use: set the Serial Monitor to <strong>115200 baud</strong>.</p>`;
+  const where = (h) => `<p><strong>Where to find the blocks:</strong> ${h}</p>`;
 
-  const HEAD = `////////////////////////////////
+  const HEAD = `/////////////////////////////////
 // Generated with a lot of love//
 // with TUNIOT FOR ESP32     //
 // Website: Easycoding.tn      //
-////////////////////////////////
+/////////////////////////////////
 `;
 
   /* =====================================================================
@@ -626,32 +633,32 @@ const char* password = "********";`, "OTAWebUpdater.ino (top of the sketch)");
   /* =====================================================================
      LESSON 2: Bluetooth blocks and terminal
      ===================================================================== */
-  const btBlocks = () =>
-    bk("root", "Setup",
-      bk("var", `Declare ${bf("LED")} as String Value ${bs("")}`) +
-      bk("bt", `Start Internal Bluetooth<br>Name ${bs(esc(btName()))}`)) +
-    bk("root", "Main loop",
-      bk("logic", `if ${inl("bt", "SerialBT Available?")}`,
-        bk("var", `set STRING ${bf("LED")} to ${inl("bt", "SerialBT Read String")}`) +
-        bk("logic", `if ${inl("var", `${bf("LED")} ${bf("=")} ${bs("ON")}`)}`, bk("led", `Integrated LED Stat ${bf("HIGH")}`)) +
-        bk("logic", `if ${inl("var", `${bf("LED")} ${bf("=")} ${bs("OFF")}`)}`, bk("led", `Integrated LED Stat ${bf("LOW")}`))));
+  const btShot = () => shot(BIMG + "tuniot-bt-led.png", 414, 373, "TUNIOT blocks for Bluetooth LED control",
+    where(`<em>Variables</em> (Declare, set STRING, the text compare), <em>IN/OUT › Internal Bluetooth</em> (Start Internal Bluetooth, SerialBT Available?, SerialBT Read String), <em>Logic</em> (if), <em>IN/OUT › Digital</em> (Integrated LED Stat).`) +
+    `<p>Type your own Bluetooth name: <code>${esc(btName())}</code>.</p>`);
   const btCode = () => `${HEAD}#include "BluetoothSerial.h"
 
-String LED;
-BluetoothSerial SerialBT;
+String  LED;
+#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
+#error Bluetooth is not enabled! Please run \`make menuconfig\` to and enable it
+#endif
 
+BluetoothSerial SerialBT;
 void setup()
 {
 LED = "";
-SerialBT.begin("${btName()}");
+
 pinMode(2, OUTPUT);
+  SerialBT.begin("${btName()}");
+
 }
+
 
 void loop()
 {
 
     if (SerialBT.available()) {
-      LED = SerialBT.readString();
+      LED = (SerialBT.readString());
       if (LED == "ON") {
         digitalWrite(2,HIGH);
 
@@ -666,7 +673,7 @@ void loop()
 }`;
   function mountBtBlocks(el) {
     const draw = () => {
-      el.innerHTML = `<div class="bc-grid"><div>${ws(btBlocks(), "TUNIOT blocks for Bluetooth LED control")}</div><div>${codeBlock(btCode(), "bluetooth_led.ino (from TUNIOT)")}</div></div>
+      el.innerHTML = `<div class="bc-grid"><div>${btShot()}</div><div>${codeBlock(btCode(), "bluetooth_led.ino (from TUNIOT)")}</div></div>
         <ol class="what">
           <li><strong>Declare LED as String.</strong> A text variable to hold whatever the phone sends.</li>
           <li><strong>Start Internal Bluetooth, Name.</strong> Turns on the ESP32's Bluetooth with the name your phone will see: <code>${esc(btName())}</code>.</li>
@@ -835,20 +842,27 @@ ${on ? "digitalWrite(2, HIGH): LED on" : off ? "digitalWrite(2, LOW): LED off" :
     paint();
   }
 
+  // App Inventor blocks (exported from App Inventor): [file, width, height]
   const AI_EVENTS = [
-    { b: () => bk("ai-ev", `when ${bf("ListPicker_BT")} .BeforePicking`, bk("ai-set", `set ${bf("ListPicker_BT")} . ${bf("Elements")} to ${inl("ai-get", `${bf("BluetoothClient1")} . ${bf("AddressesAndNames")}`)}`)),
+    { img: ["ai-before-picking", 670, 73], alt: "when ListPicker_BT.BeforePicking: set ListPicker_BT.Elements to BluetoothClient1.AddressesAndNames",
       w: "Just before the list opens, fill it with the paired Bluetooth devices (the address and name of each)." },
-    { b: () => bk("ai-ev", `when ${bf("ListPicker_BT")} .AfterPicking`, bk("ai-ctl", `if ${inl("ai-call", `call ${bf("BluetoothClient1")} .Connect<br>address ${inl("ai-get", `${bf("ListPicker_BT")} . ${bf("Selection")}`)}`)}`, bk("ai-set", `then set ${bf("Label_Status")} . ${bf("Text")} to ${inl("ai-text", "“ BT is now connected ”")}`))),
+    { img: ["ai-after-picking", 611, 138], alt: "when ListPicker_BT.AfterPicking: if call BluetoothClient1.Connect address ListPicker_BT.Selection, then set Label_Status.Text to BT is now connected",
       w: "After you pick a device, connect to its address. If the connection works, the status label says so." },
-    { b: () => bk("ai-ev", `when ${bf("Disconnect_BT")} .Click`, bk("ai-call", `call ${bf("BluetoothClient1")} .Disconnect`) + bk("ai-set", `set ${bf("Label_Status")} . ${bf("Text")} to ${inl("ai-text", "“ BT is now disconnected ”")}`)),
+    { img: ["ai-disconnect", 509, 99], alt: "when Disconnect_BT.Click: call BluetoothClient1.Disconnect, set Label_Status.Text to BT is now disconnected",
       w: "The Disconnect button closes the connection and updates the status label." },
-    { b: () => bk("ai-ev", `when ${bf("Button_ON")} .Click`, bk("ai-call", `call ${bf("BluetoothClient1")} .SendText<br>text ${inl("ai-text", "“ ON ”")}`)),
+    { img: ["ai-on", 383, 99], alt: "when Button_ON.Click: call BluetoothClient1.SendText text ON",
       w: "The LED ON button sends the text ON: the same text you typed in the terminal in Lesson 2." },
-    { b: () => bk("ai-ev", `when ${bf("Button_OFF")} .Click`, bk("ai-call", `call ${bf("BluetoothClient1")} .SendText<br>text ${inl("ai-text", "“ OFF ”")}`)),
+    { img: ["ai-off", 390, 99], alt: "when Button_OFF.Click: call BluetoothClient1.SendText text OFF",
       w: "The LED OFF button sends OFF." }
   ];
+  const aiShot = (x, cap) => shot(BIMG + x.img[0] + ".png", x.img[1], x.img[2], x.alt, cap);
   function mountAiBlocks(el) {
-    el.innerHTML = `<ol class="ai-bl">${AI_EVENTS.map((x, i) => `<li><div class="ai-bl-b">${ws(x.b(), `App Inventor block ${i + 1}`)}</div><p>${x.w}</p></li>`).join("")}</ol>`;
+    el.innerHTML = `<div class="ai-designer"><h4 class="sub-h">First, in the Designer</h4>
+        <p>Rename the components (select one, then <strong>Rename</strong> under the Components list) so the blocks below match yours:</p>
+        <ul class="what"><li>the ListPicker → <code>ListPicker_BT</code>; the three Buttons → <code>Disconnect_BT</code>, <code>Button_ON</code>, <code>Button_OFF</code>; the Label → <code>Label_Status</code></li>
+          <li>add a <strong>BluetoothClient</strong> (Connectivity drawer); it stays <code>BluetoothClient1</code></li></ul></div>
+      <ol class="ai-bl">${AI_EVENTS.map((x) => `<li><div class="ai-bl-b">${aiShot(x)}</div><p>${x.w}</p></li>`).join("")}</ol>
+      <p class="small-note">Where to find them: click a component in the Blocks list (for example <em>ListPicker_BT</em>) for its <strong>when</strong>, <strong>set</strong>, <strong>call</strong> and property blocks; <strong>if</strong> is in <em>Control</em> and the text blocks (" ") are in <em>Text</em>.</p>`;
   }
 
   // A decorative QR-like pattern (not a real code)
@@ -900,8 +914,8 @@ ${on ? "digitalWrite(2, HIGH): LED on" : off ? "digitalWrite(2, LOW): LED off" :
     };
     const fire = (i) => {
       fired = i;
-      firedEl.innerHTML = ws(AI_EVENTS[i].b(), `App Inventor block that ran`) + `<p class="small-note">${AI_EVENTS[i].w}</p>`;
-      const w = firedEl.querySelector(".bk-ws");
+      firedEl.innerHTML = aiShot(AI_EVENTS[i]) + `<p class="small-note">${AI_EVENTS[i].w}</p>`;
+      const w = firedEl.querySelector(".bk-shot-in");
       if (w && !reduceMotion) { w.classList.remove("pulse"); void w.offsetWidth; w.classList.add("pulse"); }
     };
     const say = (t) => { toast = t; render(); setTimeout(() => { if (toast === t) { toast = ""; render(); } }, 2600); };
@@ -979,40 +993,36 @@ ${on ? "digitalWrite(2, HIGH): LED on" : off ? "digitalWrite(2, LOW): LED off" :
     return R;
   };
 
-  const wifiBlocks = () =>
-    bk("root", "Setup",
-      bk("var", `Declare ${bf("ClientRequest")} as String Value ${bs("")}`) +
-      bk("wifi", "Disconnect") + bk("delay", `Delay Ms ${bn(1000)}`) +
-      bk("print", `Print on new line ${bs("Searching for an access point (AP)")}`) +
-      bk("wifi", `Connect Network ssid ${bs(SSID)} password ${bs("Password")}`) +
-      bk("logic", `repeat while ${inl("logic", `not ${inl("wifi", "Is Connected?")}`)}`, bk("delay", `Delay Ms ${bn(1000)}`) + bk("print", `Print on new line ${bs("Waiting for an IP address")}`)) +
-      bk("print", `Print on new line ${bs("Obtained an IP address")}`) +
-      bk("print", `Print on new line ${inl("wifi", "Local IP")}`) +
-      bk("print", `Print on new line ${bs(esc(who()))}`) +
-      bk("print", `Print on new line ${inl("wifi", "Show MAC Address")}`) +
-      bk("wifi", `Start Server Port ${bn(80)}`)) +
-    bk("root", "Main loop",
-      bk("wifi", "Wait Connection") +
-      bk("var", `set STRING ${bf("ClientRequest")} to ${inl("wifi", "Server Read request")}`) +
-      bk("wifi", "client flush") +
-      bk("logic", `if ${inl("var", `${bf("ClientRequest")} Index of ${bs("LED=ON")}`)} ${bf("&gt;")} ${bn(0)}`, bk("pin", `DigitalWrite PIN# ${bf("D32")} STAT ${bf("HIGH")}`)) +
-      bk("logic", `if ${inl("var", `${bf("ClientRequest")} Index of ${bs("LED=OFF")}`)} ${bf("&gt;")} ${bn(0)}`, bk("pin", `DigitalWrite PIN# ${bf("D32")} STAT ${bf("LOW")}`)) +
-      bk("wbk", "Answer Web page",
-        bk("wbk", `Head ${inl("wbk", `Web page HTML ${bs("&lt;title&gt;WEB Based LED Control&lt;/title&gt;")}`)}`) +
-        bk("wbk", `Body ${inl("wbk", `Heading ${bf("1")} Color <span class="swatch"></span> Text ${bs("WEB Based LED Control")}`)}`) +
-        bk("wbk", `${inl("wbk", `Button Href / ${bs("LED=ON")} Button title ${bs("ON")}`)}`) +
-        bk("wbk", `${inl("wbk", `Button Href / ${bs("LED=OFF")} Button title ${bs("OFF")}`)}`)));
+  const wifiShot = () => shot(BIMG + "tuniot-web-led.png", 605, 939, "TUNIOT blocks for the Wi-Fi web server",
+    SER + where(`<em>Various</em> (Arduino Code, Delay Ms), <em>Variables</em>, <em>IOT › IOT Station</em> (Disconnect, Connect Network, Is Connected?, Local IP, Show MAC Address), <em>Serial</em> (Print on new line), <em>Loops</em> and <em>Logic</em> (repeat while, not, if), <em>IOT › IOT Server</em> (Start Server, Wait Connection, Server Read request, client flush), <em>IN/OUT › Digital</em> (DigitalWrite), <em>IOT › Web page</em> (Answer Web page, Web page HTML, Heading, Button).`) +
+    `<p>Type your own network name and password, and your own name in place of <code>YourName</code>.</p>`);
   const wifiCode = () => `${HEAD}#include <WiFi.h>
 
-String ClientRequest;
+String  ClientRequest;
 WiFiServer server(80);
+
 WiFiClient client;
+
+String myresultat;
+
+String ReadIncomingRequest(){
+while(client.available()) {
+ClientRequest = (client.readStringUntil('\\r'));
+ if ((ClientRequest.indexOf("HTTP/1.1")>0)&&(ClientRequest.indexOf("/favicon.ico")<0)){
+myresultat = ClientRequest;
+}
+}
+return myresultat;
+}
 
 void setup()
 {
 ClientRequest = "";
-Serial.begin(115200);
+
+Serial.begin(9600);
+
 pinMode(32, OUTPUT);
+  Serial.begin(115200);
   WiFi.disconnect();
   delay(1000);
   Serial.println("Searching for an access point (AP)");
@@ -1020,26 +1030,32 @@ pinMode(32, OUTPUT);
   while ((!(WiFi.status() == WL_CONNECTED))){
     delay(1000);
     Serial.println("Waiting for an IP address");
+
   }
   Serial.println("Obtained an IP address");
   Serial.println((WiFi.localIP()));
   Serial.println("${who()}");
-  Serial.println((WiFi.macAddress()));
+  Serial.println((WiFi.macAddress().c_str()));
   server.begin();
+
 }
+
 
 void loop()
 {
+
     client = server.available();
     if (!client) { return; }
     while(!client.available()){  delay(1); }
-    ClientRequest = (client.readStringUntil('\\r'));
+    ClientRequest = (ReadIncomingRequest());
     client.flush();
     if (ClientRequest.indexOf("LED=ON") > 0) {
       digitalWrite(32,HIGH);
+
     }
     if (ClientRequest.indexOf("LED=OFF") > 0) {
       digitalWrite(32,LOW);
+
     }
     client.println("HTTP/1.1 200 OK");
     client.println("Content-Type: text/html");
@@ -1047,20 +1063,30 @@ void loop()
     client.println("<!DOCTYPE HTML>");
     client.println("<html>");
     client.println("<head>");
-    client.println("<title>WEB Based LED Control</title>");
+      client.println("<title>WEB Based LED Control</title>");
     client.println("</head>");
     client.println("<body>");
-    client.println("<h1 style='color:#000000'>WEB Based LED Control</h1>");
-    client.println("<a href='/LED=ON'><button>ON</button></a>");
-    client.println("<a href='/LED=OFF'><button>OFF</button></a>");
+      client.println("<h1 style=""color:#000000"">");
+      client.println("WEB Based LED Control");
+      client.println("</h1>");
+      client.println("<a href=");
+      client.println("LED=ON");
+      client.println("><button>");
+      client.println("ON");
+      client.println("</button></a>");
+      client.println("<a href=");
+      client.println("LED=OFF");
+      client.println("><button>");
+      client.println("OFF");
+      client.println("</button></a>");
     client.println("</body>");
     client.println("</html>");
-    client.stop();
     delay(1);
+
 }`;
   function mountWifiBlocks(el) {
     const draw = () => {
-      el.innerHTML = `<div class="bc-grid"><div>${ws(wifiBlocks(), "TUNIOT blocks for the Wi-Fi web server")}</div><div>${codeBlock(wifiCode(), "wifi_led.ino (from TUNIOT)")}</div></div>
+      el.innerHTML = `<div class="bc-grid"><div>${wifiShot()}</div><div>${codeBlock(wifiCode(), "wifi_led.ino (from TUNIOT)")}</div></div>
         <ol class="what">
           <li><strong>Setup: join the Wi-Fi.</strong> Connect to the network (put your own network name and password), wait until connected, then print the IP address, your name and the MAC address on the Serial Monitor.</li>
           <li><strong>Start Server Port 80.</strong> Port 80 is the normal port for web pages.</li>
@@ -1243,30 +1269,26 @@ Answer: send the web page back`;
   }
 
   /* ---------- TUNIOT blocks and code for Lesson 5 ---------- */
-  const ifVar = (a, op, b) => inl("var", `${bf(a)} ${bf(op)} ${b}`);
-  const ledBoth = (st) => bk("led", `Integrated LED Stat ${bf(st)}`) + bk("pin", `DigitalWrite PIN# ${bf("D32")} STAT ${bf(st)}`);
-  const t81Blocks = () =>
-    bk("root", "Setup", bk("var", `Declare ${bf("SW")} as int Value ${bn(0)}`) + bk("var", `Declare ${bf("LAST")} as int Value ${bn(-1)}`)) +
-    bk("root", "Main loop",
-      bk("var", `set ${bf("SW")} to ${inl("pin", `Digital read PIN# ${bf("D33")}`)}`) +
-      bk("logic", `if ${ifVar("SW", "≠", bf("LAST"))}`,
-        bk("logic", `if ${ifVar("SW", "=", bn(1))}`, ledBoth("HIGH") + bk("print", `Print on new line ${bs("Switch ON")}`)) +
-        bk("logic", `if ${ifVar("SW", "=", bn(0))}`, ledBoth("LOW") + bk("print", `Print on new line ${bs("Switch OFF")}`)) +
-        bk("var", `set ${bf("LAST")} to ${bf("SW")}`)) +
-      bk("delay", `Delay Ms ${bn(200)}`));
+  const swWhere = (extra) => where(`<em>Variables</em> (Declare, set, the compare blocks), <em>IN/OUT › Digital</em> (Digital read, Integrated LED Stat, DigitalWrite), <em>Logic</em> (if)${extra}.`);
+  const t81Shot = () => shot(BIMG + "tuniot-switch-serial.png", 402, 575, "TUNIOT blocks: monitor the switch on the Serial Monitor",
+    SER + swWhere(`, <em>Serial</em> (Print on new line), <em>Various</em> (Arduino Code, Delay Ms)`));
   const t81Code = () => `${HEAD}
-int SW;
-int LAST;
 
+int  SW;
+int  LAST;
 void setup()
 {
 SW = 0;
 LAST = -1;
-Serial.begin(115200);
 pinMode(33, INPUT);
 pinMode(2, OUTPUT);
 pinMode(32, OUTPUT);
+Serial.begin(9600);
+
+  Serial.begin(115200);
+
 }
+
 
 void loop()
 {
@@ -1277,136 +1299,149 @@ void loop()
         digitalWrite(2,HIGH);
         digitalWrite(32,HIGH);
         Serial.println("Switch ON");
+
       }
       if (SW == 0) {
         digitalWrite(2,LOW);
         digitalWrite(32,LOW);
         Serial.println("Switch OFF");
+
       }
       LAST = SW;
+
     }
     delay(200);
 
 }`;
-  const t82Blocks = () =>
-    bk("root", "Setup",
-      bk("var", `Declare ${bf("SW")} as int Value ${bn(0)}`) + bk("var", `Declare ${bf("LAST")} as int Value ${bn(-1)}`) + bk("var", `Declare ${bf("COUNT")} as int Value ${bn(0)}`) +
-      bk("bt", `Start Internal Bluetooth<br>Name ${bs(esc(btName()))}`)) +
-    bk("root", "Main loop",
-      bk("var", `set ${bf("SW")} to ${inl("pin", `Digital read PIN# ${bf("D33")}`)}`) +
-      bk("var", `set ${bf("COUNT")} to ${inl("var", `${bf("COUNT")} + ${bn(1)}`)}`) +
-      bk("logic", `if ${inl("logic", `${ifVar("SW", "≠", bf("LAST"))} or ${ifVar("COUNT", "≥", bn(10))}`)}`,
-        bk("logic", `if ${ifVar("SW", "=", bn(1))}`, ledBoth("HIGH") + bk("bt", `SerialBT print on new line ${bs("ON")}`)) +
-        bk("logic", `if ${ifVar("SW", "=", bn(0))}`, ledBoth("LOW") + bk("bt", `SerialBT print on new line ${bs("OFF")}`)) +
-        bk("var", `set ${bf("LAST")} to ${bf("SW")}`) + bk("var", `set ${bf("COUNT")} to ${bn(0)}`)) +
-      bk("delay", `Delay Ms ${bn(200)}`));
+  const t82Shot = () => shot(BIMG + "tuniot-switch-bt.png", 605, 711, "TUNIOT blocks: monitor the switch on a phone via Bluetooth",
+    `<p><strong>Sending a line by Bluetooth:</strong> TUNIOT has no "SerialBT print on new line" block. Use an <strong>Arduino Code</strong> block (drawer <em>Various</em>) and type <code>SerialBT.println("ON");</code> in one and <code>SerialBT.println("OFF");</code> in the other. <code>println</code> ends each message with a new line, which the app needs to know where a message ends.</p>` +
+    swWhere(`, <em>Logic</em> (or), <em>Math</em> (+), <em>IN/OUT › Internal Bluetooth</em> (Start Internal Bluetooth), <em>Various</em> (Arduino Code, Delay Ms)`) +
+    `<p>Type your own Bluetooth name: <code>${esc(btName())}</code>.</p>`);
   const t82Code = () => `${HEAD}#include "BluetoothSerial.h"
 
-int SW;
-int LAST;
-int COUNT;
-BluetoothSerial SerialBT;
+int  SW;
+int  LAST;
+int  COUNT;
+#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
+#error Bluetooth is not enabled! Please run \`make menuconfig\` to and enable it
+#endif
 
+BluetoothSerial SerialBT;
 void setup()
 {
 SW = 0;
 LAST = -1;
 COUNT = 0;
-SerialBT.begin("${btName()}");
 pinMode(33, INPUT);
 pinMode(2, OUTPUT);
 pinMode(32, OUTPUT);
+  SerialBT.begin("${btName()}");
+
 }
+
 
 void loop()
 {
 
     SW = digitalRead(33);
     COUNT = COUNT + 1;
-    if (SW != LAST || COUNT >= 10) {      // on a change, or every 10 × 200 ms = 2 s
+    if (SW != LAST || COUNT >= 10) {
       if (SW == 1) {
         digitalWrite(2,HIGH);
         digitalWrite(32,HIGH);
         SerialBT.println("ON");
+
       }
       if (SW == 0) {
         digitalWrite(2,LOW);
         digitalWrite(32,LOW);
         SerialBT.println("OFF");
+
       }
       LAST = SW;
       COUNT = 0;
+
     }
     delay(200);
 
 }`;
-  const AI_RX = () => bk("ai-ev", `when ${bf("Clock1")} .Timer`,
-    bk("ai-ctl", `if ${inl("ai-call", `${inl("ai-get", `${bf("BluetoothClient1")} . ${bf("IsConnected")}`)} and ${inl("ai-get", `${bf("BluetoothClient1")} . ${bf("BytesAvailableToReceive")}`)} &gt; ${bn(0)}`)}`,
-      bk("ai-set", `then set ${bf("Label_Switch")} . ${bf("Text")} to ${inl("ai-text", `join “ Switch: ” ${inl("ai-text", `trim ${inl("ai-call", `call ${bf("BluetoothClient1")} .ReceiveText<br>numberOfBytes ${bn(-1)}`)}`)}`)}`)));
-  const t83Blocks = () =>
-    bk("root", "Setup", `<span class="bk-empty">The same Setup blocks as Lesson 4 (join the Wi-Fi, print the IP, your name and the MAC, Start Server Port 80)</span>` +
-      bk("var", `Declare ${bf("SW")} as int Value ${bn(0)}`) + bk("var", `Declare ${bf("STATE")} as String Value ${bs("OFF")}`)) +
-    bk("root", "Main loop",
-      bk("var", `set ${bf("SW")} to ${inl("pin", `Digital read PIN# ${bf("D33")}`)}`) +
-      bk("logic", `if ${ifVar("SW", "=", bn(1))}`, bk("var", `set STRING ${bf("STATE")} to ${bs("ON")}`) + ledBoth("HIGH")) +
-      bk("logic", `if ${ifVar("SW", "=", bn(0))}`, bk("var", `set STRING ${bf("STATE")} to ${bs("OFF")}`) + ledBoth("LOW")) +
-      bk("wifi", "Wait Connection") +
-      bk("var", `set STRING ${bf("ClientRequest")} to ${inl("wifi", "Server Read request")}`) +
-      bk("wifi", "client flush") +
-      bk("wbk", "Answer Web page",
-        bk("wbk", `Head ${inl("wbk", `Web page HTML ${bs("&lt;meta http-equiv='refresh' content='1'&gt;&lt;title&gt;Switch Monitor&lt;/title&gt;")}`)}`) +
-        bk("wbk", `Body ${inl("wbk", `Heading ${bf("1")} Text ${bs("Switch Monitor")}`)}`) +
-        bk("wbk", `${inl("wbk", `Heading ${bf("2")} Text ${inl("var", `join ${bs("Switch: ")} ${bf("STATE")}`)}`)}`) +
-        bk("wbk", `${inl("wbk", `Heading ${bf("2")} Text ${inl("var", `join ${bs("LEDs: ")} ${bf("STATE")}`)}`)}`)));
+  // App Inventor: BytesAvailableToReceive is a purple "call" block (a method), not a property
+  const AI_RX_CAP = (label) => `<p><strong>Where to find the blocks:</strong> <em>Clock1</em> (when Clock1.Timer), <em>Control</em> (if), <em>BluetoothClient1</em> (IsConnected, <strong>call</strong> BluetoothClient1.BytesAvailableToReceive, <strong>call</strong> BluetoothClient1.ReceiveText), <em>Logic</em> (and), <em>Math</em> (the compare block: change = to &gt;, and 0), <em>${label}</em> (set ${label}.Text), <em>Text</em> (join, trim, " "). <em>join</em> starts with two sockets: tap its blue gear to add more.</p>`;
+  const aiRxShot = () => shot(BIMG + "ai-switch-bt.png", 984, 187, "App Inventor: when Clock1.Timer, if BluetoothClient1.IsConnected and call BluetoothClient1.BytesAvailableToReceive > 0, then set Label_Switch.Text to join Switch: and trim call BluetoothClient1.ReceiveText numberOfBytes -1",
+    AI_RX_CAP("Label_Switch"));
+  const t83Shot = () => shot(BIMG + "tuniot-switch-web.png", 627, 923, "TUNIOT blocks: monitor the switch on a web page",
+    SER + swWhere(`, <em>IOT › IOT Station</em> (Connect Network, Is Connected?, Local IP), <em>Loops</em> (repeat while), <em>Serial</em> (Print on new line), <em>IOT › IOT Server</em> (Start Server, Wait Connection, Server Read request, client flush), <em>IOT › Web page</em> (Answer Web page, Web page HTML, Heading)`) +
+    `<p><strong>Type in full</strong> (TUNIOT shortens long text on screen):</p><ul class="what">
+      <li>Web page HTML: <code>&lt;meta http-equiv='refresh' content='1'&gt;&lt;title&gt;Switch Monitor&lt;/title&gt;</code></li>
+      <li>Arduino Code: <code>client.println("&lt;h2&gt;Switch: " + STATE + "&lt;/h2&gt;");</code></li>
+      <li>Arduino Code: <code>client.println("&lt;h2&gt;LEDs: " + STATE + "&lt;/h2&gt;");</code></li></ul>
+    <p>TUNIOT has no block that joins text to a variable inside a heading, so these two lines are <strong>Arduino Code</strong> blocks (drawer <em>Various</em>) placed in the Body. Type your own hotspot name and password.</p>`);
   const t83Code = () => `${HEAD}#include <WiFi.h>
 
-String ClientRequest;
-int SW;
-String STATE;
+String  ClientRequest;
 WiFiServer server(80);
+
+int  SW;
+String  STATE;
 WiFiClient client;
+
+String myresultat;
+
+String ReadIncomingRequest(){
+while(client.available()) {
+ClientRequest = (client.readStringUntil('\\r'));
+ if ((ClientRequest.indexOf("HTTP/1.1")>0)&&(ClientRequest.indexOf("/favicon.ico")<0)){
+myresultat = ClientRequest;
+}
+}
+return myresultat;
+}
 
 void setup()
 {
 ClientRequest = "";
+
+Serial.begin(9600);
+
 SW = 0;
 STATE = "OFF";
-Serial.begin(115200);
+
 pinMode(33, INPUT);
 pinMode(2, OUTPUT);
 pinMode(32, OUTPUT);
-  WiFi.disconnect();
-  delay(1000);
-  Serial.println("Searching for an access point (AP)");
-  WiFi.begin("${SSID}","Password");
+  Serial.begin(115200);
+  WiFi.begin("YourName_wifi","Password");
   while ((!(WiFi.status() == WL_CONNECTED))){
     delay(1000);
     Serial.println("Waiting for an IP address");
+
   }
-  Serial.println("Obtained an IP address");
   Serial.println((WiFi.localIP()));
-  Serial.println("${who()}");
-  Serial.println((WiFi.macAddress()));
   server.begin();
+
 }
+
 
 void loop()
 {
-    SW = digitalRead(33);               // read the switch first, every loop
+
+    SW = digitalRead(33);
     if (SW == 1) {
       STATE = "ON";
       digitalWrite(2,HIGH);
       digitalWrite(32,HIGH);
+
     }
     if (SW == 0) {
       STATE = "OFF";
       digitalWrite(2,LOW);
       digitalWrite(32,LOW);
+
     }
     client = server.available();
     if (!client) { return; }
     while(!client.available()){  delay(1); }
-    ClientRequest = (client.readStringUntil('\\r'));
+    ClientRequest = (ReadIncomingRequest());
     client.flush();
     client.println("HTTP/1.1 200 OK");
     client.println("Content-Type: text/html");
@@ -1414,16 +1449,18 @@ void loop()
     client.println("<!DOCTYPE HTML>");
     client.println("<html>");
     client.println("<head>");
-    client.println("<meta http-equiv='refresh' content='1'><title>Switch Monitor</title>");
+      client.println("<meta http-equiv=\\'refresh\\' content=\\'1\\'><title>Switch Monitor</title>");
     client.println("</head>");
     client.println("<body>");
-    client.println("<h1>Switch Monitor</h1>");
-    client.println("<h2>Switch: " + STATE + "</h2>");
-    client.println("<h2>LEDs: " + STATE + "</h2>");
+      client.println("<h1 style=""color:#000000"">");
+      client.println("Switch Monitor");
+      client.println("</h1>");
+      client.println("<h2>Switch: " + STATE + "</h2>");
+      client.println("<h2>LEDs: " + STATE + "</h2>");
     client.println("</body>");
     client.println("</html>");
-    client.stop();
     delay(1);
+
 }`;
   const stateCode = `    // Optional: a plain-text reply for an App Inventor app (put it before the HTML page)
     if (ClientRequest.indexOf("/state") > 0) {
@@ -1434,12 +1471,12 @@ void loop()
       client.stop();
       return;
     }`;
-  const AI_WEB = () =>
-    bk("ai-ev", `when ${bf("Clock1")} .Timer`, bk("ai-set", `set ${bf("Web1")} . ${bf("Url")} to ${inl("ai-text", `“ http://${IP}/state ”`)}`) + bk("ai-call", `call ${bf("Web1")} .Get`)) +
-    bk("ai-ev", `when ${bf("Web1")} .GotText<br><small>url, responseCode, responseType, responseContent</small>`, bk("ai-set", `set ${bf("Label_Switch")} . ${bf("Text")} to ${inl("ai-text", `join “ Switch: ” ${inl("ai-text", `trim ${inl("ai-get", "get responseContent")}`)}`)}`));
-
-  const blocksAndCode = (blocks, code, file, label) => `<div class="bc-grid"><div>${ws(blocks, label)}</div><div>${codeBlock(code, file)}</div></div>
-    <p class="small-note">TUNIOT may name a few blocks slightly differently. What matters is that your Arduino code does the same.</p>`;
+  const aiWebShots = () =>
+    shot(BIMG + "ai-web-timer.png", 457, 99, `App Inventor: when Clock1.Timer, set Web1.Url to http://${IP}/state, call Web1.Get`,
+      `<p>Type your ESP32's own IP address (from the Serial Monitor) in place of <code>${IP}</code>.</p>`) +
+    shot(BIMG + "ai-web-gottext.png", 617, 126, "App Inventor: when Web1.GotText, set Label_Switch.Text to join Switch: and trim get responseContent",
+      `<p><strong>Where to find the blocks:</strong> <em>Clock1</em>, <em>Web1</em> (set Web1.Url, call Web1.Get, when Web1.GotText), <em>Label_Switch</em>, <em>Text</em> (join, trim, " "). For <strong>get responseContent</strong>, hover over <em>responseContent</em> on the GotText block and drag out the orange <strong>get</strong> block.</p>`);
+  const blocksAndCode = (pic, code, file) => `<div class="bc-grid"><div>${pic}</div><div>${codeBlock(code, file)}</div></div>`;
 
   function mountT81(el) {
     let on = false, last = -1, so;
@@ -1449,7 +1486,7 @@ void loop()
         <div class="task-side"><button type="button" class="btn" data-flip>Flip the switch</button>${serialBox()}<p class="pv-read t81-read"></p></div></div>`;
     const host = $(".bench-host", el), read = $(".t81-read", el);
     so = serialOut($(".serial", el));
-    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(t81Blocks(), t81Code(), "switch_serial.ino", "TUNIOT blocks: monitor the switch on the Serial Monitor"); };
+    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(t81Shot(), t81Code(), "switch_serial.ino (from TUNIOT)"); };
     const step_ = (focus) => {
       const sw = on ? 1 : 0;
       if (sw !== last) { so.add(sw ? "Switch ON" : "Switch OFF"); last = sw; }
@@ -1468,15 +1505,15 @@ void loop()
       <h4 class="sub-h">Add to Your Lesson 3 App</h4>
       <ul class="what"><li>A <strong>Label</strong> named <code>Label_Switch</code>, text <code>Switch: --</code>.</li>
         <li>A <strong>Clock</strong> (Sensors palette), TimerInterval <strong>200</strong> ms.</li>
-        <li>On <code>BluetoothClient1</code>, set <strong>DelimiterByte = 10</strong>. That is the line-feed character that <code>println</code> puts at the end of each message, so <code>ReceiveText</code> with −1 reads exactly one message.</li></ul>
-      ${ws(AI_RX(), "App Inventor block that receives the switch state")}
+        <li>On <code>BluetoothClient1</code>, set <strong>DelimiterByte = 10</strong> (in the Properties panel, under Behavior). That is the line-feed character that <code>println</code> puts at the end of each message, so <code>ReceiveText</code> with −1 reads exactly one message.</li></ul>
+      ${aiRxShot()}
       <h4 class="sub-h">Try It: Monitor on a Phone via Bluetooth</h4>
       <div class="sim-grid"><div class="sim-phone">${phoneFrame("Phone app")}</div>
         <div class="sim-side"><figure class="scene-box"><div class="scene-scroll"><div class="bench-host"></div></div></figure>
           <div class="wf-row"><button type="button" class="btn" data-flip>Flip the switch</button></div>
           <div class="esp-in"><h4>Inside the ESP32</h4><pre class="esp-vars" aria-live="polite"></pre></div><p class="pv-read t82-read"></p></div></div>`;
     const host = $(".bench-host", el), screen = $(".ph-screen", el), vars = $(".esp-vars", el), read = $(".t82-read", el);
-    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(t82Blocks(), t82Code(), "switch_bluetooth.ino", "TUNIOT blocks: monitor the switch on a phone via Bluetooth"); };
+    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(t82Shot(), t82Code(), "switch_bluetooth.ino (from TUNIOT)"); };
     const drawBench = (focus) => { host.innerHTML = bench({ type: "spdt", on, read: on ? 1 : 0, led2: on, led32: on, phone: "t82Path", link: connected }); if (focus) refocusSw(host); };
     const render = () => {
       const lst = list ? `<div class="ai-list" role="dialog" aria-label="Choose a device"><p class="ai-list-h">Choose a device</p><button type="button" class="ai-li" data-pick="esp">${esc(MAC)} ${esc(btName())}</button><button type="button" class="ai-li cancel" data-pick="">Cancel</button></div>` : "";
@@ -1528,7 +1565,7 @@ void loop()
       ${fold("Optional: Show It in an App Inventor App Instead", `<p>Add a path that replies with just <code>ON</code> or <code>OFF</code> as plain text. In the Arduino IDE, put these lines straight after <code>client.flush();</code>:</p>
         ${codeBlock(stateCode, "Add to switch_web.ino")}
         <p>In the app, add a <strong>Web</strong> component (Connectivity), a <strong>Clock</strong> (TimerInterval 1000 ms) and a <code>Label_Switch</code>. The app asks <code>http://${IP}/state</code> every second:</p>
-        ${ws(AI_WEB(), "App Inventor blocks that read the switch state over Wi-Fi")}`)}
+        ${aiWebShots()}`)}
       <h4 class="sub-h">Try It: Monitor on a Web Page</h4>
       <div class="sim-grid"><div class="sim-phone">${phoneFrame("Phone web browser")}</div>
         <div class="sim-side"><figure class="scene-box"><div class="scene-scroll"><div class="bench-host"></div></div></figure>
@@ -1536,8 +1573,8 @@ void loop()
           ${chips("Auto refresh", [["1", "With the refresh tag"], ["0", "Without it"]], "1")}
           ${serialBox()}<p class="pv-read t83-read"></p></div></div>`;
     const host = $(".bench-host", el), screen = $(".ph-screen", el), read = $(".t83-read", el), so = serialOut($(".serial", el));
-    ["Obtained an IP address", IP, who(), MAC].forEach((x) => so.add(x));
-    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(t83Blocks(), t83Code(), "switch_web.ino", "TUNIOT blocks: monitor the switch on a web page"); };
+    ["Waiting for an IP address", IP].forEach((x) => so.add(x));
+    const blocks = () => { $(".sw-blocks", el).innerHTML = blocksAndCode(t83Shot(), t83Code(), "switch_web.ino (from TUNIOT)"); };
     const drawBench = (focus) => { host.innerHTML = bench({ type: "spdt", on, read: on ? 1 : 0, led2: on, led32: on }); if (focus) refocusSw(host); };
     screen.innerHTML = `<form class="br-bar ph" data-go><input type="text" inputmode="url" aria-label="Address" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(url)}"><button type="submit" class="go-b">Go</button></form><div class="br-view"></div>`;
     const view = $(".br-view", screen), go = $(".go-b", screen);
