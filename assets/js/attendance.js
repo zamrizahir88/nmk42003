@@ -251,11 +251,35 @@
       paintOpen();
     }).catch(() => { openEl.innerHTML = `<p class="small-note">Could not load the class list. Reload the page to try again.</p>`; });
 
-    unsubs.push(db.collection("sessions").where("semester", "==", SEM).onSnapshot((q) => {
-      all = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).sort((a, b) => (a.date + a.start < b.date + b.start ? -1 : 1));
+    // The semester's sessions change rarely, so the whole list is read at most every 3 hours (kept in this browser);
+    // the OPEN ones are watched live, so a session opening or closing shows at once. (61 students checking in used
+    // to read every session of the semester each time.)
+    const SKEY = "nmk-sync-sess", base = {};
+    const setAll = () => {
+      all = Object.values(base).filter((x) => x.semester === SEM).sort((a, b) => (a.date + a.start < b.date + b.start ? -1 : 1));
       open = all.filter(stillOpen);
+      try { localStorage.setItem(SKEY, JSON.stringify({ sem: SEM, at: (JSON.parse(localStorage.getItem(SKEY) || "{}").at) || Date.now(), list: Object.values(base) })); } catch (e) { /* private mode */ }
       paintOpen(); paintReqs();
-    }, () => { openEl.innerHTML = `<p class="small-note">Could not check for open sessions. Reload the page to try again.</p>`; }));
+    };
+    // timestamps kept as milliseconds, so the copy in this browser reads the same (tsMs takes both)
+    const plain = (d) => { const x = Object.assign({ id: d.id }, d.data()); Object.keys(x).forEach((k) => { if (x[k] && x[k].toMillis) x[k] = x[k].toMillis(); }); return x; };
+    (async () => {
+      let c = null; try { c = JSON.parse(localStorage.getItem(SKEY) || "null"); } catch (e) { c = null; }
+      if (c && c.sem === SEM && Date.now() - c.at < 3 * 3600000) c.list.forEach((x) => { base[x.id] = x; });
+      else {
+        const q = await db.collection("sessions").where("semester", "==", SEM).get();
+        q.docs.forEach((d) => { base[d.id] = plain(d); });
+        try { localStorage.setItem(SKEY, JSON.stringify({ sem: SEM, at: Date.now(), list: Object.values(base) })); } catch (e) { /* private mode */ }
+      }
+      setAll();
+      unsubs.push(db.collection("sessions").where("state", "==", "open").onSnapshot((q) => {
+        q.docChanges().forEach((ch) => {
+          if (ch.type === "removed") db.collection("sessions").doc(ch.doc.id).get().then((d) => { if (d.exists) base[d.id] = plain(d); else delete base[d.id]; setAll(); }).catch(() => {});
+          else base[ch.doc.id] = plain(ch.doc);
+        });
+        setAll();
+      }, () => { openEl.innerHTML = `<p class="small-note">Could not check for open sessions. Reload the page to try again.</p>`; }));
+    })().catch(() => { openEl.innerHTML = `<p class="small-note">Could not check for open sessions. Reload the page to try again.</p>`; });
     unsubs.push(db.collection("attendance").where("email", "==", email).onSnapshot((q) => {
       recs = {};
       q.docs.forEach((d) => { const x = d.data(); if (!x.semester || x.semester === SEM) recs[x.session] = x; });

@@ -58,15 +58,20 @@
   }
   // names open each student's profile page (profile.html)
 
+  async function load(force) {
+    host.innerHTML = `<p class="small-note">Loading the board…</p>`;
+    try {
+      rows = (A.boardRows ? await A.boardRows(force) : (await A.db.collection("board").where("semester", "==", G.SEM).get()).docs.map((d) => Object.assign({ uid: d.id }, d.data())))
+        .filter((r) => r.role !== "lecturer");
+      draw();
+      host.insertAdjacentHTML("afterbegin", `<p><button type="button" class="btn ghost small" data-bref>⟳ Refresh</button></p>`);
+      host.querySelector("[data-bref]").onclick = () => load(true);
+    } catch (e) { host.innerHTML = `<p class="small-note">Could not load the board (${esc(e.code || e)}).</p>`; }
+  }
   A.on(async (st) => {
     if (!st.user) { host.innerHTML = `<p>Sign in with your studentmail account to see the class board.</p><button type="button" class="btn" data-signin>Sign in with Google</button>`; host.querySelector("[data-signin]").onclick = A.signIn; return; }
     if (!st.profile || (st.profile.status !== "approved" && !A.isAdmin(st.user.email))) { host.innerHTML = `<p class="small-note">The class board opens when your lecturer has approved your account.</p>`; return; }
     me = st.user.uid;
-    host.innerHTML = `<p class="small-note">Loading the board…</p>`;
-    try {
-      const snap = await A.db.collection("board").where("semester", "==", G.SEM).get();
-      rows = snap.docs.map((d) => Object.assign({ uid: d.id }, d.data())).filter((r) => r.role !== "lecturer");
-      draw();
-    } catch (e) { host.innerHTML = `<p class="small-note">Could not load the board (${esc(e.code || e)}).</p>`; }
+    load(false);
   });
 })();

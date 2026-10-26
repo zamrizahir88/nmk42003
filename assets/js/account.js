@@ -27,12 +27,35 @@
 
   firebase.initializeApp(CONFIG);
   const auth = firebase.auth(), db = firebase.firestore();
+  // Keep Firestore's data in this browser: a live list opened again within 30 minutes is then billed only for the
+  // documents that changed, not read again in full (the free plan allows 50,000 reads a day). Pages that act on what
+  // they read (attendance) wait for the server's copy (snapshot.metadata.fromCache is false).
+  try { db.enablePersistence({ synchronizeTabs: true }).catch(() => { /* private mode, or an old browser: no cache */ }); } catch (e) { /* no cache */ }
+  // Every live list on the site gets the server's copy only, never the browser's cached one: pages act on what they
+  // read (closing a session marks the rest Absent), so they must never act on an old copy. The cache still makes a
+  // list opened again cheap. (A snapshot that only says "now confirmed by the server" is passed on once.)
+  [firebase.firestore.Query.prototype, firebase.firestore.DocumentReference.prototype].forEach((proto) => {
+    const orig = proto.onSnapshot;
+    proto.onSnapshot = function (...a) {
+      const opts = a[0] && typeof a[0] === "object" && typeof a[0].next !== "function" ? a.shift() : {};
+      const next = a[0], fail = a[1];
+      if (typeof next !== "function") return orig.apply(this, arguments);
+      let got = false;
+      return orig.call(this, Object.assign({}, opts, { includeMetadataChanges: true }), (snap) => {
+        if (snap.metadata.fromCache) return;
+        if (got && !opts.includeMetadataChanges && snap.docChanges && !snap.docChanges().length) return;
+        got = true; next(snap);
+      }, fail);
+    };
+  });
 
   /* ---------- The lecturer's changes to the public timetable (applied by schedule.js on the next page load) ---------- */
   const SCHED_ID = String(SEM).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   // the same content always gives the same text (Firestore returns the fields in any order)
   const stable = (x) => (Array.isArray(x) ? `[${x.map(stable).join(",")}]` : x && typeof x === "object" ? `{${Object.keys(x).sort().map((k) => `${JSON.stringify(k)}:${stable(x[k])}`).join(",")}}` : JSON.stringify(x));
-  db.collection("schedule").doc(SCHED_ID).get().then((d) => {
+  let schedAt = 0; try { schedAt = +localStorage.getItem("nmk-sched-at") || 0; } catch (e) { /* private mode */ }
+  if (Date.now() - schedAt > 30 * 60000) db.collection("schedule").doc(SCHED_ID).get().then((d) => {
+    try { localStorage.setItem("nmk-sched-at", String(Date.now())); } catch (e) { /* private mode */ }
     const v = d.exists ? stable({ semester: SEM, weeks: d.data().weeks || {}, labs: d.data().labs || {}, topics: d.data().topics || {} }) : "";
     let old = ""; try { old = localStorage.getItem("nmk-sched") || ""; } catch (e) { /* private mode */ }
     try { if (old) old = stable(JSON.parse(old)); } catch (e) { old = ""; }
@@ -97,18 +120,55 @@
           ch: ids.reduce((o, id) => { const w = id.match(/^w(\d+)/)[1]; o[w] = (o[w] || 0) + 1; return o; }, {}), started: ids.length > 0 || Object.values(msv).some((x) => x && !x.cleared),
           last: ids.map((id) => mis[id].at).concat(Object.values(msv).map((x) => x && x.at)).filter(Boolean).sort().pop() || null, hero: keys["nmk-hero"] || "" };
         // the public profile: classmates see the real name, matric and lab section from the class list, and the Google account photo
-        await db.collection("board").doc(state.user.uid).set({ nickname: p.nickname || "", role: p.role || "student", semester: SEM, xp: g.xp, level: g.level, levelNo: g.levelNo,
+        const bd = { nickname: p.nickname || "", role: p.role || "student", semester: SEM, xp: g.xp, level: g.level, levelNo: g.levelNo,
           badges: g.badges.map((b) => b.id), streak: g.streak, solved: g.solved, lastActive: g.lastActive || null,
           stops: Object.fromEntries(g.stops.filter((s) => s.total).map((s) => [s.label, s.pct])), prog: G.summaryProg ? G.summaryProg(g) : {}, feed: G.feed ? G.feed(g, 20) : [],
           name: r.name || p.name || "", matric: r.matric || "", section: r.section || "", group: r.group || 0, photo: state.user.photoURL || "",
-          since: p.createdAt || null, game, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+          since: p.createdAt || null, game };
+        await db.collection("board").doc(state.user.uid).set(Object.assign({ updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, bd));
+        // my line in the class board summary: only when it changed, and at most every 3 minutes (the whole class shares
+        // one document, which takes about one write a second); a later change is written when the 3 minutes are up
+        const line = sumOf(bd), h = stable(line), wait = 180000 - (Date.now() - sumAt);
+        if (ls.get(BSUM_KEY) !== `${state.user.uid}:${h}`) {
+          if (wait > 0) { clearTimeout(sumT); sumT = setTimeout(push, wait); }
+          else {
+            sumAt = Date.now();
+            await db.collection("boardsum").doc(SCHED_ID).set({ p: { [state.user.uid]: line } }, { merge: true })
+              .then(() => ls.set(BSUM_KEY, `${state.user.uid}:${h}`)).catch((e) => console.warn("NMK sync: could not update the class board summary", e.code || e));
+          }
+        }
       }
       await db.collection("users").doc(state.user.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() });
     } catch (e) { console.warn("NMK sync: could not save progress", e.code || e); }
   }
+  /* ---------- The class board (board.html and the INSTRUMENTA leaderboard) ----------
+     One document, boardsum/{semester}, holds every player's line (p.{uid}): opening a board reads 1 document instead
+     of one per student. Each student writes only their own line (firestore.rules); a lecturer's first look fills in
+     everyone who hasn't synced since. Kept in this browser for 5 minutes (Refresh reads it again). */
+  const BSUM_KEY = "nmk-sync-bsum", BOARD_KEY = "nmk-sync-board";
+  let sumAt = 0, sumT = 0;
+  const sumOf = (b) => ({ nickname: b.nickname || "", role: b.role || "student", xp: b.xp || 0, level: b.level || "", levelNo: b.levelNo || 1, badges: b.badges || [],
+    streak: b.streak || 0, lastActive: b.lastActive || null, stops: b.stops || {}, name: b.name || "", matric: b.matric || "", section: b.section || "", photo: b.photo || "", game: b.game || null });
+  async function boardRows(force) {
+    if (!force) { try { const c = JSON.parse(localStorage.getItem(BOARD_KEY) || "null"); if (c && c.sem === SEM && Date.now() - c.at < 300000) return c.rows; } catch (e) { /* read it */ } }
+    let rows = null;
+    try {
+      const d = await db.collection("boardsum").doc(SCHED_ID).get(), x = d.exists ? d.data() : null;
+      if (x && x.filled && x.p) rows = Object.entries(x.p).map(([uid, v]) => Object.assign({ uid }, v));
+    } catch (e) { /* the summary rules are not published yet: read the board the old way */ }
+    if (!rows) {
+      const q = await db.collection("board").where("semester", "==", SEM).get();
+      rows = q.docs.map((d) => Object.assign({ uid: d.id }, sumOf(d.data())));
+      // a lecturer fills the summary with everyone once; from then on each student keeps their own line up to date
+      if (state.user && isAdmin(state.user.email)) db.collection("boardsum").doc(SCHED_ID).set({ filled: true, p: Object.fromEntries(rows.map(({ uid, ...v }) => [uid, v])) }, { merge: true }).catch(() => {});
+    }
+    try { localStorage.setItem(BOARD_KEY, JSON.stringify({ sem: SEM, at: Date.now(), rows })); } catch (e) { /* too big or private mode */ }
+    return rows;
+  }
+
   // On the first sign-in on this device, merge what was saved online with what this browser has.
   // A different account on this browser replaces the old one's records, so two students never mix.
-  async function pull() {
+  async function pull(reload = true) {
     let remote = {};
     try { const doc = await db.collection("progress").doc(state.user.uid).get(); remote = (doc.exists && doc.data().keys) || {}; }
     catch (e) { console.warn("NMK sync: could not load progress", e.code || e); return; }
@@ -128,10 +188,12 @@
       }
     });
     ls.set(UID_KEY, state.user.uid);
-    if (JSON.stringify(snapshot()) !== before) document.dispatchEvent(new CustomEvent("nmk:synced"));
-    await push();
+    const now = snapshot();
+    if (JSON.stringify(now) !== before) document.dispatchEvent(new CustomEvent("nmk:synced"));
+    // save back only when this browser has something the account doesn't (a few writes saved on every visit)
+    if (Object.keys(now).some((k) => now[k] !== remote[k])) await push();
     // the page was drawn from the old records: draw it again once, so lessons show the merged progress
-    if (JSON.stringify(snapshot()) !== before && !sessionStorage.getItem("nmk-sync-reloaded")) {
+    if (reload && JSON.stringify(now) !== before && !sessionStorage.getItem("nmk-sync-reloaded")) {
       try { sessionStorage.setItem("nmk-sync-reloaded", "1"); } catch (e) { /* ignore */ }
       location.reload();
     }
@@ -166,18 +228,21 @@
   }
   const signOut = () => auth.signOut();
 
-  auth.onAuthStateChanged(async (u) => {
-    state.user = u; state.profile = null; state.ready = true;
-    // remember in this browser whether a lecturer is signed in: the course journey shows them a class summary instead
-    const role = u && isAdmin(u.email) ? "lecturer" : "";
-    if ((ls.get("nmk-role") || "") !== role) { try { if (role) localStorage.setItem("nmk-role", role); else { localStorage.removeItem("nmk-role"); localStorage.removeItem("nmk-preview"); } } catch (e) { /* private mode */ } }
-    if (window.NMKGame && window.NMKGame.paint) setTimeout(window.NMKGame.paint, 0);
-    if (!u) { paint(); changed(); loadBell(false); paintLog(); return; }
-    if (!allowed(u.email)) {
-      await auth.signOut();
-      notice("Use your UniMAP student account", `<p>This course site accepts only <strong>@studentmail.unimap.edu.my</strong> Google accounts. You signed in as <strong>${esc(u.email)}</strong>.</p><p>Sign in again and choose your studentmail account.</p>`);
-      return;
-    }
+  /* ---------- Visits: read once when a student arrives, not on every page ----------
+     A visit starts when the site is opened after 30 minutes or more away (or with another account). Its first page
+     reads the account, the progress, the attendance records and the bell; the next pages reuse what it read (kept
+     in this browser). The bell is read again when it is tapped, after the person's own action (refreshBell), and,
+     once the visit has lasted 20 minutes, every 15 minutes while the page is on screen. */
+  const VISIT_KEY = "nmk-sync-visit", AWAY_MS = 30 * 60000, BELL_AFTER_MS = 20 * 60000, BELL_EVERY_MS = 15 * 60000;
+  const vget = () => { try { return JSON.parse(localStorage.getItem(VISIT_KEY) || "null"); } catch (e) { return null; } };
+  const vset = (v) => { try { localStorage.setItem(VISIT_KEY, JSON.stringify(v)); } catch (e) { /* private mode: every page is a new visit */ } };
+  const vpatch = (o) => { const v = vget(); if (v && state.user && v.uid === state.user.uid) vset(Object.assign(v, o)); };
+  const visitOf = (uid) => { const v = vget(); return v && v.uid === uid && v.profile && Date.now() - (v.seen || 0) < AWAY_MS ? v : null; };
+  // Firestore timestamps come back from the browser's copy as plain {seconds, nanoseconds}
+  const revive = (o) => { if (o && typeof o === "object") Object.keys(o).forEach((k) => { const x = o[k]; if (x && typeof x === "object" && typeof x.seconds === "number" && typeof x.nanoseconds === "number") o[k] = new firebase.firestore.Timestamp(x.seconds, x.nanoseconds); }); return o; };
+  // the start of a visit: the account, the menu switches, the bell, the progress and the attendance records
+  async function startVisit(u, again) {
+    const was = state.profile && state.profile.status;
     try {
       const ref = db.collection("users").doc(u.uid), doc = await ref.get();
       state.roster = isAdmin(u.email) ? null : await rosterOf(u.email);
@@ -191,12 +256,52 @@
         await ref.set(Object.assign({ createdAt: firebase.firestore.FieldValue.serverTimestamp() }, state.profile));
       } else { setup(u, listed); }
     } catch (e) { console.warn("NMK account: could not load the profile", e.code || e); }
-    paint(); changed(); loadBell(false);
-    // is the Missions game released to students? (for the menu link)
-    if (state.profile && state.profile.status === "approved") db.collection("meta").doc("missions").get().then((d) => { missionsOpen = !!(d.exists && d.data().released); navMine(); }).catch(() => {});
-    // is a round of the course survey open? (for the menu link)
-    if (state.profile && state.profile.status === "approved") db.collection("meta").doc("survey").get().then((d) => { surveyOpen = (d.exists && d.data().open) || ""; navMine(); }).catch(() => {});
-    if (canSync()) { pull(); queuePush(); loadAttendance(); db.collection("users").doc(u.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp(), photo: u.photoURL || "" }).catch(() => {}); }
+    // a new visit on a page left open: tell the page only if the account changed (it set itself up already)
+    if (!again || was !== (state.profile && state.profile.status)) { paint(); changed(); }
+    if (!state.profile || state.profile.status !== "approved") { loadBell(false); return; }   // waiting for approval: checked again on every page
+    // is the game released, is a survey round open? (for the menu links)
+    const [mi, sv] = await Promise.all([db.collection("meta").doc("missions").get(), db.collection("meta").doc("survey").get()].map((p) => p.catch(() => null)));
+    missionsOpen = !!(mi && mi.exists && mi.data().released); surveyOpen = (sv && sv.exists && sv.data().open) || ""; navMine();
+    const now = Date.now();
+    vset({ uid: u.uid, start: now, seen: now, profile: state.profile, roster: state.roster, missions: missionsOpen, survey: surveyOpen, bell: null });
+    loadBell(true);
+    if (canSync()) { pull(); db.collection("users").doc(u.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp(), photo: u.photoURL || "" }).catch(() => {}); }
+  }
+  // every minute while the page is on screen: keep the visit alive, refresh the bell after 20 minutes, and start a new
+  // visit when the person comes back after 30 minutes or more away
+  function tick() {
+    const u = state.user;
+    if (!u || document.visibilityState !== "visible" || !state.profile || state.profile.status !== "approved") return;
+    const v = vget(), now = Date.now();
+    if (!v || v.uid !== u.uid || now - (v.seen || 0) >= AWAY_MS) { startVisit(u, true); return; }
+    vpatch({ seen: now });
+    if (now - (v.start || now) >= BELL_AFTER_MS && now - ((v.bell && v.bell.at) || 0) >= BELL_EVERY_MS) { loadBell(true); if (canSync()) pull(false); }
+  }
+  setInterval(tick, 60000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") tick(); });
+
+  auth.onAuthStateChanged(async (u) => {
+    state.user = u; state.profile = null; state.ready = true;
+    // remember in this browser whether a lecturer is signed in: the course journey shows them a class summary instead
+    const role = u && isAdmin(u.email) ? "lecturer" : "";
+    if ((ls.get("nmk-role") || "") !== role) { try { if (role) localStorage.setItem("nmk-role", role); else { localStorage.removeItem("nmk-role"); localStorage.removeItem("nmk-preview"); } } catch (e) { /* private mode */ } }
+    if (window.NMKGame && window.NMKGame.paint) setTimeout(window.NMKGame.paint, 0);
+    if (!u) { paint(); changed(); loadBell(false); paintLog(); return; }
+    if (!allowed(u.email)) {
+      await auth.signOut();
+      notice("Use your UniMAP student account", `<p>This course site accepts only <strong>@studentmail.unimap.edu.my</strong> Google accounts. You signed in as <strong>${esc(u.email)}</strong>.</p><p>Sign in again and choose your studentmail account.</p>`);
+      return;
+    }
+    // the same visit: what its first page read is still good (no reads)
+    const v = visitOf(u.uid);
+    if (v) {
+      state.profile = revive(v.profile); state.roster = revive(v.roster) || null; missionsOpen = !!v.missions; surveyOpen = v.survey || "";
+      paint(); changed();
+      if (v.bell) { bellUser = u.email.toLowerCase(); bellAt = v.bell.at; showBell(v.bell.items); } else loadBell(true);
+      tick();
+      return;
+    }
+    await startVisit(u);
   });
 
   /* ---------- Attendance ---------- */
@@ -208,15 +313,15 @@
   // A student's own attendance records, kept in this browser as nmk-att for the course journey (XP and badges)
   async function loadAttendance() {
     if (!state.user || isAdmin(state.user.email)) return;
-    const em = state.user.email.toLowerCase();
-    try {
-      const [r, snap] = await Promise.all([db.collection("roster").doc(em).get(), db.collection("attendance").where("email", "==", em).get()]);
-      if (r.exists) state.roster = r.data();
-      const recs = snap.docs.map((d) => d.data()).filter((x) => !x.semester || x.semester === SEM)
-        .map((x) => ({ t: x.title || "", k: x.kind || "", d: x.date || "", s: x.status })).sort((a, b) => (a.d < b.d ? -1 : 1));
-      const v = JSON.stringify({ section: r.exists ? r.data().section || "" : "", recs });
-      if (ls.get("nmk-att") !== v) { ls.set("nmk-att", v); document.dispatchEvent(new CustomEvent("nmk:store", { detail: "nmk-att" })); }
-    } catch (e) { console.warn("NMK attendance: could not load your records", e.code || e); }
+    try { keepAtt(await db.collection("attendance").where("email", "==", state.user.email.toLowerCase()).get()); }
+    catch (e) { console.warn("NMK attendance: could not load your records", e.code || e); }
+  }
+  // the records read for the bell serve the course journey too (one read of them per visit, not two)
+  function keepAtt(snap) {
+    const recs = snap.docs.map((d) => d.data()).filter((x) => !x.semester || x.semester === SEM)
+      .map((x) => ({ t: x.title || "", k: x.kind || "", d: x.date || "", s: x.status })).sort((a, b) => (a.d < b.d ? -1 : 1));
+    const v = JSON.stringify({ section: (state.roster && state.roster.section) || "", recs });
+    if (ls.get("nmk-att") !== v) { ls.set("nmk-att", v); document.dispatchEvent(new CustomEvent("nmk:store", { detail: "nmk-att" })); }
   }
 
   /* ---------- First sign-in: privacy notice and a nickname ---------- */
@@ -246,7 +351,7 @@
         state.profile = { email: u.email.toLowerCase(), name: u.displayName || "", nickname: nick, status: listed ? "approved" : "pending", role: "student", semester: SEM };
         await db.collection("users").doc(u.uid).set(Object.assign({ createdAt: firebase.firestore.FieldValue.serverTimestamp() }, state.profile, listed ? { approvedBy: "class list" } : {}));
         closeModal(); paint(); changed();
-        if (canSync()) { pull(); loadAttendance(); }
+        if (canSync()) startVisit(u);
       } catch (ex) { err.textContent = `Could not save: ${ex.code || ex}. Please try again.`; }
     });
   }
@@ -337,7 +442,7 @@
   const bellBox = document.createElement("div");
   bellBox.className = "acc-menu acc-bellbox"; bellBox.hidden = true; bellBox.setAttribute("role", "region"); bellBox.setAttribute("aria-label", "Notifications");
   document.body.appendChild(bellBox);
-  let bellItems = [], bellAt = 0, bellUser = "";
+  let bellItems = [], bellAt = 0, bellUser = "", bellBusy = false;
   const tms = (t) => (t && t.toMillis ? t.toMillis() : t ? new Date(t).getTime() || 0 : 0);
   const klToday = () => new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
   const seenAt = () => { try { return +localStorage.getItem("nmk-bell") || 0; } catch (e) { return 0; } };
@@ -347,6 +452,8 @@
     const u = state.user, em = u ? u.email.toLowerCase() : "";
     if (!u || !state.profile || state.profile.status !== "approved") { bellItems = []; bellUser = ""; paintBell(); return; }
     if (!force && bellUser === em && Date.now() - bellAt < 60000) return;
+    if (bellBusy) return;
+    bellBusy = true;
     bellAt = Date.now(); bellUser = em;
     const out = [], add = (o) => out.push(o);
     try {
@@ -379,6 +486,7 @@
         const [got, sent, nts, open, mv, att] = await Promise.all([db.collection("swaps").where("toMatric", "==", mat).get(), db.collection("swaps").where("fromEmail", "==", em).get(),
           db.collection("notices").where("email", "==", em).get(), db.collection("sessions").where("state", "==", "open").get(),
           db.collection("labMoves").where("email", "==", em).get(), db.collection("attendance").where("email", "==", em).get()].map((p) => p.catch(() => ({ docs: [] }))));
+        if (att.docs.length || att.size === 0) keepAtt(att);
         const moves = {}, done = new Set(mine(att).map((x) => x.session));
         mine(mv).forEach((m) => { moves[m.slot] = m.section; });
         mine(open).filter((s) => s.date === klToday() && !done.has(s.id) && (s.section === "all" || s.section === (s.kind === "lab" && moves[slotOf(s)] ? moves[slotOf(s)] : r.section)))
@@ -434,9 +542,18 @@
         mine(nts).filter((n) => n.status !== "pending").forEach((n) => add({ t: tms(n.decidedAt), href: "attendance.html", text: `Your absence notice for ${esc(n.title)} was <strong>${n.status === "approved" ? "approved (Excused)" : "not approved"}</strong>${n.note ? `: “${esc(n.note)}”` : ""}` }));
       }
     } catch (e) { console.warn("NMK bell: could not check for notifications", e.code || e); }
+    bellBusy = false;
+    const items = out.sort((a, b) => (b.todo - a.todo) || b.t - a.t).slice(0, 200);
+    vpatch({ bell: { at: bellAt, items } });
+    showBell(items);
+  }
+  // draw the bell from a list (just read, or kept from earlier in the visit)
+  function showBell(items) {
     const seen = seenAt();
-    bellItems = out.map((o) => Object.assign(o, { fresh: o.t > seen })).sort((a, b) => (b.todo - a.todo) || b.t - a.t).slice(0, 200);
+    bellItems = items.map((o) => Object.assign({}, o, { fresh: o.t > seen }));
     paintBell(); paintLog();
+    if (!bellBox.hidden) fillBell();
+    const em = bellUser;
     // once per visit: a small reminder after signing in when something is waiting
     const n = bellCount();
     let shown = true; try { shown = sessionStorage.getItem("nmk-bell-told") === em; } catch (e) { /* private mode */ }
@@ -464,10 +581,18 @@
     bell.innerHTML = `${BELL_ICON}${n ? `<span class="acc-badge">${n > 9 ? "9+" : n}</span>` : ""}`;
     bell.setAttribute("aria-label", n ? `Notifications: ${n} new` : "Notifications");
   }
-  function openBell() {
+  function fillBell() {
     const show = bellItems.filter((o) => o.todo || o.fresh).concat(bellItems.filter((o) => !o.todo && !o.fresh)).slice(0, 12);
-    bellBox.innerHTML = `<div class="acc-who"><strong>Notifications</strong></div>${show.length ? `<ul class="acc-notes">${show.map(noteLi).join("")}</ul>` : `<p class="acc-note">Nothing yet.</p>`}
+    bellBox.innerHTML = `<div class="acc-who"><strong>Notifications</strong>${bellBusy ? `<span class="acc-note">Checking…</span>` : ""}</div>${show.length ? `<ul class="acc-notes">${show.map(noteLi).join("")}</ul>` : `<p class="acc-note">${bellBusy ? "Checking…" : "Nothing yet."}</p>`}
       <a class="acc-item acc-all" href="notifications.html">See all notifications →</a>`;
+    markSeen();
+    bellItems.forEach((o) => { o.fresh = false; });
+    paintBell();
+  }
+  function openBell() {
+    fillBell();
+    // tapping the bell checks for anything new (at most once a minute)
+    if (Date.now() - bellAt > 60000) loadBell(true).then(() => { if (!bellBox.hidden) fillBell(); });
     const r = bell.getBoundingClientRect();
     bellBox.style.top = `${Math.round(r.bottom + 8)}px`;
     bellBox.style.right = `${Math.max(8, Math.round(innerWidth - r.right))}px`;
@@ -483,8 +608,6 @@
   bell.addEventListener("click", () => { closeMenu(); if (bellBox.hidden) openBell(); else closeBell(); });
   document.addEventListener("click", (e) => { if (!bellBox.hidden && !e.composedPath().some((n) => n === bell || n === bellBox)) closeBell(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !bellBox.hidden) { closeBell(); bell.focus(); } });
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") loadBell(false); });
-  setInterval(() => { if (document.visibilityState === "visible") loadBell(false); }, 180000);
   // pages call this after something changed (an answered swap, a marked attendance): read the list again shortly
   let bellT = 0;
   const refreshBell = () => { clearTimeout(bellT); bellT = setTimeout(() => loadBell(true), 1500); };
@@ -533,5 +656,5 @@
     await db.collection("roster").doc(old).delete();
   }
 
-  window.NMKAccount = { db, auth, isAdmin, state, on: (f) => { listeners.push(f); if (state.ready) f(state); }, signIn, loadAttendance, push, SEM, refreshBell, changeEmail };
+  window.NMKAccount = { db, auth, isAdmin, state, on: (f) => { listeners.push(f); if (state.ready) f(state); }, signIn, loadAttendance, push, SEM, refreshBell, changeEmail, boardRows };
 })();

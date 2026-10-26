@@ -51,6 +51,21 @@ service cloud.firestore {
     // Progress board: one small public summary per student (nickname, level, XP, badges, last active).
     // Approved students and lecturers may read the board; each approved student writes only their own entry.
     // Students on the class list must show their real name and matric from it (classmates see them on profiles).
+    // the class board in one document (p.{uid}: one line per player): each student changes only their own line,
+    // with their own name and matric from the class list; lecturers fill in everyone (account.js boardRows)
+    match /boardsum/{sem} {
+      allow read: if isLecturer() || approved();
+      allow write: if isLecturer();
+      allow create: if approved() && request.resource.data.keys().hasOnly(['p'])
+        && request.resource.data.p.keys().hasOnly([request.auth.uid]) && sumLineOk();
+      allow update: if approved() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['p'])
+        && request.resource.data.p.diff(resource.data.p).affectedKeys().hasOnly([request.auth.uid]) && sumLineOk();
+    }
+    function sumLineOk() {
+      return !onRoster() || (request.resource.data.p[request.auth.uid].get('name', '') == rosterDoc().name
+        && request.resource.data.p[request.auth.uid].get('matric', '') == rosterDoc().matric);
+    }
+
     match /board/{uid} {
       allow read: if isLecturer() || approved();
       allow write: if isSelf(uid) && (approved() || isLecturer())
