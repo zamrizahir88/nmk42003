@@ -1,5 +1,5 @@
 /* NMK42003 attendance warnings: the Warnings tab of the lecturer attendance page (attendance.js calls NMKWarnings.draw).
-   The lecturer's Apps Script (apps-script/warnings.gs, a full check every hour, or within 5 minutes after Send / Mark) works out who is due and writes it to Firestore
+   The lecturer's Apps Script (apps-script/warnings.gs: a full check only when asked, "Run check now" or Send / Mark, within 5 minutes; once a day in Automatic mode) works out who is due and writes it to Firestore
    warnings/{semester}_{email}: the absence counts, the levels already emailed, the emails due (with their text, for
    Preview) and the history. In Manual mode (the default) nothing is sent until the lecturer presses Send (the tab writes
    the due keys to "go"; "Mark as sent" writes them to "skip"); in Automatic mode the script sends at its next check.
@@ -21,7 +21,7 @@
     if (!root.parentNode) { body.innerHTML = ""; body.appendChild(root); }
     if (!meta) { root.innerHTML = `<p class="small-note">Loading…</p>`; return; }
     const auto = meta.mode === "auto", due = W.filter((w) => w.hasDue && (w.due || []).length).sort((a, b) => (a.name < b.name ? -1 : 1));
-    const last = ms(meta.lastRun), tAt = ms(meta.testAt), tDone = ms(meta.testDone);
+    const last = ms(meta.lastRun), tAt = ms(meta.testAt), tDone = ms(meta.testDone), asked = Math.max(ms(meta.runAt), ms(meta.poke));
     const roster = C.L.roster.filter((r) => r.status === "active").sort((a, b) => (a.name < b.name ? -1 : 1)), byEmail = Object.fromEntries(W.map((w) => [w.email, w]));
     const hist = W.flatMap((w) => (w.history || []).map((h) => Object.assign({ w }, h))).sort((a, b) => ms(b.at) - ms(a.at));
     const prevIt = st.prev && (W.find((w) => w.id === st.prev.id) || { due: [] }).due.find((i) => i.key === st.prev.key);
@@ -31,9 +31,11 @@
       <div class="at-card wn-set"><h3>How Warnings Are Sent</h3>
         <div class="at-fs at-radios" role="radiogroup" aria-label="Sending mode">
           <label><input type="radio" name="wnmode" value="manual"${auto ? "" : " checked"}><span><strong>Manual.</strong> Due emails wait below until you send them.</span></label>
-          <label><input type="radio" name="wnmode" value="auto"${auto ? " checked" : ""}><span><strong>Automatic.</strong> Due emails go out at the script's hourly check.</span></label></div>
+          <label><input type="radio" name="wnmode" value="auto"${auto ? " checked" : ""}><span><strong>Automatic.</strong> The script checks once a day and sends due emails by itself.</span></label></div>
         <p class="small-note">${last ? `Your script last checked ${C.fmtStamp(meta.lastRun)}${meta.lastSent ? ` and sent ${meta.lastSent} email${meta.lastSent === 1 ? "" : "s"}` : ""}.` : `Your script hasn't checked yet. Set it up once with the steps at the top of <a href="apps-script/warnings.gs" target="_blank" rel="noopener">apps-script/warnings.gs</a>.`}
           ${meta.lastError ? `<br><span class="at-warn">Last error: ${esc(meta.lastError)}</span>` : ""}</p>
+        <div class="acc-row"><button type="button" class="btn small" data-wrun${asked > last ? " disabled" : ""}>${asked > last ? "Check requested…" : "Run check now"}</button>
+          <span class="small-note">${asked > last ? "Your script counts the absences within 5 minutes; this page updates by itself." : "Counts everyone's absences and updates the list below. Run it after you close a session or decide absence notices."}</span></div>
         <div class="acc-row"><button type="button" class="btn ghost small" data-wtest>Send a test to me</button>
           <span class="small-note">${tAt && (!tDone || tDone < tAt) ? "Test requested: one sample of each email reaches your inbox within 5 minutes." : tDone ? `Last test sent ${C.fmtStamp(meta.testDone)}.` : ""}</span></div></div>
       ${prevIt ? `<div class="at-card wn-prev"><div class="at-head"><h3>Preview</h3><button type="button" class="btn ghost small" data-wclose>Close preview</button></div>
@@ -102,6 +104,11 @@
       if (t.closest("[data-wsend]")) return queue([...st.sel], "go");
       if (t.closest("[data-wsendall]")) return queue(W.filter((w) => w.hasDue).map((w) => w.id), "go");
       if (t.closest("[data-wskip]")) return queue([...st.sel], "skip");
+      if (t.closest("[data-wrun]")) {
+        try { await C.db.collection("meta").doc("warnings").set({ runAt: C.FV.serverTimestamp() }, { merge: true }); st.msg = ""; }
+        catch (ex) { st.msg = `Could not save (${ex.code || ex}).`; }
+        rerender(); return;
+      }
       if (t.closest("[data-wtest]")) {
         try { await C.db.collection("meta").doc("warnings").set({ testAt: C.FV.serverTimestamp() }, { merge: true }); st.msg = "Test requested."; }
         catch (ex) { st.msg = `Could not save (${ex.code || ex}).`; }

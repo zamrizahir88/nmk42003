@@ -31,10 +31,11 @@ const LADDER = { lecture: ["2 absences", "3 absences", "More than 3"], lab: ["1 
 const REASON = { mc: "Medical (MC)", family: "Family emergency", official: "Official university activity", other: "Other" };
 const SECTION = { mon: "Monday", wed: "Wednesday", thu: "Thursday" };
 const WAIT_MS = 60 * 60 * 1000, MAX_SEND = 40;
-// The full check reads every attendance record, so it runs once an hour (or straight after Send / Mark as sent on the
-// website, which sets meta/warnings.poke). The other 5-minute runs read one document. Firestore's free plan allows
-// 50,000 reads a day: a full check every 5 minutes used far more than that.
-const FULL_EVERY_MS = 60 * 60 * 1000;
+// The full check reads every session, notice and attendance record (thousands of reads), and Firestore's free plan
+// allows 50,000 reads a day, so it runs only when asked: "Run check now" on the Warnings tab (meta/warnings.runAt),
+// or Send / Mark as sent (meta/warnings.poke). In Automatic mode it also runs once a day by itself. Every other
+// 5-minute run reads one document (meta/warnings).
+const AUTO_EVERY_MS = 24 * 60 * 60 * 1000;
 
 /* ---------- Firestore (REST, with the lecturer's own access) ---------- */
 function val_(v) {
@@ -86,8 +87,8 @@ function checkWarnings() {
     sendTests_(me);
     patch_("meta/warnings", { testDone: new Date() });
   }
-  const last = meta.lastRun ? Date.parse(meta.lastRun) : 0, poke = meta.poke ? Date.parse(meta.poke) : 0;
-  if (now - last < FULL_EVERY_MS && !(poke > last)) return;
+  const last = meta.lastRun ? Date.parse(meta.lastRun) : 0, asked = Math.max(meta.runAt ? Date.parse(meta.runAt) : 0, meta.poke ? Date.parse(meta.poke) : 0);
+  if (!(asked > last) && !(auto && now - last >= AUTO_EVERY_MS)) return;
   const sessions = {};
   listAll_("sessions").forEach((s) => { if (s.semester === sem) sessions[s.id] = s; });
   const notices = {};
