@@ -82,7 +82,9 @@ service cloud.firestore {
     match /attendance/{aid} {
       allow read: if isLecturer() || (signedIn() && resource.data.email == email());
       allow create: if isLecturer() || selfMark(aid);
-      allow update, delete: if isLecturer();
+      // checking in after an automatic Absent (from a close), when the lecturer opens attendance again
+      allow update: if isLecturer() || (selfMark(aid) && resource.data.email == email() && resource.data.by == 'auto' && resource.data.status == 'A');
+      allow delete: if isLecturer();
     }
 
     // A student marks their own attendance: the session must be open, they must be on the class list in that
@@ -165,6 +167,10 @@ service cloud.firestore {
     }
 
     // The classmate list for the swap form: name, matric, lab section and group only.
+    // the server's clock for lecturer pages (attendance times use Google's time, not the device's)
+    match /meta/clock {
+      allow read, write: if isLecturer();
+    }
     match /meta/classmates {
       allow read: if isLecturer() || onRoster();
       allow write: if isLecturer();

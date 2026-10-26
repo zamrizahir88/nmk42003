@@ -118,7 +118,23 @@
   const weekRange = (w) => { const m = addDays(COURSE.semesterStart, 7 * (w - 1)); return `${fmtDate(m)} to ${fmtDate(addDays(m, 6))}`; };
   const tsMs = (t) => (t && t.toMillis ? t.toMillis() : t ? new Date(t).getTime() : 0);
   // a session closes by itself at closesAt (set when the lecturer opens it); m:ss for the countdowns
-  const stillOpen = (s) => s.state === "open" && !(s.closesAt && Date.now() >= tsMs(s.closesAt));
+  // a session is open until a lecturer page closes it; the server refuses marks after closesAt (by its own clock), so a
+  // student's phone clock never hides an open session
+  const stillOpen = (s) => s.state === "open";
+  // an automatic Absent (from a close) can be replaced by checking in when the lecturer opens attendance again
+  const autoAbsent = (r) => !!r && r.by === "auto" && r.status === "A";
+  // the server's clock, for lecturer pages: a phone or laptop clock can be minutes off, so the closing time, the
+  // countdown, +3 minutes and the automatic close all use Google's time (measured once when the page opens)
+  let skew = 0, skewKnown = false;
+  const sNow = () => Date.now() + skew;
+  async function calibrate() {
+    try {
+      const ref = db.collection("meta").doc("clock"), t0 = Date.now();
+      await ref.set({ t: FV.serverTimestamp() });
+      const d = await ref.get({ source: "server" }), t1 = Date.now(), st = d.exists ? tsMs(d.data().t) : 0;
+      if (st) { skew = st - (t0 + t1) / 2; skewKnown = true; }
+    } catch (e) { /* the rules are not published yet: use this device's clock */ }
+  }
   const mss = (ms) => `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, "0")}`;
   const fmtStamp = (t) => { const ms = tsMs(t); if (!ms) return ""; const d = new Date(ms + 8 * 3600000); return `${fmtDate(d.toISOString().slice(0, 10))}, ${fmtTime(d.toISOString().slice(11, 16))}`; };
 
@@ -252,7 +268,7 @@
     // the countdown on an open card; at zero the card goes (the lecturer's page closes the session)
     timers.push(setInterval(() => {
       let gone = false;
-      $$(".at-cd[data-until]").forEach((el) => { const left = +el.dataset.until - Date.now(); if (left <= 0) gone = true; else el.textContent = `Closes in ${mss(left)}`; });
+      $$(".at-cd[data-until]").forEach((el) => { const left = +el.dataset.until - Date.now(); el.textContent = left > 0 ? `Closes in ${mss(left)}` : "Closing now…"; });
       if (gone) { open = all.filter(stillOpen); paintOpen(); }
     }, 1000));
     // my section for a session: a lecture is for everyone; a lab follows an approved swap for that lab
@@ -267,9 +283,10 @@
         return;
       }
       openEl.innerHTML = mine.map((s) => {
-        const r = recs[s.id], mv = s.kind === "lab" && moves[slotOf(s)];
+        const r0 = recs[s.id], r = autoAbsent(r0) ? null : r0, mv = s.kind === "lab" && moves[slotOf(s)];
         return `<div class="at-card open" data-s="${s.id}"><div class="at-head"><strong>${esc(s.title)}</strong>${r ? chip(r.status) : `<span class="at-live">Open now</span>`}</div>
           <p class="small-note">${sessionLine(s)}${mv ? ` · ⇄ swapped in for this lab` : ""}</p>${!r && s.closesAt ? `<p class="at-cd" data-until="${tsMs(s.closesAt)}"></p>` : ""}
+          ${!r && r0 ? `<p class="at-note">You were marked <strong>Absent</strong> when attendance closed earlier. Your lecturer has opened it again: check in now and it changes to Present.</p>` : ""}
           ${r ? `<p class="at-done">✓ Your attendance is recorded: <strong>${ST[r.status]}</strong>${r.at ? `, ${fmtStamp(r.at)}` : ""}.</p>`
             : `<form class="at-form" novalidate><label for="k-${s.id}">Security key <span>6 letters and numbers, shown on the screen in class</span></label>
               <div class="at-row"><input id="k-${s.id}" class="at-key" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" placeholder="e.g. K7P2QX">
@@ -277,7 +294,7 @@
       }).join("");
       // from the QR code: the key is in the link, so mark it straight away (once)
       const qs = params.get("s"), qk = params.get("k");
-      if (!tried && qs && qk && mine.some((s) => s.id === qs) && !recs[qs]) {
+      if (!tried && qs && qk && mine.some((s) => s.id === qs) && (!recs[qs] || autoAbsent(recs[qs]))) {
         tried = true;
         const f = $(`[data-s="${qs}"] .at-form`);
         if (f) { $(".at-key", f).value = qk.toUpperCase(); mark(qs, f); }
@@ -298,10 +315,15 @@
         try { await db.collection("attendance").doc(`${sid}_${email}`).set(rec(late ? "P" : "L")); }
         catch (e2) {
           b.disabled = false;
-          err.innerHTML = e2.code === "permission-denied" ? `That key didn't work. Check the key on the screen (it changes every few minutes) and try again.` : `Could not save (${esc(e2.code || e2)}). Check your connection and try again.`;
+          const shut = s.closesAt && Date.now() > tsMs(s.closesAt) - 15000;
+          err.innerHTML = e2.code !== "permission-denied" ? `Could not save (${esc(e2.code || e2)}). Check your connection and try again.`
+            : shut ? `This attendance has just closed. Ask your lecturer to open it again.` : `That key didn't work. Check the key on the screen (it changes every few minutes) and try again.`;
           return;
         }
       }
+      // checked in after an automatic Absent: a notice still waiting for that absence is no longer needed
+      const nt = notices.find((x) => x.session === sid && x.status === "pending");
+      if (nt) db.collection("notices").doc(nt.id).delete().catch(() => {});
       if (A.loadAttendance) A.loadAttendance();
     }
 
@@ -646,6 +668,7 @@
       if (e.target.matches(".at-rm")) { const tr = e.target.closest("tr[data-em]"); edit(L.sid, tr.dataset.em, { remark: e.target.value }); tr.classList.add("changed"); paintSaveBar(); }
     });
     host.addEventListener("focusout", () => setTimeout(() => { if (L.pending) draw(); }, 50));
+    calibrate().then(() => { if (L.tab === "sessions" && !L.sid) draw(); });
     timers.push(setInterval(autoClose, 2000));
     window.addEventListener("beforeunload", (e) => { if (Object.keys(L.edits).length) { e.preventDefault(); e.returnValue = ""; } });
     draw();
@@ -731,6 +754,7 @@
     body.innerHTML = `<div class="adm-tools"><button type="button" class="btn" data-new>+ New session</button><button type="button" class="btn ghost" data-bulk>${L.sessions.some(fromPlan) ? "Update sessions from the timetable" : "Create the semester's sessions"}</button>
         ${["all", "lecture", "lab"].map((f) => `<button type="button" class="chip-btn" data-filter="${f}" aria-pressed="${L.filter === f}">${{ all: "All", lecture: "Lectures", lab: "Labs" }[f]}</button>`).join("")}
         ${L.picked.size ? `<button type="button" class="btn small at-danger" data-delpicked>Delete selected (${L.picked.size})</button><button type="button" class="btn ghost small" data-unpick>Clear selection</button>` : ""}</div>
+      ${skewKnown && Math.abs(skew) > 60000 ? `<div class="at-card warn"><strong>This device's clock is ${Math.round(Math.abs(skew) / 60000)} minute${Math.round(Math.abs(skew) / 60000) === 1 ? "" : "s"} ${skew > 0 ? "slow" : "fast"}.</strong> Attendance uses the server's time, so it still works correctly, but please set the clock to automatic (Settings → Date and time).</div>` : ""}
       ${(() => { const old = L.sessions.filter((x) => x.state === "open" && x.date < t).sort((x, y) => (x.date < y.date ? -1 : 1));
         return old.length ? `<div class="at-card warn at-stale"><strong>${old.length} session${old.length === 1 ? " is" : "s are"} still open from past days.</strong> Students can still mark themselves, and nobody who missed it is marked Absent until you close it.
           <ul class="at-list">${old.map((x) => `<li>${fmtDate(x.date)} · ${esc(x.title)} <button type="button" class="btn ghost small" data-sid="${x.id}">Open it to close</button></li>`).join("")}</ul></div>` : ""; })()}
@@ -978,14 +1002,14 @@
       else q.hidden = true;
     }
     const kt = $(".at-kt", el);
-    const ca = s.closesAt ? tsMs(s.closesAt) - Date.now() : null, cl = $(".at-closes", el);
+    const ca = s.closesAt ? tsMs(s.closesAt) - sNow() : null, cl = $(".at-closes", el);
     if (cl) cl.textContent = ca === null ? "" : ca > 0 ? `Attendance closes in ${mss(ca)}` : "Closing attendance…";
     if (kt) kt.textContent = ca !== null && ca <= 0 ? "" : k.mode === "rotate" ? (ca !== null && ca <= left ? "" : `New key in ${mss(left)}`) : ca !== null ? "This key stays the same until attendance closes." : "This key stays the same until you close attendance.";
   }
 
   function drawSession(body, s) {
     const studs = studentsFor(s), n = counts(s), marked = studs.filter((r) => recOf(s.id, r.id)).length, out = movedOut(s);
-    const slot = s.kind === "lab" ? slotOf(s) : "";
+    const slot = s.kind === "lab" ? slotOf(s) : "", autoN = studs.filter((r) => autoAbsent(recOf(s.id, r.id))).length;
     const waiting = slot ? L.swaps.filter((x) => x.slot === slot && x.status === "accepted" && (x.fromSection === s.section || x.toSection === s.section)) : [];
     const opts = s.state !== "open" ? `<div class="at-card"><h3>${s.state === "closed" ? "Open Attendance Again" : "Open Attendance"}</h3>
         <fieldset class="at-fs"><legend>Security key</legend>
@@ -995,8 +1019,9 @@
         <p class="small-note">Leave this unticked to mark Late yourself in the list below.</p>
         <label class="at-late"><input type="checkbox" name="auto"${s.autoClose === 0 ? "" : " checked"}> Close attendance automatically after <input type="number" name="autoMin" min="1" max="180" value="${s.autoClose || 3}"> minutes</label>
         <p class="small-note">When it closes, every student not marked yet is marked Absent (Excused with an approved absence notice). You can open it again.</p>
-        <button type="button" class="btn" data-open>Open attendance</button></div>`
-      : `<div class="at-card open"><div class="at-head"><h3>Attendance Is Open</h3><span class="at-count">${marked} of ${studs.length} marked</span></div><div class="at-keyarea"></div>
+        ${autoN ? `<p class="at-note"><strong>${autoN}</strong> student${autoN === 1 ? " has" : "s have"} an automatic Absent from the last close. When you open attendance again, they can check in with the key and it changes to Present (or Late). Marks you set by hand stay as they are.</p>` : ""}
+        <div class="acc-row"><button type="button" class="btn" data-open>Open attendance</button>${s.state === "closed" || autoN ? `<button type="button" class="btn ghost" data-reset>Reset this session…</button>` : ""}</div></div>`
+      : `<div class="at-card open"><div class="at-head"><h3>Attendance Is Open</h3><span class="at-count">${marked} of ${studs.length} marked</span></div>${autoN ? `<p class="small-note">${autoN} with an automatic Absent from the last close can still check in.</p>` : ""}<div class="at-keyarea"></div>
         <div class="acc-row"><a class="btn ghost" href="attendance.html?show=${encodeURIComponent(s.id)}" target="_blank" rel="noopener">Show on the projector ↗</a>
         ${s.closesAt ? `<button type="button" class="btn ghost" data-more>+3 minutes</button>` : ""}<button type="button" class="btn" data-close>Close attendance…</button></div></div>`;
     const rows = studs.map((r, i) => {
@@ -1052,7 +1077,7 @@
     try {
       await db.collection("sessionKeys").doc(s.id).set({ cur: newKey(), prev: "", mode, changedAt: firebase.firestore.Timestamp.now() });
       await db.collection("sessions").doc(s.id).update({ state: "open", openedAt: FV.serverTimestamp(), lateAfter: late ? lateMin : 0, openedBy: A.state.user.email.toLowerCase(), slot: slotOf(s),
-        autoClose: auto ? autoMin : 0, closesAt: auto ? firebase.firestore.Timestamp.fromMillis(Date.now() + autoMin * 60000) : null });
+        autoClose: auto ? autoMin : 0, closesAt: auto ? firebase.firestore.Timestamp.fromMillis(sNow() + autoMin * 60000) : null });
     } catch (ex) { say("Could Not Open Attendance", `${esc(ex.code || ex)}. If this says permission-denied, publish the latest firebase/firestore.rules in the Firebase console.`); }
   }
   function closeSession(s) {
@@ -1065,6 +1090,24 @@
     $("[data-go]", p).addEventListener("click", async (e) => {
       e.target.disabled = true;
       try { await doClose(s, un.length && $("[data-abs]", p).checked); closePanel(); } catch (ex) { e.target.disabled = false; $(".at-err", p).textContent = `Could not close it (${ex.code || ex}).`; }
+    });
+  }
+  // undo a test (or a mistaken) opening: remove the automatic Absents and put the session back to "Not opened";
+  // marks set by hand, and students' own check-ins, stay
+  function resetSession(s) {
+    const autos = L.att.filter((x) => x.session === s.id && x.by === "auto"), mine = L.att.filter((x) => x.session === s.id && x.by !== "auto").length;
+    const p = panel(`<h3>Reset This Session</h3><p>This puts <strong>${esc(s.title)}</strong> back to <strong>Not opened</strong>, as if attendance had never been opened, and removes the <strong>${autos.length}</strong> automatic mark${autos.length === 1 ? "" : "s"} (Absent or Excused) made when it closed.</p>
+      ${mine ? `<p class="small-note">${mine} other mark${mine === 1 ? "" : "s"} (students' own check-ins and marks you set by hand) stay.</p>` : ""}<p class="at-err" aria-live="polite"></p>
+      <div class="acc-row"><button type="button" class="btn" data-go>Reset the session</button><button type="button" class="btn ghost" data-x>Cancel</button></div>`);
+    $("[data-go]", p).addEventListener("click", async (e) => {
+      e.target.disabled = true;
+      try {
+        const b = db.batch();
+        autos.forEach((x) => b.delete(db.collection("attendance").doc(`${s.id}_${x.email}`)));
+        b.update(db.collection("sessions").doc(s.id), { state: "planned", openedAt: FV.delete(), closedAt: FV.delete(), closedBy: FV.delete(), closesAt: null });
+        b.set(db.collection("sessionKeys").doc(s.id), { cur: "", prev: "", mode: "closed", changedAt: firebase.firestore.Timestamp.now() });
+        await b.commit(); closePanel();
+      } catch (ex) { e.target.disabled = false; $(".at-err", p).textContent = `Could not reset it (${ex.code || ex}).`; }
     });
   }
   // close a session: students can no longer mark themselves; those not marked become Absent (Excused with an approved notice)
@@ -1080,10 +1123,11 @@
   }
   // the timer: an open session past its closing time is closed by any lecturer page that is open (a few seconds late,
   // so the marks students made in the last second have arrived; the rules refuse marks after closesAt)
-  const closing = new Set();
+  const closing = new Set(), calStart = Date.now();
   function autoClose() {
     if (!["sessions", "roster", "att", "moves", "notices"].every((k) => L.got[k])) return;
-    L.sessions.filter((s) => s.state === "open" && s.closesAt && Date.now() > tsMs(s.closesAt) + 4000 && !closing.has(s.id)).forEach((s) => {
+    if (!skewKnown && Date.now() - calStart < 8000) return;   // wait for the server's time (a few seconds at most)
+    L.sessions.filter((s) => s.state === "open" && s.closesAt && sNow() > tsMs(s.closesAt) + 4000 && !closing.has(s.id)).forEach((s) => {
       closing.add(s.id);
       doClose(s, true, true).catch((e) => { console.warn("NMK attendance: could not close", s.id, e.code || e); setTimeout(() => closing.delete(s.id), 30000); });
     });
@@ -1563,7 +1607,8 @@
       return;
     }
     if (b("[data-open]")) return openSession(s);
-    if (b("[data-more]")) return db.collection("sessions").doc(s.id).update({ closesAt: firebase.firestore.Timestamp.fromMillis(Math.max(Date.now(), tsMs(s.closesAt)) + 3 * 60000) }).catch((ex) => say("Could Not Save", esc(ex.code || ex)));
+    if (b("[data-reset]")) return resetSession(s);
+    if (b("[data-more]")) return db.collection("sessions").doc(s.id).update({ closesAt: firebase.firestore.Timestamp.fromMillis(Math.max(sNow(), tsMs(s.closesAt)) + 3 * 60000) }).catch((ex) => say("Could Not Save", esc(ex.code || ex)));
     if (b("[data-close]")) { if (editsFor(s.id).length) { say("Save First", "Save or undo your changes before closing attendance."); return; } return closeSession(s); }
     if (b("[data-all]")) {
       const st = b("[data-all]").dataset.all;
@@ -1617,6 +1662,7 @@
       count();
     }));
     keyWatch(sid, () => paintKey($(".at-keyarea"), sid, true));
+    calibrate();
     timers.push(setInterval(autoClose, 2000));
   }
 })();

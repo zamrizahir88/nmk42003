@@ -91,7 +91,8 @@ function checkWarnings() {
   listAll_("labMoves").forEach((m) => { if (m.semester === sem) moved[m.slot + "_" + m.email] = m.section; });
   const slotOf_ = (s) => s.slot || ((s.id.match(/-(w\d\d-lab)-(mon|wed|thu)$/) || [])[1]) || "";
   // absences that count: the session ended over an hour ago, and no notice is waiting for a decision
-  const absent = {};
+  const absent = {}, marks = {};
+  listAll_("attendance").forEach((a) => { marks[a.session + "_" + a.email] = a.status; });
   listAll_("attendance").forEach((a) => {
     const s = sessions[a.session];
     if (a.status !== "A" || !s || s.state === "planned" || endMs_(s) + WAIT_MS > now) return;
@@ -114,7 +115,7 @@ function checkWarnings() {
       else if (cur < was) due.push({ key: k + "-withdraw-" + was + "-" + cur, kind: k, type: "withdraw", level: was, to: cur, sessions: list.map((s) => s.id),
         gone: ((st[k] || {}).sessions || []).filter((sid) => !list.some((s) => s.id === sid)) });
     });
-    due.forEach((it) => Object.assign(it, build_(r, it, sessions, notices, counts)));
+    due.forEach((it) => Object.assign(it, build_(r, it, sessions, notices, counts, marks)));
     const keep = [], held = {};
     due.forEach((it) => {
       const skipIt = skip.indexOf(it.key) >= 0, sendIt = !skipIt && (auto || go.indexOf(it.key) >= 0) && sent < MAX_SEND;
@@ -142,7 +143,8 @@ const day_ = (iso) => { const d = new Date(iso + "T00:00:00Z"); return DAYS[d.ge
 const COLORS = { 1: ["#fdf1d8", "#7a4b00", "#e8b04b"], 2: ["#fde4cf", "#8a3b00", "#f0995a"], 3: ["#fbe0e0", "#8f1d1d", "#e26d6d"], w: ["#dff3ef", "#0b5d55", "#5fb3a8"] };
 const pill_ = (c, text) => '<span style="display:inline-block;background:' + c[0] + ";color:" + c[1] + ";border:1px solid " + c[2] + ';font-size:12px;font-weight:bold;padding:3px 10px;border-radius:999px;">' + esc_(text) + "</span>";
 
-function build_(r, it, sessions, notices, counts) {
+function build_(r, it, sessions, notices, counts, marks) {
+  marks = marks || {};
   const K = KINDS[it.kind], name = r.name || r.id, matric = String(r.matric || ""), withdraw = it.type === "withdraw";
   const list = (withdraw ? it.gone : it.sessions).map((sid) => sessions[sid]).filter(Boolean);
   const n = withdraw ? counts[it.kind] : it.sessions.length;
@@ -151,8 +153,11 @@ function build_(r, it, sessions, notices, counts) {
   const badge = withdraw ? pill_(COLORS.w, "Warning withdrawn · " + K.title) : pill_(COLORS[it.level], (it.level === 3 ? "Barring notification" : (it.level === 1 ? "1st" : "2nd") + " warning") + " · " + K.title);
   let lead, leadT;
   if (withdraw) {
-    lead = esc_(LEVELS[it.level]) + " (" + K.title + ") for " + esc_(name) + " is <b>withdrawn</b>. The lecturer approved the absence notice below, so that absence is now Excused and no longer counts.";
-    leadT = LEVELS[it.level] + " (" + K.title + ") for " + name + " is withdrawn. The lecturer approved the absence notice below, so that absence is now Excused and no longer counts.";
+    const checked = list.length && list.every((s) => ["P", "L"].indexOf(marks[s.id + "_" + r.id]) >= 0);
+    const why = checked ? "The absence below has changed: the student checked in when the lecturer opened attendance again, so it no longer counts."
+      : "The lecturer approved the absence notice below, so that absence is now Excused and no longer counts.";
+    lead = esc_(LEVELS[it.level]) + " (" + K.title + ") for " + esc_(name) + " is <b>withdrawn</b>. " + esc_(why);
+    leadT = LEVELS[it.level] + " (" + K.title + ") for " + name + " is withdrawn. " + why;
   } else if (it.level === 3) {
     lead = esc_(name) + " has been absent from <b>" + n + " " + K.many + "</b> without an approved reason and is <b>barred from the final examination</b> of NMK42003 Instrumentation.";
     leadT = name + " has been absent from " + n + " " + K.many + " without an approved reason and is barred from the final examination of NMK42003 Instrumentation.";
@@ -165,7 +170,7 @@ function build_(r, it, sessions, notices, counts) {
   const facts = [["Student", name], ["Matric", matric], ["Programme", r.programme || ""], ["Lab section", sec], ["RPS", r.rps || ""]].filter((x) => x[1]);
   const td = 'style="padding:8px;border-top:1px solid #e3e7ee;vertical-align:top;"', th = 'style="padding:8px;text-align:left;font-weight:bold;"';
   const rows = withdraw
-    ? list.map((s) => { const nt = notices[s.id + "_" + r.id] || {}; return "<tr><td " + td + ">" + day_(s.date) + "</td><td " + td + ">" + esc_(s.title) + "</td><td " + td + ">" + (nt.status === "approved" ? "<b>" + esc_(REASON[nt.reason] || nt.reason || "") + "</b>: " + esc_(nt.detail || "") : "Changed to Excused by the lecturer") + "</td></tr>"; }).join("")
+    ? list.map((s) => { const nt = notices[s.id + "_" + r.id] || {}; return "<tr><td " + td + ">" + day_(s.date) + "</td><td " + td + ">" + esc_(s.title) + "</td><td " + td + ">" + (["P", "L"].indexOf(marks[s.id + "_" + r.id]) >= 0 ? "Checked in (" + (marks[s.id + "_" + r.id] === "L" ? "Late" : "Present") + ")" : nt.status === "approved" ? "<b>" + esc_(REASON[nt.reason] || nt.reason || "") + "</b>: " + esc_(nt.detail || "") : "Changed to Excused by the lecturer") + "</td></tr>"; }).join("")
     : list.map((s, i) => "<tr><td " + td + ">" + (i + 1) + "</td><td " + td + ">" + day_(s.date) + "</td><td " + td + ">" + esc_(s.title) + "</td></tr>").join("");
   const table = '<table role="presentation" style="width:100%;font-size:13px;border-collapse:collapse;border:1px solid #e3e7ee;margin:4px 0 0;"><tr style="background:#f3f6f9;">'
     + (withdraw ? "<td " + th + ">Date</td><td " + th + ">Session</td><td " + th + ">Reason and explanation</td>" : "<td " + th + ">#</td><td " + th + ">Date</td><td " + th + ">Session</td>") + "</tr>" + rows + "</table>";
@@ -188,7 +193,7 @@ function build_(r, it, sessions, notices, counts) {
     + table + after + ladder + student + rps + "</div>"
     + '<div style="background:#f3f6f9;padding:14px 24px;font-size:12px;color:#6b7686;line-height:1.6;">This is an automated message from the NMK42003 Instrumentation course website: <a href="' + SITE + '" style="color:#0f766e;">' + SITE.replace(/^https:\/\//, "").replace(/\/$/, "") + "</a><br>Course coordinator: " + COORDINATOR + "</div></div></div>";
   const lines = withdraw
-    ? list.map((s) => { const nt = notices[s.id + "_" + r.id] || {}; return "  - " + day_(s.date) + ": " + s.title + " (" + (nt.status === "approved" ? (REASON[nt.reason] || nt.reason || "") + ": " + (nt.detail || "") : "changed to Excused by the lecturer") + ")"; })
+    ? list.map((s) => { const nt = notices[s.id + "_" + r.id] || {}; return "  - " + day_(s.date) + ": " + s.title + " (" + (["P", "L"].indexOf(marks[s.id + "_" + r.id]) >= 0 ? "checked in, " + (marks[s.id + "_" + r.id] === "L" ? "Late" : "Present") : nt.status === "approved" ? (REASON[nt.reason] || nt.reason || "") + ": " + (nt.detail || "") : "changed to Excused by the lecturer") + ")"; })
     : list.map((s, i) => "  " + (i + 1) + ". " + day_(s.date) + ": " + s.title);
   const text = [head + " (" + K.title + ")", "NMK42003 Instrumentation", "", leadT, ""].concat(facts.map((x) => x[0] + ": " + x[1]), [""], lines,
     withdraw ? ["", K.abs + " now: " + n + ". " + (it.to ? LEVELS[it.to] + " (" + K.title + ") still stands." : "No attendance warning stands now.")] : [],
