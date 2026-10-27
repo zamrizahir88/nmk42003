@@ -717,22 +717,23 @@ void loop()
 }`;
   function mountPiezo(el, sec) {
     const S = { k: "sensor", f: 2000 };
-    const c = pvCard(el, chips("Use the piezo as", [["sensor", "Sensor: press it"], ["buzzer", "Actuator: buzzer"]], S.k) +
+    const c = pvCard(el, chips("Use the piezo as", [["sensor", "Sensor: tap it"], ["hold", "Sensor: press and hold"], ["buzzer", "Actuator: buzzer"]], S.k) +
       `<div class="slider-field buzz-f" hidden><label for="${sec.id}-f">Tone frequency: <strong class="f-v">2000 Hz</strong></label><input type="range" id="${sec.id}-f" min="500" max="4000" step="100" value="2000"></div>`,
       `<div class="buzz-code" hidden><div class="tone-host"></div><p class="small-note">Play the tone and move the frequency slider. A real buzzer driven by a square wave sounds like this. Keep the volume low.</p>${codeBlock(BUZZ, "ESP32 buzzer with PWM (Arduino core 2.x)")}</div>`);
     const fsl = el.querySelector(`#${sec.id}-f`), fv = el.querySelector(".f-v");
     const draw = (t) => {
       let s = "", g;
-      if (S.k === "sensor") {
-        const F = force(t), sq = F * 7, v = piezoV(t);
+      if (S.k !== "buzzer") {
+        const fF = S.k === "hold" ? holdF : force, fV = S.k === "hold" ? holdV : piezoV;
+        const F = fF(t), sq = F * 7, v = fV(t);
         s += `<rect class="pz-plate" x="90" y="${88 + sq}" width="120" height="10" rx="2"/><rect class="pz-crystal" x="100" y="${98 + sq}" width="100" height="${56 - 2 * sq}"/><rect class="pz-plate" x="90" y="${154 - sq}" width="120" height="10" rx="2"/>`;
         if (F > 0.08) { s += `<path class="push" d="M150,${36 + sq}v38m-10,-12l10,12l10,-12M150,${222 - sq}v-38m-10,12l10,-12l10,12"/>`; const n = Math.round(F * 5); for (let i = 0; i < n; i++) { s += T(110 + i * 20, 94 + sq, "+", "middle", "chg p") + T(110 + i * 20, 170 - sq, MINUS, "middle", "chg m"); } }
         s += `<path class="w" d="M210,${93 + sq}H224V112H236M210,${159 - sq}H224V142H236"/><rect class="meter" x="236" y="96" width="78" height="60" rx="8"/><rect class="lcd" x="242" y="104" width="66" height="26" rx="4"/>${T(275, 123, `${v.toFixed(1)} V`, "middle", "lcdt")}${T(275, 148, "voltage", "middle", "small")}`;
         s += F > 0.08 ? T(166, 60 + sq, "force", "start", "small") : "";
         const A = axes({ x: [0, 6], y: [-1.5, 4.5], xt: [0, 1, 2, 3, 4, 5, 6], yt: [-1, 0, 1, 2, 3, 4], xl: "Time (s)", yl: "Voltage (V)" });
-        g = A.s + poly(curve(A, piezoV, 0, t, Math.max(2, Math.round(t * 60))), "trace-a") + dot(A.X(t), A.Y(A.clipY(piezoV(t))));
+        g = A.s + poly(curve(A, fV, 0, t, Math.max(2, Math.round(t * 60))), "trace-a") + dot(A.X(t), A.Y(A.clipY(fV(t))));
         c.graph.innerHTML = svg(A.W, A.H, "Voltage from the piezo crystal each time it is pressed", g);
-        c.read.innerHTML = F > 0.08 ? `Pressing squeezes the crystal: charges separate and a voltage appears (<strong>${v.toFixed(1)} V</strong> now). A harder press gives a bigger spike. No battery is needed: the piezo is <strong>self-generating (active)</strong>.` : "Each press gives a voltage spike. A steady force gives no lasting voltage: the charge leaks away, so piezo sensors measure changing forces (vibration, knocks, sound).";
+        c.read.innerHTML = S.k === "hold" ? holdRead(F, v) : F > 0.08 ? `Pressing squeezes the crystal: charges separate and a voltage appears (<strong>${v.toFixed(1)} V</strong> now). A harder press gives a bigger spike. No battery is needed: the piezo is <strong>self-generating (active)</strong>.` : "Each press gives a voltage spike. A steady force gives no lasting voltage: the charge leaks away, so piezo sensors measure changing forces (vibration, knocks, sound).";
       } else {
         const ph = Math.sin(t * 2 * Math.PI * 3), bend = ph * 9, per = 1000 / S.f;
         s += `<rect class="bz-case" x="40" y="118" width="130" height="50" rx="8"/><path class="bz-disc" d="M52,118Q105,${118 - bend} 158,118"/><circle class="bz-cer" cx="105" cy="${118 - bend / 2 - 3}" r="3"/>`;
@@ -745,7 +746,7 @@ void loop()
         c.graph.innerHTML = svg(A.W, A.H, `Square wave at ${S.f} Hz driving the buzzer`, g);
         c.read.innerHTML = `The ESP32 switches the pin on and off <strong>${S.f} times a second</strong> (period ${per.toFixed(2)} ms). Each pulse bends the disc, so it vibrates at ${S.f} Hz and you hear a tone. Here the piezo is an <strong>actuator</strong>: electrical energy in, sound out.`;
       }
-      c.scene.innerHTML = svg(320, 230, S.k === "sensor" ? "Piezo crystal between two metal plates being pressed" : "Piezo buzzer disc vibrating and sending out sound", s, "scene");
+      c.scene.innerHTML = svg(320, 230, S.k !== "buzzer" ? "Piezo crystal between two metal plates being pressed" : "Piezo buzzer disc vibrating and sending out sound", s, "scene");
     };
     const pl = player(c.pl, el, { dur: 6, hold: 0, draw, still: 0.8, label: "Piezo animation position" });
     const snd = tone(el.querySelector(".tone-host"));
@@ -898,6 +899,52 @@ void loop()
     s += T(174, 210, "no battery: the light is the energy source", "middle", "small");
     return s;
   }
+
+
+  // Resistive: R after stretching at the same volume (k²) against only making it longer (k)
+  function wireRender(extra, res, v) {
+    if (!res) { extra.innerHTML = ""; return; }
+    const A = axes({ x: [1, 2], y: [0, 4.4], xt: [1, 1.25, 1.5, 1.75, 2], fx: (x) => `${x}×`, yt: [1, 2, 3, 4], fy: (y) => `${y}R`, xl: "Stretch: new length ÷ old length", yl: "New resistance" });
+    const g = A.s + poly(curve(A, (k) => k * k, 1, 2, 80), "trace-a") + poly(curve(A, (k) => k, 1, 2, 2), "trace-in") + dot(A.X(v.k), A.Y(v.k * v.k)) + label(A.X(v.k) + (v.k > 1.6 ? -8 : 8), A.Y(v.k * v.k) - 10, `${num(v.k * v.k)}R`, v.k > 1.6 ? "end" : "start");
+    extra.innerHTML = `<div class="plot-box">${svg(A.W, A.H, "Resistance after stretching: k squared at the same volume, against k for a longer wire of the same thickness", g)}<p class="legend"><span class="key"></span>stretched (longer and thinner): R × k² <span class="key input"></span>only longer (same thickness): R × k</p></div>`;
+  }
+  // Capacitive: C against the gap d (a curve, 1/d), with the chosen point
+  function plateRender(extra, res, v) {
+    if (!res) { extra.innerHTML = ""; return; }
+    const f = (d) => (v.er * E0 * v.A) / (d / 1000), dmax = Math.max(10, v.d * 1.2), top = res.C * 2.5, s = top > 1e-8 ? 1e9 : 1e12, u = s === 1e9 ? "nF" : "pF";
+    const A = axes({ x: [0, dmax], y: [0, top * s], xt: [0, dmax / 4, dmax / 2, (3 * dmax) / 4, dmax].map((x) => +x.toFixed(1)), yt: [0, +(top * s / 2).toPrecision(2), +(top * s).toPrecision(2)].filter((y) => y <= top * s), fy: (y) => +y.toPrecision(3), xl: "Plate gap d (mm)", yl: `C (${u})` });
+    const g = A.s + poly(curve(A, (d) => Math.min(f(d) * s, top * s), 0.05, dmax, 160), "trace-a") + dot(A.X(v.d), A.Y(A.clipY(res.C * s)));
+    extra.innerHTML = `<div class="plot-box">${svg(A.W, A.H, "Capacitance against plate gap: a curve, because C is proportional to 1 over d", g)}</div>
+      <p class="small-note">C rises in a <strong>straight line</strong> with ε<sub>r</sub> and with A (double either and C doubles), but falls as <strong>1 ÷ d</strong>: halve the gap and C doubles, so a gap (displacement) sensor is <strong>non-linear</strong>, very sensitive when the plates are close.</p>`;
+  }
+  // NTC thermistor in a divider to the ESP32 (thermistor on top, so V rises with temperature)
+  function thDiagram(Tl, lab, v, res) {
+    const X = 200;
+    let s = `<circle class="term" cx="${X}" cy="22" r="4"/>` + T(X + 12, 26, `V<tspan class="sb" dy="3">S</tspan><tspan dy="-3"> = ${lab.Vs || "?"}</tspan>`, "start");
+    s += Lab.D.res(X, 26, X, 104) + `<path class="w" d="M${X - 18},88L${X + 18},44h10"/>` + T(X - 26, 60, "NTC", "end") + T(X - 26, 80, res ? eng(res.Rn, "Ω") : "?", "end", "val");
+    s += T(X + 30, 70, `${lab.T || "?"}`, "start", "small");
+    s += Lab.D.wire([X, 104], [X, 124]) + Lab.D.res(X, 124, X, 202) + Lab.D.gnd(X, 202) + T(X - 16, 168, `R = ${lab.R || "?"}`, "end");
+    s += Lab.D.wire([X, 114], [X + 86, 114]) + Lab.D.dot(X, 114);
+    s += `<text x="${X + 18}" y="164">V<tspan class="sb" dy="3">out</tspan><tspan dy="-3"> = </tspan><tspan class="val${res && res.over ? " over" : ""}">${res ? eng(res.vout, "V") : "?"}</tspan></text>`;
+    s += `<rect class="op" x="${X + 86}" y="88" width="136" height="52" rx="6"/>` + T(X + 154, 110, "ESP32 analog pin", "middle", "small") + T(X + 154, 128, "max 3.3 V", "middle", "small");
+    return s;
+  }
+  const thV = (v, T) => (v.Vs * v.R) / (v.R + ntcR(T));
+  function thRender(extra, res, v) {
+    if (!res) { extra.innerHTML = ""; return; }
+    const top = Math.max(v.Vs, ESP_MAX) * 1.1;
+    const A = axes({ x: [0, 100], y: [0, top], xt: [0, 25, 50, 75, 100], yt: [0, 1, 2, 3].filter((y) => y < top), fy: (y) => y, xl: "Temperature (°C)", yl: "Vout (V)" });
+    const ref = v.Vs > ESP_MAX ? `<line class="ref" x1="${A.l}" x2="${A.l + A.pw}" y1="${A.Y(ESP_MAX)}" y2="${A.Y(ESP_MAX)}"/>` + T(A.l + 6, A.Y(ESP_MAX) - 5, "ESP32 limit 3.3 V", "start", "reflab") : "";
+    extra.innerHTML = `<div class="plot-box">${svg(A.W, A.H, "Divider output against temperature for an NTC thermistor", A.s + ref + poly(curve(A, (T) => thV(v, T), 0, 100, 120), "trace-a") + dot(A.X(v.T), A.Y(res.vout)))}</div>
+      <p class="small-note">The curve is steepest where R<sub>NTC</sub> is close to R, so choose R equal to the thermistor's resistance in the middle of the range you care about (10 kΩ for around 25 °C).</p>`;
+  }
+  // Piezo pressed and held: the voltage leaks away although the force stays
+  const holdF = (t) => clamp((t - 0.8) / 0.2, 0, 1) - clamp((t - 4) / 0.2, 0, 1);
+  const holdV = (t) => (t >= 0.8 ? 3.5 * clamp((t - 0.8) / 0.2, 0, 1) * Math.exp(-Math.max(0, t - 1) / 0.6) : 0) - (t >= 4 ? 1.4 * clamp((t - 4) / 0.2, 0, 1) * Math.exp(-Math.max(0, t - 4.2) / 0.6) : 0);
+  const holdRead = (F, v) => F > 0.5 && Math.abs(v) < 0.3
+    ? `<strong>Still pressing with the same force, but the voltage has leaked back to about 0 V.</strong> The separated charge slowly flows away through the meter, so a piezo <strong>cannot measure a steady force</strong>. It measures <em>changes</em>: knocks, vibration and pressure pulses. That is why it is used in vibration and knock sensors, and a strain-gauge load cell is used for weighing.`
+    : F > 0.08 ? `Pressed: the voltage jumps (<strong>${v.toFixed(1)} V</strong>), then starts to fall even though the force stays the same.`
+      : v < -0.3 ? `Released: the crystal springs back, so the voltage swings the other way (<strong>${fx(v, 1)} V</strong>), then fades.` : "Nothing is pressing the crystal: 0 V.";
 
   /* =====================================================================
      Actuators: LED, DC motor, servo, relay
@@ -1210,14 +1257,16 @@ void loop()
         <p>ρ is the resistivity. Any change in ρ, l or A changes R. A <strong>strain gauge</strong> uses this: stretching its wire makes it longer and thinner, so R rises.</p>`,
       inputs: [F("rho", "num", 1.1e-6, "nichrome 1.1 × 10⁻⁶, copper 1.72 × 10⁻⁸", { unit: "Ω·m", positive: true, label: "Resistivity ρ", name: "Resistivity" }),
         F("l", "num", 2, null, { unit: "m", positive: true, label: "Length l", name: "Length" }),
-        F("A", "num", 0.2, null, { unit: "mm²", positive: true, label: "Cross-section area A", name: "Area", slider: { min: 0.05, max: 2, step: 0.05 } })],
-      view: "0 0 440 190", diagram: wireDiagram, caption: "The wire's length and thickness follow your values.",
+        F("A", "num", 0.2, null, { unit: "mm²", positive: true, label: "Cross-section area A", name: "Area", slider: { min: 0.05, max: 2, step: 0.05 } }),
+        F("k", "num", 1.2, "1 = as made; 1.5 = pulled to 1.5 × its length", { unit: "×", positive: true, label: "Stretch the wire (same volume)", slider: { min: 1, max: 2, step: 0.01 }, validate: (x) => (x < 1 ? "Use 1 or more (stretching)." : "") })],
+      view: "0 0 440 190", diagram: wireDiagram, render: wireRender, caption: "The wire's length and thickness follow your values.",
       compute(v) {
-        const A = v.A * 1e-6, R = (v.rho * v.l) / A;
-        return { sum: `R = ${eng(R, "Ω")}`, R, steps: [
+        const A = v.A * 1e-6, R = (v.rho * v.l) / A, Rs = R * v.k * v.k;
+        return { sum: `R = ${eng(R, "Ω")}; stretched ${num(v.k)}×: R' = ${eng(Rs, "Ω")}`, R, steps: [
           step("Area in m²", "A (m²) = A (mm²) × 10<sup>−6</sup>", `= ${num(v.A)} × 10<sup>−6</sup>`, `A = ${num(A)} m²`),
           step("Resistance", "R = ρ l ÷ A", `= ${num(v.rho)} Ω·m × ${num(v.l)} m ÷ ${num(A)} m²`, `R = ${eng(R, "Ω")}`),
-          step("What if…", "", "double the length → 2R; double the area → R ÷ 2", `stretch to 2l (area halves) → 4R = ${eng(4 * R, "Ω")}`)] };
+          step("Stretched at the same volume", "l' = k l and A' = A ÷ k, so R' = ρ (k l) ÷ (A ÷ k) = k² R", `= ${num(v.k)}² × ${eng(R, "Ω")}`, `R' = ${eng(Rs, "Ω")} (${num(v.k * v.k)} × R)`),
+          step("Compare: only longer", "same thickness: R' = k R", `= ${num(v.k)} × ${eng(R, "Ω")}`, `${eng(v.k * R, "Ω")}: stretching changes R more, because the wire also gets thinner`)] };
       } },
     { id: "strain", group: "passive", title: "Strain Gauge: ΔR = GF × ε × R", toc: "Strain Gauge",
       intro: `<p>A strain gauge is a thin metal-foil zigzag glued to a part. When the part stretches, the foil gets <strong>longer and thinner</strong>, so its resistance rises (R = ρl ÷ A). The <strong>strain</strong> ε is the change in length per unit length (ΔL ÷ L), usually given in microstrain (µε = 10<sup>−6</sup>). The <strong>gauge factor</strong> GF (about 2 for metal foil) links them:</p>
@@ -1279,6 +1328,23 @@ void loop()
         <p><strong>Real situation:</strong> checking a thermistor with a multimeter in ice water and warm water, just like the photo. Watch the resistance as the water heats and cools.</p>
         <div class="cmp-grid">${photo("ntc-thermistor-ice.jpg", "An NTC thermistor tested in ice water.", "small")}</div>`,
       mount: mountThermistor },
+    { id: "thermdiv", group: "passive", title: "Thermistor to the ESP32: a Voltage Divider", toc: "Thermistor to ESP32",
+      intro: `<p>The ESP32 can't measure resistance directly, so the thermistor goes in a <strong>voltage divider</strong> with a fixed resistor R, and V<sub>out</sub> goes to an <strong>analog</strong> pin. With the NTC on top, V<sub>out</sub> rises as the temperature rises:</p>
+        <p class="formula">V<sub>out</sub> = V<sub>S</sub> × R ÷ (R + R<sub>NTC</sub>)</p>
+        <p>The <strong>sensitivity</strong> of this circuit is how much V<sub>out</sub> changes per degree; the ESP32's 0.8 mV step then sets the smallest temperature change it can see. An RTD changes only 0.385 Ω per °C, far less than an NTC, so it is usually read with a bridge and an amplifier instead.</p>`,
+      inputs: [F("T", "num", 25, null, { unit: "°C", positive: false, label: "Temperature", slider: { min: 0, max: 100, step: 1 } }),
+        F("R", "R", 10e3, "best near R<sub>NTC</sub> in the middle of your range", { label: "Fixed resistor R" }),
+        F("Vs", "num", 3.3, "the ESP32's own 3.3 V is safest", { unit: "V", positive: true, label: "Supply V<sub>S</sub>", name: "Vs" })],
+      view: "0 0 440 230", diagram: thDiagram, render: thRender, caption: "A 10 kΩ NTC thermistor (β = 3950 K) on top, the fixed resistor below.",
+      compute(v) {
+        const Rn = ntcR(v.T), vout = thV(v, v.T), sens = (thV(v, v.T + 0.5) - thV(v, v.T - 0.5)) * 1000, over = vout > ESP_MAX, notes = [];
+        if (v.Vs > ESP_MAX && thV(v, 100) > ESP_MAX) notes.push({ type: "warn", title: "Can go above 3.3 V", html: `With a ${num(v.Vs)} V supply, V<sub>out</sub> reaches ${eng(thV(v, 100), "V")} at 100 °C, above the ESP32's 3.3 V limit. Use the 3.3 V supply, or a smaller R.` });
+        return { sum: `R<sub>NTC</sub> = ${eng(Rn, "Ω")}, V<sub>out</sub> = ${eng(vout, "V")}`, Rn, vout, over, notes, steps: [
+          step("Thermistor resistance", "R<sub>NTC</sub> = 10 kΩ × e<sup>β(1/T − 1/298.15)</sup>, T in kelvin", `T = ${num(v.T)} + 273.15 = ${num(v.T + 273.15)} K`, `R<sub>NTC</sub> = ${eng(Rn, "Ω")}`),
+          step("Output voltage", "V<sub>out</sub> = V<sub>S</sub> × R ÷ (R + R<sub>NTC</sub>)", `= ${num(v.Vs)} V × ${eng(v.R, "Ω")} ÷ (${eng(v.R, "Ω")} + ${eng(Rn, "Ω")})`, `V<sub>out</sub> = ${eng(vout, "V")}`),
+          step("Sensitivity here", "ΔV<sub>out</sub> per °C (from T − 0.5 °C to T + 0.5 °C)", "", `${num(sens)} mV/°C`),
+          step("Smallest change the ESP32 sees", "ΔT<sub>min</sub> = 0.8 mV ÷ sensitivity", `= 0.8 ÷ ${num(sens)}`, `ΔT<sub>min</sub> = ${num(0.8 / sens)} °C`)] };
+      } },
     { id: "capacitive", group: "passive", title: "Capacitive Sensors: C = ε<sub>r</sub>ε<sub>0</sub>A ÷ d", toc: "Capacitive",
       intro: `<p>Capacitive proximity sensors are <strong>non-contact</strong> devices that can detect almost any object, whatever its material. They work by the change in capacitance when something changes the electric field at the sensor's face. The basic sensor is a parallel-plate capacitor:</p>
         <p class="formula">C = ε<sub>r</sub> ε<sub>0</sub> A ÷ d = ε<sub>r</sub> ε<sub>0</sub> l w ÷ d</p>
@@ -1286,7 +1352,7 @@ void loop()
       inputs: [F("er", "num", 4, "air 1, paper 3.7, glass 4.7 to 10, water 80", { unit: "", positive: true, label: "Relative permittivity ε<sub>r</sub>", name: "εr" }),
         F("A", "num", 0.01, null, { unit: "m²", positive: true, label: "Plate area A", name: "Area" }),
         F("d", "num", 1, null, { unit: "mm", positive: true, label: "Plate gap d", name: "Gap", slider: { min: 0.1, max: 10, step: 0.1 } })],
-      view: "0 0 440 230", diagram: plateDiagram, caption: "The plates move and the dielectric darkens as you change the values.",
+      view: "0 0 440 230", diagram: plateDiagram, render: plateRender, caption: "The plates move and the dielectric darkens as you change the values.",
       compute(v) {
         const d = v.d / 1000, C = (v.er * E0 * v.A) / d;
         return { sum: `C = ${eng(C, "F")}`, C, steps: [
