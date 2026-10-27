@@ -209,9 +209,12 @@
     return { iso: d.toISOString().slice(0, 10), week: wk };
   }
   let asStudent = false;   // a lecturer previewing the student's locks (this visit only)
+  let LOCKS = {};          // the lecturer's locks (meta/missions.locks): "world1" = a whole chapter, "w1-s3" = one station
   const free = () => isLec && !asStudent;
-  const worldOpen = (w) => free() || opensOn(w).iso <= todayISO();
-  const missionOpen = (w, i) => { if (free()) return true; if (!worldOpen(w)) return false; const b = best(); return w.missions.slice(0, i).every((m) => b[m.id]); };
+  const chLocked = (w) => !!LOCKS[`world${w.world}`], stLocked = (m) => !!LOCKS[m.id];
+  const worldOpen = (w) => free() || (!chLocked(w) && opensOn(w).iso <= todayISO());
+  const missionOpen = (w, i) => { if (free()) return true; if (!worldOpen(w) || stLocked(w.missions[i])) return false; const b = best(); return w.missions.slice(0, i).every((m) => b[m.id]); };
+  const LOCKED = "🔒 Locked by your lecturer";
   const fmtDay = (iso) => { const d = new Date(iso + "T00:00:00Z"); return `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getUTCDay()]} ${d.getUTCDate()} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getUTCMonth()]}`; };
   const stars = (n, of = 3) => `<span class="ms-stars" aria-label="${n} of ${of} stars">${"★".repeat(n)}${"☆".repeat(of - n)}</span>`;
 
@@ -253,7 +256,7 @@
         return `<button type="button" class="lg-world${open ? "" : " locked"}" data-world="${w.world}"${open ? "" : ` aria-disabled="true"`}>
           <span class="lg-wch">Chapter ${w.chapter}</span><strong>${esc(w.title.replace(/^(Station|Chapter) \d+:\s*/, ""))}</strong>
           <span class="lg-trio">${w.missions.slice(0, 3).map((m) => `<span class="lg-tri${b[m.id] ? " won" : ""}">${portrait(enemyOf(m))}</span>`).join("")}</span>
-          <span class="lg-wfoot">${open ? `${done} of ${w.missions.length} defeated` : `🔒 Opens ${fmtDay(o.iso)} (week ${o.week})`}</span></button>`;
+          <span class="lg-wfoot">${open ? `${done} of ${w.missions.length} defeated${isLec && chLocked(w) ? " · 🔒 locked for students" : ""}` : chLocked(w) ? LOCKED : `🔒 Opens ${fmtDay(o.iso)} (week ${o.week})`}</span></button>`;
       }).join("") || `<p class="small-note">No chapters yet.${isLec ? " Upload a mission file on the dashboard." : ""}</p>`}</div>`);
   }
   function worldView(w) {
@@ -267,7 +270,8 @@
           <div class="lg-weak"><b>Weakness:</b> ${esc(e.weak || m.title)}</div>${e.taunt ? `<div class="lg-taunt">“${esc(e.taunt)}”</div>` : ""}
           <div class="lg-res">${r ? `Defeated · ${stars(r.s)} · best ${r.c} coins${r.boss ? ` · ${r.mk}/${r.of} marks` : ""}` : `${m.steps.length} questions`}</div>
           ${open && saveOf(m) ? `<button type="button" class="btn" data-cont="${i}">Continue · Question ${saveOf(m).i + 1} of ${m.steps.length} · ${saveOf(m).hearts} ♥ · ${saveOf(m).coins} coins</button><button type="button" class="btn ghost small" data-fresh="${i}">Start over</button>`
-            : open ? `<button type="button" class="btn${r ? " ghost" : ""}" data-play="${i}">${r ? "Fight again" : "Fight"}</button>` : `<span class="lg-lock">🔒 ${worldOpen(w) ? `Defeat ${esc(enemyOf(prev).name)} first` : `Opens ${fmtDay(opensOn(w).iso)}`}</span>`}
+            : open ? `<button type="button" class="btn${r ? " ghost" : ""}" data-play="${i}">${r ? "Fight again" : "Fight"}</button>` : `<span class="lg-lock">${chLocked(w) || stLocked(m) ? LOCKED : `🔒 ${worldOpen(w) ? `Defeat ${esc(enemyOf(prev).name)} first` : `Opens ${fmtDay(opensOn(w).iso)}`}`}</span>`}
+          ${isLec && open && (chLocked(w) || stLocked(m)) ? `<span class="lg-lock">🔒 Locked for students</span>` : ""}
           ${r ? `<button type="button" class="btn ghost small" data-sharest="${i}">📤 Share my win</button>` : ""}</div>`;
       }).join("")}</div>`);
   }
@@ -737,7 +741,7 @@
     isLec = A.isAdmin(st.user.email);
     const db = A.db;
     let released = false;
-    try { const d = await db.collection("meta").doc("missions").get(); released = !!(d.exists && d.data().released); } catch (e) { /* rules not published yet */ }
+    try { const d = await db.collection("meta").doc("missions").get(); released = !!(d.exists && d.data().released); LOCKS = (d.exists && d.data().locks) || {}; } catch (e) { /* rules not published yet */ }
     A.released = released;
     if (!isLec && !released) { gate(`<p><strong>INSTRUMENTA: Legends is coming soon.</strong> Your lecturer will open it when it's ready.</p>`); return; }
     if (!isLec && !(st.profile && st.profile.status === "approved")) { gate(`<p><strong>Your account is waiting for approval.</strong> The game opens once your lecturer approves it.</p>`); return; }

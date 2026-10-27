@@ -96,3 +96,15 @@ table.adm { width: 100%; border-collapse: collapse; font-size: .9rem; font-varia
 .acc-item { display: flex; align-items: center; gap: 10px; }
 .acc-ic { width: 28px; height: 28px; border-radius: 8px; background: var(--teal-soft); display: grid; place-items: center; font-size: .9rem; flex: none; }
 .acc-outb { border-top: 1px solid var(--rule); border-radius: 0 0 var(--r-sm) var(--r-sm); margin-top: 6px; padding-top: 11px; }
+
+/* admin.html Missions: chapter and station locks */
+.ms-ltab td { vertical-align: middle; }
+.ms-ltab .ms-chrow td { border-top: 2px solid var(--rule); }
+.ms-ltab .ms-strow td:first-child { padding-left: 22px; color: var(--ink-2); }
+.ms-ltab .ms-strow.dim td { opacity: .6; }
+.ms-lock { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.ms-lock input { width: 18px; height: 18px; accent-color: var(--amber); }
+.ms-lock.on { color: var(--amber); }
+.ms-delask .ms-row2 { margin: 10px 0 0; display: flex; gap: 8px; flex-wrap: wrap; }
+.ms-ltab .ms-delbtn { margin-top: 6px; }
+.ms-ltab td:last-child { width: 1%; }

@@ -140,14 +140,18 @@
     document.addEventListener("keydown", function esc_(e) { if (e.key === "Escape") { close(); document.removeEventListener("keydown", esc_); } });
   }
 
-  /* ---------- Missions: release the game to students, and upload each world's mission file ----------
+  /* ---------- Missions: release the game to students, and upload each chapter's mission file ----------
      The file (kept in _source/Missions/, never published) returns { world, chapter, title, missions }. It is stored in
-     Firestore missions/world{N}; the rules let only lecturers, or students after release, read it. */
-  let ms = null, msMsg = "";
+     Firestore missions/world{N}; the rules let only lecturers, or students after release, read it.
+     Locks: meta/missions.locks { "world1": true (the whole chapter), "w1-s3": true (one station) }. The game already
+     reads meta/missions when it opens, so a lock costs students no extra reads; it shows at their next opening.
+     A lock only hides a station in the game: the chapter file can still be read by approved students, so a chapter
+     that must stay secret is deleted (or not uploaded) instead. */
+  let ms = null, msMsg = "", msDel = null;
   async function loadMissions() {
     try {
       const [m, q] = await Promise.all([db.collection("meta").doc("missions").get(), db.collection("missions").get()]);
-      ms = { released: !!(m.exists && m.data().released), at: m.exists ? m.data().updatedAt : null,
+      ms = { released: !!(m.exists && m.data().released), at: m.exists ? m.data().updatedAt : null, locks: (m.exists && m.data().locks) || {},
         worlds: q.docs.map((d) => Object.assign({ id: d.id }, d.data())).sort((a, b) => a.world - b.world) };
     } catch (e) { ms = { err: e.code || String(e) }; }
     if (tab === "missions") draw();
@@ -156,25 +160,56 @@
     if (!ms) { loadMissions(); return `<p class="small-note">Loading…</p>`; }
     if (ms.err) return `<div class="callout warn"><strong>Could not load the missions</strong>${esc(ms.err)}. If this says permission-denied, publish the latest firebase/firestore.rules in the Firebase console.</div>`;
     const played = approved().filter((u) => Object.keys(parse(((progress[u.uid] || {}).keys || {})["nmk-missions"], {})).length).length;
-    return `<div class="adm-sum"><div><strong>${ms.released ? "On" : "Off"}</strong><span>released to students</span></div><div><strong>${ms.worlds.length}</strong><span>stations uploaded</span></div><div><strong>${played}</strong><span>students have played</span></div></div>
+    const L = ms.locks || {}, nLocked = Object.keys(L).filter((k) => L[k]).length;
+    const lockSw = (k, label) => `<label class="ms-lock${L[k] ? " on" : ""}"><input type="checkbox" data-mlock="${esc(k)}" aria-label="Lock ${esc(label)} for students"${L[k] ? " checked" : ""}> <span>${L[k] ? "🔒 Locked" : "Open"}</span></label>`;
+    const stationsOf = (w) => { try { const x = new Function(w.code)(); return ((x && x.missions) || []).map((m) => ({ id: m.id, title: m.title, boss: !!m.boss })); } catch (e) { return []; } };
+    const rows = ms.worlds.map((w) => {
+      const st = stationsOf(w), name = esc(w.title || w.id);
+      return `<tr class="ms-chrow"><td><strong>${name}</strong><br><small>${st.length || w.count || 0} stations · uploaded ${fmt(w.updatedAt && w.updatedAt.toDate ? w.updatedAt.toDate().toISOString() : null)}</small>
+          <br><button type="button" class="btn ghost small ms-delbtn" data-mdel="${esc(w.id)}">🗑 Delete this chapter</button></td>
+          <td>${lockSw(w.id, `the whole of ${w.title || w.id}`)}</td></tr>
+        ${st.map((s, i) => `<tr class="ms-strow${L[w.id] ? " dim" : ""}"><td>Station ${i + 1}${s.boss ? " (boss)" : ""}: ${esc(s.title || s.id)}</td><td>${lockSw(s.id, `Station ${i + 1}, ${s.title || s.id}`)}</td></tr>`).join("")}
+        ${msDel === w.id ? `<tr><td colspan="2"><div class="callout warn ms-delask" role="alertdialog" aria-label="Delete ${name}"><strong>Delete ${name} for everyone?</strong>It disappears from the game at each student's next opening. Students keep their coins, stars and boss marks, and you can upload the file again later (from _source/Missions/).
+          <p class="ms-row2"><button type="button" class="btn" data-mdelyes="${esc(w.id)}">Delete</button> <button type="button" class="btn ghost" data-mdelno>Cancel</button></p></div></td></tr>` : ""}`;
+    }).join("");
+    return `<div class="adm-sum"><div><strong>${ms.released ? "On" : "Off"}</strong><span>released to students</span></div><div><strong>${ms.worlds.length}</strong><span>chapters uploaded</span></div><div><strong>${nLocked}</strong><span>locked</span></div><div><strong>${played}</strong><span>students have played</span></div></div>
       <div class="ms-adm"><label class="ms-rel"><input type="checkbox" data-mrel${ms.released ? " checked" : ""}> <span><strong>Release INSTRUMENTA: Legends (Missions) to students</strong><br><small>Off: only lecturers can open the Missions page (to test). On: signed-in, approved students can play, and Missions appears in their account menu. Each chapter still opens in the week it is lectured. Upload one file per chapter (three stations each; the third is the boss).</small></span></label>
         <p class="ms-amsg small-note" aria-live="polite">${esc(msMsg)}</p>
-        <h3 class="h3">Stations</h3>
-        ${ms.worlds.length ? `<div class="adm-scroll"><table class="adm"><thead><tr><th>Station</th><th>Chapter</th><th>Missions</th><th>Uploaded</th></tr></thead><tbody>${ms.worlds.map((w) => `<tr><td>${esc(w.title || w.id)}</td><td>${w.chapter || ""}</td><td>${w.count || ""}</td><td>${fmt(w.updatedAt && w.updatedAt.toDate ? w.updatedAt.toDate().toISOString() : null)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="adm-empty">No stations uploaded yet.</p>`}
+        <h3 class="h3">Chapters and Stations</h3>
+        <p class="small-note">Lock a whole chapter, or one station. Students see “Locked by your lecturer” the next time they open the game; you can still play everything (tick “Preview as a student” in the game to see their view). A station already defeated keeps its coins and stars while locked, and a fight in progress can be continued once it is open again.</p>
+        ${ms.worlds.length ? `<div class="adm-scroll"><table class="adm ms-ltab"><thead><tr><th>Chapter / station</th><th>For students</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<p class="adm-empty">No stations uploaded yet.</p>`}
         <p><label class="btn ghost">Upload a mission file (.js)<input type="file" accept=".js,text/javascript" data-mup hidden></label> <a class="btn ghost" href="missions.html">Open INSTRUMENTA ›</a></p>
-        <p class="small-note">Uploading a station again replaces it. Students keep their coins and stars.</p></div>`;
+        <p class="small-note">Uploading a chapter again replaces it (its locks stay). Students keep their coins and stars.</p></div>`;
+  }
+  // one write per tap: meta/missions.locks.{key}
+  function setLock(key, on, box) {
+    const say = (t) => { msMsg = t; const m = host.querySelector(".ms-amsg"); if (m) m.textContent = t; };
+    box.disabled = true;
+    db.collection("meta").doc("missions").set({ locks: { [key]: on }, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), by: A.state.user.email.toLowerCase() }, { merge: true })
+      .then(() => { ms.locks = Object.assign({}, ms.locks, { [key]: on }); msMsg = on ? "Locked. Students see it at their next opening of the game." : "Open again for students."; draw(); })
+      .catch((ex) => { box.checked = !on; box.disabled = false; say(`Could not save (${ex.code || ex}).`); });
+  }
+  // one delete; the list is updated here without reading it again
+  async function deleteChapter(id, btn) {
+    btn.disabled = true;
+    try {
+      await db.collection("missions").doc(id).delete();
+      const w = ms.worlds.find((x) => x.id === id);
+      ms.worlds = ms.worlds.filter((x) => x.id !== id); msDel = null;
+      msMsg = `Deleted ${(w && w.title) || id}. Upload its file again to bring it back.`; draw();
+    } catch (ex) { btn.disabled = false; msMsg = `Could not delete (${ex.code || ex}).`; draw(); }
   }
   async function uploadMissions(file) {
     const say = (t) => { msMsg = t; const m = host.querySelector(".ms-amsg"); if (m) m.textContent = t; };
     try {
       const code = await file.text();
       const w = new Function(code)();   // check the file before saving it: it must give a world with missions
-      if (!w || !Number.isInteger(w.world) || !Array.isArray(w.missions) || !w.missions.length) throw new Error("This file doesn't describe a station (world, missions).");
+      if (!w || !Number.isInteger(w.world) || !Array.isArray(w.missions) || !w.missions.length) throw new Error("This file doesn't describe a chapter (world, missions).");
       w.missions.forEach((m) => { const v = m.make(Math.random); m.steps.forEach((s) => { if (!s.choice && !isFinite(s.ans(v))) throw new Error(`${m.title}: "${typeof s.q === "function" ? s.q(v) : s.q}" gives no number.`); }); });
       await db.collection("missions").doc(`world${w.world}`).set({ world: w.world, chapter: w.chapter || w.world, title: w.title || `Station ${w.world}`, count: w.missions.length, code,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(), by: A.state.user.email.toLowerCase() });
       ms = null; loadMissions();
-      say(`Uploaded ${w.title || `Station ${w.world}`}: ${w.missions.length} missions.`);
+      say(`Uploaded ${w.title || `Chapter ${w.world}`}: ${w.missions.length} stations.`);
     } catch (e) { say(`Could not upload: ${e.code || e.message || e}`); }
   }
 
@@ -224,6 +259,9 @@
     else if (b.dataset.no && confirm("Remove this student's access?")) setStatus(b.dataset.no, "rejected");
     else if (b.dataset.csv) csv(b.dataset.csv);
     else if (b.hasAttribute("data-reload")) load();
+    else if (b.dataset.mdel) { msDel = b.dataset.mdel; draw(); }
+    else if (b.hasAttribute("data-mdelno")) { msDel = null; draw(); }
+    else if (b.dataset.mdelyes) deleteChapter(b.dataset.mdelyes, b);
   });
   let typing = false;
   host.addEventListener("input", (e) => { if (e.target.matches("[data-q]")) { filter = e.target.value; typing = true; draw(); } });
@@ -232,6 +270,7 @@
     if (e.target.matches("[data-sem]")) { sem = e.target.value; draw(); }
     if (e.target.matches("[data-stop]")) { stopFilter = e.target.value; draw(); }
     if (e.target.matches("[data-mup]") && e.target.files[0]) uploadMissions(e.target.files[0]);
+    if (e.target.matches("[data-mlock]")) setLock(e.target.dataset.mlock, e.target.checked, e.target);
     if (e.target.matches("[data-mrel]")) {
       const on = e.target.checked;
       db.collection("meta").doc("missions").set({ released: on, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), by: A.state.user.email.toLowerCase() }, { merge: true })
