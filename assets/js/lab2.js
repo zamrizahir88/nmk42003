@@ -73,6 +73,36 @@
   const calListeners = [], mcListeners = [];
   const calChanged = () => { store.set(CAL_KEY, CAL); calListeners.forEach((f) => f()); };
   const calPts = () => ANGLES.filter((a) => CAL[a] !== undefined).map((a) => [CAL[a], a]);
+  // Excel's scatter chart puts the FIRST column on the X axis, so the copy has the ADC count first (Table 1 is recorded
+  // angle first). "blank" leaves the counts empty for the student's own lab readings.
+  const excelCopy = (blank) => ["ADC count (X axis)\tAngle in degrees (Y axis)"].concat(ANGLES.map((a) => `${blank || CAL[a] === undefined ? "" : CAL[a]}\t${a}`)).join("\n");
+  const excelBtns = () => `<div class="xl-copy"><button type="button" class="btn small" data-xl="sim">📋 Copy Table 1 for Excel</button><button type="button" class="btn ghost small" data-xl="blank">📋 Copy a blank sheet for my lab readings</button>
+      <p class="small-note">Then click cell A1 in Excel and paste (Ctrl+V). The <strong>ADC count goes in column A</strong> and the angle in column B, so Excel puts the count on the X axis. The blank sheet has the angles ready: type your own counts in column A.</p><p class="xl-msg small-note" aria-live="polite"></p></div>`;
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-xl]");
+    if (!b) return;
+    const text = excelCopy(b.dataset.xl === "blank"), msg = b.closest(".xl-copy").querySelector(".xl-msg");
+    const done = () => { msg.innerHTML = `<span class="ok-t">✓ Copied.</span> Click cell A1 in Excel and paste.`; };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, () => { prompt("Copy this, then paste it into Excel:", text); });
+    else prompt("Copy this, then paste it into Excel:", text);
+  });
+  // what the student's Excel trendline says: right axes, swapped axes, or a rounded m
+  function checkExcel(m, c) {
+    const am = Math.abs(m);
+    if (!isFinite(m) || !isFinite(c)) return `<p class="warn-t">Type both numbers from your trendline equation, y = mx + c.</p>`;
+    if (am >= 3 && am <= 80) {
+      return `<div class="callout warn"><strong>Your axes are swapped</strong><p>m = ${num(m, 4)} means about ${num(am, 3)} counts per degree: Excel has the <b>angle on the X axis</b> and the ADC count on the Y axis. The calibration line needs the opposite, because the ESP32 knows the count and works out the angle.</p>
+        <p>Fix it: put the <b>ADC count in column A</b> and the angle in column B, and make the chart again (or right-click the chart → <em>Select Data</em> → <em>Edit</em>, and swap the ranges in <em>Series X values</em> and <em>Series Y values</em>). Then m comes out at about ${num(1 / am, 3)} degrees per count.</p></div>`;
+    }
+    if (am >= 0.02 && am <= 0.2) {
+      return `<p class="ok-t">✓ The axes are right: m = ${num(m, 5)} degrees per count, so 4095 counts cover about ${Math.round(am * 4095)}°.${m < 0 ? " m is negative because the outer wires are the other way round: that's fine, as long as you keep that wiring." : ""}</p>
+        <p class="small-note">Use these exact values in Lesson 6. Excel shows only a few digits at first: set the trendline label to 6 decimal places, or the angle can be several degrees off.</p>`;
+    }
+    if (am > 0 && am < 0.02) return `<p class="warn-t">m = ${num(m, 4)} is too small for this sensor. Has Excel rounded it? Right-click the equation, choose <em>Format Trendline Label</em>, and set Number to 6 decimal places. (Or check that the X axis is the ADC count, 0 to 4095, not the voltage.)</p>`;
+    return `<p class="warn-t">m = ${num(m, 4)} doesn't look like this calibration (expect about 0.04 to 0.1 degrees per count). Check that column A has the ADC counts and column B the angles in degrees.</p>`;
+  }
+
+
   const myFit = () => { const p = calPts(); return p.length >= 3 ? linFit(p) : null; };
   let MC = (() => { const v = store.get(MC_KEY, null); return v && Number.isFinite(v.m) && Number.isFinite(v.c) ? v : null; })();
   const setMc = (v) => { MC = v; store.set(MC_KEY, v); mcListeners.forEach((f) => f()); };
@@ -576,7 +606,8 @@ void loop()
           <div class="wf-row"><button type="button" class="btn" data-rec>Record this angle</button><button type="button" class="btn ghost" data-clear>Clear the table</button></div>
           <p class="pv-read cl-read" aria-live="polite"></p>
           <div class="cal-box" tabindex="0" role="region" aria-label="Table 1: angle and ADC count"><table class="cal-table"><caption>Table 1: angle and ADC count</caption>
-            <thead><tr><th scope="col">Angle (°)</th><th scope="col">ADC count</th><th scope="col"><span class="vh">Go to this angle</span></th></tr></thead><tbody></tbody></table></div>
+            <thead><tr><th scope="col">Angle (°)<span class="ax-tag y">Y axis</span></th><th scope="col">ADC count<span class="ax-tag x">X axis</span></th><th scope="col"><span class="vh">Go to this angle</span></th></tr></thead><tbody></tbody></table></div>
+          ${excelBtns()}
         </div></div>`;
     const body = $("tbody", el), read = $(".cl-read", el), recBtn = $("[data-rec]", el);
     const count = () => ANGLES.filter((a) => CAL[a] !== undefined).length;
@@ -640,7 +671,7 @@ void loop()
       el.innerHTML = `<div class="fit-eq" aria-live="polite"><span class="fit-l">Your calibration equation</span><strong>${eqText(fit)}</strong>
           <span class="fit-s">m = ${num(fit.m, 5)} ° per count · c = ${num(fit.c, 4)}° · R² = ${R2.toFixed(4)} · ${pts.length} points</span></div>
         <div class="fit-grid">
-          <figure class="scene-box plot-box">${graph}<figcaption>The calibration graph. Each dot is one row of Table 1, and the line is the best straight line through them.</figcaption></figure>
+          <figure class="scene-box plot-box">${graph}<figcaption>The calibration graph: <strong>X axis = ADC count</strong>, <strong>Y axis = angle</strong>. Your Excel chart must look the same way round. Each dot is one row of Table 1, and the line is the best straight line through them.</figcaption></figure>
           <figure class="scene-box plot-box">${resid}<figcaption>How far the line is from each point (line − true angle). The largest error is ${num(worst[1], 2)}° at ${worst[0]}°.</figcaption></figure>
         </div>
         ${pts.length < ANGLES.length ? `<p class="small-note">Only ${pts.length} of 19 angles are recorded. Record the rest in <a href="#collect">Lesson 4</a> for a better line.</p>` : ""}
@@ -650,13 +681,20 @@ void loop()
           step("Intercept", "c = (Σy − mΣx) / n", `(${big(S.Sy)} − ${num(fit.m, 5)} × ${big(S.Sx)}) / ${S.n}`, `c = <strong>${num(fit.c, 4)}</strong>°`),
           step("The calibration equation", "Angle = m × ADC + c", "", `<strong>${eqText(fit)}</strong>`)
         ])}</ol><p class="small-note">A spreadsheet does this sum for you. It is shown so you know what the trendline means.</p>`)}
-        ${fold("How to Do This in Excel", `<ol class="what">
-          <li>Type Table 1 into two columns: <strong>ADC count</strong> in the first column and <strong>Angle</strong> in the second. The first column becomes the X axis.</li>
+        ${fold("How to Do This in Excel", `<p class="warn-t">Excel puts the FIRST column on the X axis. Table 1 lists the angle first, so don't copy it as it looks: the ADC count must be in column A.</p>${excelBtns()}<ol class="what">
+          <li>Put <strong>ADC count</strong> in column A and <strong>Angle</strong> in column B (or paste with a Copy for Excel button). Column A becomes the X axis.</li>
           <li>Select both columns, then choose <em>Insert → Scatter</em> (markers only, no joining lines).</li>
           <li>Click a point on the chart, then right-click and choose <em>Add Trendline</em>. Choose <strong>Linear</strong>.</li>
           <li>Tick <em>Display Equation on chart</em> and <em>Display R-squared value on chart</em>.</li>
-          <li>Read m and c from the equation <code>y = mx + c</code>. Add axis titles with units, and a chart title.</li>
-        </ol><p class="small-note">Excel may show only a few digits of m. Right-click the equation, choose <em>Format Trendline Label</em>, and set Number to 6 decimal places: with counts in the thousands, a rounded m gives a large error.</p>`)}`;
+          <li>Read m and c from the equation <code>y = mx + c</code>. Add axis titles with units, and a chart title: X axis "ADC count", Y axis "Angle (°)".</li>
+          <li>Check that it looks like the graph above: counts from 0 to about 4000 along the bottom, angles from 0° to 180° up the side.</li>
+        </ol><p class="small-note">Excel may show only a few digits of m. Right-click the equation, choose <em>Format Trendline Label</em>, and set Number to 6 decimal places: with counts in the thousands, a rounded m gives a large error.</p>`)}
+        <div class="xl-check"><h4 class="sub-h">Check Your Excel Equation</h4>
+          <p class="small-note">Type the m and c from the trendline on your Excel chart (y = mx + c). This checks that your axes are the right way round.</p>
+          <form class="xl-form" novalidate><label>m <input type="number" step="any" inputmode="decimal" name="m" autocomplete="off"></label><label>c <input type="number" step="any" inputmode="decimal" name="c" autocomplete="off"></label><button class="btn small">Check</button></form>
+          <div class="xl-out" aria-live="polite"></div></div>`;
+      const xf = $(".xl-form", el);
+      xf.addEventListener("submit", (e) => { e.preventDefault(); $(".xl-out", el).innerHTML = checkExcel(parseFloat(xf.elements.m.value), parseFloat(xf.elements.c.value)); });
     };
     calListeners.push(draw);
     draw();
@@ -1074,7 +1112,7 @@ void loop()
   }
   function printPlan(P) {
     const fit = myFit(), task = store.get(TASK_KEY, null), tick = (on) => (on ? "☑" : "☐");
-    const half = (list) => `<table><thead><tr><th>Angle (°)</th><th>Simulation count</th><th>Lab count</th></tr></thead><tbody>${list.map((a) => `<tr><td>${a}</td><td>${CAL[a] === undefined ? "" : CAL[a]}</td><td></td></tr>`).join("")}</tbody></table>`;
+    const half = (list) => `<table><thead><tr><th>Angle (°)<br><small>Y axis</small></th><th>Simulation count<br><small>X axis</small></th><th>Lab count<br><small>X axis</small></th></tr></thead><tbody>${list.map((a) => `<tr><td>${a}</td><td>${CAL[a] === undefined ? "" : CAL[a]}</td><td></td></tr>`).join("")}</tbody></table>`;
     let sheet = $("#printSheet");
     if (!sheet) { sheet = document.createElement("div"); sheet.id = "printSheet"; document.body.appendChild(sheet); }
     sheet.innerHTML = `<h1>NMK42003 Lab 2: My Lab Plan</h1>
@@ -1083,6 +1121,7 @@ void loop()
       <p>${tick(P.power === "pin")} ESP32 3V3 pin &nbsp; ${tick(P.power === "bench")} Bench power supply, set to 3.3 V and checked with the multimeter before connecting</p>
       <p>☐ Outer pin to 3.3 V &nbsp; ☐ Other outer pin to GND &nbsp; ☐ Wiper to VP (GPIO36) &nbsp; ☐ Supply − joined to ESP32 GND &nbsp; ☐ Protractor and potentiometer fixed</p>
       <h2>2. Table 1: Angle and ADC Count</h2>
+      <p>On the graph and in Excel: <strong>ADC count on the X axis (column A)</strong>, angle on the Y axis (column B).</p>
       <div class="ps-two">${half(ANGLES.slice(0, 10))}${half(ANGLES.slice(10))}</div>
       <h2>3. Calibration Equation (Angle = m × ADC + c)</h2>
       <p>Simulation: ${fit ? eqText(fit) : "not fitted yet"}</p>
@@ -1142,7 +1181,8 @@ void loop()
       intro: `<p>Calibration means comparing the sensor with a <strong>trusted reference</strong>. Here the reference is the protractor. Set the pointer to each angle from 0° to 180° in 10° steps, wait for the count to settle, and record it: 19 rows.</p>
         <ul class="what"><li>Read the protractor from straight above the pointer, and don't let the protractor or the potentiometer move.</li>
         <li>Don't force the shaft past its end stops.</li>
-        <li>Try <em>Average of 5 readings</em>: it takes out most of the noise, and you can do the same on the real hardware.</li></ul>`,
+        <li>Try <em>Average of 5 readings</em>: it takes out most of the noise, and you can do the same on the real hardware.</li></ul>
+        <div class="callout info"><strong>Recorded angle first, plotted the other way</strong>You set the angle and then read the count, so Table 1 lists the angle first. On the graph it's the other way round: the <b>ADC count goes on the X axis</b> and the <b>angle on the Y axis</b>. In Excel the first column becomes the X axis, so put the ADC count in column A. The <em>Copy for Excel</em> buttons under the table do this for you.</div>`,
       mount: mountCollect },
 
     { id: "fit", group: "l5", title: "Plot the Graph and Find the Equation", toc: "Graph and Equation",

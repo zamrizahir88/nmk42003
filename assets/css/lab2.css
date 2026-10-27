@@ -242,3 +242,18 @@ details.fold[open] details.fold:not([open]) .fold-h::after { content: "Show ▾"
 @keyframes tk-warn { 50% { background: #ff5a3c; color: #fff; } }
 @media (prefers-reduced-motion: reduce) { .ai-switch.tk-st.warn, .web h2.tk-st.warn .tk-led { animation: none; } }
 .br-bar.ph .br-url { font-size: .85rem; }
+
+/* Table 1 axis tags, the Copy for Excel buttons and the equation checker (Lesson 4 and 5) */
+.ax-tag { display: block; width: max-content; margin-top: 3px; font-size: .7rem; font-weight: 700; letter-spacing: .02em; border-radius: 999px; padding: 1px 8px; }
+.ax-tag.x { background: var(--teal-soft); color: var(--teal); }
+.ax-tag.y { background: var(--amber-soft); color: var(--amber); }
+.xl-copy { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; }
+.xl-copy p { flex-basis: 100%; margin: 0; }
+.xl-check { border: 1px solid var(--rule); border-radius: var(--r-md); padding: 12px 16px; margin: 14px 0 0; max-width: 720px; background: var(--surface); }
+.xl-check .sub-h { margin-top: 0; }
+.xl-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin: 8px 0; }
+.xl-form label { display: grid; gap: 4px; font-weight: 600; }
+.xl-form input { font: inherit; width: 140px; padding: 7px 10px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); }
+.xl-form input:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
+.xl-out .callout { margin: 8px 0 0; }
+.xl-out p { margin: 6px 0 0; }
