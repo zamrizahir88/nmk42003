@@ -250,7 +250,12 @@
   }
   function mapView() {
     const b = best();
-    frame(`<p class="lg-lead">INSTRUMENTA: Legends helps you understand each chapter and practise for your real examination. Each chapter has three stations, each guarded by an enemy; beat the first two to face the boss. Work each step on paper and key in your answer: a right answer strikes and earns coins, a wrong one is blocked, the enemy strikes back and you drop 2 coins. Lose all your hearts and the station starts again. A chapter opens in the week it is lectured.</p>
+    frame(`<div class="lg-lead"><p class="lg-lead-h">Play, learn and master each chapter.</p><ul class="lg-rules">
+        <li><span aria-hidden="true">⚔️</span>Three stations per chapter. Beat the first two to face the boss.</li>
+        <li><span aria-hidden="true">✍️</span>Work it out on paper, then key in your answer.</li>
+        <li><span aria-hidden="true">🪙</span>Right: you strike and earn coins. Wrong: the enemy blocks, strikes back, and you lose 2 coins.</li>
+        <li><span aria-hidden="true">❤️</span>Lose all your hearts and the station starts again.</li>
+        <li><span aria-hidden="true">📅</span>A new chapter opens in the week it is lectured.</li></ul></div>
       <div class="lg-worlds">${WORLDS.map((w) => {
         const open = worldOpen(w), o = opensOn(w), done = w.missions.filter((m) => b[m.id]).length;
         return `<button type="button" class="lg-world${open ? "" : " locked"}" data-world="${w.world}"${open ? "" : ` aria-disabled="true"`}>
@@ -408,7 +413,7 @@
       <svg class="lg-crhero" viewBox="-50 -82 168 168" role="img" aria-label="The Creator as a game character">${ART.heroSvg(ART.CREATOR, "", 2)}</svg>
       <div class="lg-crcard"><img src="assets/img/team/zamri.jpg" alt="" width="56" height="56"><div><b>Ts. Dr. Mohd Zamri Bin Zahir Ahmad</b><small>Course coordinator, NMK42003 Instrumentation<br>Faculty of Electronic Engineering &amp; Technology, UniMAP</small></div></div>
       ${ART.zamm(true)}
-      <p class="lg-crab">INSTRUMENTA: Legends is an original game made for NMK42003 Instrumentation. Battle named enemies at every station, chapter by chapter, with Volt your helper drone, and grow from Apprentice to Legend of Measurement while you practise for your real examination.</p>
+      <p class="lg-crab">INSTRUMENTA: Legends is an original game made for NMK42003 Instrumentation. Battle named enemies at every station, chapter by chapter, with Volt your helper drone, and grow from Apprentice to Legend of Measurement as you master each chapter.</p>
       <div class="lg-facts"><span>One world per chapter</span><span>3 stations each</span><span>Named enemies and bosses</span><span>Original art and music</span></div>
       <div class="lg-crbtns"><button type="button" class="lg-btn main" data-go="map">⚔️ Back to the game</button><button type="button" class="lg-btn alt" data-sharegame>📤 Share the game</button></div>
       <p class="lg-crcopy">© 2026 Zamm Studio™ · Ts. Dr. Mohd Zamri Bin Zahir Ahmad. All rights reserved. #INSTRUMENTALegends</p></div></div>`);

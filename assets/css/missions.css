@@ -70,6 +70,9 @@
 .lg-nyh { margin-top: 18px; }
 .lg-ny { columns: 2 220px; padding-left: 18px; }
 .lg-lead { max-width: var(--measure); color: var(--ink-2); }
+.lg-lead-h { margin: 0 0 6px; font-weight: 700; font-size: 1.08rem; color: var(--ink); }
+.lg-rules { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 4px; }
+.lg-rules li { display: grid; grid-template-columns: 1.6em minmax(0, 1fr); align-items: start; }
 
 /* the chapter map */
 .lg-worlds { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
