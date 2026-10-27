@@ -413,6 +413,8 @@
     const r = btn.getBoundingClientRect();
     menu.style.top = `${Math.round(r.bottom + 8)}px`;
     menu.style.right = `${Math.max(8, Math.round(innerWidth - r.right))}px`;
+    // never taller than the screen below the button: the list scrolls inside on a small screen
+    menu.style.maxHeight = `${Math.max(160, Math.round(innerHeight - r.bottom - 16))}px`;
     menu.hidden = false; btn.setAttribute("aria-expanded", "true");
     const first = menu.querySelector("a, button");
     if (first) first.focus();
@@ -589,6 +591,7 @@
     const r = bell.getBoundingClientRect();
     bellBox.style.top = `${Math.round(r.bottom + 8)}px`;
     bellBox.style.right = `${Math.max(8, Math.round(innerWidth - r.right))}px`;
+    bellBox.style.maxHeight = `${Math.max(160, Math.min(480, Math.round(innerHeight - r.bottom - 16)))}px`;
     bellBox.hidden = false; bell.setAttribute("aria-expanded", "true");
     // opened: everything so far counts as seen (the list keeps it, and to-do items stay marked until they are done)
     markSeen();
