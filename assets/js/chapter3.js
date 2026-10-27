@@ -1045,6 +1045,46 @@ void loop()
     ["Cost", "A low-cost sensor for a simple job, a high-cost one where accuracy really matters."],
     ["Environmental conditions", "Heat, water, dust, vibration and noise decide how rugged it must be."]
   ];
+  // Compare two sensors against a requirement: range, accuracy, and whether the ESP32 sees the change without an amplifier
+  const CMP_SETS = {
+    cold: { name: "Freezer room", req: { lo: -30, hi: 0, acc: 0.8, d: 0.5, step: 0.8 },
+      a: { n: "IC temperature sensor", lo: -40, hi: 125, s: 15, acc: 0.3, rt: 10 }, b: { n: "Type E thermocouple", lo: -200, hi: 900, s: 0.061, acc: 1.7, rt: 1 } },
+    kiln: { name: "Pottery kiln", req: { lo: 200, hi: 1100, acc: 5, d: 2, step: 0.8 },
+      a: { n: "IC temperature sensor", lo: -40, hi: 125, s: 15, acc: 0.3, rt: 10 }, b: { n: "Type S thermocouple", lo: 0, hi: 1600, s: 0.01, acc: 1.5, rt: 2 } }
+  };
+  function mountCompare(el) {
+    let S = JSON.parse(JSON.stringify(CMP_SETS.cold));
+    el.innerHTML = `${chips("Situation", Object.entries(CMP_SETS).map(([k, v]) => [k, v.name]), "cold")}<div class="cmp2-host"></div>`;
+    const host = el.querySelector(".cmp2-host");
+    const fld = (g, k, lab, unit) => `<label>${lab}<span class="cmp2-in"><input type="number" step="any" inputmode="decimal" data-g="${g}" data-k="${k}" value="${S[g][k]}" aria-label="${g === "req" ? "Requirement" : `Sensor ${g.toUpperCase()}`}: ${lab}"><span>${unit}</span></span></label>`;
+    const ok = (b) => (b ? `<span class="ok-t">✓</span>` : `<span class="no-t">✗</span>`);
+    const draw = () => {
+      host.innerHTML = `<div class="cmp2"><fieldset><legend>What the job needs</legend>${fld("req", "lo", "Range from", "°C")}${fld("req", "hi", "Range to", "°C")}${fld("req", "acc", "Accuracy within ±", "°C")}${fld("req", "d", "Smallest change to detect", "°C")}${fld("req", "step", "ESP32 ADC step", "mV")}</fieldset>
+        ${["a", "b"].map((g) => `<fieldset><legend>Sensor ${g.toUpperCase()}: ${S[g].n}</legend>${fld(g, "lo", "Range from", "°C")}${fld(g, "hi", "Range to", "°C")}${fld(g, "s", "Sensitivity", "mV/°C")}${fld(g, "acc", "Accuracy ±", "°C")}${fld(g, "rt", "Response time", "s")}</fieldset>`).join("")}</div><div class="cmp2-out" aria-live="polite"></div>`;
+      out();
+    };
+    const out = () => {
+      const R = S.req, row = (g) => {
+        const x = S[g], range = x.lo <= R.lo && x.hi >= R.hi, dv = x.s * R.d, sees = dv >= R.step, acc = x.acc <= R.acc;
+        return { range, dv, sees, acc, gain: R.step / dv, fit: range && acc };
+      };
+      const A = row("a"), B = row("b"), mv = (v) => (v >= 1 ? `${num(v)} mV` : `${num(v * 1000)} µV`);
+      const cell = (r, g) => [
+        `${ok(r.range)} ${num(S[g].lo)} to ${num(S[g].hi)} °C ${r.range ? "covers" : "does not cover"} ${num(R.lo)} to ${num(R.hi)} °C`,
+        `${ok(r.sees)} ${num(S[g].s)} mV/°C × ${num(R.d)} °C = <strong>${mv(r.dv)}</strong> ${r.sees ? "≥" : "<"} ${num(R.step)} mV${r.sees ? "" : `: needs an amplifier, gain ≥ ${num(Math.ceil(r.gain))}`}`,
+        `${ok(r.acc)} ±${num(S[g].acc)} °C ${r.acc ? "is within" : "is worse than"} ±${num(R.acc)} °C`,
+        `${num(S[g].rt)} s`];
+      const ca = cell(A, "a"), cb = cell(B, "b");
+      const rows = [["Range", ca[0], cb[0]], [`Output change for ${num(R.d)} °C`, ca[1], cb[1]], ["Accuracy", ca[2], cb[2]], ["Response time", ca[3], cb[3]]];
+      const fits = [["A", A], ["B", B]].filter(([, r]) => r.fit), best = fits.find(([, r]) => r.sees) || fits[0];
+      const verdict = !fits.length ? "Neither sensor meets the range and accuracy: look for another one."
+        : `<strong>Choose Sensor ${best[0]}${best[1].sees ? "" : `, with an amplifier (gain ≥ ${num(Math.ceil(best[1].gain))})`}.</strong> ${fits.length === 2 ? `Both meet the range and accuracy; ${best[1].sees ? `Sensor ${best[0]} also gives a change the ESP32 can see without an amplifier (higher sensitivity).` : "neither is seen by the ESP32 without an amplifier."}` : `It is the only one that meets both the range and the accuracy.`}`;
+      host.querySelector(".cmp2-out").innerHTML = table(["", `Sensor A: ${S.a.n}`, `Sensor B: ${S.b.n}`], rows) + `<p class="cmp2-verdict">${verdict}</p>`;
+    };
+    host.addEventListener("input", (e) => { const t = e.target; if (!t.dataset.g) return; const x = parseFloat(t.value); if (isFinite(x)) { S[t.dataset.g][t.dataset.k] = x; out(); } });
+    pick(el, (k) => { S = JSON.parse(JSON.stringify(CMP_SETS[k])); draw(); });
+    draw();
+  }
   const mountCriteria = (el) => { el.innerHTML = `<div class="spec-grid">${CRITERIA.map(([t, d]) => `<div class="spec"><h4>${t}</h4><p>${d}</p></div>`).join("")}</div>`; };
   const table = (head, rows, cls = "") => `<div class="table-wrap ${cls}"><table class="cmp"><thead><tr>${head.map((h) => `<th scope="col">${h}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr><th scope="row">${r[0]}</th>${r.slice(1).map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   const PASSIVE_CMP = table(["", "Resistive", "Capacitive", "Inductive"], [
@@ -1149,6 +1189,9 @@ void loop()
       mount: mountCriteria },
 
     // ---------- Passive sensors ----------
+    { id: "compare2", group: "params", title: "Compare Two Sensors", toc: "Compare Two Sensors",
+      intro: `<p>Choosing a sensor means checking it against the job, one requirement at a time: does its <strong>range</strong> cover the job, is its <strong>accuracy</strong> good enough, and is its output change big enough for the ESP32 to see (its <strong>sensitivity</strong>)? Output change = sensitivity × temperature change. Pick a situation, or type your own numbers.</p>`,
+      mount: mountCompare },
     { id: "classify", group: "classify", title: "Sensor Categories", toc: "Sensor Categories",
       intro: `<p>Sensors are divided into two groups by <strong>where the energy for the output comes from</strong>:</p>
         <ul class="what"><li><strong>Passive (modulating):</strong> from an <strong>external supply</strong>. The sensor only changes a property, such as its resistance.</li>
@@ -1475,7 +1518,50 @@ void loop()
       ans: [{ l: "Servo angle for a 1.25 ms pulse (1 ms = 0°, 2 ms = 180°)", u: "°", v: 45 }, { l: "Average voltage on a 12 V motor at 75% duty", u: "V", v: 9 },
         { l: "Resistor for a red LED (V<sub>F</sub> = 2.0 V) from a 3.3 V pin at 10 mA", u: "Ω", v: 130 }, { l: "When a relay coil is energised, COM connects to", opts: ["NC", "NO"], v: 1 }],
       hints: [`Servo: θ = (t − 1 ms) ÷ 1 ms × 180°. Motor: V<sub>avg</sub> = D × V<sub>S</sub>.`, `LED: R = (V<sub>pin</sub> − V<sub>F</sub>) ÷ I. The relay arm leaves its normally closed contact.`],
-      working: () => W_([step("Servo", "θ = (1.25 − 1) ÷ 1 × 180°", "", "θ = <strong>45°</strong>"), step("Motor", "V<sub>avg</sub> = 0.75 × 12 V", "", "<strong>9 V</strong>"), step("LED resistor", "R = (3.3 − 2.0) ÷ 0.010", "", "R = <strong>130 Ω</strong>"), step("Relay", "", "", "The coil pulls the arm to <strong>NO</strong> (normally open)")]) }
+      working: () => W_([step("Servo", "θ = (1.25 − 1) ÷ 1 × 180°", "", "θ = <strong>45°</strong>"), step("Motor", "V<sub>avg</sub> = 0.75 × 12 V", "", "<strong>9 V</strong>"), step("LED resistor", "R = (3.3 − 2.0) ÷ 0.010", "", "R = <strong>130 Ω</strong>"), step("Relay", "", "", "The coil pulls the arm to <strong>NO</strong> (normally open)")]) },
+    { id: "c3-q13", title: "Exercise 13: LDR Voltage Divider",
+      q: `<p>An LDR is <strong>15 kΩ</strong> in the evening and <strong>1.5 kΩ</strong> in bright light. It is in series with a fixed resistor <strong>R = 3.3 kΩ</strong> across a <strong>5 V</strong> supply, and V<sub>out</sub> (across R) goes to an ESP32 analog pin, which takes at most 3.3 V.</p>`,
+      ans: [{ l: "V<sub>out</sub> in the evening", u: "V", v: 0.9016 }, { l: "V<sub>out</sub> in bright light", u: "V", v: 3.4375 },
+        { l: "Is it safe for the ESP32 in bright light?", opts: ["Yes, it stays under 3.3 V", "No, it goes above 3.3 V"], v: 1 }, { l: "Largest R that keeps V<sub>out</sub> ≤ 3.3 V in bright light", u: "kΩ", v: 2.912 }],
+      hints: [`V<sub>out</sub> is across the fixed resistor: V<sub>out</sub> = V<sub>S</sub> × R ÷ (R + R<sub>LDR</sub>). Which light gives the smaller R<sub>LDR</sub>, and so the bigger V<sub>out</sub>?`, `For the largest safe R, set V<sub>out</sub> = 3.3 V and solve for R: the 1.5 kΩ LDR then has the other 1.7 V across it.`],
+      working: () => W_([step("Evening", "V<sub>out</sub> = V<sub>S</sub> × R ÷ (R + R<sub>LDR</sub>)", "= 5 × 3.3 ÷ (3.3 + 15)", "V<sub>out</sub> = <strong>0.902 V</strong>"),
+        step("Bright light", "V<sub>out</sub> = 5 × 3.3 ÷ (3.3 + 1.5)", "= 16.5 ÷ 4.8", "V<sub>out</sub> = <strong>3.44 V</strong>"),
+        step("Check", "3.44 V > 3.3 V", "", "<strong>Not safe</strong>: it could damage the pin"),
+        step("Largest safe R", "R<sub>max</sub> = 3.3 × R<sub>LDR</sub> ÷ (V<sub>S</sub> − 3.3)", "= 3.3 × 1.5 ÷ 1.7", "R<sub>max</sub> = <strong>2.91 kΩ</strong> (for example, use 2.7 kΩ)")]) },
+    { id: "c3-q14", title: "Exercise 14: Thermocouple and Amplifier",
+      q: `<p>A <strong>type T</strong> thermocouple (S = <strong>43 µV/°C</strong>) has its hot junction in a <strong>180 °C</strong> oven and its cold junction at <strong>25 °C</strong>. The ESP32's ADC detects a smallest change of <strong>0.8 mV</strong>.</p>`,
+      ans: [{ l: "Thermocouple voltage", u: "mV", v: 6.665 }, { l: "Smallest temperature change the ESP32 sees without an amplifier", u: "°C", v: 18.6 },
+        { l: "Voltage after an amplifier with a gain of 200", u: "V", v: 1.333 }, { l: "Is the thermocouple active or passive?", opts: ["Active: the heat makes its own voltage", "Passive: it needs an external supply"], v: 0 }],
+      hints: [`The voltage depends on the temperature difference: V = S × (T<sub>hot</sub> − T<sub>cold</sub>). Keep the units: µV × °C.`, `The smallest change the ESP32 sees is the ADC step divided by the sensitivity (both in mV).`],
+      sec: "thermocouple", runs: [{ vals: { S: 43, Th: 180, Tc: 25, step: 0.8 } }],
+      working: () => W_([step("Temperature difference", "ΔT = 180 − 25", "", "ΔT = 155 °C"), step("Voltage", "V = S × ΔT", "= 43 µV/°C × 155 °C", "V = 6665 µV = <strong>6.67 mV</strong>"),
+        step("Smallest change seen", "ΔT<sub>min</sub> = 0.8 mV ÷ 0.043 mV/°C", "", "ΔT<sub>min</sub> = <strong>18.6 °C</strong>: far too coarse"),
+        step("After the amplifier", "V<sub>amp</sub> = 200 × 6.665 mV", "", "V<sub>amp</sub> = <strong>1.33 V</strong>"),
+        step("Class", "", "", "<strong>Active</strong>: the heat itself produces the voltage, with no supply")]) },
+    { id: "c3-q15", title: "Exercise 15: Strain Gauge in a Bridge",
+      q: `<p>A strain gauge with <strong>GF = 2.0</strong> and <strong>R<sub>0</sub> = 120 Ω</strong> is in one arm of a Wheatstone bridge with three fixed 120 Ω resistors and a <strong>10 V</strong> supply. The part it is glued to is stretched by <strong>1500 µε</strong>.</p>`,
+      ans: [{ l: "Change in the gauge's resistance, ΔR", u: "Ω", v: 0.36 }, { l: "Bridge output V<sub>out</sub>", u: "mV", v: 7.49 }],
+      hints: [`ΔR = GF × ε × R<sub>0</sub>, with ε = 1500 × 10<sup>−6</sup>.`, `V<sub>out</sub> = V<sub>ex</sub> × R ÷ (R + R<sub>0</sub>) − V<sub>ex</sub> ÷ 2, with R = R<sub>0</sub> + ΔR. Check with V<sub>ex</sub> × GF × ε ÷ 4.`],
+      sec: "strain", runs: [{ vals: { GF: 2, R0: 120, ue: 1500, Vex: 10 } }] },
+    { id: "c3-q16", title: "Exercise 16: Choose a Sensor",
+      q: `<p>A cold room must be monitored from <strong>−25 °C to 5 °C</strong>, with an accuracy within <strong>±0.5 °C</strong>, and a change of <strong>0.25 °C</strong> must be seen. The sensor goes straight to an ESP32 analog pin (smallest step 0.8 mV), with no amplifier.</p>
+        <ul><li><strong>Sensor P</strong> (IC sensor): −40 °C to 125 °C, 20 mV/°C, ±0.4 °C</li><li><strong>Sensor Q</strong> (type T thermocouple): −200 °C to 350 °C, 43 µV/°C, ±1.0 °C</li></ul>`,
+      ans: [{ l: "Output change of Sensor P for 0.25 °C", u: "mV", v: 5 }, { l: "Output change of Sensor Q for 0.25 °C", u: "µV", v: 10.75 },
+        { l: "Which sensor(s) meet the accuracy?", opts: ["Only P", "Only Q", "Both", "Neither"], v: 0 },
+        { l: "Best choice and why", opts: ["P: higher sensitivity (the ESP32 sees the change) and better accuracy", "Q: wider range", "Q: faster response", "P: it is cheaper"], v: 0 }],
+      hints: [`Output change = sensitivity × temperature change. Watch the units: mV/°C for P, µV/°C for Q.`, `Compare each change with the 0.8 mV step, and each accuracy with ±0.5 °C. Both ranges cover −25 °C to 5 °C, so range doesn't decide it.`],
+      working: () => W_([step("Sensor P", "ΔV = 20 mV/°C × 0.25 °C", "", "ΔV = <strong>5 mV</strong> ≥ 0.8 mV: the ESP32 sees it"),
+        step("Sensor Q", "ΔV = 43 µV/°C × 0.25 °C", "", "ΔV = <strong>10.75 µV</strong> &lt; 0.8 mV: not seen without an amplifier"),
+        step("Accuracy", "P: ±0.4 °C ≤ ±0.5 °C ✓; Q: ±1.0 °C > ±0.5 °C ✗", "", "<strong>Only P</strong>"),
+        step("Choice", "", "", "<strong>Sensor P</strong>: higher sensitivity and better accuracy")]) },
+    { id: "c3-q17", title: "Exercise 17: Active or Passive, and Why?",
+      q: `<p>For each sensor, choose the class <strong>and</strong> the correct reason.</p>`,
+      ans: [["Solar cell measuring sunlight", 0], ["Strain gauge on a crane hook", 1], ["Hall effect sensor in a wheel-speed sensor", 1], ["Dynamic microphone", 0], ["Capacitive water-level sensor", 1]]
+        .map(([l, v]) => ({ l, opts: ["Active, because it generates its own voltage or charge", "Passive, because it needs an external supply", "Active, because it needs a power supply", "Passive, because it generates its own voltage"], v })),
+      hints: [`Active means self-generating: the measured energy (light, sound, heat, force) makes the signal. "Needs a power supply" describes a passive sensor, not an active one.`, `Two of the five make their own voltage. A Hall sensor needs a bias current, and the strain gauge and the level sensor only change R or C.`],
+      working: () => W_([step("Solar cell", "", "", "<strong>Active</strong>: light makes its own voltage"), step("Strain gauge", "", "", "<strong>Passive</strong>: its resistance changes; it needs a bridge supply"),
+        step("Hall effect sensor", "", "", "<strong>Passive</strong>: it needs a bias current from a supply"), step("Dynamic microphone", "", "", "<strong>Active</strong>: sound moves a coil in a magnet, which makes a voltage"),
+        step("Capacitive level sensor", "", "", "<strong>Passive</strong>: its capacitance changes; it needs an AC supply or oscillator")]) },
   ];
 
   Lab.page({

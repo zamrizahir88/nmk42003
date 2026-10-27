@@ -239,3 +239,17 @@
 .ckt .ldarrow { fill: none; stroke: var(--amber); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .ckt .pv-cell { fill: #1e3a5f; stroke: var(--ink); stroke-width: 1.6; }
 .ckt .pv-grid { fill: none; stroke: #9fc3e8; stroke-width: 1; }
+
+/* Compare Two Sensors */
+.cmp2 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 10px 0; }
+.cmp2 fieldset { border: 1px solid var(--rule); border-radius: var(--r-md); padding: 8px 12px 12px; margin: 0; background: var(--surface); display: grid; gap: 8px; min-width: 0; }
+.cmp2 legend { font-weight: 700; padding: 0 4px; }
+.cmp2 label { display: grid; gap: 3px; font-size: .9rem; color: var(--ink-2); }
+.cmp2-in { display: flex; align-items: center; gap: 6px; }
+.cmp2-in input { font: inherit; width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid var(--rule); border-radius: var(--r-sm); background: var(--paper); color: var(--ink); }
+.cmp2-in input:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
+.cmp2-in span { flex: none; font-size: .85rem; color: var(--ink-3); min-width: 3.4em; }
+.cmp2-out .ok-t { color: var(--teal); font-weight: 700; }
+.cmp2-out .no-t { color: var(--danger); font-weight: 700; }
+.cmp2-verdict { margin: 10px 0 0; padding: 10px 12px; border-left: 4px solid var(--teal); background: var(--teal-soft); border-radius: 0; }
+@media (max-width: 760px) { .cmp2 { grid-template-columns: minmax(0, 1fr); } }
