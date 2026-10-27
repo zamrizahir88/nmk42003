@@ -58,15 +58,17 @@
   }
   // names open each student's profile page (profile.html)
 
-  async function load(force) {
+  // the class rankings: one document, published at 12:00 AM each day (and by a lecturer's "Update rankings now")
+  async function load(fresh) {
     host.innerHTML = `<p class="small-note">Loading the board…</p>`;
     try {
-      rows = (A.boardRows ? await A.boardRows(force) : (await A.db.collection("board").where("semester", "==", G.SEM).get()).docs.map((d) => Object.assign({ uid: d.id }, d.data())))
-        .filter((r) => r.role !== "lecturer");
+      const lec = A.isAdmin(A.state.user.email), r = fresh ? await A.buildRankings() : await A.boardRows();
+      rows = ((r && r.rows) || []).filter((x) => x.role !== "lecturer");
       draw();
-      host.insertAdjacentHTML("afterbegin", `<p><button type="button" class="btn ghost small" data-bref>⟳ Refresh</button></p>`);
-      host.querySelector("[data-bref]").onclick = () => load(true);
-    } catch (e) { host.innerHTML = `<p class="small-note">Could not load the board (${esc(e.code || e)}).</p>`; }
+      host.insertAdjacentHTML("afterbegin", `<p class="bd-upd small-note">${esc(A.rankNote(r && r.at))}${lec ? ` <button type="button" class="btn ghost small" data-bupd>⟳ Update rankings now</button>` : ""}</p>`);
+      const b = host.querySelector("[data-bupd]");
+      if (b) b.onclick = () => { b.disabled = true; b.textContent = "Updating…"; load(true); };
+    } catch (e) { host.innerHTML = `<p class="small-note">Could not load the board (${esc(e.code || e)}).${A.isAdmin(A.state.user.email) ? " If this says permission-denied, publish the latest firebase/firestore.rules." : ""}</p>`; }
   }
   A.on(async (st) => {
     if (!st.user) { host.innerHTML = `<p>Sign in with your studentmail account to see the class board.</p><button type="button" class="btn" data-signin>Sign in with Google</button>`; host.querySelector("[data-signin]").onclick = A.signIn; return; }

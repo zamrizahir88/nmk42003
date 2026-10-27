@@ -51,19 +51,11 @@ service cloud.firestore {
     // Progress board: one small public summary per student (nickname, level, XP, badges, last active).
     // Approved students and lecturers may read the board; each approved student writes only their own entry.
     // Students on the class list must show their real name and matric from it (classmates see them on profiles).
-    // the class board in one document (p.{uid}: one line per player): each student changes only their own line,
-    // with their own name and matric from the class list; lecturers fill in everyone (account.js boardRows)
+    // the class rankings in one document (p.{uid}: one line per player), made from everyone's board/{uid} at 12:00 AM
+    // by the lecturer's Apps Script and by a lecturer's "Update rankings now"; students only read it
     match /boardsum/{sem} {
       allow read: if isLecturer() || approved();
       allow write: if isLecturer();
-      allow create: if approved() && request.resource.data.keys().hasOnly(['p'])
-        && request.resource.data.p.keys().hasOnly([request.auth.uid]) && sumLineOk();
-      allow update: if approved() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['p'])
-        && request.resource.data.p.diff(resource.data.p).affectedKeys().hasOnly([request.auth.uid]) && sumLineOk();
-    }
-    function sumLineOk() {
-      return !onRoster() || (request.resource.data.p[request.auth.uid].get('name', '') == rosterDoc().name
-        && request.resource.data.p[request.auth.uid].get('matric', '') == rosterDoc().matric);
     }
 
     match /board/{uid} {
@@ -350,10 +342,15 @@ service cloud.firestore {
         && n.get('reacts', {}).diff(o.get('reacts', {})).affectedKeys().hasOnly([request.auth.uid])
         && (!(request.auth.uid in n.get('reacts', {})) || n.reacts[request.auth.uid] in ['👍', '❤️', '😂', '😮', '👏']);
     }
+    // the comment count on a post (rc): one up or down with each comment; lecturers may set it to the real count
+    function kCount() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rc']) && request.resource.data.rc is int
+        && (isLecturer() || request.resource.data.rc == resource.data.get('rc', 0) + 1 || request.resource.data.rc == resource.data.get('rc', 0) - 1);
+    }
     match /kalam/{pid} {
       allow read: if kReader();
       allow create, delete: if isZamri();
-      allow update: if isZamri() || (kReader() && kReact());
+      allow update: if isZamri() || (kReader() && kReact()) || (kReader() && kCount());
       match /replies/{rid} {
         allow read: if kReader();
         allow create: if kReader() && request.resource.data.uid == request.auth.uid

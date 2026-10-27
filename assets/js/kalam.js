@@ -3,7 +3,9 @@
    (English and Malay) blocks rude replies. New posts show in the bell (account.js).
    Firestore: kalam/{post} { semester, body (older posts may have a title), pinned, at, by, byName, editedAt, reacts {uid: emoji} }
    and kalam/{post}/replies/{reply} { uid, name, role, text, at, reacts {uid: emoji}, parent (the comment it answers, one level) }.
-   On the home page (#kalamHome) it shows the pinned post and the newest posts; kalam.html (#kalamFeed) shows them all. */
+   On the home page (#kalamHome) it shows the pinned post and the newest posts; kalam.html (#kalamFeed) shows the newest 5
+   and "Show older posts" adds 5 more. To save Firestore reads, only those posts are read (not the whole semester), and a
+   post's comments are read only when someone taps to see them; the post keeps its comment count in rc. */
 (function () {
   "use strict";
   const home = document.getElementById("kalamHome"), feed = document.getElementById("kalamFeed");
@@ -27,7 +29,9 @@
   const flat = (w) => w.toLowerCase().replace(/[0@4]/g, (c) => (c === "0" ? "o" : "a")).replace(/1/g, "i").replace(/3/g, "e").replace(/5/g, "s").replace(/7/g, "t").replace(/(.)\1{2,}/g, "$1$1");
   const rude = (t) => String(t).split(/[^A-Za-z0-9@]+/).filter(Boolean).map(flat).some((w) => BAD.includes(w) || BAD.includes(w.replace(/(.)\1+/g, "$1")) || BAD.some((b) => b.length >= 5 && w.startsWith(b)));
 
-  let A = null, db = null, FV = null, me = null, lec = false, poster = false, posts = [], replies = {}, rsubs = {}, unsub = null, editing = null, open = {};
+  let A = null, db = null, FV = null, me = null, lec = false, poster = false, posts = [], replies = {}, rsubs = {}, unsub = null, unsubP = null, editing = null, open = {};
+  let limitN = 0, newest = [], pinned = [], more = false;
+  const loaded = {};   // posts whose comments are being read (tapped)
   function boot() {
     A = window.NMKAccount;
     if (!A) return;
@@ -39,18 +43,38 @@
     const key = st.user ? `${st.user.uid}|${st.profile && st.profile.status}|${!!st.roster}` : "out";
     if (key === started) return;
     started = key;
-    if (unsub) { unsub(); unsub = null; } Object.values(rsubs).forEach((f) => f()); rsubs = {};
+    if (unsub) { unsub(); unsub = null; } if (unsubP) { unsubP(); unsubP = null; } Object.values(rsubs).forEach((f) => f()); rsubs = {};
     if (!st.user) return gate(`<b>Kalam Feed</b>: news and discussion for NMK42003 students. <button type="button" class="kf-in" data-signin>Sign in with your studentmail account</button> to join.`);
     lec = A.isAdmin(st.user.email); poster = st.user.email.toLowerCase() === POSTER;
     if (!lec && !(st.roster && st.roster.status === "active")) return gate(`<b>Kalam Feed</b> is for students on the NMK42003 class list. If you take this course, please tell your lecturer.`);
     me = { uid: st.user.uid, name: lec ? ((st.profile && st.profile.nickname) || st.user.displayName || "Lecturer") : st.roster.name, role: lec ? "lecturer" : "student", photo: st.user.photoURL || "" };
     box.innerHTML = `${poster ? composer() : ""}<div class="kf-list" aria-live="polite"><p class="small-note">Loading the feed…</p></div>`;
     if (poster) wireComposer();
-    unsub = db.collection("kalam").where("semester", "==", SEM).onSnapshot((q) => {
-      posts = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || ms(b.at) - ms(a.at));
-      watchReplies(); paint();
-    }, (e) => { $(".kf-list").innerHTML = `<p class="small-note">Could not load the feed (${esc(e.code || e)}).${lec ? " If this says permission-denied, publish the latest firebase/firestore.rules." : ""}</p>`; });
+    limitN = FULL ? 5 : 3;
+    listen();
+    unsubP = db.collection("kalam").where("pinned", "==", true).onSnapshot((q) => { pinned = q.docs.map((d) => Object.assign({ id: d.id }, d.data())); merge(); }, () => {});
     if (FULL) markSeen();
+  }
+  // the newest posts (3 on the home page, 5 more each time on kalam.html), plus the pinned ones
+  function listen() {
+    if (unsub) unsub();
+    unsub = db.collection("kalam").orderBy("at", "desc").limit(limitN).onSnapshot((q) => {
+      newest = q.docs.map((d) => Object.assign({ id: d.id }, d.data())); more = q.size >= limitN; merge();
+    }, (e) => { $(".kf-list").innerHTML = `<p class="small-note">Could not load the feed (${esc(e.code || e)}).${lec ? " If this says permission-denied, publish the latest firebase/firestore.rules." : ""}</p>`; });
+  }
+  function merge() {
+    const m = {}; newest.concat(pinned).forEach((p) => { m[p.id] = p; });
+    posts = Object.values(m).filter((p) => !p.semester || p.semester === SEM).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || ms(b.at) - ms(a.at));
+    paint(); fixCounts();
+  }
+  // older posts have no comment count yet: a lecturer's page counts them once
+  const fixing = {};
+  function fixCounts() {
+    if (!lec) return;
+    shown().filter((p) => p.rc === undefined && !fixing[p.id]).forEach((p) => {
+      fixing[p.id] = true;
+      db.collection("kalam").doc(p.id).collection("replies").get().then((q) => db.collection("kalam").doc(p.id).update({ rc: q.size })).catch(() => {});
+    });
   }
   function gate(html) {
     box.innerHTML = `<div class="kf-teaser"><span aria-hidden="true">💬</span><div>${html}</div></div>`;
@@ -58,11 +82,18 @@
     const n = document.getElementById("kalamNew"); if (n) n.hidden = true;
   }
   const shown = () => (FULL ? posts : posts.slice(0, 3));
-  function watchReplies() {
-    const ids = new Set(shown().map((p) => p.id));
-    Object.keys(rsubs).forEach((id) => { if (!ids.has(id)) { rsubs[id](); delete rsubs[id]; } });
-    ids.forEach((id) => { if (rsubs[id]) return; rsubs[id] = db.collection("kalam").doc(id).collection("replies").onSnapshot((q) => { replies[id] = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).sort((a, b) => ms(a.at) - ms(b.at)); paintReplies(id); }, () => {}); });
+  // a post's comments are read only once someone taps to see them (or to write one)
+  function loadReplies(id) {
+    if (rsubs[id]) return;
+    loaded[id] = true;
+    rsubs[id] = db.collection("kalam").doc(id).collection("replies").onSnapshot((q) => {
+      replies[id] = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).sort((a, b) => ms(a.at) - ms(b.at));
+      const p = posts.find((x) => x.id === id);
+      if (lec && p && p.rc !== q.size) db.collection("kalam").doc(id).update({ rc: q.size }).catch(() => {});   // keep the count right
+      paintReplies(id);
+    }, () => {});
   }
+  const nRep = (p) => (replies[p.id] ? replies[p.id].length : p.rc || 0);
 
   /* ---------- drawing: social-media style posts ---------- */
   const NAMES = { "👍": "Like", "❤️": "Love", "😂": "Haha", "😮": "Wow", "👏": "Clap" };
@@ -70,7 +101,8 @@
   // "👍❤️😂 24 · 8 comments"
   function summary(p, nRep) {
     const c = tally(p.reacts), n = Object.values(c).reduce((a, b) => a + b, 0), top = Object.keys(c).sort((a, b) => c[b] - c[a]).slice(0, 3);
-    if (!n && !nRep) return "";
+    if (p.rc === undefined && !replies[p.id]) nRep = 0;
+    if (!n && !nRep) return p.rc === undefined && !replies[p.id] ? `<div class="kf-sum"><span></span><button type="button" class="kf-lnk kf-sumc" data-comments="${p.id}">View comments</button></div>` : "";
     return `<div class="kf-sum">${n ? `<span class="kf-sumr" title="${Object.entries(c).map(([e, k]) => `${NAMES[e]} ${k}`).join(", ")}"><span class="kf-emos">${top.join("")}</span> ${n}</span>` : "<span></span>"}
       ${nRep ? `<button type="button" class="kf-lnk kf-sumc" data-comments="${p.id}">${nRep} comment${nRep === 1 ? "" : "s"}</button>` : ""}</div>`;
   }
@@ -95,11 +127,12 @@
           <span class="kf-tags">${p.pinned ? '<span class="kf-tag">📌 Pinned</span>' : ""}${ms(p.at) > seen ? '<span class="kf-tag nw">New</span>' : ""}</span>
           ${poster ? `<details class="kf-menu"><summary aria-label="Post options">⋯</summary><div><button type="button" data-edit="${p.id}">Edit</button><button type="button" data-pin="${p.id}">${p.pinned ? "Unpin" : "Pin to the top"}</button><button type="button" class="kf-del" data-delpost="${p.id}">Delete</button></div></details>` : ""}</header>
         <div class="kf-body">${p.title ? `<strong class="kf-t">${esc(p.title)}</strong><br>` : ""}${rich(p.body)}</div>
-        <div data-sum="${p.id}">${summary(p, (replies[p.id] || []).length)}</div>
+        <div data-sum="${p.id}">${summary(p, nRep(p))}</div>
         <div class="kf-acts">${likeBtn(p.reacts, p.id)}<button type="button" class="kf-ab" data-comment="${p.id}">💬 Comment</button><button type="button" class="kf-ab" data-share="${p.id}">↗ Share</button></div>
         <div class="kf-replies" data-replies="${p.id}"></div>
         ${replyBox(p.id, "")}
-      </article>`).join("") + (!FULL && posts.length > shown().length ? `<p class="kf-more"><a href="kalam.html">See all ${posts.length} posts →</a></p>` : "");
+      </article>`).join("") + (!FULL && (more || posts.length > shown().length) ? `<p class="kf-more"><a href="kalam.html">See all posts →</a></p>` : "")
+      + (FULL && more ? `<p class="kf-more"><button type="button" class="btn ghost small" data-older>Show older posts</button></p>` : "");
     $$(".kf-reply", list).forEach((f) => { const t = $("textarea", f); if (keep[f.dataset.key]) { t.value = keep[f.dataset.key]; grow(t); } if (act && act.key === f.dataset.key) t.focus(); });
     shown().forEach((p) => paintReplies(p.id));
     if (FULL && location.hash && !paint.jumped) { const el = document.getElementById(location.hash.slice(1)); if (el) { el.scrollIntoView(); paint.jumped = true; } }
@@ -124,8 +157,9 @@
     const el = $(`[data-replies="${pid}"]`), sum = $(`[data-sum="${pid}"]`);
     if (!el) return;
     if (el.contains(document.activeElement) && document.activeElement.tagName === "TEXTAREA" && document.activeElement.value) return;   // a reply being typed
-    const rs = replies[pid] || [], top = rs.filter((r) => !r.parent || !rs.some((x) => x.id === r.parent)), lim = FULL || open[pid] ? top : top.slice(-2);
     const p = posts.find((x) => x.id === pid);
+    if (!loaded[pid]) { el.innerHTML = ""; if (sum && p) sum.innerHTML = summary(p, nRep(p)); return; }
+    const rs = replies[pid] || [], top = rs.filter((r) => !r.parent || !rs.some((x) => x.id === r.parent)), lim = FULL || open[pid] ? top : top.slice(-2);
     if (sum && p) sum.innerHTML = summary(p, rs.length);
     el.innerHTML = (top.length > lim.length ? `<button type="button" class="kf-lnk kf-all" data-open="${pid}">View all ${rs.length} comments</button>` : "") + lim.map((r) => comment(pid, r, rs.filter((x) => x.parent === r.id))).join("");
     const t = $(".kf-kids .kf-reply textarea", el); if (t && openThread.focus) { t.focus(); openThread.focus = false; }
@@ -155,8 +189,9 @@
       react(w.dataset.path, b.classList.contains("me") ? null : b.dataset.e);
       return;
     }
-    if (b.dataset.comment) { const f = $(`#kf-${b.dataset.comment} > .kf-reply textarea`); if (f) f.focus(); return; }
-    if (b.dataset.comments) { open[b.dataset.comments] = true; paintReplies(b.dataset.comments); return; }
+    if (b.dataset.comment) { loadReplies(b.dataset.comment); const f = $(`#kf-${b.dataset.comment} > .kf-reply textarea`); if (f) f.focus(); return; }
+    if (b.dataset.comments) { open[b.dataset.comments] = true; loadReplies(b.dataset.comments); paintReplies(b.dataset.comments); return; }
+    if (b.hasAttribute("data-older")) { b.disabled = true; b.textContent = "Loading…"; limitN += 5; listen(); return; }
     if (b.dataset.share) {
       const url = `${location.origin}${location.pathname.replace(/[^/]*$/, "")}kalam.html#kf-${b.dataset.share}`, p = posts.find((x) => x.id === b.dataset.share);
       const done = () => { b.textContent = "✓ Link copied"; setTimeout(() => { b.textContent = "↗ Share"; }, 1800); };
@@ -169,8 +204,10 @@
     if (b.dataset.open) { open[b.dataset.open] = true; paintReplies(b.dataset.open); return; }
     if (b.dataset.delr) {
       if (!confirm("Delete this comment?")) return;
-      const [pid, rid] = b.dataset.delr.split("/"), kids = (replies[pid] || []).filter((x) => x.parent === rid), bt = db.batch();
-      [rid, ...(lec ? kids.map((k) => k.id) : [])].forEach((id) => bt.delete(db.collection("kalam").doc(pid).collection("replies").doc(id)));
+      const [pid, rid] = b.dataset.delr.split("/"), kids = (replies[pid] || []).filter((x) => x.parent === rid), bt = db.batch(), gone = [rid, ...(lec ? kids.map((k) => k.id) : [])];
+      gone.forEach((id) => bt.delete(db.collection("kalam").doc(pid).collection("replies").doc(id)));
+      const pp = posts.find((x) => x.id === pid);
+      if (pp && pp.rc !== undefined) bt.update(db.collection("kalam").doc(pid), { rc: FV.increment(-gone.length) });
       bt.commit().catch((err) => alert(`Could not delete (${err.code || err}).`));
       return;
     }
@@ -196,7 +233,11 @@
     $("button", f).disabled = true;
     const d = { uid: me.uid, name: me.name, role: me.role, text: text.slice(0, 1000), at: FV.serverTimestamp(), reacts: {} };
     if (f.dataset.parent) d.parent = f.dataset.parent;
-    db.collection("kalam").doc(f.dataset.pid).collection("replies").add(d)
+    const pid = f.dataset.pid, pp = posts.find((x) => x.id === pid), bt = db.batch();
+    loadReplies(pid);
+    bt.set(db.collection("kalam").doc(pid).collection("replies").doc(), d);
+    if (pp && pp.rc !== undefined) bt.update(db.collection("kalam").doc(pid), { rc: FV.increment(1) });
+    bt.commit()
       .then(() => { t.value = ""; grow(t); $("button", f).disabled = false; if (f.dataset.parent) delete openThread[f.dataset.parent]; })
       .catch((e2) => { $("button", f).disabled = false; err.textContent = `Not sent (${e2.code || e2}).`; });
   });
@@ -220,7 +261,7 @@
       const text = $("#kfB").value.trim(), msg = $("#kfMsg");
       if (!text) { msg.textContent = "Write something first."; return; }
       $("button.btn:not(.ghost)", f).disabled = true;
-      db.collection("kalam").add({ semester: SEM, title: "", body: text, pinned: $("#kfP").checked, at: FV.serverTimestamp(), by: A.state.user.email, byName: "Ts. Dr. Mohd Zamri Bin Zahir Ahmad", reacts: {} })
+      db.collection("kalam").add({ semester: SEM, title: "", body: text, pinned: $("#kfP").checked, at: FV.serverTimestamp(), by: A.state.user.email, byName: "Ts. Dr. Mohd Zamri Bin Zahir Ahmad", reacts: {}, rc: 0 })
         .then(() => { $("button.btn:not(.ghost)", f).disabled = false; closeC(); })
         .catch((err) => { msg.textContent = `Not posted (${err.code || err}). Publish the latest firebase/firestore.rules first.`; $("button.btn:not(.ghost)", f).disabled = false; });
     });

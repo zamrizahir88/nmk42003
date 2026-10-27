@@ -393,10 +393,12 @@
     }
     /* the proposal form */
     function form(g) {
-      const p = draft || (g.proposal ? JSON.parse(JSON.stringify(g.proposal)) : { title: "", industry: "", synopsis: "", sensors: [{ name: "", analog: false, cal: false }, { name: "", analog: false, cal: false }], conds: [{ name: "", resp: "" }, { name: "", resp: "" }, { name: "", resp: "" }], outs: ["", ""], platform: "", platformOther: "", calRef: "", parts: {} });
+      const fresh = !draft, own = g.status === "forming" || g.status === "amend", mineLocal = fresh && own ? localDraft(g.id) : null;
+      const p = draft || mineLocal || (g.proposal ? JSON.parse(JSON.stringify(g.proposal)) : { title: "", industry: "", synopsis: "", sensors: [{ name: "", analog: false, cal: false }, { name: "", analog: false, cal: false }], conds: [{ name: "", resp: "" }, { name: "", resp: "" }, { name: "", resp: "" }], outs: ["", ""], platform: "", platformOther: "", calRef: "", parts: {} });
+      if (fresh) { loadedP = JSON.stringify(g.proposal || null); dirty = !!mineLocal && JSON.stringify(mineLocal) !== loadedP; restored = dirty; if (!dirty && own) dropLocal(); }
       draft = p; editing = true;
       const opt = (l) => l.map((x) => `<option value="${esc(x)}">`).join("");
-      return `<form class="pj-card pj-form" id="pjForm" novalidate><h2 class="h3">Title Proposal</h2><p class="small-note">Saved for your group as you type. Any member can edit it. Submit when every check below is ticked.</p>
+      return `<form class="pj-card pj-form" id="pjForm" novalidate><h2 class="h3">Title Proposal</h2><p class="small-note">${own ? "Any member can edit it. Press <strong>Save</strong> to share your changes with your group; submit when every check below is ticked." : "Change what you need, then submit it: the change goes to your lecturer."}</p>${dirty && restored ? `<p class="pj-note pj-restored">Your unsaved changes on this device are back. Press Save to keep them for your group.</p>` : ""}<div id="pjOther"></div>
         <datalist id="pjSens">${opt(SENSORS)}</datalist><datalist id="pjOuts">${opt(OUTS)}</datalist>
         <label class="pj-l" for="pjT">Project title</label><input id="pjT" class="pj-in" maxlength="120" data-f="title" value="${esc(p.title)}" placeholder="e.g. Smart DC Energy Meter with Overload Protection">
         <div id="pjClash" aria-live="polite"></div>
@@ -414,7 +416,7 @@
         <fieldset class="pj-fs"><legend class="pj-l">Each member's own part <span>(e.g. the sensor and its calibration, the condition logic, the actuators, the WiFi and Bluetooth apps)</span></legend>
           ${g.memberM.map((m) => `<label class="pj-part"><span>${esc(nameOf(m))}</span><input class="pj-in" data-part="${esc(m)}" value="${esc((p.parts || {})[m] || "")}" aria-label="Own part of ${esc(nameOf(m))}"></label>`).join("")}</fieldset>
         <ul class="pj-checks" id="pjChecks"></ul>
-        <div class="pj-row"><button class="btn" id="pjSubmit">${g.status === "approved" ? "Submit the title change" : g.status === "amend" ? "Submit again" : "Submit the proposal"}</button>${g.status === "approved" || g.status === "submitted" ? `<button type="button" class="btn ghost" data-cancel>Cancel</button>` : ""}<span class="small-note" id="pjSaved" aria-live="polite"></span></div></form>`;
+        <div class="pj-row"><button class="btn" id="pjSubmit">${g.status === "approved" ? "Submit the title change" : g.status === "amend" ? "Submit again" : "Submit the proposal"}</button>${own ? `<button type="button" class="btn ghost pj-save" id="pjSave" hidden>Save</button>` : `<button type="button" class="btn ghost" data-cancel>Cancel</button>`}<span class="small-note" id="pjSaved" aria-live="polite"></span></div></form>`;
     }
     const sensorRow = (s, i) => `<div class="pj-sens"><input class="pj-in" list="pjSens" data-sens="${i}" value="${esc(s.name)}" placeholder="Sensor ${i + 1}" aria-label="Sensor ${i + 1}">
       <label class="pj-chk"><input type="checkbox" data-analog="${i}"${s.analog ? " checked" : ""}> Analog</label><label class="pj-chk"><input type="radio" name="cal" data-cal="${i}"${s.cal ? " checked" : ""}> ★ Calibrate</label>
@@ -449,15 +451,28 @@
       $("#pjClash").innerHTML = near && draft.title.trim().length > 5 && level(near[1]) !== "green"
         ? `<p class="pj-clash ${level(near[1])}">${level(near[1]) === "red" ? "This looks like an approved title:" : "Similar to an approved title:"} <strong>${esc(gtag(near[0].no))} · ${esc(near[0].title)}</strong>. Choose a different application, industry or sensor so your project is your own. <a href="#pjTitlesH">See the approved titles</a></p>` : "";
     }
-    let saveT = 0;
-    const saveDraft = () => {
-      clearTimeout(saveT);
-      $("#pjSaved").textContent = "Saving…";
-      saveT = setTimeout(() => {
-        if (!mineG || mineG.status === "approved" || mineG.status === "submitted") { $("#pjSaved").textContent = ""; return; }   // a change of an approved or submitted proposal is sent only with Submit
-        db.collection("pgroups").doc(mineG.id).update({ proposal: draft, updatedAt: FV.serverTimestamp() }).then(() => { $("#pjSaved").textContent = "Saved"; }).catch((e) => { $("#pjSaved").textContent = `Not saved (${e.code || e})`; });
-      }, 900);
+    // The proposal is saved with the Save button, not as you type (every pause was a write, half-typed text included).
+    // While typing, the draft is kept on this device (no reads or writes), so a refresh or a closed tab loses nothing.
+    const DKEY = "nmk-pj-draft";
+    let dirty = false, loadedP = "", saveT = 0, restored = false;
+    const localDraft = (gid) => { try { const x = JSON.parse(localStorage.getItem(DKEY) || "null"); return x && x.gid === gid ? x.draft : null; } catch (e) { return null; } };
+    const keepLocal = () => { try { if (mineG && draft) localStorage.setItem(DKEY, JSON.stringify({ gid: mineG.id, draft, at: Date.now() })); } catch (e) { /* private mode */ } };
+    const dropLocal = () => { try { localStorage.removeItem(DKEY); } catch (e) { /* private mode */ } };
+    const paintSave = (msg) => {
+      const b = $("#pjSave"), t = $("#pjSaved");
+      if (b) { b.hidden = !dirty; b.disabled = false; }
+      if (t) { t.textContent = msg !== undefined ? msg : dirty ? "Unsaved changes" : ""; t.classList.toggle("pj-unsaved", dirty && msg === undefined); }
     };
+    const saveDraft = () => { dirty = true; clearTimeout(saveT); saveT = setTimeout(keepLocal, 400); paintSave(); };
+    function saveNow() {
+      if (!mineG || !draft) return;
+      const b = $("#pjSave"); if (b) b.disabled = true;
+      paintSave("Saving…");
+      db.collection("pgroups").doc(mineG.id).update({ proposal: draft, updatedAt: FV.serverTimestamp() })
+        .then(() => { dirty = false; restored = false; loadedP = JSON.stringify(draft); dropLocal(); paintSave("Saved ✓"); $$(".pj-restored").forEach((x) => x.remove()); const o = $("#pjOther"); if (o) o.innerHTML = ""; })
+        .catch((e) => { paintSave(`Not saved (${e.code || e}). Try again.`); if (b) { b.hidden = false; b.disabled = false; } });
+    }
+    addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
     function wire() {
       const v = $("#pjView"), g = mineG;
       const on = (sel, f) => $$(sel, v).forEach((b) => b.addEventListener("click", f));
@@ -505,7 +520,7 @@
       });
       on("[data-edit]", () => { ref.update({ status: "forming", updatedAt: FV.serverTimestamp(), history: hist(g, "took the proposal back to edit it") }).catch((err) => alertIn(v, err.code || err)); });
       on("[data-change]", () => { editing = true; draft = JSON.parse(JSON.stringify(g.proposal)); shown = ""; v.innerHTML = groupView(g); wire(); });
-      on("[data-cancel]", () => { editing = false; draft = null; shown = ""; paint(); });
+      on("[data-cancel]", () => { editing = false; draft = null; shown = ""; dirty = false; paint(); });
       if ($("#pjInvite", v)) invitePicker($("#pjInvite", v), g);
       const f = $("#pjForm", v);
       if (!f) { editing = false; return; }
@@ -531,6 +546,8 @@
         else return;
         checks(); saveDraft();
       });
+      const sv = $("#pjSave", f); if (sv) sv.addEventListener("click", saveNow);
+      paintSave();
       f.addEventListener("submit", (e) => {
         e.preventDefault();
         if (problems(draft, g).some(([y]) => !y)) return;
@@ -540,16 +557,23 @@
         $("#pjSubmit").disabled = true;
         const p = Object.assign({}, draft, { title: draft.title.trim().replace(/\s+/g, " "), synopsis: draft.synopsis.trim(), sensors: draft.sensors.filter((s) => s.name.trim()).map((s) => Object.assign({}, s, { name: s.name.trim() })), outs: draft.outs.map((o) => o.trim()).filter(Boolean) });
         ref.update({ proposal: p, status: "submitted", submittedAt: FV.serverTimestamp(), version: (g.version || 0) + 1, updatedAt: FV.serverTimestamp(), history: hist(Object.assign({}, g, { proposal: p }), g.status === "approved" ? "asked for a title change" : g.status === "amend" ? "submitted the amended proposal" : "submitted the proposal") })
-          .then(() => { editing = false; draft = null; shown = ""; })
+          .then(() => { editing = false; draft = null; shown = ""; dirty = false; dropLocal(); })
           .catch((err) => { $("#pjSubmit").disabled = false; alertIn(v, `Could not submit (${err.code || err}).`); });
       });
       checks();
+    }
+    async function loadClaims() {
+      loadClaims.done = true;
+      try { const q = await db.collection("pmember").where("semester", "==", SEM).get(); claims = {}; q.docs.forEach((d) => { claims[d.data().m] = d.data().gid; }); }
+      catch (e) { /* the rules still stop a student joining two groups */ }
     }
     // invite by search only: classmates not in a group and not already invited
     function invitePicker(el, g) {
       el.innerHTML = `<label class="pj-l" for="pjQ">Invite a classmate <span>Type at least 2 letters of a name, or the matric number</span></label><input id="pjQ" class="pj-in" type="search" autocomplete="off" spellcheck="false" placeholder="e.g. Ahmad or 2313"><ul class="pj-pick" role="listbox"></ul>`;
       const inp = $("input", el), ul = $("ul", el);
-      inp.addEventListener("input", () => {
+      // who is already in a group: read once per page, only when someone starts typing a name here
+      inp.addEventListener("input", async () => {
+        if (!loadClaims.done) await loadClaims();
         const q = inp.value.trim().toLowerCase(), ws = q.split(/\s+/).filter(Boolean);
         const hits = q.length < 2 ? [] : mates.filter((x) => String(x.m) !== me.m && !g.memberM.includes(String(x.m)) && !g.inviteM.includes(String(x.m)) && !claims[String(x.m)])
           .filter((x) => (/^\d+$/.test(q) ? String(x.m).includes(q) : ws.every((w) => x.n.toLowerCase().split(/\s+/).some((p) => p.startsWith(w))))).slice(0, 8);
@@ -564,9 +588,17 @@
     }
     const mine = db.collection("pgroups").where("memberM", "array-contains", me.m), inv = db.collection("pgroups").where("inviteM", "array-contains", me.m);
     const sems = (q) => q.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((g) => g.semester === SEM);
-    unsubs.push(mine.onSnapshot((q) => { mineG = sems(q)[0] || null; if (!editing) draft = null; watchLogs(); paint(); }, (e) => fail(e)));
+    unsubs.push(mine.onSnapshot((q) => {
+      mineG = sems(q)[0] || null;
+      if (!editing) draft = null;
+      else if (mineG && (mineG.status === "forming" || mineG.status === "amend") && JSON.stringify(mineG.proposal || null) !== loadedP) {
+        if (!dirty) { draft = null; shown = ""; }   // a group member saved: show their version
+        else { const o = $("#pjOther"); if (o) o.innerHTML = `<p class="pj-warn">Another member of your group just saved changes. If you press Save, your version replaces theirs. <button type="button" class="btn ghost small" data-theirs>Show their version instead</button></p>`; }
+      }
+      watchLogs(); paint();
+    }, (e) => fail(e)));
+    host.addEventListener("click", (e) => { if (e.target.closest("[data-theirs]")) { dirty = false; dropLocal(); draft = null; shown = ""; paint(); } });
     unsubs.push(inv.onSnapshot((q) => { invites = sems(q); paint(); }, () => {}));
-    unsubs.push(db.collection("pmember").where("semester", "==", SEM).onSnapshot((q) => { claims = {}; q.docs.forEach((d) => { claims[d.data().m] = d.data().gid; }); paint(); }, () => {}));
     unsubs.push(db.collection("ptitles").where("semester", "==", SEM).onSnapshot((q) => { titles = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).sort((a, b) => a.no - b.no); paint(); }, () => {}));
   }
   function alertIn(el, t) { let p = el.querySelector(".pj-err"); if (!p) { p = document.createElement("p"); p.className = "pj-err"; p.setAttribute("role", "alert"); el.prepend(p); } p.textContent = t; }

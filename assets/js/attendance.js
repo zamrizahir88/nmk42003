@@ -234,9 +234,47 @@
         <a class="btn ghost" href="profile.html">My profile</a></div>
       <div class="at-reqs"></div>
       <div class="at-labsbox"></div>
-      <h2 class="h3 at-gap">My Attendance</h2><div class="at-mine"><p class="small-note">Loading…</p></div></div>`;
+      <h2 class="h3 at-gap" id="records">My Attendance</h2><div class="at-mine"><button type="button" class="btn ghost" data-full>Show my attendance, lab sessions and notices</button>
+        <p class="small-note">Checking in needs only the card above. Your records load when you tap here.</p></div></div>`;
     const openEl = $(".at-open"), mineEl = $(".at-mine"), reqEl = $(".at-reqs");
     let warned = null, me = null, open = [], all = [], recs = {}, moves = {}, sent = [], got = [], notices = [], mates = [], tried = false;
+    // To save Firestore reads, opening this page reads only what checking in needs: the open sessions, my record for
+    // each of them, my lab moves and the swap requests sent to me. My records, swaps, notices and warnings load when
+    // the student taps "Show my attendance…" (or opens a form that needs them).
+    let full = false, fullP = null;
+    const openRec = {}, recSubs = {};
+    const recOf = (sid) => recs[sid] || openRec[sid];
+    function watchOpenRecs() {
+      const ids = new Set(full ? [] : open.filter(forMe).map((x) => x.id));
+      Object.keys(recSubs).forEach((id) => { if (!ids.has(id)) { recSubs[id](); delete recSubs[id]; } });
+      ids.forEach((id) => {
+        if (recSubs[id]) return;
+        let un = null, gone = false;
+        recSubs[id] = () => { gone = true; if (un) un(); };   // set first: the first answer may come at once
+        un = db.collection("attendance").doc(`${id}_${email}`).onSnapshot((d) => { if (d.exists) openRec[id] = d.data(); else delete openRec[id]; paintOpen(); }, () => {});
+        if (gone) un();
+      });
+    }
+    unsubs.push(() => Object.values(recSubs).forEach((f) => f()));
+    function loadFull() {
+      if (fullP) return fullP;
+      full = true; watchOpenRecs();
+      mineEl.innerHTML = `<p class="small-note">Loading…</p>`;
+      const first = (k) => { let done; const pr = new Promise((r) => { done = r; }); return [pr, () => { if (done) { done(); done = null; } }]; };
+      const [p1, d1] = first(), [p2, d2] = first(), [p3, d3] = first();
+      unsubs.push(db.collection("attendance").where("email", "==", email).onSnapshot((q) => {
+        recs = {};
+        q.docs.forEach((d) => { const x = d.data(); if (!x.semester || x.semester === SEM) recs[x.session] = x; });
+        paintOpen(); paintMine(); paintReqs(); d1(); if (A.refreshBell) A.refreshBell();
+      }, () => { mineEl.innerHTML = `<p class="small-note">Could not load your records. Reload the page to try again.</p>`; d1(); }));
+      unsubs.push(db.collection("swaps").where("fromEmail", "==", email).onSnapshot((q) => { sent = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((x) => x.semester === SEM); paintReqs(); d2(); }, () => d2()));
+      unsubs.push(db.collection("notices").where("email", "==", email).onSnapshot((q) => { notices = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((x) => x.semester === SEM); paintReqs(); paintMine(); d3(); }, () => d3()));
+      // the attendance warnings emailed to me and my RPS (written by the lecturer's script)
+      unsubs.push(db.collection("warnings").doc(`${semSlug}_${email}`).onSnapshot((d) => { warned = d.exists ? d.data() : null; paintMine(); }, () => {}));
+      if (!mates.length) db.collection("meta").doc("classmates").get().then((d) => { mates = d.exists ? (d.data().list || []) : []; }).catch(() => {});
+      fullP = Promise.all([p1, p2, p3]);
+      return fullP;
+    }
 
     db.collection("roster").doc(email).get().then((r) => {
       me = r.exists ? r.data() : null;
@@ -246,8 +284,7 @@
         return;
       }
       // swap requests sent to me (by my matric number), and the classmate list for the swap form
-      unsubs.push(db.collection("swaps").where("toMatric", "==", String(me.matric)).onSnapshot((q) => { got = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((x) => x.semester === SEM); paintReqs(); if (A.refreshBell) A.refreshBell(); }, () => {}));
-      db.collection("meta").doc("classmates").get().then((d) => { mates = d.exists ? (d.data().list || []) : []; }).catch(() => {});
+      unsubs.push(db.collection("swaps").where("toMatric", "==", String(me.matric)).onSnapshot((q) => { got = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((x) => x.semester === SEM); if (got.some((x) => x.status === "requested")) loadFull(); paintReqs(); if (A.refreshBell) A.refreshBell(); }, () => {}));
       paintOpen();
     }).catch(() => { openEl.innerHTML = `<p class="small-note">Could not load the class list. Reload the page to try again.</p>`; });
 
@@ -272,6 +309,7 @@
         try { localStorage.setItem(SKEY, JSON.stringify({ sem: SEM, at: Date.now(), list: Object.values(base) })); } catch (e) { /* private mode */ }
       }
       setAll();
+      if (location.hash === "#records" || location.hash === "#labs") loadFull();
       unsubs.push(db.collection("sessions").where("state", "==", "open").onSnapshot((q) => {
         q.docChanges().forEach((ch) => {
           if (ch.type === "removed") db.collection("sessions").doc(ch.doc.id).get().then((d) => { if (d.exists) base[d.id] = plain(d); else delete base[d.id]; setAll(); }).catch(() => {});
@@ -279,15 +317,8 @@
         });
         setAll();
       }, () => { openEl.innerHTML = `<p class="small-note">Could not check for open sessions. Reload the page to try again.</p>`; }));
-    })().catch(() => { openEl.innerHTML = `<p class="small-note">Could not check for open sessions. Reload the page to try again.</p>`; });
-    unsubs.push(db.collection("attendance").where("email", "==", email).onSnapshot((q) => {
-      recs = {};
-      q.docs.forEach((d) => { const x = d.data(); if (!x.semester || x.semester === SEM) recs[x.session] = x; });
-      paintOpen(); paintMine(); paintReqs(); if (A.refreshBell) A.refreshBell();
-    }, () => { mineEl.innerHTML = `<p class="small-note">Could not load your records. Reload the page to try again.</p>`; }));
+    })().catch((e) => { console.warn("NMK attendance: sessions", e); openEl.innerHTML = `<p class="small-note">Could not check for open sessions. Reload the page to try again.</p>`; });
     unsubs.push(db.collection("labMoves").where("email", "==", email).onSnapshot((q) => { moves = {}; q.docs.forEach((d) => { const x = d.data(); moves[x.slot] = x; }); paintOpen(); paintReqs(); }, () => {}));
-    unsubs.push(db.collection("swaps").where("fromEmail", "==", email).onSnapshot((q) => { sent = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((x) => x.semester === SEM); paintReqs(); }, () => {}));
-    unsubs.push(db.collection("notices").where("email", "==", email).onSnapshot((q) => { notices = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((x) => x.semester === SEM); paintReqs(); paintMine(); }, () => {}));
 
     // the countdown on an open card; at zero the card goes (the lecturer's page closes the session)
     timers.push(setInterval(() => {
@@ -301,13 +332,14 @@
 
     function paintOpen() {
       if (!me || me.status !== "active") return;
+      watchOpenRecs();
       const mine = open.filter(forMe);
       if (!mine.length) {
         openEl.innerHTML = `<div class="at-card"><p><strong>No attendance is open for you right now.</strong> When your lecturer opens it in class, a key appears on the screen. Come back here, or scan the QR code.</p><p class="small-note">Your lab section: ${me.section ? `${SECTION[me.section]} (${SECTION_TIME[me.section]}), group ${me.group || "–"}` : "not set yet"}.</p></div>`;
         return;
       }
       openEl.innerHTML = mine.map((s) => {
-        const r0 = recs[s.id], r = autoAbsent(r0) ? null : r0, mv = s.kind === "lab" && moves[slotOf(s)];
+        const r0 = recOf(s.id), r = autoAbsent(r0) ? null : r0, mv = s.kind === "lab" && moves[slotOf(s)];
         return `<div class="at-card open" data-s="${s.id}"><div class="at-head"><strong>${esc(s.title)}</strong>${r ? chip(r.status) : `<span class="at-live">Open now</span>`}</div>
           <p class="small-note">${sessionLine(s)}${mv ? ` · ⇄ swapped in for this lab` : ""}</p>${!r && s.closesAt ? `<p class="at-cd" data-until="${tsMs(s.closesAt)}"></p>` : ""}
           ${!r && r0 ? `<p class="at-note">You were marked <strong>Absent</strong> when attendance closed earlier. Your lecturer has opened it again: check in now and it changes to Present.</p>` : ""}
@@ -318,7 +350,7 @@
       }).join("");
       // from the QR code: the key is in the link, so mark it straight away (once)
       const qs = params.get("s"), qk = params.get("k");
-      if (!tried && qs && qk && mine.some((s) => s.id === qs) && (!recs[qs] || autoAbsent(recs[qs]))) {
+      if (!tried && qs && qk && mine.some((s) => s.id === qs) && (!recOf(qs) || autoAbsent(recOf(qs)))) {
         tried = true;
         const f = $(`[data-s="${qs}"] .at-form`);
         if (f) { $(".at-key", f).value = qk.toUpperCase(); mark(qs, f); }
@@ -328,7 +360,7 @@
     openEl.addEventListener("input", (e) => { if (e.target.matches(".at-key")) e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); });
 
     async function mark(sid, f) {
-      const s = open.find((x) => x.id === sid), key = $(".at-key", f).value.trim().toUpperCase(), err = $(".at-err", f), b = $("button", f);
+      const was = recOf(sid), s = open.find((x) => x.id === sid), key = $(".at-key", f).value.trim().toUpperCase(), err = $(".at-err", f), b = $("button", f);
       if (!/^[A-Z0-9]{6}$/.test(key)) { err.textContent = "Type the 6-character key shown on the screen."; return; }
       b.disabled = true; err.textContent = "Saving…";
       const late = s.lateAfter > 0 && Date.now() > tsMs(s.openedAt) + s.lateAfter * 60000;
@@ -346,8 +378,7 @@
         }
       }
       // checked in after an automatic Absent: a notice still waiting for that absence is no longer needed
-      const nt = notices.find((x) => x.session === sid && x.status === "pending");
-      if (nt) db.collection("notices").doc(nt.id).delete().catch(() => {});
+      if (autoAbsent(was)) db.collection("notices").doc(`${sid}_${email}`).get().then((d) => { if (d.exists && d.data().status === "pending") return d.ref.delete(); }).catch(() => {});
       if (A.loadAttendance) A.loadAttendance();
     }
 
@@ -444,7 +475,7 @@
     // My Lab Sessions: Lab 1 to Lab 5 with my own session, and a swap button on each lab still to come
     function paintLabs() {
       const box = $(".at-labsbox");
-      if (!box || !me || me.status !== "active") return;
+      if (!box || !me || me.status !== "active" || !full) return;
       const labs = labsNow();
       if (!labs.length || !me.section) { box.innerHTML = ""; return; }
       const name = (x, out) => (out ? x.toName : x.fromName);
@@ -562,7 +593,8 @@
     }
     host.addEventListener("click", async (e) => {
       const t = e.target;
-      if (t.closest("[data-notice]")) return noticeForm(null);
+      if (t.closest("[data-full]")) { loadFull(); return; }
+      if (t.closest("[data-notice]")) { await loadFull(); return noticeForm(null); }
       if (t.closest("[data-explain]")) return noticeForm(null, t.closest("[data-explain]").dataset.explain);
       if (t.closest("[data-swaplab]")) return swapForm(t.closest("[data-swaplab]").dataset.swaplab);
       const all2 = t.closest("[data-swall]");
@@ -619,8 +651,6 @@
       catch (ex) { if (btn) btn.disabled = false; say("Could Not Swap", `${esc(ex.code || ex)}. One of you may already be swapped for one of these labs: ask your lecturer.`); }
     }
 
-    // the attendance warnings emailed to me and my RPS (written by the lecturer's script)
-    unsubs.push(db.collection("warnings").doc(`${semSlug}_${email}`).onSnapshot((d) => { warned = d.exists ? d.data() : null; paintMine(); }, () => {}));
     const WLV = { 1: "Attendance Warning 1", 2: "Attendance Warning 2", 3: "Barring Notification" };
     function warnCard() {
       const h = ((warned && warned.history) || []).filter((x) => x.mailed).slice().reverse();
@@ -629,6 +659,7 @@
         <p class="small-note">If you had a valid reason for an absence, send an absence notice with your supporting document. Once your lecturer approves it, the absence changes to Excused and no longer counts.</p></div>`;
     }
     function paintMine() {
+      if (!full) return;
       const list = Object.values(recs).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
       if (!list.length) { mineEl.innerHTML = warnCard() + `<p class="small-note">No attendance recorded yet this semester.</p>`; return; }
       const block = (kind, label) => {

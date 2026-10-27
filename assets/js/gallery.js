@@ -56,7 +56,20 @@
       return;
     }
     page.innerHTML = `<div class="gl-albums"><p class="small-note">Loading the photos…</p></div>`;
-    if (st.user) { try { const q = await db.collection("sessions").where("semester", "==", SEM).get(); sessions = q.docs.map((d) => d.data()); } catch (e) { sessions = []; } }
+    // the semester's sessions (to group photos by class): the copy the Attendance page keeps in this browser when it is
+    // under 3 hours old, else read once and kept the same way
+    if (st.user) {
+      let c = null; try { c = JSON.parse(localStorage.getItem("nmk-sync-sess") || "null"); } catch (e) { c = null; }
+      if (c && c.sem === SEM && Date.now() - c.at < 3 * 3600000) sessions = c.list;
+      else {
+        try {
+          const q = await db.collection("sessions").where("semester", "==", SEM).get();
+          const plain = (d) => { const x = Object.assign({ id: d.id }, d.data()); Object.keys(x).forEach((k) => { if (x[k] && x[k].toMillis) x[k] = x[k].toMillis(); }); return x; };
+          sessions = q.docs.map(plain);
+          try { localStorage.setItem("nmk-sync-sess", JSON.stringify({ sem: SEM, at: Date.now(), list: sessions })); } catch (e) { /* private mode */ }
+        } catch (e) { sessions = []; }
+      }
+    }
     await loadPhotos();
     if (lec) { page.insertAdjacentHTML("afterbegin", lecturerPanel()); wirePanel(); }
     paintAlbums();

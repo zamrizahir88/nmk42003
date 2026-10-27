@@ -231,3 +231,6 @@ textarea.pj-in { resize: vertical; }
 .page-hero .pj-map span { background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .42); color: #fff; }
 @media (max-width: 640px) { .pj-ptabs a { min-width: 0; } }
 @media (max-width: 480px) { .pj-ptabs .pj-tl2 { display: none; } .pj-ptabs a { font-size: .84rem; padding: 10px 6px; } }
+/* the proposal's Save button (no autosave): amber while there are unsaved changes */
+.pj-save { border-color: var(--amber); color: var(--amber); }
+.pj-unsaved { color: var(--amber); font-weight: 600; }

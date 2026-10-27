@@ -22,7 +22,7 @@
   const STUDENT_DOMAIN = "@studentmail.unimap.edu.my";
   const EX_KEY = "nmk-ex-log", UID_KEY = "nmk-sync-uid";
   // progress kept in this browser that is not worth syncing
-  const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-|sched|role|preview|gal|bell|msnd|mus)/;
+  const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-|sched|role|preview|gal|bell|msnd|mus|pj-draft)/;
   const SEM = (typeof COURSE !== "undefined" && (COURSE.semesterId || COURSE.session)) || "";
 
   firebase.initializeApp(CONFIG);
@@ -34,7 +34,7 @@
   // Every live list on the site gets the server's copy only, never the browser's cached one: pages act on what they
   // read (closing a session marks the rest Absent), so they must never act on an old copy. The cache still makes a
   // list opened again cheap. (A snapshot that only says "now confirmed by the server" is passed on once.)
-  [firebase.firestore.Query.prototype, firebase.firestore.DocumentReference.prototype].forEach((proto) => {
+  [firebase.firestore.Query, firebase.firestore.DocumentReference].filter((c) => c && c.prototype && c.prototype.onSnapshot).map((c) => c.prototype).forEach((proto) => {
     const orig = proto.onSnapshot;
     proto.onSnapshot = function (...a) {
       const opts = a[0] && typeof a[0] === "object" && typeof a[0].next !== "function" ? a.shift() : {};
@@ -126,44 +126,37 @@
           name: r.name || p.name || "", matric: r.matric || "", section: r.section || "", group: r.group || 0, photo: state.user.photoURL || "",
           since: p.createdAt || null, game };
         await db.collection("board").doc(state.user.uid).set(Object.assign({ updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, bd));
-        // my line in the class board summary: only when it changed, and at most every 3 minutes (the whole class shares
-        // one document, which takes about one write a second); a later change is written when the 3 minutes are up
-        const line = sumOf(bd), h = stable(line), wait = 180000 - (Date.now() - sumAt);
-        if (ls.get(BSUM_KEY) !== `${state.user.uid}:${h}`) {
-          if (wait > 0) { clearTimeout(sumT); sumT = setTimeout(push, wait); }
-          else {
-            sumAt = Date.now();
-            await db.collection("boardsum").doc(SCHED_ID).set({ p: { [state.user.uid]: line } }, { merge: true })
-              .then(() => ls.set(BSUM_KEY, `${state.user.uid}:${h}`)).catch((e) => console.warn("NMK sync: could not update the class board summary", e.code || e));
-          }
-        }
       }
       await db.collection("users").doc(state.user.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() });
     } catch (e) { console.warn("NMK sync: could not save progress", e.code || e); }
   }
-  /* ---------- The class board (board.html and the INSTRUMENTA leaderboard) ----------
-     One document, boardsum/{semester}, holds every player's line (p.{uid}): opening a board reads 1 document instead
-     of one per student. Each student writes only their own line (firestore.rules); a lecturer's first look fills in
-     everyone who hasn't synced since. Kept in this browser for 5 minutes (Refresh reads it again). */
-  const BSUM_KEY = "nmk-sync-bsum", BOARD_KEY = "nmk-sync-board";
-  let sumAt = 0, sumT = 0;
+  /* ---------- The class rankings (board.html and the INSTRUMENTA leaderboard) ----------
+     One document, boardsum/{semester}, holds every player's line (p.{uid}), built from everyone's board/{uid} at 12:00 AM
+     each day by the lecturer's Apps Script (apps-script/rankings.gs), and whenever a lecturer presses "Update rankings
+     now". Opening a board reads that 1 document; students write nothing for it. Each student's own points, level and
+     badges are live on their own page (worked out on their device). */
   const sumOf = (b) => ({ nickname: b.nickname || "", role: b.role || "student", xp: b.xp || 0, level: b.level || "", levelNo: b.levelNo || 1, badges: b.badges || [],
     streak: b.streak || 0, lastActive: b.lastActive || null, stops: b.stops || {}, name: b.name || "", matric: b.matric || "", section: b.section || "", photo: b.photo || "", game: b.game || null });
-  async function boardRows(force) {
-    if (!force) { try { const c = JSON.parse(localStorage.getItem(BOARD_KEY) || "null"); if (c && c.sem === SEM && Date.now() - c.at < 300000) return c.rows; } catch (e) { /* read it */ } }
-    let rows = null;
-    try {
-      const d = await db.collection("boardsum").doc(SCHED_ID).get(), x = d.exists ? d.data() : null;
-      if (x && x.filled && x.p) rows = Object.entries(x.p).map(([uid, v]) => Object.assign({ uid }, v));
-    } catch (e) { /* the summary rules are not published yet: read the board the old way */ }
-    if (!rows) {
-      const q = await db.collection("board").where("semester", "==", SEM).get();
-      rows = q.docs.map((d) => Object.assign({ uid: d.id }, sumOf(d.data())));
-      // a lecturer fills the summary with everyone once; from then on each student keeps their own line up to date
-      if (state.user && isAdmin(state.user.email)) db.collection("boardsum").doc(SCHED_ID).set({ filled: true, p: Object.fromEntries(rows.map(({ uid, ...v }) => [uid, v])) }, { merge: true }).catch(() => {});
-    }
-    try { localStorage.setItem(BOARD_KEY, JSON.stringify({ sem: SEM, at: Date.now(), rows })); } catch (e) { /* too big or private mode */ }
-    return rows;
+  // { rows, at }: the published rankings (at = when they were made); null before the first update
+  async function boardRows() {
+    const d = await db.collection("boardsum").doc(SCHED_ID).get(), x = d.exists ? d.data() : null;
+    if (x && x.p) return { rows: Object.entries(x.p).map(([uid, v]) => Object.assign({ uid }, v)), at: x.at && x.at.toMillis ? x.at.toMillis() : 0 };
+    if (state.user && isAdmin(state.user.email)) return buildRankings();   // the first time: make them now
+    return null;
+  }
+  // lecturers: read everyone's board entry (one read each) and publish the rankings (one write)
+  async function buildRankings() {
+    const q = await db.collection("board").where("semester", "==", SEM).get();
+    const p = Object.fromEntries(q.docs.map((d) => [d.id, sumOf(d.data())]));
+    await db.collection("boardsum").doc(SCHED_ID).set({ semester: SEM, p, at: firebase.firestore.FieldValue.serverTimestamp(), by: state.user ? state.user.email : "" });
+    return { rows: Object.entries(p).map(([uid, v]) => Object.assign({ uid }, v)), at: Date.now() };
+  }
+  // "Rankings updated daily at 12:00 AM. Last update: today, 2:03 PM"
+  function rankNote(at) {
+    if (!at) return "Rankings are updated daily at 12:00 AM.";
+    const d = new Date(at + 8 * 3600000), t = new Date(Date.now() + 8 * 3600000), day = d.toISOString().slice(0, 10), today = t.toISOString().slice(0, 10);
+    const y = new Date(Date.now() - 86400000 + 8 * 3600000).toISOString().slice(0, 10), h = d.getUTCHours();
+    return `Rankings are updated daily at 12:00 AM. Last update: ${day === today ? "today" : day === y ? "yesterday" : `${d.getUTCDate()}/${d.getUTCMonth() + 1}`}, ${((h + 11) % 12) + 1}:${String(d.getUTCMinutes()).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}.`;
   }
 
   // On the first sign-in on this device, merge what was saved online with what this browser has.
@@ -501,8 +494,8 @@
           else if (["rejected", "cancelled", "ended"].includes(x.status) && x.decidedBy) add({ t: tms(x.updatedAt), href: "attendance.html", text: `Your lecturer ${x.status === "rejected" ? "did not approve" : "cancelled"} your swap for ${esc(x.labTitle)}` });
         });
         // Kalam Feed: new posts from Dr. Zamri (the last 30 days)
-        const kf = await db.collection("kalam").where("semester", "==", SEM).get().catch(() => ({ docs: [] }));
-        kf.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((p) => Date.now() - tms(p.at) < 30 * 86400000)
+        const kf = await db.collection("kalam").orderBy("at", "desc").limit(5).get().catch(() => ({ docs: [] }));
+        kf.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((p) => (!p.semester || p.semester === SEM) && Date.now() - tms(p.at) < 30 * 86400000)
           .forEach((p) => add({ t: tms(p.at), href: `kalam.html#kf-${p.id}`, text: `New in <strong>Kalam Feed</strong>: ${esc(p.title || String(p.body || "").slice(0, 80))}` }));
         // the mini project: invitations, the lecturer's decision, and the proposal deadline
         const pm = await db.collection("meta").doc("project").get().catch(() => null);
@@ -535,11 +528,11 @@
         // attendance warnings emailed to me and my RPS
         const wslug = String(SEM).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), WLV = { 1: "Attendance Warning 1", 2: "Attendance Warning 2", 3: "Barring Notification" };
         const wdoc = await db.collection("warnings").doc(`${wslug}_${em}`).get().catch(() => null);
-        ((wdoc && wdoc.exists && wdoc.data().history) || []).filter((x) => x.mailed).forEach((x) => add({ t: tms(x.at), href: "attendance.html", text: x.type === "withdraw"
+        ((wdoc && wdoc.exists && wdoc.data().history) || []).filter((x) => x.mailed).forEach((x) => add({ t: tms(x.at), href: "attendance.html#records", text: x.type === "withdraw"
           ? `Your ${WLV[x.level]} (${x.kind === "lab" ? "Labs" : "Lectures"}) is <strong>withdrawn</strong>: your absence notice was approved`
           : `<strong>${WLV[x.level]} (${x.kind === "lab" ? "Labs" : "Lectures"})</strong> was emailed to you and your RPS. Check your attendance.` }));
-        mine(nts).filter((n) => n.docLater && !n.doc && n.status !== "rejected").forEach((n) => add({ todo: true, t: tms(n.at), href: "attendance.html", text: `Add your supporting document for <strong>${esc(n.title)}</strong> by ${esc(n.docDue)}` }));
-        mine(nts).filter((n) => n.status !== "pending").forEach((n) => add({ t: tms(n.decidedAt), href: "attendance.html", text: `Your absence notice for ${esc(n.title)} was <strong>${n.status === "approved" ? "approved (Excused)" : "not approved"}</strong>${n.note ? `: “${esc(n.note)}”` : ""}` }));
+        mine(nts).filter((n) => n.docLater && !n.doc && n.status !== "rejected").forEach((n) => add({ todo: true, t: tms(n.at), href: "attendance.html#records", text: `Add your supporting document for <strong>${esc(n.title)}</strong> by ${esc(n.docDue)}` }));
+        mine(nts).filter((n) => n.status !== "pending").forEach((n) => add({ t: tms(n.decidedAt), href: "attendance.html#records", text: `Your absence notice for ${esc(n.title)} was <strong>${n.status === "approved" ? "approved (Excused)" : "not approved"}</strong>${n.note ? `: “${esc(n.note)}”` : ""}` }));
       }
     } catch (e) { console.warn("NMK bell: could not check for notifications", e.code || e); }
     bellBusy = false;
@@ -656,5 +649,5 @@
     await db.collection("roster").doc(old).delete();
   }
 
-  window.NMKAccount = { db, auth, isAdmin, state, on: (f) => { listeners.push(f); if (state.ready) f(state); }, signIn, loadAttendance, push, SEM, refreshBell, changeEmail, boardRows };
+  window.NMKAccount = { db, auth, isAdmin, state, on: (f) => { listeners.push(f); if (state.ready) f(state); }, signIn, loadAttendance, push, SEM, refreshBell, changeEmail, boardRows, buildRankings, rankNote };
 })();

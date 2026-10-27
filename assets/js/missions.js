@@ -334,14 +334,16 @@
   const heroIn = (g) => { let o = null; try { o = g && g.hero ? JSON.parse(g.hero) : null; } catch (e) { o = null; } return Object.assign({}, HERO0, o || {}); };
   const avatar = (h) => `<svg class="lg-av" viewBox="-36 -66 72 76" aria-hidden="true" focusable="false">${ART.heroSvg(h, "", 0)}</svg>`;
   // one list for the whole class (no sections); students see no matric numbers
-  async function boardView(force) {
-    frame(`<p><button type="button" class="btn ghost small" data-go="map">‹ All chapters</button> <button type="button" class="btn ghost small" data-lgref>⟳ Refresh</button></p><h2 class="h3">🏆 INSTRUMENTA Leaderboard</h2>
-      <p class="small-note">The whole class, ranked by game coins. It updates each time a player's progress syncs (tap Refresh for the latest). Tap a name to open the profile. Points never count towards grades.</p><div id="lgBoard"><p class="small-note">Loading…</p></div>`);
-    const rb = $("[data-lgref]"); if (rb) rb.addEventListener("click", () => boardView(true));
+  async function boardView(fresh) {
+    frame(`<p><button type="button" class="btn ghost small" data-go="map">‹ All chapters</button>${isLec ? ` <button type="button" class="btn ghost small" data-lgupd>⟳ Update rankings now</button>` : ""}</p><h2 class="h3">🏆 INSTRUMENTA Leaderboard</h2>
+      <p class="small-note">The whole class, ranked by game coins. <span id="lgWhen"></span> Your own coins and rank are always up to date on your own screen. Tap a name to open the profile. Points never count towards grades.</p><div id="lgBoard"><p class="small-note">Loading…</p></div>`);
+    const ub = $("[data-lgupd]"); if (ub) ub.addEventListener("click", () => { ub.disabled = true; ub.textContent = "Updating…"; boardView(true); });
     const host = $("#lgBoard");
     let docs = [], roster = [];
     try {
-      docs = A.boardRows ? await A.boardRows(force) : (await A.db.collection("board").where("semester", "==", A.SEM).get()).docs.map((d) => Object.assign({ uid: d.id }, d.data()));
+      const r = fresh ? await A.buildRankings() : await A.boardRows();
+      docs = (r && r.rows) || [];
+      const w = $("#lgWhen"); if (w) w.textContent = A.rankNote(r && r.at);
       if (isLec) roster = (await A.db.collection("roster").get()).docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((r) => r.status === "active");
     } catch (e) { host.innerHTML = `<p class="small-note">Could not load the leaderboard (${esc(e.code || e)}).</p>`; return; }
     if (view !== "board") return;
