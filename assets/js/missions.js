@@ -56,13 +56,15 @@
   /* ---------- a station in progress: saved after every answer, so it can be continued later (on any device) ---------- */
   const saves = () => parse(lsGet("nmk-msave"), {}) || {};
   const saveOf = (m) => { const s = saves()[m.id]; return s && !s.cleared && s.n === m.steps.length && s.i < s.n ? s : null; };
+  // Every answer is saved on this device. To save Firestore writes it goes to the account only now and then:
+  // push "soon" (every 3rd answer, a win or a knock-out) or true (Save and exit, at once); leaving the tab sends it too.
   function putSave(id, rec, push) {
     const all = saves(); all[id] = Object.assign({ at: new Date().toISOString() }, rec);
     lsSet("nmk-msave", JSON.stringify(all));
-    document.dispatchEvent(new CustomEvent("nmk:store", { detail: "nmk-msave" }));
-    if (push && A && A.push) A.push();
+    if (push) document.dispatchEvent(new CustomEvent("nmk:store", { detail: "nmk-msave" }));
+    if (push === true && A && A.push) A.push();
   }
-  const clearSave = (id) => putSave(id, { cleared: true });
+  const clearSave = (id) => putSave(id, { cleared: true }, "soon");
   // numbers drawn from a saved seed, so a continued station has the same questions
   const seeded = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 
@@ -470,7 +472,14 @@
     let i = 0, tries = 0, coins = 0, firstTry = 0, marks = 0, hearts = HEARTS, done = false, busy = false, tipLayer = null;
     const got = [], timers = [];
     if (saved) ({ i, tries, coins, firstTry, marks, hearts } = saved), (saved.got || []).forEach((x, k) => { got[k] = x; });
-    const store = (push) => { if (!done) putSave(m.id, { w: w.world, seed, n: steps.length, i, tries, coins, firstTry, marks, hearts, got }, push); };
+    let unsent = 0;
+    const store = (push) => {
+      if (done) return;
+      unsent++;
+      const send = push ? true : unsent >= 3 ? "soon" : false;
+      if (send) unsent = 0;
+      putSave(m.id, { w: w.world, seed, n: steps.length, i, tries, coins, firstTry, marks, hearts, got }, send);
+    };
     const later = (f, ms) => { const t = setTimeout(f, ms); timers.push(t); return t; };
     teardown.push(() => timers.forEach(clearTimeout));
     view = "battle";
@@ -689,7 +698,7 @@
       go("world", true, w);
       if (!done && (i > 0 || tries > 0)) { const n = document.createElement("p"); n.className = "lg-saved"; n.setAttribute("role", "status"); n.textContent = `Saved: ${E.name}, question ${i + 1} of ${steps.length}. Continue any time, on any device signed in to your account.`; const v2 = $("#msView"); if (v2) v2.prepend(n); }
     });
-    const flush = () => { if (document.hidden && !done && (i > 0 || tries > 0) && A && A.push) A.push(); };
+    const flush = () => { if (document.hidden && !done && (i > 0 || tries > 0) && A && A.push) { unsent = 0; A.push(); } };
     document.addEventListener("visibilitychange", flush); teardown.push(() => document.removeEventListener("visibilitychange", flush));
     draw();
   }

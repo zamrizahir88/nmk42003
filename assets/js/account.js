@@ -106,11 +106,21 @@
   function queuePush() { if (canSync()) { clearTimeout(timer); timer = setTimeout(push, 2500); } }
   const canSync = () => state.user && state.profile && state.profile.status === "approved";
   function snapshot() { const o = {}; ls.keys().forEach((k) => { o[k] = ls.get(k); }); return o; }
+  // To save Firestore writes, push() sends only what changed since the last send from this browser (pressing Save many
+  // times, or switching apps again and again, costs nothing more), and the "last active" time at most every 30 minutes.
+  const SENT_KEY = "nmk-sync-sent", ACTIVE_KEY = "nmk-sync-active";
+  const hashOf = (str) => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return `${str.length}.${h >>> 0}`; };
+  let sending = null;
   async function push() {
     if (!canSync()) return;
+    if (sending) { await sending.catch(() => {}); }   // one send at a time, so a second one can see the first was enough
+    sending = pushNow(); try { await sending; } finally { sending = null; }
+  }
+  async function pushNow() {
     try {
-      const keys = snapshot();
-      await db.collection("progress").doc(state.user.uid).set({ keys, semester: SEM, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      const keys = snapshot(), uid = state.user.uid, kh = hashOf(uid + JSON.stringify(keys)), sent = (ls.get(SENT_KEY) || "").split("|");
+      if (kh !== sent[0]) await db.collection("progress").doc(uid).set({ keys, semester: SEM, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      let bh = sent[1] || "";
       if (window.NMKGame) {   // the small public summary for the progress board
         const G = window.NMKGame, g = G.compute(keys), p = state.profile, r = state.roster || {};
         // INSTRUMENTA: the game-only numbers for its leaderboard, and the saved character for the avatar
@@ -125,9 +135,14 @@
           stops: Object.fromEntries(g.stops.filter((s) => s.total).map((s) => [s.label, s.pct])), prog: G.summaryProg ? G.summaryProg(g) : {}, feed: G.feed ? G.feed(g, 20) : [],
           name: r.name || p.name || "", matric: r.matric || "", section: r.section || "", group: r.group || 0, photo: state.user.photoURL || "",
           since: p.createdAt || null, game };
-        await db.collection("board").doc(state.user.uid).set(Object.assign({ updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, bd));
+        const nb = hashOf(uid + JSON.stringify(bd));
+        if (nb !== bh) { await db.collection("board").doc(uid).set(Object.assign({ updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, bd)); bh = nb; }
       }
-      await db.collection("users").doc(state.user.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() });
+      ls.set(SENT_KEY, `${kh}|${bh}`);
+      if (Date.now() - (+ls.get(ACTIVE_KEY) || 0) > 30 * 60000) {
+        await db.collection("users").doc(uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() });
+        ls.set(ACTIVE_KEY, String(Date.now()));
+      }
     } catch (e) { console.warn("NMK sync: could not save progress", e.code || e); }
   }
   /* ---------- The class rankings (board.html and the INSTRUMENTA leaderboard) ----------
@@ -184,7 +199,8 @@
     const now = snapshot();
     if (JSON.stringify(now) !== before) document.dispatchEvent(new CustomEvent("nmk:synced"));
     // save back only when this browser has something the account doesn't (a few writes saved on every visit)
-    if (Object.keys(now).some((k) => now[k] !== remote[k])) await push();
+    if (Object.keys(now).some((k) => now[k] !== remote[k]) || Object.keys(remote).some((k) => !(k in now) && !LOCAL_ONLY.test(k))) await push();
+    else { const sent = (ls.get(SENT_KEY) || "").split("|"); ls.set(SENT_KEY, `${hashOf(state.user.uid + JSON.stringify(now))}|${sent[1] || ""}`); }
     // the page was drawn from the old records: draw it again once, so lessons show the merged progress
     if (reload && JSON.stringify(now) !== before && !sessionStorage.getItem("nmk-sync-reloaded")) {
       try { sessionStorage.setItem("nmk-sync-reloaded", "1"); } catch (e) { /* ignore */ }
@@ -258,7 +274,7 @@
     const now = Date.now();
     vset({ uid: u.uid, start: now, seen: now, profile: state.profile, roster: state.roster, missions: missionsOpen, survey: surveyOpen, bell: null });
     loadBell(true);
-    if (canSync()) { pull(); db.collection("users").doc(u.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp(), photo: u.photoURL || "" }).catch(() => {}); }
+    if (canSync()) { pull(); db.collection("users").doc(u.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp(), photo: u.photoURL || "" }).then(() => ls.set(ACTIVE_KEY, String(Date.now()))).catch(() => {}); }
   }
   // every minute while the page is on screen: keep the visit alive, refresh the bell after 20 minutes, and start a new
   // visit when the person comes back after 30 minutes or more away
