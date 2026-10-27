@@ -1,6 +1,7 @@
 /* NMK42003 Chapter 3: Transducers, Sensors and Actuators
    Animated notes: what a transducer is, electrical sensor parameters (each with a real situation),
-   passive sensors (resistive, capacitive, inductive), active sensors (piezoelectric, photodiode, Hall effect)
+   the classification of sensors, passive sensors (resistive, strain gauge, potentiometer, LDR, thermistor, capacitive,
+   inductive, photodiode in photoconductive mode, Hall effect), active sensors (thermocouple, piezoelectric, solar cell)
    and actuators (LED, DC motor, servo, relay), with calculators and exercises.
    The calculator and exercise engine is in lab.js. */
 (function () {
@@ -461,15 +462,15 @@
   function mountTree(el) {
     const node = (x, y, w, t, href, cls = "") => `<a href="#${href}"><rect class="tnode ${cls}" x="${x - w / 2}" y="${y - 17}" width="${w}" height="34" rx="17"/>${T(x, y + 5, t, "middle", "tnt")}</a>`;
     const ln = (x1, y1, x2, y2) => `<path class="tln" d="M${x1},${y1}V${(y1 + y2) / 2}H${x2}V${y2}"/>`;
-    let s = ln(270, 42, 135, 96) + ln(270, 42, 405, 96);
-    [60, 135, 210].forEach((x) => { s += ln(135, 113, x, 168); });
-    [330, 405, 480].forEach((x) => { s += ln(405, 113, x, 168); });
-    s += node(270, 25, 130, "Sensors", "classify", "root");
-    s += node(135, 96, 170, "Passive (modulating)", "resistive", "pas") + node(405, 96, 170, "Active (self-generating)", "piezo", "act");
-    s += node(60, 168, 104, "Resistive", "resistive") + node(135, 222, 104, "Capacitive", "capacitive") + node(210, 168, 104, "Inductive", "inductance");
-    s += node(330, 168, 104, "Piezoelectric", "piezo") + node(405, 222, 108, "Photodiode", "photodiode") + node(480, 168, 104, "Hall effect", "hall");
-    s += `<path class="tln" d="M135,${113 + 27}V205"/><path class="tln" d="M405,${113 + 27}V205"/>`;
-    el.innerHTML = `<figure class="scene-box"><div class="scene-scroll"><svg class="scene tree" viewBox="0 0 540 245" role="img" aria-label="Sensors are passive (resistive, capacitive, inductive) or active (piezoelectric, photodiode, Hall effect). Each box links to its section.">${s}</svg></div><figcaption>Tap a box to jump to that sensor.</figcaption></figure>`;
+    const PK = [[48, 84, "Resistive", "resistive"], [138, 90, "Capacitive", "capacitive"], [228, 84, "Inductive", "inductance"], [316, 84, "Hall effect", "hall"]];
+    const AK = [[420, 100, "Thermocouple", "thermocouple"], [522, 96, "Piezoelectric", "piezo"], [614, 80, "Solar cell", "solar"]];
+    let s = ln(330, 42, 182, 96) + ln(330, 42, 518, 96);
+    PK.forEach(([x]) => { s += ln(182, 113, x, 168); });
+    AK.forEach(([x]) => { s += ln(518, 113, x, 168); });
+    s += node(330, 25, 130, "Sensors", "classify", "root");
+    s += node(182, 96, 190, "Passive (modulating)", "passivedef", "pas") + node(518, 96, 196, "Active (self-generating)", "activedef", "act");
+    PK.concat(AK).forEach(([x, w, t, h]) => { s += node(x, 168, w, t, h); });
+    el.innerHTML = `<figure class="scene-box"><div class="scene-scroll"><svg class="scene tree" viewBox="0 0 660 196" role="img" aria-label="Sensors are passive, needing an external supply (resistive, capacitive, inductive, Hall effect), or active, self-generating (thermocouple, piezoelectric, solar cell). Each box links to its section.">${s}</svg></div><figcaption>Tap a box to jump to that part. Passive sensors need an external supply; active sensors make their own signal.</figcaption></figure>`;
   }
 
   /* =====================================================================
@@ -755,7 +756,7 @@ void loop()
   }
 
   /* =====================================================================
-     Active: photodiode (photoconductive mode) and Hall effect
+     Photodiode (photoconductive mode) and Hall effect: both passive (they need a supply)
      ===================================================================== */
   const RESP = 0.05e-6; // A per lux, a BPW34-type photodiode
   function photoDiagram(Tl, lab, v, res) {
@@ -807,6 +808,95 @@ void loop()
       }
     };
     player(c.pl, el, { dur: 8, hold: 0, draw, still: 3.5, label: "Magnet position" });
+  }
+
+
+  /* =====================================================================
+     Passive and active: the definition chains, and the new calculators
+     (thermocouple, LDR divider, strain gauge bridge, solar cell)
+     ===================================================================== */
+  const FLOW = {
+    passive: [["Something changes", "light, heat, force or position"], ["R, C or L changes", "inside the sensor; it makes no voltage itself"],
+      ["An external supply", "a divider, bridge or AC source turns the change into a voltage"], ["Voltage out", "to the ESP32"]],
+    active: [["Energy arrives", "heat, force or light"], ["The sensor makes its own voltage or charge", "no supply is needed"],
+      ["An amplifier", "the output is only microvolts to millivolts"], ["Voltage out", "to the ESP32"]]
+  };
+  const mountFlow = (kind) => (el) => {
+    el.innerHTML = `<ol class="flow4 ${kind}" aria-label="How a ${kind} sensor gives an output">${FLOW[kind].map(([t, d], i) => `<li><span class="fn">${i + 1}</span><strong>${t}</strong><span>${d}</span></li>`).join("")}</ol>`;
+  };
+
+  // Thermocouple: two different metals joined at the hot junction; the meter end is the cold (reference) junction
+  function tcDiagram(Tl, lab, v, res) {
+    const k = clamp((isFinite(v.Th) ? v.Th : 300) / 1000, 0, 1);
+    let s = `<rect class="oven" x="14" y="56" width="128" height="120" rx="8"/><rect class="oven-in" x="26" y="68" width="104" height="96" rx="5" style="fill:${mixHex("#3b2a22", "#ff9a3c", k)}"/>`;
+    s += T(78, 46, `T<tspan class="sb" dy="3">hot</tspan><tspan dy="-3"> = ${lab.Th || "?"}</tspan>`);
+    s += `<path class="tcw-a" d="M72,114H262V92H290"/><path class="tcw-b" d="M72,122H262V146H290"/><circle class="tcj" cx="72" cy="118" r="6"/>`;
+    s += T(78, 196, "hot (measuring) junction", "middle", "small") + T(176, 106, "metal A", "middle", "small") + T(176, 140, "metal B", "middle", "small");
+    s += `<rect class="op" x="290" y="82" width="22" height="74" rx="3"/>` + T(301, 200, `cold junction, T<tspan class="sb" dy="3">cold</tspan><tspan dy="-3"> = ${lab.Tc || "?"}</tspan>`, "middle", "small");
+    s += `<path class="w" d="M312,96H344M312,142H344"/><rect class="op" x="344" y="80" width="88" height="78" rx="8"/>` + T(388, 104, "meter", "middle", "small");
+    s += `<text x="388" y="134" text-anchor="middle" class="val${res && res.V < 0 ? " over" : ""}">${res ? eng(res.V, "V") : "?"}</text>`;
+    s += T(388, 176, "no battery", "middle", "small");
+    return s;
+  }
+
+  // LDR: resistance falls as the light rises (a typical curve: 20 kΩ at 10 lux, slope −0.8 on log axes)
+  const ldrR = (E) => 20e3 * Math.pow(Math.max(E, 0.5) / 10, -0.8);
+  const ESP_MAX = 3.3;
+  function ldrDiagram(Tl, lab, v, res) {
+    const k = clamp((v.E || 0) / 600, 0, 1), X = 200;
+    let s = `<circle class="sun" cx="58" cy="70" r="${12 + 8 * k}" style="opacity:${(0.25 + 0.75 * k).toFixed(2)}"/>`;
+    for (let i = 0; i < 3; i++) s += `<path class="ray live" style="opacity:${(0.2 + 0.8 * k).toFixed(2)};animation-delay:${i * 0.25}s" d="M90,${56 + i * 14}L${X - 34},${60 + i * 6}"/>`;
+    s += T(58, 112, `${lab.E || "?"}`, "middle", "small");
+    s += `<circle class="term" cx="${X}" cy="22" r="4"/>` + T(X + 12, 26, `V<tspan class="sb" dy="3">S</tspan><tspan dy="-3"> = ${lab.Vs || "?"}</tspan>`, "start");
+    s += Lab.D.res(X, 26, X, 104) + `<circle class="ldr-ring" cx="${X}" cy="65" r="22"/>`;
+    s += T(X + 30, 58, "LDR", "start") + T(X + 30, 78, res ? eng(res.Rl, "Ω") : "?", "start", "val");
+    s += Lab.D.wire([X, 104], [X, 124]) + Lab.D.res(X, 124, X, 202) + Lab.D.gnd(X, 202) + T(X - 16, 168, `R = ${lab.R || "?"}`, "end");
+    s += Lab.D.wire([X, 114], [X + 86, 114]) + Lab.D.dot(X, 114);
+    s += `<text x="${X + 18}" y="164">V<tspan class="sb" dy="3">out</tspan><tspan dy="-3"> = </tspan><tspan class="val${res && res.over ? " over" : ""}">${res ? eng(res.vout, "V") : "?"}</tspan></text>`;
+    s += `<rect class="op" x="${X + 86}" y="88" width="136" height="52" rx="6"/>` + T(X + 154, 110, "ESP32 analog pin", "middle", "small") + T(X + 154, 128, "max 3.3 V", "middle", "small");
+    return s;
+  }
+  function ldrRender(extra, res, v) {
+    if (!res) { extra.innerHTML = ""; return; }
+    const emax = Math.max(1000, v.E * 1.2), f = (e) => (v.Vs * v.R) / (v.R + ldrR(e)), top = Math.max(v.Vs, ESP_MAX) * 1.12;
+    const A = axes({ x: [0, emax], y: [0, top], xt: [0, emax / 4, emax / 2, (3 * emax) / 4, emax].map((q) => Math.round(q)), yt: [0, ESP_MAX, v.Vs].filter((y, i, a) => a.indexOf(y) === i).sort((a, b) => a - b), fy: (y) => y.toFixed(1), xl: "Light (lux)", yl: "Vout (V)" });
+    const ref = `<line class="ref" x1="${A.l}" x2="${A.l + A.pw}" y1="${A.Y(ESP_MAX)}" y2="${A.Y(ESP_MAX)}"/>` + T(A.l + 6, A.Y(ESP_MAX) - 5, "ESP32 limit 3.3 V", "start", "reflab");
+    extra.innerHTML = `<div class="plot-box">${svg(A.W, A.H, "Output voltage against light level, with the 3.3 V ESP32 limit", A.s + ref + poly(curve(A, f, 1, emax, 160), "trace-a") + dot(A.X(v.E), A.Y(res.vout)))}</div>`;
+  }
+
+  // Strain gauge: a stretched gauge in one arm of a Wheatstone bridge (a quarter bridge)
+  function sgDiagram(Tl, lab, v, res) {
+    const e = res ? res.e : 0, stretch = clamp(e / 3000e-6, 0, 1) * 26;
+    let s = `<rect class="wall" x="8" y="40" width="12" height="90"/><rect class="beam" x="20" y="72" width="${150 + stretch * 0.4}" height="16" rx="2"/>`;
+    const gw = (84 + stretch) / 8;
+    s += `<path class="gauge" d="M40,70${Array.from({ length: 8 }, () => `v-12h${(gw / 2).toFixed(2)}v12h${(gw / 2).toFixed(2)}`).join("")}"/>`;
+    s += `<path class="ldarrow" d="M${(170 + stretch * 0.4).toFixed(1)},94V128m-6,-8l6,8l6,-8"/>` + T(96, 112, "load bends the beam", "middle", "small");
+    s += T(96, 44, `gauge: R = ${res ? eng(res.R, "Ω") : "?"}`, "middle", "small");
+    const L = 250, Rr = 360;
+    s += `<circle class="term" cx="305" cy="14" r="4"/>` + T(317, 18, `V<tspan class="sb" dy="3">ex</tspan><tspan dy="-3"> = ${lab.Vex || "?"}</tspan>`, "start");
+    s += Lab.D.wire([L, 26], [Rr, 26]) + Lab.D.wire([305, 18], [305, 26]) + Lab.D.res(L, 26, L, 104) + Lab.D.res(Rr, 26, Rr, 104);
+    s += Lab.D.wire([L, 104], [L, 124]) + Lab.D.wire([Rr, 104], [Rr, 124]) + Lab.D.res(L, 124, L, 202) + Lab.D.res(Rr, 124, Rr, 202);
+    s += Lab.D.wire([L, 202], [Rr, 202]) + Lab.D.gnd(305, 202) + Lab.D.dot(L, 114) + Lab.D.dot(Rr, 114);
+    s += T(L - 14, 70, `R<tspan class="sb" dy="3">0</tspan>`, "end") + T(L - 14, 168, `R<tspan class="sb" dy="3">0</tspan>`, "end") + T(Rr + 14, 70, `R<tspan class="sb" dy="3">0</tspan>`, "start");
+    s += `<text x="${Rr + 14}" y="168" class="gauge-t">gauge</text>` + T(L - 10, 118, "b", "end", "small") + T(Rr + 10, 118, "a", "start", "small");
+    s += `<path class="w thin" d="M${L},114H${Rr}" stroke-dasharray="4 4"/>`;
+    s += `<text x="305" y="136" text-anchor="middle">V<tspan class="sb" dy="3">out</tspan><tspan dy="-3"> = </tspan><tspan class="val">${res ? eng(res.vout, "V") : "?"}</tspan></text>`;
+    return s;
+  }
+
+  // Solar cell: a photodiode with no bias (photovoltaic mode), 4 cm², feeding a load resistor
+  const PV_K = 1.2e-6, PV_I0 = 4e-9, PV_NVT = 1.3 * 0.02569;
+  function solarDiagram(Tl, lab, v, res) {
+    const k = clamp((v.E || 0) / 100000, 0, 1);
+    let s = `<circle class="sun" cx="52" cy="62" r="${12 + 10 * k}" style="opacity:${(0.25 + 0.75 * k).toFixed(2)}"/>`;
+    for (let i = 0; i < 3; i++) s += `<path class="ray${v.E > 0 ? " live" : ""}" style="opacity:${(0.2 + 0.8 * k).toFixed(2)};animation-delay:${i * 0.25}s" d="M86,${48 + i * 14}L128,${70 + i * 10}"/>`;
+    s += T(52, 112, `${lab.E || "?"}`, "middle", "small");
+    s += `<rect class="pv-cell" x="132" y="58" width="84" height="70" rx="3"/><path class="pv-grid" d="M132,81H216M132,104H216M160,58V128M188,58V128"/>` + T(174, 148, "solar cell, 4 cm²", "middle", "small");
+    s += `<path class="w" d="M216,70H320V84M216,116H260V190H320V170"/>` + Lab.D.res(320, 84, 320, 170);
+    s += T(334, 122, `R<tspan class="sb" dy="3">L</tspan><tspan dy="-3"> = ${lab.RL || "?"}</tspan>`, "start");
+    s += `<text x="334" y="146">V = <tspan class="val">${res ? eng(res.V, "V") : "?"}</tspan></text>`;
+    s += T(174, 210, "no battery: the light is the energy source", "middle", "small");
+    return s;
   }
 
   /* =====================================================================
@@ -968,11 +1058,12 @@ void loop()
     ["Energy", "Needs an external supply (excitation) to give an output", "Turns the measured energy directly into an electrical signal"],
     ["Output", "A change in R, C or L, turned into a voltage by a circuit (divider, bridge, oscillator)", "A voltage, current or charge, often very small (µV to mV)"],
     ["Signal conditioning", "Excitation plus a conversion circuit", "Usually an amplifier, because the output is small"],
-    ["Examples", "Potentiometer, thermistor, RTD, strain gauge, capacitive and inductive sensors, LVDT", "Thermocouple, piezoelectric sensor, photodiode in photovoltaic mode (solar cell)"]]);
+    ["Examples", "Potentiometer, LDR, thermistor, RTD, strain gauge, capacitive and inductive sensors, LVDT, Hall effect sensor, photodiode in photoconductive mode", "Thermocouple, piezoelectric sensor, photodiode in photovoltaic mode (solar cell), dynamic microphone"]]);
   const EXAMPLES_CMP = table(["Measuring", "Active (self-generating)", "Passive (modulating)"], [
     ["Temperature", "Thermocouple: a small voltage from two joined metals", "Thermistor (thermostats, air-conditioning), RTD (precise industrial measurement)"],
     ["Light", "Photodiode in photovoltaic mode, solar cell", "Light-dependent resistor; photodiode in photoconductive mode (reverse biased)"],
-    ["Force and vibration", "Piezoelectric sensor (seismic monitors, accelerometers)", "Strain gauge (its resistance changes; needs excitation)"]]);
+    ["Force and vibration", "Piezoelectric sensor (seismic monitors, accelerometers)", "Strain gauge (its resistance changes; needs excitation)"],
+    ["Magnetic field and motion", "Moving coil in a magnet (dynamic microphone, tachogenerator)", "Hall effect sensor (needs a bias current), inductive proximity sensor"]]);
   const SA_CMP = table(["", "Sensor", "Actuator"], [
     ["Primary function", "Converts a physical quantity from the environment into an electrical signal for the system", "Converts an electrical signal from the system into a physical action in the environment"],
     ["Input", "An external stimulus: light, temperature, pressure, motion…", "A control signal: an electrical or digital command"],
@@ -980,6 +1071,7 @@ void loop()
     ["Place in the system", "At the input", "At the output"],
     ["Examples", "Thermometer, photovoltaic cell, tilt sensor, accelerometer, ultrasonic sensor", "LED, display, heater, relay, electric motor, hydraulic and pneumatic cylinders"]]);
   const CLASS_QUIZ = [
+    { q: "A <strong>Hall effect sensor</strong> detects the magnet in a phone's flip cover.", opts: ["Passive (needs excitation)", "Active (self-generating)"], a: 0, why: "It needs a bias current from a supply; the magnetic field only changes the voltage across the plate. With no supply there is no Hall voltage." },
     { q: "A <strong>thermocouple</strong> produces a few millivolts when its junction is heated.", opts: ["Passive (needs excitation)", "Active (self-generating)"], a: 1, why: "It makes its own voltage from the heat (the Seebeck effect): no supply needed." },
     { q: "A <strong>thermistor</strong> changes resistance with temperature.", opts: ["Passive (needs excitation)", "Active (self-generating)"], a: 0, why: "A resistance change can only be measured by passing a current through it: it needs excitation." },
     { q: "A <strong>piezo disc</strong> gives a voltage spike when it is knocked.", opts: ["Passive (needs excitation)", "Active (self-generating)"], a: 1, why: "The squeezed crystal separates charge by itself." },
@@ -1057,12 +1149,19 @@ void loop()
       mount: mountCriteria },
 
     // ---------- Passive sensors ----------
-    { id: "classify", group: "passive", title: "Classification of Sensors", toc: "Classification",
-      intro: `<p>Sensors are divided into two groups by where the energy for the output comes from.</p>
-        <dl class="defs"><div><dt>Passive sensors</dt><dd>Do not generate an electrical signal themselves. Their resistance, capacitance or inductance changes, and an external supply (excitation) is needed to turn that into a voltage.</dd></div>
-        <div><dt>Active sensors</dt><dd>Generate their own electrical signal from the quantity they sense. The output is usually very small, so an amplifier is needed.</dd></div></dl>`,
+    { id: "classify", group: "classify", title: "Sensor Categories", toc: "Sensor Categories",
+      intro: `<p>Sensors are divided into two groups by <strong>where the energy for the output comes from</strong>:</p>
+        <ul class="what"><li><strong>Passive (modulating):</strong> from an <strong>external supply</strong>. The sensor only changes a property, such as its resistance.</li>
+        <li><strong>Active (self-generating):</strong> from the <strong>quantity being measured</strong> (heat, force, light). The sensor makes its own voltage or charge.</li></ul>
+        <p>Each group is explained in its own part below.</p>`,
       mount: mountTree,
-      after: `<div class="callout info"><strong>Good to know</strong>Textbooks don't all use these two words the same way: some call any sensor that needs a power supply “active”. To avoid confusion, say what you mean: <em>self-generating</em> (makes its own signal) or <em>modulating</em> (changes a signal supplied to it).</div>` },
+      after: `<div class="callout info"><strong>Good to know</strong>Online you may see “active sensor” used with a different meaning: a sensor that needs power, or one that sends out its own signal, such as radar or an ultrasonic sensor. In this course, and in your tests, <strong>active always means self-generating</strong> and passive means it needs an external supply. When you explain, use those words.</div>` },
+    { id: "passivedef", group: "passive", title: "What Is a Passive Sensor?", toc: "Definition",
+      intro: `<p>A <strong>passive sensor</strong> does <strong>not</strong> generate an electrical signal by itself. The quantity it senses changes one of its electrical properties, its <strong>resistance, capacitance or inductance</strong>, so it needs an <strong>external supply</strong> (called excitation) and a circuit, such as a voltage divider or a Wheatstone bridge, to turn that change into a voltage.</p>
+        <p class="formula">Passive = modulating: no supply, no output</p>`,
+      mount: mountFlow("passive"),
+      after: `<p><strong>In this group:</strong> resistive sensors (strain gauge, potentiometer, LDR, thermistor, RTD), capacitive sensors (touch, liquid level), inductive sensors (proximity, traffic loop, LVDT), the photodiode in photoconductive mode and the Hall effect sensor.</p>
+        <div class="callout note"><strong>How to explain it</strong>Name the property that changes, then say it needs an external supply. For example: “A strain gauge is passive: stretching changes its resistance, but it does not generate a voltage, so it needs an external supply, usually in a Wheatstone bridge.”</div>` },
     { id: "resistive", group: "passive", title: "Resistive Sensors: R = ρl ÷ A", toc: "Resistive",
       intro: `<p>A resistive sensor converts a change such as displacement, temperature or light into a change of resistance, which is measured after signal conditioning. Potentiometers, thermistors and photoresistors are common examples. For a wire of length l and cross-section A:</p><p class="formula">R = ρ l ÷ A</p>
         <p>ρ is the resistivity. Any change in ρ, l or A changes R. A <strong>strain gauge</strong> uses this: stretching its wire makes it longer and thinner, so R rises.</p>`,
@@ -1076,6 +1175,24 @@ void loop()
           step("Area in m²", "A (m²) = A (mm²) × 10<sup>−6</sup>", `= ${num(v.A)} × 10<sup>−6</sup>`, `A = ${num(A)} m²`),
           step("Resistance", "R = ρ l ÷ A", `= ${num(v.rho)} Ω·m × ${num(v.l)} m ÷ ${num(A)} m²`, `R = ${eng(R, "Ω")}`),
           step("What if…", "", "double the length → 2R; double the area → R ÷ 2", `stretch to 2l (area halves) → 4R = ${eng(4 * R, "Ω")}`)] };
+      } },
+    { id: "strain", group: "passive", title: "Strain Gauge: ΔR = GF × ε × R", toc: "Strain Gauge",
+      intro: `<p>A strain gauge is a thin metal-foil zigzag glued to a part. When the part stretches, the foil gets <strong>longer and thinner</strong>, so its resistance rises (R = ρl ÷ A). The <strong>strain</strong> ε is the change in length per unit length (ΔL ÷ L), usually given in microstrain (µε = 10<sup>−6</sup>). The <strong>gauge factor</strong> GF (about 2 for metal foil) links them:</p>
+        <p class="formula">ΔR = GF × ε × R<sub>0</sub></p>
+        <p>The change is tiny: a fraction of an ohm. That is why a strain gauge is placed in a <strong>Wheatstone bridge</strong> (Chapter 1): the bridge is balanced with no load, so even a small ΔR gives a voltage V<sub>out</sub> = V<sub>a</sub> − V<sub>b</sub>. It is <strong>passive</strong>: the bridge supply V<sub>ex</sub> provides the energy. <strong>Real situations:</strong> load cells in weighing scales, bridge and crane monitoring, and torque sensors.</p>`,
+      inputs: [F("GF", "num", 2.1, "metal foil ≈ 2", { positive: true, label: "Gauge factor GF" }),
+        F("R0", "R", 350, "120 Ω or 350 Ω are common", { label: "Gauge resistance R<sub>0</sub>" }),
+        F("ue", "num", 800, null, { unit: "µε", positive: false, label: "Strain", slider: { min: 0, max: 3000, step: 10 }, validate: (x) => (x < 0 ? "Use a positive strain (stretching)." : "") }),
+        F("Vex", "num", 5, null, { unit: "V", positive: true, label: "Bridge supply V<sub>ex</sub>", name: "Vex" })],
+      view: "0 0 440 230", diagram: sgDiagram, caption: "The beam bends under the load and stretches the gauge (drawn larger than real). The other three arms are fixed resistors R<sub>0</sub>.",
+      compute(v) {
+        const e = v.ue * 1e-6, dR = v.GF * e * v.R0, R = v.R0 + dR, va = (v.Vex * R) / (R + v.R0), vb = v.Vex / 2, vout = va - vb, approx = (v.Vex * v.GF * e) / 4;
+        return { sum: `ΔR = ${eng(dR, "Ω")}, V<sub>out</sub> = ${eng(vout, "V")}`, e, R, vout, steps: [
+          step("Strain", "ε = µε × 10<sup>−6</sup>", `= ${num(v.ue)} × 10<sup>−6</sup>`, `ε = ${num(e)}`),
+          step("Change in resistance", "ΔR = GF × ε × R<sub>0</sub>", `= ${num(v.GF)} × ${num(e)} × ${eng(v.R0, "Ω")}`, `ΔR = ${eng(dR, "Ω")}`),
+          step("Gauge resistance", "R = R<sub>0</sub> + ΔR", `= ${eng(v.R0, "Ω")} + ${eng(dR, "Ω")}`, `R = ${eng(R, "Ω")}`),
+          step("Bridge output", "V<sub>out</sub> = V<sub>a</sub> − V<sub>b</sub> = V<sub>ex</sub> × R ÷ (R + R<sub>0</sub>) − V<sub>ex</sub> ÷ 2", `= ${eng(va, "V")} − ${eng(vb, "V")}`, `V<sub>out</sub> = ${eng(vout, "V")}`),
+          step("Quick check", "V<sub>out</sub> ≈ V<sub>ex</sub> × GF × ε ÷ 4", `= ${num(v.Vex)} × ${num(v.GF)} × ${num(e)} ÷ 4`, `≈ ${eng(approx, "V")}`)] };
       } },
     { id: "pot", group: "passive", title: "Potentiometer: Sensing Angle", toc: "Potentiometer",
       intro: `<p>The resistance between GND and +V<sub>in</sub> is fixed, but the resistance between GND and the <strong>wiper</strong> depends on its position. The pot is a voltage divider, so the wiper voltage tells us the angle:</p><p class="formula">V<sub>out</sub> = V<sub>in</sub> × R<sub>2</sub> ÷ (R<sub>1</sub> + R<sub>2</sub>)</p>
@@ -1093,6 +1210,24 @@ void loop()
           step("Output voltage", "V<sub>out</sub> = V<sub>in</sub> × R<sub>2</sub> ÷ (R<sub>1</sub> + R<sub>2</sub>)", `= ${num(v.Vin)} V × ${eng(R2, "Ω")} ÷ ${eng(v.Rt, "Ω")}`, `V<sub>out</sub> = ${eng(vout, "V")}`)] };
       },
       after: watch([video("Wdl77HBP_yU", "Resistive transducers: working of transducers", "EzEd Channel")]) },
+    { id: "ldr", group: "passive", title: "LDR: Sensing Light with a Voltage Divider", toc: "LDR",
+      intro: `<p>A <strong>light dependent resistor</strong> (LDR, or photoresistor) is made of a semiconductor (often cadmium sulphide). Light frees charge carriers, so its <strong>resistance falls as the light rises</strong>: tens of kilohms in the dark, a few hundred ohms in bright light. It is <strong>passive</strong>: it makes no voltage itself, so it is put in a <strong>voltage divider</strong> with a fixed resistor R across a supply:</p>
+        <p class="formula">V<sub>out</sub> = V<sub>S</sub> × R ÷ (R + R<sub>LDR</sub>)</p>
+        <p>V<sub>out</sub> changes smoothly with the light, so it goes to an <strong>analog</strong> input of the ESP32 (a digital input only reads HIGH or LOW). An ESP32 pin takes <strong>at most 3.3 V</strong>: with a 5 V supply, R must be chosen so that V<sub>out</sub> stays under 3.3 V even in the brightest light. <strong>Real situations:</strong> automatic street lights, night lights, and light-following robots.</p>`,
+      inputs: [F("E", "num", 50, "dark room 1, dusk 10, office 400", { unit: "lux", positive: true, label: "Light level", slider: { min: 1, max: 1000, step: 1 } }),
+        F("R", "R", 4.7e3, null, { label: "Fixed resistor R" }),
+        F("Vs", "num", 5, null, { unit: "V", positive: true, label: "Supply V<sub>S</sub>", name: "Vs" })],
+      view: "0 0 440 230", diagram: ldrDiagram, render: ldrRender, caption: "R<sub>LDR</sub> follows a typical LDR curve: 20 kΩ at 10 lux, falling as the light rises. V<sub>out</sub> is across the fixed resistor.",
+      compute(v) {
+        const Rl = ldrR(v.E), vout = (v.Vs * v.R) / (v.R + Rl), over = vout > ESP_MAX, notes = [];
+        const Rmax = v.Vs > ESP_MAX ? (ESP_MAX * Rl) / (v.Vs - ESP_MAX) : Infinity;
+        if (over) notes.push({ type: "warn", title: "Too high for the ESP32", html: `V<sub>out</sub> = ${eng(vout, "V")} is above the 3.3 V limit of an ESP32 pin and could damage it. At this light, R must be at most ${eng(Rmax, "Ω")}, or use a 3.3 V supply.` });
+        return { sum: `R<sub>LDR</sub> = ${eng(Rl, "Ω")}, V<sub>out</sub> = ${eng(vout, "V")}`, Rl, vout, over, notes, steps: [
+          step("LDR resistance at this light", "From the LDR curve: R<sub>LDR</sub> = 20 kΩ × (E ÷ 10 lux)<sup>−0.8</sup>", `= 20 kΩ × (${num(v.E)} ÷ 10)<sup>−0.8</sup>`, `R<sub>LDR</sub> = ${eng(Rl, "Ω")}`),
+          step("Output voltage", "V<sub>out</sub> = V<sub>S</sub> × R ÷ (R + R<sub>LDR</sub>)", `= ${num(v.Vs)} V × ${eng(v.R, "Ω")} ÷ (${eng(v.R, "Ω")} + ${eng(Rl, "Ω")})`, `V<sub>out</sub> = ${eng(vout, "V")}`),
+          step("Safe for the ESP32?", "V<sub>out</sub> ≤ 3.3 V", `${eng(vout, "V")} ${over ? ">" : "≤"} 3.3 V`, over ? "No: too high" : "Yes"),
+          ...(v.Vs > ESP_MAX ? [step("Largest safe R at this light", "R<sub>max</sub> = 3.3 V × R<sub>LDR</sub> ÷ (V<sub>S</sub> − 3.3 V)", `= 3.3 × ${eng(Rl, "Ω")} ÷ (${num(v.Vs)} − 3.3)`, `R<sub>max</sub> = ${eng(Rmax, "Ω")}`)] : [])] };
+      } },
     { id: "thermistor", group: "passive", title: "Thermistors and RTDs: Sensing Temperature", toc: "Thermistor",
       intro: `<p>These sensors change resistance when the temperature changes. They have two leads, like a resistor.</p>
         <dl class="defs"><div><dt>NTC thermistor</dt><dd>Negative temperature coefficient: resistance <strong>falls</strong> as temperature rises. Large change, non-linear: R = R<sub>0</sub> e<sup>β(1/T − 1/T<sub>0</sub>)</sup>, with T in kelvin.</dd></div>
@@ -1169,10 +1304,34 @@ void loop()
         <p><strong>Real situations:</strong> force, tension, pressure and weight are first converted into a displacement (by a spring or diaphragm), which the LVDT measures. LVDTs are used in industrial automation, aircraft, turbines, satellites and hydraulics.</p>`,
       mount: mountLvdt,
       after: watch([video("E-kDsP0wq6w", "LVDT: linear variable differential transformer working", "ADTW Study")]) },
-    { id: "passivecompare", group: "passive", title: "Resistive, Capacitive and Inductive Sensors Compared", toc: "Comparison",
-      mount: (el) => { el.innerHTML = PASSIVE_CMP; } },
 
     // ---------- Active sensors ----------
+    { id: "activedef", group: "active", title: "What Is an Active Sensor?", toc: "Definition",
+      intro: `<p>An <strong>active sensor</strong> <strong>generates its own</strong> electrical signal (a voltage, current or charge) from the energy of the quantity it senses: heat, force or light. It needs <strong>no external supply</strong> to give an output. The output is usually very small (microvolts to millivolts), so an <strong>amplifier</strong> is needed before the ESP32 can read it.</p>
+        <p class="formula">Active = self-generating: the energy comes from the measured quantity</p>`,
+      mount: mountFlow("active"),
+      after: `<p><strong>In this group:</strong> the thermocouple (heat → voltage), the piezoelectric sensor (force → charge) and the solar cell, a photodiode in photovoltaic mode (light → voltage). A dynamic microphone is another one: sound moves a coil in a magnet.</p>
+        <div class="callout note"><strong>How to explain it</strong>Say what energy it converts, that it needs no supply, and that its output is small. For example: “A piezoelectric sensor is active: pressing the crystal produces a charge by itself, with no external supply. The output is small, so it is amplified.”</div>` },
+    { id: "thermocouple", group: "active", title: "Thermocouple: V = S × (T<sub>hot</sub> − T<sub>cold</sub>)", toc: "Thermocouple",
+      intro: `<p>Join two <strong>different metals</strong> (for example chromel and alumel in a type K) at one end and heat that joint: a small voltage appears at the other end. This is the <strong>Seebeck effect</strong>. The heated joint is the <strong>hot (measuring) junction</strong>; the ends at the meter form the <strong>cold (reference) junction</strong>. The voltage depends on the temperature <strong>difference</strong>:</p>
+        <p class="formula">V = S × (T<sub>hot</sub> − T<sub>cold</sub>)</p>
+        <p>S is the <strong>Seebeck coefficient</strong>, the thermocouple's sensitivity: about 41 µV/°C for type K, 52 µV/°C for type J, 43 µV/°C for type T and 61 µV/°C for type E (see <a href="#sensitivity">Sensitivity</a> for the full curves). It is <strong>active</strong>: the heat itself produces the voltage, with no supply. But the output is only microvolts per degree, far below the ESP32's smallest step of about 0.8 mV (3.3 V ÷ 4096), so an <strong>amplifier</strong> is needed. Modules such as the MAX6675 or MAX31855 amplify the signal, measure the cold junction and send the temperature to the ESP32. <strong>Real situations:</strong> furnaces and kilns, gas-boiler flame sensors, engine exhaust and 3D-printer hot ends.</p>`,
+      inputs: [F("S", "num", 52, "K ≈ 41, J ≈ 52, T ≈ 43, E ≈ 61", { unit: "µV/°C", positive: true, label: "Seebeck coefficient S" }),
+        F("Th", "num", 300, null, { unit: "°C", positive: false, label: "Hot junction T<sub>hot</sub>", slider: { min: 0, max: 1000, step: 5 } }),
+        F("Tc", "num", 30, "room temperature at the meter", { unit: "°C", positive: false, label: "Cold junction T<sub>cold</sub>" }),
+        F("step", "num", 0.8, "ESP32: 3.3 V ÷ 4096 ≈ 0.8 mV", { unit: "mV", positive: true, label: "Smallest change the ADC detects" })],
+      view: "0 0 440 220", diagram: tcDiagram, caption: "Heat the furnace with the slider. The meter shows the thermocouple's own voltage: there is no battery.",
+      compute(v) {
+        const dT = v.Th - v.Tc, V = v.S * 1e-6 * dT, per = v.S * 1e-3, minT = v.step / per, G = v.step / per, notes = [];
+        if (dT < 0) notes.push({ type: "info", title: "Hot side colder than the reference", html: "The voltage is negative. A thermocouple measures the temperature <em>difference</em> between its two junctions, not one temperature." });
+        if (per < v.step) notes.push({ type: "warn", title: "Too small for the ESP32 on its own", html: `1 °C changes the output by only ${num(v.S)} µV, less than the ${num(v.step)} mV step of the ADC. The ESP32 would only notice a change of about ${num(minT)} °C, so an amplifier with a gain of at least ${num(Math.ceil(G))} is needed.` });
+        return { sum: `ΔT = ${num(dT)} °C, V = ${eng(V, "V")}`, V, notes, steps: [
+          step("Temperature difference", "ΔT = T<sub>hot</sub> − T<sub>cold</sub>", `= ${num(v.Th)} °C − ${num(v.Tc)} °C`, `ΔT = ${num(dT)} °C`),
+          step("Thermocouple voltage", "V = S × ΔT", `= ${num(v.S)} µV/°C × ${num(dT)} °C`, `V = ${eng(V, "V")}`),
+          step("Change for 1 °C", "ΔV = S × 1 °C", `= ${num(v.S)} µV = ${num(per)} mV`, `${num(per)} mV ${per >= v.step ? "≥" : "<"} ${num(v.step)} mV (ADC step)`),
+          step("Smallest change the ESP32 sees", "ΔT<sub>min</sub> = ADC step ÷ S", `= ${num(v.step)} mV ÷ ${num(per)} mV/°C`, `ΔT<sub>min</sub> = ${num(minT)} °C`),
+          step("Gain so that 1 °C gives one ADC step", "G = ADC step ÷ (S × 1 °C)", `= ${num(v.step)} mV ÷ ${num(per)} mV`, `G = ${num(G)}`)] };
+      } },
     { id: "piezo", group: "active", title: "Piezoelectric Sensors", toc: "Piezoelectric",
       intro: `<p><em>Piezo</em> is Greek for pressure: piezoelectricity is electricity from pressure. Squeeze a piezoelectric crystal and charges appear on its faces, in proportion to the force (stress). It also works the other way: apply a voltage and the crystal deforms. Piezo materials are either <strong>ceramics</strong> or <strong>polymers</strong>.</p>
         <p><strong>Real situations:</strong> gas-stove igniters, microphones, knock and vibration sensors, and buzzers. Piezo actuators make movements as small as 1 ångström (10<sup>−10</sup> m) in scanning tunnelling and atomic force microscopes.</p>
@@ -1180,9 +1339,9 @@ void loop()
       mount: mountPiezo,
       after: watch([readLink("https://deepbluembedded.com/arduino-active-passive-buzzer/", "Active and passive buzzers with Arduino", "DeepBlue Embedded · article"),
         readLink("https://techtutorialsx.com/2017/07/01/esp32-arduino-controlling-a-buzzer-with-pwm/", "ESP32 Arduino: controlling a buzzer with PWM", "techtutorialsx · tutorial")], "Read") },
-    { id: "photodiode", group: "active", title: "Photodiode in Photoconductive Mode", toc: "Photodiode",
+    { id: "photodiode", group: "passive", title: "Photodiode in Photoconductive Mode", toc: "Photodiode",
       intro: `<p>In <strong>photoconductive mode</strong> the photodiode is <strong>reverse biased</strong> by an external supply. Light falling on it releases charge carriers, so its resistance drops and a photocurrent I<sub>λ</sub> flows, in proportion to the light. The load resistor turns that current into a voltage: <span class="formula">V<sub>out</sub> = I<sub>λ</sub> × R<sub>L</sub></span></p>
-        <p>With no bias (<strong>photovoltaic mode</strong>) the same diode generates its own voltage, like a small solar cell: that is the self-generating way to use it. <strong>Real situations:</strong> optical-fibre receivers, smoke detectors, safety light curtains, and heart-rate sensors on smartwatches.</p>`,
+        <p>Because the reverse bias comes from an external supply, a photodiode used this way is a <strong>passive</strong> sensor. With no bias (<strong>photovoltaic mode</strong>) the same diode generates its own voltage, like a small solar cell: then it is an <strong>active</strong> sensor (see <a href="#solar">Solar Cell</a>). <strong>Real situations</strong> for photoconductive mode: optical-fibre receivers, smoke detectors, safety light curtains, and heart-rate sensors on smartwatches.</p>`,
       inputs: [F("E", "num", 400, "office 400, bright window 1000+", { unit: "lux", positive: false, label: "Light level", slider: { min: 0, max: 2000, step: 10 }, validate: (x) => (x < 0 ? "Light can't be negative." : "") }),
         F("RL", "R", 47e3, null, { label: "Load resistor R<sub>L</sub>" }),
         F("Vcc", "num", 3.3, null, { unit: "V", positive: true, label: "Supply V<sub>CC</sub>", name: "Vcc" })],
@@ -1194,11 +1353,28 @@ void loop()
           step("Photocurrent", "I<sub>λ</sub> = sensitivity × light", `= 0.05 µA/lux × ${num(v.E)} lux`, `I<sub>λ</sub> = ${eng(I, "A")}`),
           step("Output voltage", "V<sub>out</sub> = I<sub>λ</sub> × R<sub>L</sub>", `= ${eng(I, "A")} × ${eng(v.RL, "Ω")}`, `V<sub>out</sub> = ${eng(raw, "V")}${sat ? ` → limited to ${num(v.Vcc)} V` : ""}`)] };
       } },
-    { id: "hall", group: "active", title: "Hall Effect Sensors", toc: "Hall Effect",
-      intro: `<p>A Hall sensor detects a <strong>magnetic field</strong>. A bias current flows through a thin semiconductor plate; a magnetic field pushes the moving charges to one edge, so a voltage, the <strong>Hall voltage</strong>, appears across the plate in proportion to the field strength. It needs an external supply for the bias current.</p>
+    { id: "hall", group: "passive", title: "Hall Effect Sensors", toc: "Hall Effect",
+      intro: `<p>A Hall sensor detects a <strong>magnetic field</strong>. A bias current flows through a thin semiconductor plate; a magnetic field pushes the moving charges to one edge, so a voltage, the <strong>Hall voltage</strong>, appears across the plate in proportion to the field strength.</p>
+        <p>It is a <strong>passive</strong> sensor: the bias current comes from an external supply, and with no supply there is no Hall voltage. The magnetic field only changes how the supplied current is shared across the plate.</p>
         <p><strong>Real situations:</strong> wheel-speed sensors for ABS brakes, brushless fan and motor control, the flip-cover sensor in a phone, contactless current sensors, and joysticks.</p>`,
       mount: mountHall },
-    { id: "activecompare", group: "active", title: "Passive and Active Sensors Compared", toc: "Comparison",
+    { id: "passivecompare", group: "passive", title: "Resistive, Capacitive and Inductive Sensors Compared", toc: "R, C and L Compared",
+      mount: (el) => { el.innerHTML = PASSIVE_CMP; } },
+    { id: "solar", group: "active", title: "Solar Cell: Photodiode in Photovoltaic Mode", toc: "Solar Cell",
+      intro: `<p>A solar cell is a large photodiode used with <strong>no bias</strong> (photovoltaic mode). Light frees charge carriers at the p-n junction, and the junction's own electric field pushes them round the circuit: the cell <strong>generates its own current and voltage</strong>, so it is an <strong>active</strong> sensor. Compare the <a href="#photodiode">photodiode in photoconductive mode</a>, which needs a supply and is passive.</p>
+        <p>The current is proportional to the light (I<sub>sc</sub> = sensitivity × light), but the open-circuit voltage only grows slowly, with the logarithm of the light: about 0.4 V indoors and 0.6 V in full sun for one silicon cell. To <strong>measure</strong> light, use the current, through a small load resistor. <strong>Real situations:</strong> light meters and camera exposure sensors, solar-powered sensor nodes, and garden lights that switch on at dusk.</p>`,
+      inputs: [F("E", "num", 20000, "indoor 500, cloudy day 20 000, full sun 100 000", { unit: "lux", positive: false, label: "Light level", slider: { min: 0, max: 100000, step: 500 }, validate: (x) => (x < 0 ? "Light can't be negative." : "") }),
+        F("RL", "R", 10, null, { label: "Load resistor R<sub>L</sub>" })],
+      view: "0 0 440 220", diagram: solarDiagram, caption: "A 4 cm² silicon cell, sensitivity 1.2 µA per lux. There is no battery in the circuit.",
+      compute(v) {
+        const Isc = PV_K * v.E, Voc = Isc > 0 ? PV_NVT * Math.log(Isc / PV_I0 + 1) : 0, V = Math.min(Isc * v.RL, Voc), P = (V * V) / v.RL;
+        return { sum: `I<sub>sc</sub> = ${eng(Isc, "A")}, V = ${eng(V, "V")}`, V, notes: [{ type: "info", title: "Self-generating", html: "There is no battery or supply in this circuit: the light is the only energy source. That is what makes the solar cell an active sensor." }], steps: [
+          step("Current from the light", "I<sub>sc</sub> = sensitivity × light", `= 1.2 µA/lux × ${num(v.E)} lux`, `I<sub>sc</sub> = ${eng(Isc, "A")}`),
+          step("Open-circuit voltage (no load)", "V<sub>oc</sub> = n V<sub>T</sub> ln(I<sub>sc</sub> ÷ I<sub>0</sub> + 1)", `= 1.3 × 25.7 mV × ln(${eng(Isc, "A")} ÷ 4 nA + 1)`, `V<sub>oc</sub> = ${eng(Voc, "V")}`),
+          step("Voltage across the load", "V ≈ I<sub>sc</sub> × R<sub>L</sub>, but never more than V<sub>oc</sub>", `= ${eng(Isc, "A")} × ${eng(v.RL, "Ω")}`, `V = ${eng(V, "V")}`),
+          step("Power it generates", "P = V² ÷ R<sub>L</sub>", `= (${eng(V, "V")})² ÷ ${eng(v.RL, "Ω")}`, `P = ${eng(P, "W")}`)] };
+      } },
+    { id: "activecompare", group: "summary", title: "Passive and Active Sensors Compared", toc: "Comparison",
       mount: (el) => { el.innerHTML = `${ACTIVE_CMP}<h4 class="sub-h">By Example</h4>${EXAMPLES_CMP}<h4 class="sub-h">Quick Check: Passive or Active?</h4><div class="quiz-host"></div>`; quiz(el.querySelector(".quiz-host"), CLASS_QUIZ); } },
 
     // ---------- Actuators ----------
@@ -1310,8 +1486,10 @@ void loop()
     groups: [
       { key: "intro", list: "#introList", toc: "#introToc" },
       { key: "params", list: "#paramsList", toc: "#paramsToc" },
+      { key: "classify", list: "#classifyList", toc: "#classifyToc" },
       { key: "passive", list: "#passiveList", toc: "#passiveToc" },
       { key: "active", list: "#activeList", toc: "#activeToc" },
+      { key: "summary", list: "#summaryList", toc: "#summaryToc" },
       { key: "actuators", list: "#actList", toc: "#actToc" }
     ],
     exercises: EXERCISES

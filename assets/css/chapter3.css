@@ -214,3 +214,28 @@
 .scene .on-road { fill: #eef2f5; font-weight: 600; }
 .scene .ac { fill: var(--surface); }
 .cmp-grid .photo2.small { max-width: 280px; }
+
+/* Passive and active: the definition chain (4 steps; stacked on phones) */
+.flow4 { list-style: none; margin: 6px 0 4px; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 26px; }
+.flow4 li { position: relative; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 10px 12px; display: grid; align-content: start; gap: 4px; }
+.flow4 li > span:last-child { color: var(--ink-2); font-size: .9rem; }
+.flow4 .fn { width: 24px; height: 24px; border-radius: 50%; background: var(--teal); color: #fff; font-weight: 700; font-size: .85rem; display: grid; place-items: center; }
+.flow4 li:not(:last-child)::after { content: "→"; position: absolute; right: -21px; top: 50%; transform: translateY(-50%); color: var(--teal); font-weight: 700; font-size: 1.2rem; }
+.flow4.passive li:nth-child(3), .flow4.active li:nth-child(2) { border: 2px solid var(--teal); background: var(--teal-soft); }
+@media (max-width: 720px) {
+  .flow4 { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .flow4 li:not(:last-child)::after { content: "↓"; right: auto; left: 50%; top: auto; bottom: -22px; transform: translateX(-50%); }
+}
+/* thermocouple, LDR, strain gauge and solar cell calculators */
+.ckt .oven { fill: #59626a; }
+.ckt .tcw-a { fill: none; stroke: #e0b400; stroke-width: 3; }
+.ckt .tcw-b { fill: none; stroke: #3b82c4; stroke-width: 3; }
+.ckt .tcj { fill: #ff6b3d; stroke: var(--ink); stroke-width: 1.5; }
+.ckt .ldr-ring { fill: none; stroke: var(--ink); stroke-width: 1.6; }
+.ckt .wall { fill: var(--ink-3); }
+.ckt .beam { fill: var(--surface); stroke: var(--ink); stroke-width: 1.6; }
+.ckt .gauge { fill: none; stroke: var(--teal); stroke-width: 2; }
+.ckt .gauge-t { fill: var(--teal); font-weight: 600; }
+.ckt .ldarrow { fill: none; stroke: var(--amber); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ckt .pv-cell { fill: #1e3a5f; stroke: var(--ink); stroke-width: 1.6; }
+.ckt .pv-grid { fill: none; stroke: #9fc3e8; stroke-width: 1; }

@@ -4,16 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Chapter 3: Transducers, Sensors and Actuators | NMK42003 Instrumentation</title>
-  <meta name="description" content="Animated notes for NMK42003 Instrumentation Chapter 3: transducers, sensor parameters shown in real situations, passive (resistive, capacitive, inductive) and active (piezoelectric, photodiode, Hall effect) sensors, and actuators (LED, DC motor, servo, relay), with calculators and exercises.">
+  <meta name="description" content="Animated notes for NMK42003 Instrumentation Chapter 3: transducers, sensor parameters shown in real situations, the classification of sensors, passive (resistive, strain gauge, LDR, capacitive, inductive, Hall effect) and active (thermocouple, piezoelectric, solar cell) sensors, and actuators (LED, DC motor, servo, relay), with calculators and exercises.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=2610272">
-  <link rel="stylesheet" href="assets/css/assistant.css?v=2610272">
-  <link rel="stylesheet" href="assets/css/account.css?v=2610272">
-  <link rel="stylesheet" href="assets/css/game.css?v=2610272">
-  <link rel="stylesheet" href="assets/css/lab.css?v=2610272">
-  <link rel="stylesheet" href="assets/css/chapter3.css?v=2610272">
+  <link rel="stylesheet" href="assets/css/style.css?v=2610273">
+  <link rel="stylesheet" href="assets/css/assistant.css?v=2610273">
+  <link rel="stylesheet" href="assets/css/account.css?v=2610273">
+  <link rel="stylesheet" href="assets/css/game.css?v=2610273">
+  <link rel="stylesheet" href="assets/css/lab.css?v=2610273">
+  <link rel="stylesheet" href="assets/css/chapter3.css?v=2610273">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0b6e6e">
   <link rel="apple-touch-icon" href="assets/img/icon-180.png">
@@ -67,8 +67,10 @@
         <ul>
           <li>explain what transducers, sensors and actuators are, with everyday examples</li>
           <li>describe the eight electrical sensor parameters and recognise each one in a real situation</li>
-          <li>calculate the output of resistive, capacitive and inductive sensors</li>
-          <li>tell passive sensors from active ones, and explain how common actuators are driven</li>
+          <li>tell passive sensors from active ones, and explain why, using the right definition</li>
+          <li>explain how resistive, capacitive, inductive, thermocouple, piezoelectric and solar-cell sensors work, and calculate their outputs</li>
+          <li>design an LDR voltage divider that is safe for an ESP32 pin, and explain why a thermocouple needs an amplifier</li>
+          <li>explain how common actuators are driven</li>
         </ul>
       </div>
       <p class="lab-how">The pictures on this page move. Press <strong>play</strong> on any animation, change the settings and watch the graph. Tap <strong>Show</strong> on any panel to see the step-by-step working. The exercises at the end check what you have learnt.</p>
@@ -79,8 +81,10 @@
       <div class="wrap">
         <a href="#intro">Introduction</a>
         <a href="#params">Sensor Parameters</a>
+        <a href="#classify">Classification</a>
         <a href="#passive">Passive Sensors</a>
         <a href="#active">Active Sensors</a>
+        <a href="#summary">Passive vs Active</a>
         <a href="#actuators">Actuators</a>
         <a href="#exercises">Exercises</a>
       </div>
@@ -108,11 +112,22 @@
       </div>
     </section>
 
+    <section class="lab-group" id="classify-g" aria-labelledby="classify-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="classify-h">Classification of Sensors</h2>
+          <p>Two groups, decided by where the energy for the output comes from.</p>
+          <ul class="toc-chips" id="classifyToc"></ul>
+        </div>
+        <div id="classifyList"></div>
+      </div>
+    </section>
+
     <section class="lab-group" id="passive" aria-labelledby="passive-h">
       <div class="wrap">
         <div class="group-head">
           <h2 id="passive-h">Passive Sensors</h2>
-          <p>Resistive, capacitive and inductive sensors change a property of a circuit, so they need an external supply to give an output.</p>
+          <p>Sensors that need an external supply: resistive, capacitive and inductive sensors, the photodiode in photoconductive mode and the Hall effect sensor.</p>
           <ul class="toc-chips" id="passiveToc"></ul>
         </div>
         <div id="passiveList"></div>
@@ -123,10 +138,21 @@
       <div class="wrap">
         <div class="group-head">
           <h2 id="active-h">Active Sensors</h2>
-          <p>Piezoelectric sensors, photodiodes and Hall effect sensors, and how passive and active sensors compare.</p>
+          <p>Sensors that generate their own signal: the thermocouple, piezoelectric sensors and the solar cell.</p>
           <ul class="toc-chips" id="activeToc"></ul>
         </div>
         <div id="activeList"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="summary" aria-labelledby="summary-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="summary-h">Passive vs Active</h2>
+          <p>The two groups side by side, with a quick check.</p>
+          <ul class="toc-chips" id="summaryToc"></ul>
+        </div>
+        <div id="summaryList"></div>
       </div>
     </section>
 
@@ -173,17 +199,17 @@
 
   <footer class="site-footer" id="footer"></footer>
 
-  <script src="assets/js/data.js?v=2610272"></script>
+  <script src="assets/js/data.js?v=2610273"></script>
 
-  <script src="assets/js/schedule.js?v=2610272"></script>
-  <script src="assets/js/main.js?v=2610272"></script>
+  <script src="assets/js/schedule.js?v=2610273"></script>
+  <script src="assets/js/main.js?v=2610273"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
-  <script src="assets/js/game.js?v=2610272" defer></script>
-  <script src="assets/js/account.js?v=2610272" defer></script>
-  <script src="assets/js/assistant.js?v=2610272" defer></script>
-  <script src="assets/js/lab.js?v=2610272"></script>
-  <script src="assets/js/chapter3.js?v=2610272"></script>
+  <script src="assets/js/game.js?v=2610273" defer></script>
+  <script src="assets/js/account.js?v=2610273" defer></script>
+  <script src="assets/js/assistant.js?v=2610273" defer></script>
+  <script src="assets/js/lab.js?v=2610273"></script>
+  <script src="assets/js/chapter3.js?v=2610273"></script>
 </body>
 </html>

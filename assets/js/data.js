@@ -110,7 +110,7 @@ const COURSE = {
     { no: 2, title: "Embedded Controller", weeks: "Weeks 2 to 3", status: "interactive", page: "chapter-2.html", co: "CO1", exercises: { count: 10, prefix: "c2-" },
       summary: "Types of embedded controllers, interfacing through digital I/O, analog, UART, SPI and I²C, Bluetooth and WiFi connectivity, and programming tools." },
     { no: 3, title: "Transducers, Sensors and Actuators", weeks: "Week 4", status: "interactive", page: "chapter-3.html", co: "CO1", exercises: { count: 12, prefix: "c3-" },
-      summary: "Sensor parameters shown in real situations, passive (resistive, capacitive, inductive) and active (piezoelectric, photodiode, Hall effect) sensors, and actuators (LED, DC motor, servo, relay)." },
+      summary: "Sensor parameters shown in real situations, the classification of sensors, passive (resistive, strain gauge, LDR, capacitive, inductive, Hall effect) and active (thermocouple, piezoelectric, solar cell) sensors, and actuators (LED, DC motor, servo, relay)." },
     { no: 4, title: "Transduction Techniques", weeks: "Week 5", status: "interactive", page: "chapter-4.html", co: "CO1", exercises: { count: 12, prefix: "c4-" },
       summary: "Transduction circuits for passive sensors (voltage divider, Wheatstone bridge, 555 timing circuit, LC tuned circuit) and for active sensors (the piezo and its resistor)." },
     { no: 5, title: "Signal Conditioning (Amplifiers & Filters)", weeks: "Week 5", status: "interactive", page: "chapter-5.html", co: "CO1", exercises: { count: 7, prefix: "ex-" },
