@@ -272,9 +272,9 @@
     el.innerHTML = `
       ${head}
       ${sec.diagram
-        ? `<div class="c-grid">
+        ? `<div class="c-grid${sec.side && sec.render ? " has-side" : ""}">
             <figure class="diagram"><div class="ckt-wrap"></div><figcaption>${sec.caption || "The labels update as you change the values."}<span class="swipe"> Swipe sideways to see the whole diagram.</span></figcaption></figure>
-            ${form}
+            ${sec.side && sec.render ? `<div class="side-col">${form}<div class="extra side"></div></div>` : form}
           </div>`
         : `<div class="c-grid single">${form}</div>`}
       ${sec.collapse
@@ -285,7 +285,7 @@
         <ol class="steps"></ol>
       </div>`}
       <div class="warnings"></div>
-      ${sec.render ? `<div class="extra"></div>` : ""}
+      ${sec.render && !(sec.side && sec.diagram) ? `<div class="extra"></div>` : ""}
       ${sec.bode ? `<div class="bode"><h4>Frequency Response (Bode Magnitude Plot)</h4><div class="bode-plot"></div>
         <p class="bode-cap">Gain in dB against frequency on a log scale. Dashed lines mark the cut-off frequencies and the −3 dB level, and the red dot is your chosen f. Click or tap the graph to move f.</p></div>` : ""}
       ${sec.after || ""}`;
@@ -852,6 +852,8 @@
     if (cfg.lab) renderLabHero(COURSE.labs.find((l) => l.no === cfg.lab));
     else renderHero(COURSE.topics.find((t) => t.no === cfg.topic));
     if (cfg.collapseWorking) cfg.sections.forEach((s) => { s.collapse = true; });
+    // the graph goes under the inputs (next to the diagram), so the diagram, the inputs and the graph fit on one screen
+    if (cfg.sideGraphs) cfg.sections.forEach((s) => { if (s.render) s.side = true; });
     cfg.groups.forEach((g) => {
       const secs = cfg.sections.filter((s) => s.group === g.key);
       secs.forEach((s) => $(g.list).appendChild(buildSection(s)));

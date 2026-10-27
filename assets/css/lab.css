@@ -459,3 +459,16 @@ details.fold[open] .fold-h::after { content: "Hide ▴"; }
 .scene .tt.sm { font-size: 13px; }
 .scene .op { fill: var(--surface); stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; }
 
+/* a section's graph (Lab.page sideGraphs): on a computer under the diagram, beside the inputs; on a phone after the inputs */
+@media (min-width: 861px) {
+  .c-grid.has-side { grid-template-areas: "dia form" "graph form"; row-gap: 14px; }
+  .c-grid.has-side > .diagram { grid-area: dia; position: static; }
+  .c-grid.has-side .side-col { display: contents; }
+  .c-grid.has-side .side-col > form { grid-area: form; }
+  .c-grid.has-side .side-col > .extra { grid-area: graph; }
+  .c-grid.has-side .extra .plot-box svg { display: block; max-height: 270px; margin: 0 auto; }
+}
+.side-col { display: grid; gap: 14px; min-width: 0; align-content: start; }
+.side-col .extra { margin: 0; }
+.side-col .extra .plot-box { max-width: none; }
+.side-col .extra .small-note { margin: 6px 0 0; }

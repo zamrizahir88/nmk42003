@@ -253,3 +253,4 @@
 .cmp2-out .no-t { color: var(--danger); font-weight: 700; }
 .cmp2-verdict { margin: 10px 0 0; padding: 10px 12px; border-left: 4px solid var(--teal); background: var(--teal-soft); border-radius: 0; }
 @media (max-width: 760px) { .cmp2 { grid-template-columns: minmax(0, 1fr); } }
+.ckt .wire-ghost { fill: none; stroke: var(--ink-3); stroke-width: 1.4; stroke-dasharray: 5 4; }

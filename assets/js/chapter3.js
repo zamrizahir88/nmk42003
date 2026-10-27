@@ -477,12 +477,17 @@
      Passive: resistive sensors
      ===================================================================== */
   function wireDiagram(Tl, lab, v, res) {
-    const l = v.l > 0 ? v.l : 2, A = v.A > 0 ? v.A : 0.2;
-    const Lpx = clamp(170 + 90 * Math.log10(l / 2), 50, 330), h = clamp(10 + 14 * Math.sqrt(A), 5, 50), x0 = 70, y = 100;
-    let s = `<rect class="wire3d" x="${x0}" y="${y - h / 2}" width="${Lpx}" height="${h}" rx="${Math.min(h / 2, 6)}"/><ellipse class="wire-end" cx="${x0}" cy="${y}" rx="${Math.max(3, h / 4)}" ry="${h / 2}"/>`;
-    s += `<path class="w thin" d="M${x0},${y + h / 2 + 14}v10M${x0 + Lpx},${y + h / 2 + 14}v10M${x0},${y + h / 2 + 19}H${x0 + Lpx}"/>`;
-    s += T(x0 + Lpx / 2, y + h / 2 + 40, `l = ${lab.l || "?"}`) + T(x0 - 8, y - h / 2 - 12, `A = ${lab.A || "?"}`, "start");
-    s += `<text x="${x0 + Lpx / 2}" y="30" text-anchor="middle">R = <tspan class="val">${res ? eng(res.R, "Ω") : "?"}</tspan></text>`;
+    const l = v.l > 0 ? v.l : 2, A = v.A > 0 ? v.A : 0.2, k = v.k >= 1 ? v.k : 1;
+    const len = (L) => clamp(150 + 80 * Math.log10(L / 2), 50, 340), thick = (a) => clamp(10 + 14 * Math.sqrt(a), 4, 50), x0 = 40, y = 100;
+    const L0 = len(l), h0 = thick(A), Lk = clamp(L0 * k, 50, 370), hk = thick(A / k);
+    // the wire as made (dashed outline) and stretched k times at the same volume: longer and thinner
+    let s = k > 1.001 ? `<rect class="wire-ghost" x="${x0}" y="${y - h0 / 2}" width="${L0}" height="${h0}" rx="${Math.min(h0 / 2, 6)}"/>` : "";
+    s += `<rect class="wire3d" x="${x0}" y="${y - hk / 2}" width="${Lk}" height="${hk}" rx="${Math.min(hk / 2, 6)}"/><ellipse class="wire-end" cx="${x0}" cy="${y}" rx="${Math.max(3, hk / 4)}" ry="${hk / 2}"/>`;
+    const yb = y + Math.max(h0, hk) / 2;
+    s += `<path class="w thin" d="M${x0},${yb + 14}v10M${x0 + Lk},${yb + 14}v10M${x0},${yb + 19}H${x0 + Lk}"/>`;
+    s += T(x0 + Lk / 2, yb + 40, k > 1.001 ? `l' = ${num(k)} × ${lab.l || "?"}` : `l = ${lab.l || "?"}`) + T(x0, 58, k > 1.001 ? `A' = ${lab.A || "?"} ÷ ${num(k)}` : `A = ${lab.A || "?"}`, "start");
+    s += `<text x="220" y="30" text-anchor="middle">${k > 1.001 ? `R = ${res ? eng(res.R, "Ω") : "?"} → R' = <tspan class="val">${res ? eng(res.R * k * k, "Ω") : "?"}</tspan>` : `R = <tspan class="val">${res ? eng(res.R, "Ω") : "?"}</tspan>`}</text>`;
+    if (k > 1.001) s += `<path class="w thin" d="M${x0 + L0},${y - Math.max(h0, hk) / 2 - 4}V${y + h0 / 2}" stroke-dasharray="3 3"/>` + T(x0 + L0, y - Math.max(h0, hk) / 2 - 8, "as made", "middle", "small");
     return s;
   }
   function potDiagram(Tl, lab, v, res) {
@@ -1633,6 +1638,7 @@ void loop()
   Lab.page({
     topic: 3,
     collapseWorking: true,
+    sideGraphs: true,
     exerciseCarousel: true,
     sections: SECTIONS,
     groups: [
