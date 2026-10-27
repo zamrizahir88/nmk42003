@@ -27,10 +27,27 @@
   }
   function headSvg(h) {
     const sk = h.skin, hc = h.hair, m = h.look === "m", t = h.look === "t";
+    const head = h.head === "kopiah" && !m ? "none" : h.head;   // the kopiah is for the male look only
     let back = "", top = "";
     if (t) {
-      back = `<path d="M-34 -6 Q-36 -53 0 -53 Q36 -53 34 -6 Q37 27 23 37 L-23 37 Q-37 27 -34 -6 Z" fill="${h.tud}" ${O}/>`;
-      top = `<path d="M-24 -12 Q-21 -37 0 -37 Q21 -37 24 -12 Q15 -27 0 -28 Q-15 -27 -24 -12 Z" fill="${h.tud}"/><path d="M-22 -10 Q0 -41 22 -10" fill="none" stroke="${INK}" stroke-width="1.2" opacity=".35"/><circle cx="18" cy="-27" r="3.4" fill="${h.color}" stroke="${INK}" stroke-width="1.2"/>`;
+      // tudung styles: bawal (square, pinned under the chin), sarung (slip-on, with its stiff front visor), shawl (wrapped,
+      // the long end over one shoulder); a brooch (kerongsang) under the chin
+      const ts = h.tudS || "bawal", band = `<path d="M-24 -12 Q-21 -37 0 -37 Q21 -37 24 -12 Q15 -27 0 -28 Q-15 -27 -24 -12 Z" fill="${h.tud}"/><path d="M-22 -10 Q0 -41 22 -10" fill="none" stroke="${INK}" stroke-width="1.2" opacity=".35"/>`;
+      if (ts === "sarung") {
+        back = `<path d="M-33 -8 Q-35 -52 0 -52 Q35 -52 33 -8 Q35 22 26 33 Q0 42 -26 33 Q-35 22 -33 -8 Z" fill="${h.tud}" ${O}/>`;
+        top = `<path d="M-26 -15 Q-25 -41 0 -41 Q25 -41 26 -15 Q14 -31 0 -31 Q-14 -31 -26 -15 Z" fill="${h.tud}" ${O}/><path d="M-26 -15 Q-25 -41 0 -41 Q25 -41 26 -15 Q14 -31 0 -31 Q-14 -31 -26 -15 Z" fill="#000" opacity=".12"/><path d="M-22 -19 Q0 -38 22 -19" fill="none" stroke="#fff" stroke-width="1.2" stroke-dasharray="2 2.5" opacity=".6"/>`;
+      } else if (ts === "shawl") {
+        back = `<path d="M-34 -6 Q-36 -53 0 -53 Q36 -53 34 -6 Q37 27 23 37 L-23 37 Q-37 27 -34 -6 Z" fill="${h.tud}" ${O}/><path d="M-28 14 Q-48 40 -42 66 L-27 64 Q-31 40 -18 26 Z" fill="${h.tud}" ${O}/><path d="M-36 34 Q-38 50 -34 62" stroke="${INK}" stroke-width="1.2" fill="none" opacity=".35"/>`;
+        top = band + `<path d="M-23 21 Q0 33 25 15 M-20 27 Q2 37 22 24" stroke="${INK}" stroke-width="1.3" fill="none" opacity=".35"/>`;
+      } else {
+        back = `<path d="M-34 -6 Q-36 -53 0 -53 Q36 -53 34 -6 Q37 27 23 37 L-23 37 Q-37 27 -34 -6 Z" fill="${h.tud}" ${O}/>`;
+        top = band;
+      }
+      top += { gold: `<circle cx="0" cy="24" r="3.8" fill="#e0b341" stroke="${INK}" stroke-width="1.3"/><circle cx="-1" cy="22.8" r="1.2" fill="#fff6c8"/>`,
+        pearl: `<circle cx="0" cy="24" r="3.6" fill="#fbf7ee" stroke="${INK}" stroke-width="1.3"/><circle cx="-1.1" cy="22.9" r="1.1" fill="#fff"/>`,
+        flower: [0, 72, 144, 216, 288].map((a) => `<circle cx="${(3 * Math.cos(a * Math.PI / 180)).toFixed(1)}" cy="${(24 + 3 * Math.sin(a * Math.PI / 180)).toFixed(1)}" r="2.2" fill="#f48fb1" stroke="${INK}" stroke-width=".9"/>`).join("") + `<circle cx="0" cy="24" r="1.6" fill="#e0b341"/>` }[h.brooch] || "";
+    } else if (m && head === "kopiah") {
+      top = "";   // the kopiah covers all the hair
     } else if (m) {
       top = { spiky: `<path d="M-30 -12 Q-31 -45 0 -45 Q31 -45 30 -12 L25 -23 L18 -16 L11 -26 L2 -17 L-6 -27 L-14 -17 L-21 -26 Z" fill="${hc}" ${O}/>`,
         neat: `<path d="M-30 -10 Q-32 -46 0 -46 Q32 -46 30 -10 Q25 -31 -2 -32 Q-21 -31 -30 -10 Z" fill="${hc}" ${O}/>`,
@@ -46,9 +63,11 @@
       beard: `<path d="M-28 -6 Q-27 23 0 23 Q27 23 28 -6 Q23 10 10 10 Q0 14 -10 10 Q-23 10 -28 -6 Z" fill="${hc}" ${O}/>` + mous }[h.face] || "";
     const eyes = { none: "", round: `<circle cx="-10" cy="-8" r="8" fill="#bfe3f2" fill-opacity=".25" stroke="${INK}" stroke-width="2.2"/><circle cx="10" cy="-8" r="8" fill="#bfe3f2" fill-opacity=".25" stroke="${INK}" stroke-width="2.2"/><path d="M-2 -8 H2" stroke="${INK}" stroke-width="2.2"/>`,
       goggles: `<rect x="-28" y="-35" width="56" height="6" rx="3" fill="#3a4a5c"/><circle cx="-11" cy="-32" r="7.5" fill="#9fd3e6" ${O}/><circle cx="11" cy="-32" r="7.5" fill="#9fd3e6" ${O}/><circle cx="-13" cy="-34" r="2" fill="#fff"/><circle cx="9" cy="-34" r="2" fill="#fff"/>` }[h.eyes] || "";
-    const hw = t ? "" : { none: "", cap: `<path d="M-30 -18 Q-29 -49 0 -49 Q29 -49 30 -18 Q0 -26 -30 -18 Z" fill="${h.color}" ${O}/><path d="M18 -22 Q39 -24 47 -16 Q35 -14 20 -17 Z" fill="${h.color}" ${O}/><circle cx="0" cy="-48" r="3.4" fill="${INK}"/>`,
-      kopiah: `<path d="M-25 -26 L-23 -45 Q0 -51 23 -45 L25 -26 Q0 -32 -25 -26 Z" fill="#fbfbf7" ${O}/><path d="M-21 -39 Q0 -44 21 -39 M-22 -33 Q0 -38 22 -33" stroke="#c9c9c0" stroke-width="1.5" fill="none" stroke-dasharray="2 3"/>`,
-      hardhat: `<path d="M-31 -22 Q0 -62 31 -22 Z" fill="#f0a830" ${O}/><rect x="-34" y="-25" width="68" height="8" rx="4" fill="#f0a830" ${O}/><path d="M0 -52 V-26" stroke="#c98a00" stroke-width="3"/>` }[h.head] || "";
+    const hw0 = { none: "", cap: `<path d="M-30 -18 Q-29 -49 0 -49 Q29 -49 30 -18 Q0 -26 -30 -18 Z" fill="${h.color}" ${O}/><path d="M18 -22 Q39 -24 47 -16 Q35 -14 20 -17 Z" fill="${h.color}" ${O}/><circle cx="0" cy="-48" r="3.4" fill="${INK}"/>`,
+      // from the forehead to the back of the head, like a cap: a band at the edge and knitted rows above it
+      kopiah: `<path d="M-31 -14 L-31 -40 Q-31 -52 0 -52 Q31 -52 31 -40 L31 -14 Q0 -27 -31 -14 Z" fill="#fbfbf7" ${O}/><path d="M-29 -24 Q0 -35 29 -24" stroke="${INK}" stroke-width="1.6" fill="none"/><path d="M-28 -32 Q0 -42 28 -32 M-26 -40 Q0 -48 26 -40" stroke="#c9c9c0" stroke-width="1.6" fill="none" stroke-dasharray="2 3"/><path d="M-27 -20 Q0 -31 27 -20" stroke="#c9c9c0" stroke-width="1.4" fill="none" stroke-dasharray="1.5 2.5"/>`,
+      hardhat: `<path d="M-31 -22 Q0 -62 31 -22 Z" fill="#f0a830" ${O}/><rect x="-34" y="-25" width="68" height="8" rx="4" fill="#f0a830" ${O}/><path d="M0 -52 V-26" stroke="#c98a00" stroke-width="3"/>` }[head] || "";
+    const hw = t && hw0 ? `<g transform="scale(1.15)">${hw0}</g>` : hw0;   // over a tudung: a little bigger
     const face = t ? `<ellipse cx="0" cy="-6" rx="23" ry="25" fill="${sk}" ${O}/>` : `<circle cx="0" cy="-12" r="29" fill="${sk}" ${O}/>`;
     const lash = m ? "" : `<path d="M-14 -9.5 l-3.8 -1.6 M14 -9.5 l3.8 -1.6" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>`;
     const brows = `<path d="M-15 -17 q5 -3 10 -1 M5 -18 q5 -2 10 1" stroke="${m ? hc : INK}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
@@ -69,6 +88,8 @@
       <path d="M-15 0 Q-12 14 -14 28" stroke="#fff" stroke-width="2" opacity=".35" fill="none" stroke-linecap="round"/>
       <rect x="-17" y="21" width="34" height="6" rx="2" fill="#2b2117" stroke="${INK}" stroke-width="1.6"/><rect x="-4" y="20" width="8" height="8" rx="1.5" fill="#e0b341" stroke="${INK}" stroke-width="1.6"/>
       <path d="M6 7 l6 0 l-3 5 l4 0 l-7 8 l2 -6 l-4 0 z" fill="#e0b341" stroke="${INK}" stroke-width="1.2"/>
+      ${h.badge === "id" ? `<path d="M-8 -3 L-2 12 M8 -3 L2 12" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><path d="M-8 -3 L-2 12 M8 -3 L2 12" stroke="#ffd84d" stroke-width="2.2" stroke-linecap="round"/>
+        <rect x="-6.5" y="11" width="13" height="12" rx="1.8" fill="#fff" stroke="${INK}" stroke-width="1.4"/><rect x="-4.6" y="13.2" width="4.4" height="5" rx=".8" fill="#9fb3c8"/><path d="M1.2 14.2 H4.6 M1.2 17 H4.6 M-4.6 20.6 H4.6" stroke="#5a6b80" stroke-width="1.1" stroke-linecap="round"/>` : ""}
       ${HEAD(hd.front)}
       <ellipse cx="17" cy="1" rx="9" ry="6" fill="#c9d2dc" ${O}/>
       <g transform="translate(16 2) rotate(-72)"><rect x="-5" y="0" width="10" height="24" rx="5" fill="${c}" ${O}/></g>

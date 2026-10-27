@@ -48,7 +48,8 @@
 .lg-mini .lg-ic { background: var(--surface); color: var(--ink); border-color: var(--rule); }
 .lg-mini .lg-ic[aria-pressed="true"] { background: #ffd84d; border-color: #c98a00; color: #14213d; }
 .lg-mini .lg-vol { accent-color: var(--teal); }
-.lg-mini .lg-save { background: var(--teal); color: #fff; border-color: var(--teal); }
+.lg-mini .lg-save { background: #ffd84d; color: #14213d; border: 2px solid #14213d; box-shadow: 0 0 0 2px #ffd84d; min-height: 40px; padding: 4px 16px; font-weight: 700; }
+.lg-mini .lg-save:hover { background: #ffe27a; filter: none; }
 .lg-saved { background: var(--teal-soft); border: 1px solid var(--teal); border-radius: 10px; padding: 8px 12px; font-weight: 600; }
 .lg-card .btn.small { margin-top: 6px; }
 /* My Character: Save, and the question when leaving unsaved */

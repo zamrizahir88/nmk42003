@@ -131,14 +131,17 @@
     hairM: [["spiky", "Spiky"], ["neat", "Neat"], ["buzz", "Short"]],
     hairF: [["long", "Long"], ["pony", "Ponytail"], ["bob", "Bob"]],
     face: [["none", "None"], ["mous", "Moustache"], ["goatee", "Goatee"], ["beard", "Beard"]],
-    head: [["none", "None"], ["cap", "Cap"], ["kopiah", "Kopiah"], ["hardhat", "Safety helmet"]],
+    head: [["none", "None"], ["cap", "Cap"], ["kopiah", "Kopiah"], ["hardhat", "Safety helmet"]],   // kopiah: male look only
+    tudS: [["bawal", "Bawal"], ["sarung", "Sarung"], ["shawl", "Shawl"]],
+    brooch: [["none", "None"], ["gold", "Gold"], ["pearl", "Pearl"], ["flower", "Flower"]],
+    badge: [["none", "None"], ["id", "ID lanyard"]],
     eyes: [["none", "None"], ["round", "Glasses"], ["goggles", "Lab goggles"]],
     weapon: [["sword", "Probe Sword"], ["blaster", "Scope Blaster"], ["bow", "Signal Bow"], ["staff", "Solder Staff"]]
   };
   const NOTE = { sword: "A giant multimeter probe. Slashes up close.", blaster: "An oscilloscope cannon. Fires a sine wave.", bow: "An antenna bow. Shoots radio waves.", staff: "A soldering-iron staff. Hurls a hot spark." };
   const SKINS = ["#f6d5b5", "#e3ad80", "#b07650"], HAIRS = ["#1f1a17", "#4a2c1a", "#7a4a26", "#a8a8a8"];
-  const COLORS = ["#0b6e6e", "#1e3a5f", "#b3412e", "#6b4bb8", "#2f7d32", "#c2185b"], TUDUNG = ["#e8d6c0", "#f4c6d4", "#cfe0f2", "#2b2b2b"];
-  const HERO0 = { look: "m", hairM: "spiky", hairF: "long", face: "none", head: "none", eyes: "none", hair: HAIRS[0], skin: SKINS[0], color: COLORS[0], tud: TUDUNG[0], weapon: "sword", name: "" };
+  const COLORS = ["#0b6e6e", "#1e3a5f", "#b3412e", "#6b4bb8", "#2f7d32", "#c2185b"], TUDUNG = ["#e8d6c0", "#f4c6d4", "#cfe0f2", "#2b2b2b", "#1e3a5f", "#7a2338", "#1f7a55", "#f7f7f2"];
+  const HERO0 = { look: "m", hairM: "spiky", hairF: "long", face: "none", head: "none", eyes: "none", hair: HAIRS[0], skin: SKINS[0], color: COLORS[0], tud: TUDUNG[0], tudS: "bawal", brooch: "none", badge: "none", weapon: "sword", name: "" };
   let hero = Object.assign({}, HERO0, parse(lsGet("nmk-hero"), {}));
   // weapon upgrades are earned: journey level 3 makes it glow; a defeated boss makes it gold ("Calibrated")
   /* the hero name (max 10 letters, numbers and spaces): shown on the leaderboard and the share cards. A word filter
@@ -223,7 +226,7 @@
     if (MUS) MUS.setMood(rk);
     const lec = isLec ? `<div class="ms-lec">${A.released ? "Released: students can play." : "<strong>Not released yet:</strong> only lecturers can see this page."} Lecturer plays are saved on this device only and never appear on the board. <a href="admin.html">Release or upload on the dashboard ›</a>
       <label class="ms-asstu"><input type="checkbox" data-asstu${asStudent ? " checked" : ""}> Preview as a student: stations unlock one by one, and chapters open in the week they are lectured</label></div>` : "";
-    const stage = battleView ? `<div class="lg-mini"><strong class="lg-mlogo">INSTRUMENTA: <em>Legends</em></strong><span class="lg-mrank">${esc(R.n)}</span><span class="ms-sp"></span>${coinPill()}${sounds()}<button type="button" class="lg-btn lg-save" data-saveexit>💾 Save and exit</button></div>`
+    const stage = battleView ? `<div class="lg-mini"><strong class="lg-mlogo">INSTRUMENTA: <em>Legends</em></strong><span class="lg-mrank">${esc(R.n)}</span><span class="ms-sp"></span>${coinPill()}${sounds()}<button type="button" class="lg-btn lg-save" data-saveexit><span aria-hidden="true" style="font-size:1.2em">💾</span> Save and exit</button></div>`
       : `<div class="lg-stage">${ART.bg(rk)}<div class="lg-hud">
           <div class="lg-brand">${ART.logo()}<small class="lg-by">by Ts. Dr. Zamri Zahir</small></div>
           <div class="lg-rank"><span class="lg-rk">Rank ${rk + 1} of ${ART.RANKS.length} · ${esc(R.scene)}</span><strong>${esc(R.n)}</strong>
@@ -289,13 +292,14 @@
           <input type="text" id="msHn" class="ms-hn" maxlength="10" autocomplete="off" spellcheck="false" value="${esc(draft.name || "")}" placeholder="${esc(nickOf() || "Your hero name")}" aria-describedby="msHnN">
           <p class="ms-msg err" id="msHnE" aria-live="polite"></p>
           <p class="small-note" id="msHnN">Up to 10 letters, numbers and spaces, shown on the leaderboard and your share cards (left empty, your nickname shows). Keep it decent: no rude, offensive or illegal names. Your lecturer can see and remove any hero name.</p></div>
-          ${row("look", "Look", OPT.look)}${row("hairM", "Hair", OPT.hairM)}${row("hairF", "Hair", OPT.hairF)}${sw("hair", "Hair colour", HAIRS)}${row("face", "Facial hair", OPT.face)}${row("head", "Headwear", OPT.head)}${sw("tud", "Tudung colour", TUDUNG)}${row("eyes", "Eyewear", OPT.eyes)}${sw("skin", "Skin tone", SKINS)}${sw("color", "Jacket colour", COLORS)}${row("weapon", "Weapon", OPT.weapon)}<p class="small-note" id="msWn"></p></div></div>`);
-    const vis = { hairM: () => draft.look === "m", face: () => draft.look === "m", hairF: () => draft.look === "f", hair: () => draft.look !== "t", head: () => draft.look !== "t", tud: () => draft.look === "t" };
+          ${row("look", "Look", OPT.look)}${row("hairM", "Hair", OPT.hairM)}${row("hairF", "Hair", OPT.hairF)}${sw("hair", "Hair colour", HAIRS)}${row("face", "Facial hair", OPT.face)}${row("tudS", "Tudung style", OPT.tudS)}${sw("tud", "Tudung colour", TUDUNG)}${row("brooch", "Brooch", OPT.brooch)}${row("head", "Headwear", OPT.head)}${row("eyes", "Eyewear", OPT.eyes)}${sw("skin", "Skin tone", SKINS)}${sw("color", "Jacket colour", COLORS)}${row("badge", "Accessory", OPT.badge)}${row("weapon", "Weapon", OPT.weapon)}<p class="small-note" id="msWn"></p></div></div>`);
+    const vis = { hairM: () => draft.look === "m", face: () => draft.look === "m", hairF: () => draft.look === "f", hair: () => draft.look !== "t", tud: () => draft.look === "t", tudS: () => draft.look === "t", brooch: () => draft.look === "t" };
     const dropLayer = () => { if (layer) { const l = layer; layer = null; l.closed(); } };
     const guard = () => { if (dirty() && !layer && window.NMKBack) layer = NMKBack.layer(() => { layer = null; ask(() => go("map")); }); if (!dirty()) dropLayer(); };
     const paint = () => {
       $("#msPv").innerHTML = ART.heroSvg(draft, "msPvh", t);
-      $$("[data-k]").forEach((b) => b.setAttribute("aria-pressed", draft[b.dataset.k] === b.dataset.v));
+      $$("[data-k]").forEach((b) => b.setAttribute("aria-pressed", draft[b.dataset.k] === b.dataset.v || (b.dataset.k === "head" && b.dataset.v === "none" && draft.head === "kopiah" && draft.look !== "m")));
+      $$('[data-k="head"][data-v="kopiah"]').forEach((b) => { b.hidden = draft.look !== "m"; });
       $$("[data-row]").forEach((r) => { r.hidden = vis[r.dataset.row] ? !vis[r.dataset.row]() : false; });
       $("#msWn").textContent = NOTE[draft.weapon];
       const d = dirty(), sb = $("[data-hsave]"), bad = nameProblem(draft.name);
@@ -318,7 +322,7 @@
       $("[data-ldrop]", box).addEventListener("click", () => { discard(); next(); });
       $("[data-lstay]", box).addEventListener("click", () => { box.hidden = true; guard(); });
     }
-    $$("[data-k]").forEach((b) => b.addEventListener("click", () => { draft[b.dataset.k] = b.dataset.v; SFX.click(); $("#msHs").textContent = ""; paint(); guard(); }));
+    $$("[data-k]").forEach((b) => b.addEventListener("click", () => { draft[b.dataset.k] = b.dataset.v; if (draft.look !== "m" && draft.head === "kopiah") draft.head = "none"; SFX.click(); $("#msHs").textContent = ""; paint(); guard(); }));
     $("[data-hsave]").addEventListener("click", () => { if (dirty() && !nameProblem(draft.name)) save(); });
     const hn = $("#msHn");
     hn.addEventListener("input", () => { const c = hn.value.replace(/[^A-Za-z0-9 ]/g, "").replace(/ {2,}/g, " ").replace(/^ /, "").slice(0, 10); if (c !== hn.value) hn.value = c; draft.name = c.trim(); $("#msHs").textContent = ""; paint(); guard(); });
