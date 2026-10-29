@@ -82,14 +82,14 @@
   }
 
   /* ---------- the tab ---------- */
-  const chips = (key, list) => list.map(([v, l]) => `<button type="button" class="chip-btn" data-lm${key}="${v}" aria-pressed="${String(st[key]) === String(v)}">${l}</button>`).join("");
+  const chips = (key, list) => list.map(([v, l]) => `<button type="button" class="chip-btn" data-lm${key}="${v}" aria-pressed="${String(key === "part" ? an.part : st[key]) === String(v)}">${l}</button>`).join("");
   function head() {
     const n = st.lab, w = W[n];
     return `<div class="lm-head"><div class="adm-tools">${chips("lab", [1, 2, 3, 4, 5].map((k) => [k, `Lab ${k}`]))}</div>
       <div class="adm-tools">${chips("sec", [["mon", "Monday"], ["wed", "Wednesday"], ["thu", "Thursday"], ["all", "All sections"]])}<span class="lm-sp"></span>
-        ${n === 5 ? chips("mode", [["demo", "Lab 5 total"], ["overview", "Overview"]]) : chips("mode", [["demo", "Demo"], ["report", "Report"], ["overview", "Overview"]])}</div>
+        ${n === 5 ? chips("mode", [["demo", "Lab 5 total"], ["overview", "Overview"], ["analysis", "📈 Analysis"]]) : chips("mode", [["demo", "Demo"], ["report", "Report"], ["overview", "Overview"], ["analysis", "📈 Analysis"]])}</div>
       <p class="small-note">Lab ${n}: ${esc(LAB_NAME[n])} · ${n === 5 ? `total out of ${w.t} (from the Lab 5 lecturer)` : `demo ${w.d} + report ${w.r} = ${w.d + w.r} marks`} · lecturers only, students don't see these marks. Marks save as you type.</p>
-      <input class="at-in lm-q" type="search" placeholder="Find a student" value="${esc(st.q)}" aria-label="Find a student"></div>`;
+      ${st.mode === "analysis" ? "" : `<input class="at-in lm-q" type="search" placeholder="Find a student" value="${esc(st.q)}" aria-label="Find a student">`}</div>`;
   }
   const esc = (s) => C.esc(s);
   function attLine(p) {
@@ -142,6 +142,152 @@
           <td class="${labMarks(rec, 5).total == null ? "lm-none" : ""}">${f2(labMarks(rec, 5).total)}</td><td><strong>${f2(totalOf(rec))}</strong></td></tr>`; }).join("")}</tbody></table></div>
       <p class="small-note">Each lab cell: marks, then the demo score (/50) · report score (/50). Amber: only one part done; grey: nothing yet.</p>`;
   }
+  /* ---------- Analysis (lecturers only): graphs of one lab's marks, drawn from the marks already loaded for this tab,
+     so it costs no extra Firestore reads. Demo only / Report only / Both; the settings stay in this browser. ---------- */
+  const AN_KEY = "nmk-lman", an = { part: "both", thr: 50 };
+  try { Object.assign(an, JSON.parse(localStorage.getItem(AN_KEY) || "{}")); } catch (e) { /* private mode */ }
+  const saveAn = () => { try { localStorage.setItem(AN_KEY, JSON.stringify(an)); } catch (e) { /* private mode */ } };
+  const AN_C = { d: "var(--lm-d)", rep: "var(--lm-r)", t: "var(--lm-d)" }, AN_L = { d: "Demo", rep: "Report", t: "Lab 5 total" };
+  const SECS = [["mon", "Monday"], ["wed", "Wednesday"], ["thu", "Thursday"]];
+  const f1 = (x) => (x == null || isNaN(x) ? "–" : (Math.round(x * 10) / 10).toFixed(1));
+  const outOf = (k) => (k === "t" ? W[5].t || 1 : 50);
+  const pctOf = (row, k) => (row[k] == null ? null : (row[k] / outOf(k)) * 100);
+  function pool(n, sec) {
+    return people(n).filter((p) => sec === "all" || p.sec === sec).map((p) => {
+      const x = (M[p.r.id] || {})[`l${n}`] || {};
+      return { p, d: x.d ?? null, rep: reportOf(x), i: x.i ?? null, r: x.r ?? null, c: x.c ?? null, t: x.t ?? null };
+    });
+  }
+  const partsOf = (n) => (n === 5 ? ["t"] : an.part === "demo" ? ["d"] : an.part === "report" ? ["rep"] : ["d", "rep"]);
+  function stats(vals) {
+    const v = vals.filter((x) => x != null).sort((a, b) => a - b), n = v.length;
+    if (!n) return { n };
+    const mean = v.reduce((s, x) => s + x, 0) / n, med = n % 2 ? v[(n - 1) / 2] : (v[n / 2 - 1] + v[n / 2]) / 2;
+    return { n, mean, med, max: v[n - 1], min: v[0], sd: Math.sqrt(v.reduce((s, x) => s + (x - mean) ** 2, 0) / n) };
+  }
+  const legend = (ks) => `<p class="lm-leg">${ks.map((k) => `<span><i style="background:${AN_C[k]}"></i>${AN_L[k]}</span>`).join("")}</p>`;
+  const fig = (title, svg, note) => `<figure class="lm-fig"><figcaption>${title}</figcaption>${svg}${note ? `<p class="small-note">${note}</p>` : ""}</figure>`;
+  // vertical bars: the number of students in each band
+  function barSvg(cats, series, label) {
+    const WD = 520, HT = 220, L = 30, R = 6, T = 16, B = 34, iw = WD - L - R, ih = HT - T - B;
+    const max = Math.max(1, ...series.flatMap((s) => s.v)), step = Math.max(1, Math.ceil(max / 4)), top = step * Math.ceil(max / step);
+    const y = (v) => T + ih - (v / top) * ih, gw = iw / cats.length, bw = Math.min(30, (gw - 12) / series.length);
+    let g = "";
+    for (let v = 0; v <= top; v += step) g += `<line x1="${L}" x2="${WD - R}" y1="${y(v)}" y2="${y(v)}" class="lm-gl"/><text x="${L - 5}" y="${y(v) + 4}" text-anchor="end" class="lm-ax">${v}</text>`;
+    cats.forEach((c, i) => {
+      const x0 = L + i * gw + (gw - bw * series.length) / 2;
+      series.forEach((s, j) => {
+        const v = s.v[i], x = x0 + j * bw;
+        g += `<rect x="${x + 1}" y="${y(v)}" width="${bw - 2}" height="${T + ih - y(v)}" rx="2" fill="${s.c}"><title>${s.name} ${c}: ${v} student${v === 1 ? "" : "s"}</title></rect>${v ? `<text x="${x + bw / 2}" y="${y(v) - 4}" text-anchor="middle" class="lm-val">${v}</text>` : ""}`;
+      });
+      g += `<text x="${L + i * gw + gw / 2}" y="${HT - B + 16}" text-anchor="middle" class="lm-ax">${c}</text>`;
+    });
+    return `<svg class="lm-svg" viewBox="0 0 ${WD} ${HT}" role="img" aria-label="${label}">${g}<text x="${L + iw / 2}" y="${HT - 3}" text-anchor="middle" class="lm-ax">score band (students on each bar)</text></svg>`;
+  }
+  // horizontal bars, 0 to 100 %
+  function hbarSvg(rows, label) {
+    const per = Math.max(...rows.map((r) => r.items.length)), rh = per * 20 + 14, WD = 520, L = Math.max(...rows.map((r) => r.label.length)) * 7 + 14, R = 120, T = 8, HT = T + rows.length * rh + 18, iw = WD - L - R;
+    let g = "";
+    [0, 25, 50, 75, 100].forEach((v) => { const x = L + (v / 100) * iw; g += `<line x1="${x}" x2="${x}" y1="${T}" y2="${HT - 18}" class="lm-gl"/><text x="${x}" y="${HT - 4}" text-anchor="middle" class="lm-ax">${v}%</text>`; });
+    rows.forEach((r, i) => {
+      const y0 = T + i * rh + 7;
+      g += `<text x="${L - 8}" y="${y0 + (r.items.length * 20) / 2 + 2}" text-anchor="end" class="lm-lab">${r.label}</text>`;
+      r.items.forEach((it, j) => {
+        const y = y0 + j * 20, w = it.v == null ? 0 : (Math.max(0, Math.min(100, it.v)) / 100) * iw;
+        g += `<rect x="${L}" y="${y}" width="${it.v == null ? 0 : Math.max(w, 2)}" height="16" rx="2" fill="${it.c}"/><text x="${L + w + 6}" y="${y + 12}" class="lm-val">${it.txt}</text>`;
+      });
+    });
+    return `<svg class="lm-svg" viewBox="0 0 ${WD} ${HT}" role="img" aria-label="${label}">${g}</svg>`;
+  }
+  // one dot per student: demo (across) against report (up)
+  function scatterSvg(pts) {
+    const S = 300, L = 36, B = 32, T = 10, R = 10, iw = S - L - R, ih = S - T - B, x = (v) => L + (v / 50) * iw, y = (v) => T + ih - (v / 50) * ih;
+    let g = "";
+    [0, 10, 20, 30, 40, 50].forEach((v) => { g += `<line x1="${x(v)}" x2="${x(v)}" y1="${T}" y2="${T + ih}" class="lm-gl"/><line x1="${L}" x2="${L + iw}" y1="${y(v)}" y2="${y(v)}" class="lm-gl"/><text x="${x(v)}" y="${S - B + 14}" text-anchor="middle" class="lm-ax">${v}</text><text x="${L - 5}" y="${y(v) + 4}" text-anchor="end" class="lm-ax">${v}</text>`; });
+    g += `<line x1="${x(0)}" y1="${y(0)}" x2="${x(50)}" y2="${y(50)}" class="lm-diag"/>`;
+    pts.forEach((p) => { g += `<circle cx="${x(p.d)}" cy="${y(p.rep)}" r="5" class="${p.gap ? "lm-dot gap" : "lm-dot"}"><title>${esc(p.name)}: demo ${p.d}, report ${p.rep}</title></circle>`; });
+    g += `<text x="${L + iw / 2}" y="${S - 3}" text-anchor="middle" class="lm-ax">Demo score / 50</text><text transform="translate(11 ${T + ih / 2}) rotate(-90)" text-anchor="middle" class="lm-ax">Report score / 50</text>`;
+    return `<svg class="lm-svg lm-sq" viewBox="0 0 ${S} ${S}" role="img" aria-label="Demo score against report score, one dot per student">${g}</svg>`;
+  }
+  // the average % of each lab, one line per part
+  function trendSvg(lines, cur) {
+    const WD = matchMedia("(max-width: 640px)").matches ? 480 : 900, HT = 250, L = 66, R = 36, T = 30, B = 34, iw = WD - L - R, ih = HT - T - B, x = (n) => L + ((n - 1) / 4) * iw, y = (v) => T + ih - (v / 100) * ih;
+    let g = `<rect x="${x(cur) - 24}" y="${T - 6}" width="48" height="${ih + 6}" class="lm-cur"/>`;
+    [0, 25, 50, 75, 100].forEach((v) => { g += `<line x1="${L}" x2="${WD - R}" y1="${y(v)}" y2="${y(v)}" class="lm-gl"/><text x="${L - 5}" y="${y(v) + 4}" text-anchor="end" class="lm-ax">${v}%</text>`; });
+    [1, 2, 3, 4, 5].forEach((n) => { g += `<text x="${x(n)}" y="${HT - 8}" text-anchor="middle" class="lm-ax">Lab ${n}</text>`; });
+    lines.forEach((ln, j) => {
+      const pts = ln.v.map((v, i) => (v == null ? null : [x(i + 1), y(v), v])).filter(Boolean);
+      if (pts.length > 1) g += `<polyline points="${pts.map((p) => `${p[0]},${p[1]}`).join(" ")}" fill="none" stroke="${ln.c}" stroke-width="2.5"/>`;
+      pts.forEach((p) => { g += `<circle cx="${p[0]}" cy="${p[1]}" r="4.5" fill="${ln.c}"/><text x="${p[0]}" y="${j === 1 ? p[1] + 19 : p[1] - 10}" text-anchor="middle" class="lm-val">${Math.round(p[2])}%</text>`; });
+    });
+    return `<svg class="lm-svg lm-wide" viewBox="0 0 ${WD} ${HT}" role="img" aria-label="Average mark of each lab">${g}</svg>`;
+  }
+  function analysisHtml() {
+    const n = st.lab, ks = partsOf(n), rows = pool(n, st.sec), N = rows.length;
+    const secName = st.sec === "all" ? "all sections" : C.SECTION[st.sec].replace(" lab", "");
+    const ctrl = `<div class="adm-tools lm-anc">${n === 5 ? `<span class="small-note">Lab 5 has one total (from the Lab 5 lecturer).</span>` : chips("part", [["demo", "Demo only"], ["report", "Report only"], ["both", "Both"]])}
+      <label class="lm-thrl">Needs attention below <select class="at-in lm-thr">${[40, 50, 60, 70].map((v) => `<option value="${v}"${an.thr === v ? " selected" : ""}>${v}%</option>`).join("")}</select></label>
+      <button type="button" class="btn ghost small" data-lmprint>Print / Save as PDF</button></div>`;
+    const any = rows.some((x) => ks.some((k) => x[k] != null));
+    // summary tiles
+    const tiles = ks.map((k) => {
+      const s = stats(rows.map((x) => x[k])), o = outOf(k), pc = (v) => (s.n ? ` <small>${Math.round((v / o) * 100)}%</small>` : "");
+      return `<h4 class="lm-th"><i style="background:${AN_C[k]}"></i>${AN_L[k]} (out of ${o})</h4><div class="adm-sum lm-sum">
+        <div><strong>${s.n || 0}/${N}</strong><span>Marked</span></div><div><strong>${s.n ? f1(s.mean) : "–"}${pc(s.mean)}</strong><span>Mean</span></div>
+        <div><strong>${s.n ? f1(s.med) : "–"}${pc(s.med)}</strong><span>Median</span></div><div><strong>${s.n ? s.max : "–"}</strong><span>Highest</span></div>
+        <div><strong>${s.n ? s.min : "–"}</strong><span>Lowest</span></div><div><strong>${s.n ? f1(s.sd) : "–"}</strong><span>SD (σ, ÷ n)</span></div></div>`;
+    }).join("");
+    // mark distribution: the rubric bands (Lab 5: steps of 20 %)
+    const bandsFor = (k) => (k === "t" ? [[0, 20], [20, 40], [40, 60], [60, 80], [80, 101]].map(([a, b]) => [a, b, `${a}–${Math.min(b, 100)}%`])
+      : (k === "d" && n === 4 ? BANDS4 : BANDS).map(([lo, hi]) => [lo, hi, lo === hi ? String(lo) : `${lo}–${hi}`]));
+    const count = (k, bs) => bs.map(([lo, hi]) => rows.filter((x) => { const v = k === "t" ? pctOf(x, k) : x[k]; return v != null && (k === "t" ? v >= lo && v < hi : v >= lo && v <= hi); }).length);
+    let dist;
+    if (ks.length === 2 && n !== 4) { const bs = bandsFor("d"); dist = fig("Mark Distribution", barSvg(bs.map((b) => b[2]), ks.map((k) => ({ name: AN_L[k], c: AN_C[k], v: count(k, bs) })), "Number of students in each score band") + legend(ks)); }
+    else dist = ks.map((k) => { const bs = bandsFor(k); return fig(`Mark Distribution: ${AN_L[k]}`, barSvg(bs.map((b) => b[2]), [{ name: AN_L[k], c: AN_C[k], v: count(k, bs) }], `${AN_L[k]}: number of students in each score band`)); }).join("");
+    // sections compared (always the three sections)
+    const secRows = SECS.map(([s, l]) => {
+      const pr = pool(n, s);
+      return { label: `${l} (${pr.length})`, items: ks.map((k) => { const m = stats(pr.map((x) => pctOf(x, k))); return { v: m.n ? m.mean : null, c: AN_C[k], txt: m.n ? `${Math.round(m.mean)}% · ${m.n} marked` : "no marks" }; }) };
+    });
+    const secs = fig("Sections Compared", hbarSvg(secRows, "Average mark of each section") + legend(ks), "Average as a % of the full score. A student counts in the section where the lab was assessed (its last week).");
+    // report breakdown
+    const brk = ks.includes("rep") ? fig("Report Breakdown", hbarSvg(REPORT.map((c) => {
+      const m = stats(rows.map((x) => x[c.k]));
+      return { label: `${c.label} (/${c.max})`, items: [{ v: m.n ? (m.mean / c.max) * 100 : null, c: AN_C.rep, txt: m.n ? `${f1(m.mean)} / ${c.max} · ${Math.round((m.mean / c.max) * 100)}%` : "no marks" }] };
+    }), "Average of each part of the report"), "The shortest bar is the part of the report students find hardest.") : "";
+    // demo against report
+    let sc = "";
+    if (ks.length === 2) {
+      const pts = rows.filter((x) => x.d != null && x.rep != null).map((x) => ({ d: x.d, rep: x.rep, name: x.p.r.name, gap: Math.abs(x.d - x.rep) >= 15, x }));
+      let rr = "";
+      if (pts.length >= 3) {
+        const md = pts.reduce((s, p) => s + p.d, 0) / pts.length, mr = pts.reduce((s, p) => s + p.rep, 0) / pts.length;
+        const sxy = pts.reduce((s, p) => s + (p.d - md) * (p.rep - mr), 0), sxx = pts.reduce((s, p) => s + (p.d - md) ** 2, 0), syy = pts.reduce((s, p) => s + (p.rep - mr) ** 2, 0);
+        rr = sxx && syy ? ` Correlation r = ${(sxy / Math.sqrt(sxx * syy)).toFixed(2)}.` : "";
+      }
+      const gaps = pts.filter((p) => p.gap);
+      sc = fig("Demo against Report", scatterSvg(pts), `${pts.length} students with both marks. Dots on the dashed line did equally well in both; amber dots differ by 15 points or more.${rr}`
+        + (gaps.length ? `<br>Big gap: ${gaps.map((p) => `${C.profileLink(p.x.p.r.id, p.name)} (D ${p.d} · R ${p.rep})`).join(", ")}` : ""));
+    }
+    // every lab
+    const tk = n === 5 ? (an.part === "demo" ? ["d"] : an.part === "report" ? ["rep"] : ["d", "rep"]) : ks;
+    const avg = (m, k) => { const s = stats(pool(m, st.sec).map((x) => pctOf(x, k))); return s.n ? s.mean : null; };
+    const lines = tk.map((k) => ({ c: AN_C[k], v: [1, 2, 3, 4].map((m) => avg(m, k)).concat([null]) }));
+    lines.push({ c: "var(--ink-3)", v: [null, null, null, null, avg(5, "t")] });
+    const trend = fig("Every Lab", trendSvg(lines, n) + `<p class="lm-leg">${tk.map((k) => `<span><i style="background:${AN_C[k]}"></i>${AN_L[k]}</span>`).join("")}<span><i style="background:var(--ink-3)"></i>Lab 5 total</span></p>`,
+      `Average % for ${secName}. The shaded column is the lab you are looking at.`);
+    // needs attention
+    const low = rows.filter((x) => ks.some((k) => { const v = pctOf(x, k); return v != null && v < an.thr; }));
+    const none = rows.filter((x) => ks.some((k) => x[k] == null));
+    const who = (x) => `<li>${C.profileLink(x.p.r.id, x.p.r.name)} <small>${x.p.sec ? C.SECTION[x.p.sec].replace(" lab", "") : "–"} · G${x.p.grp || "–"} · ${ks.map((k) => `${AN_L[k]} ${x[k] ?? "–"}/${outOf(k)}`).join(" · ")} · ${attLine(x.p)}</small></li>`;
+    const att = `<div class="lm-two"><div class="at-card"><h4>Below ${an.thr}% (${low.length})</h4>${low.length ? `<ul class="lm-list">${low.map(who).join("")}</ul>` : `<p class="small-note">Nobody.</p>`}</div>
+      <div class="at-card"><h4>No Mark Yet (${none.length})</h4>${none.length ? `<ul class="lm-list">${none.map(who).join("")}</ul>` : `<p class="small-note">Everyone is marked.</p>`}</div></div>`;
+    return `<div class="lm-an">${ctrl}<h3 class="lm-ah">Lab ${n}: ${esc(LAB_NAME[n])} · ${secName} · ${N} students</h3>
+      ${any ? `${tiles}<div class="lm-two">${dist}${secs}</div>${brk || sc ? `<div class="lm-two">${brk}${sc}</div>` : ""}` : `<p class="adm-empty">No ${ks.map((k) => AN_L[k].toLowerCase()).join(" or ")} marks for Lab ${n} in ${secName} yet.</p>`}
+      ${trend}<h3 class="lm-ah">Needs Attention</h3>${att}
+      <p class="small-note">Drawn from the marks already loaded for this tab, so it costs no extra reads. Lecturers only.</p></div>`;
+  }
+
   function weightsHtml() {
     return `<details class="at-card lm-set"><summary><strong>Weights</strong> · total ${maxTotal()} marks</summary>
       <form class="lm-wf" novalidate><div class="lm-wgrid">${[1, 2, 3, 4].map((n) => `<span>Lab ${n}</span><label>Demo <input class="at-in" name="d${n}" inputmode="decimal" value="${W[n].d}"></label><label>Report <input class="at-in" name="r${n}" inputmode="decimal" value="${W[n].r}"></label>`).join("")}
@@ -149,13 +295,13 @@
         <p class="small-note lm-wmsg" aria-live="polite"></p><button class="btn small">Save weights</button></form></details>`;
   }
   function render(body) {
-    body.innerHTML = `<div class="lm-root">${head()}${st.mode === "overview" ? overviewHtml() : `${rubricHtml()}<div class="lm-rows">${ready ? rowsHtml() : `<p class="small-note">Loading…</p>`}</div>`}${weightsHtml()}</div>`;
+    body.innerHTML = `<div class="lm-root">${head()}${st.mode === "analysis" ? analysisHtml() : st.mode === "overview" ? overviewHtml() : `${rubricHtml()}<div class="lm-rows">${ready ? rowsHtml() : `<p class="small-note">Loading…</p>`}</div>`}${weightsHtml()}</div>`;
     const qi = body.querySelector(".lm-q");
     if (st.focusQ && qi) { qi.focus(); qi.setSelectionRange(st.q.length, st.q.length); st.focusQ = false; }
   }
   // live numbers in place, without rebuilding the boxes the lecturer may be typing in
   function refresh(body) {
-    if (st.mode === "overview") return render(body);
+    if (st.mode === "overview" || st.mode === "analysis") return render(body);
     body.querySelectorAll(".lm-row").forEach((row) => {
       const n = st.lab, em = row.dataset.em, lm = labMarks(M[em], n), w = row.querySelector(".lm-w"), x = (M[em] || {})[`l${n}`] || {};
       // boxes the lecturer isn't typing in show the saved value (e.g. marks keyed in by the other lecturer)
@@ -193,6 +339,8 @@
       if (b.dataset.lmlab) { st.lab = +b.dataset.lmlab; if (st.lab === 5 && st.mode === "report") st.mode = "demo"; return render(body); }
       if (b.dataset.lmsec) { st.sec = b.dataset.lmsec; return render(body); }
       if (b.dataset.lmmode) { st.mode = b.dataset.lmmode; return render(body); }
+      if (b.dataset.lmpart) { an.part = b.dataset.lmpart; saveAn(); return render(body); }
+      if (b.hasAttribute("data-lmprint")) { document.body.classList.add("lm-printing"); addEventListener("afterprint", () => document.body.classList.remove("lm-printing"), { once: true }); return window.print(); }
       if (b.hasAttribute("data-lmcsv")) return csv();
       if (b.dataset.band !== undefined) {
         // a band sets its top score (the lecturer can then type the exact score) and shows the rubric line
@@ -205,6 +353,7 @@
     body.addEventListener("input", (e) => {
       if (!body.querySelector(".lm-root")) return;
       if (e.target.matches(".lm-q")) { st.q = e.target.value; st.focusQ = true; return render(body); }
+      if (e.target.matches(".lm-thr")) { an.thr = +e.target.value; saveAn(); return render(body); }
       if (!e.target.matches(".lm-in")) return;
       const row = e.target.closest(".lm-row"), f = e.target.dataset.f, n = st.lab;
       save(row.dataset.em, n, f, e.target.value, f === "note" ? 0 : Number(e.target.dataset.max), row);
@@ -237,11 +386,13 @@
         }, () => {});
       }
       // first time: open on the most recent lab session (on assessment day, today's lab and section)
+      // the hub's card opens the analysis (attendance.html?tab=marks&lm=analysis), for all sections
+      if (!st.urlDone) { st.urlDone = true; if (new URLSearchParams(location.search).get("lm") === "analysis") st.mode = "analysis"; }
       if (!st.picked && C.L.sessLoaded) {
         st.picked = true;
         const q = new URLSearchParams(location.search).get("today"), today = q || new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
         const last = C.L.sessions.filter((s) => s.kind === "lab" && labNo(s) && s.date <= today && s.section !== "all").sort((a, b) => (a.date < b.date ? 1 : -1))[0];
-        if (last) { st.lab = labNo(last); st.sec = last.section; }
+        if (last) { st.lab = labNo(last); st.sec = st.mode === "analysis" ? "all" : last.section; }
       }
       bind(body);
       const mine = body.querySelector(".lm-root");

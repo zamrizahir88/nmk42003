@@ -684,6 +684,8 @@
     // the tab and session shown before (after Back from a profile), and Back between them
     const hs = history.state || {};
     if (hs.view) { L.tab = hs.tab || "sessions"; L.sid = hs.sid || null; }
+    // a card on the hub opens a tab straight away (attendance.html?tab=marks)
+    else { const qt = new URLSearchParams(location.search).get("tab"); if (["sessions", "roster", "swaps", "notices", "warnings", "report", "marks", "schedule"].includes(qt)) L.tab = qt; }
     if (window.NMKBack) {
       NMKBack.view({ tab: L.tab, sid: L.sid }, true);
       NMKBack.onView((st) => {

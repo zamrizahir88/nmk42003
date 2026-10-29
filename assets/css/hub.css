@@ -1,0 +1,23 @@
+/* My Class Hub (myclass.html): the flash cards from style.css (.fc), smaller, in groups, with badges */
+.hub-g { margin: 0 0 26px; }
+.hub-h { font: 700 .76rem var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--teal); margin: 0 0 10px; }
+.hub-grid { grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 14px; margin: 0; }
+.hub-c { min-height: 158px; }
+.hub-c .fc-f, .hub-c .fc-b { padding: 16px 16px 14px; border-radius: 16px; }
+.hub-c .fc-b p { margin-top: 6px; font-size: .9rem; line-height: 1.45; }
+.hub-ic { font-size: 2.3rem; line-height: 1; }
+.hub-c h3 { font-size: 1.08rem; margin-top: 10px; }
+.hub-c .fc-meta { min-height: 26px; }
+.hub-b { display: inline-block; font: 700 .76rem var(--sans); padding: 3px 10px; border-radius: 999px; background: var(--amber-soft); color: var(--amber); border: 1px solid var(--amber); }
+.hub-b.new { background: var(--teal-soft); color: var(--teal); border-color: var(--teal); }
+.hub-b.off { background: var(--grid); color: var(--ink-2); border-color: var(--rule); }
+.fc-b .hub-b { background: #fff; color: #0b4f6c; border-color: #fff; }
+.hub-out { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 18px 20px; max-width: 640px; }
+.hub-out p { margin: 0 0 12px; }
+@media (max-width: 760px), (hover: none) {
+  .hub-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .hub-c .fc-f { padding: 14px 14px 12px; border-radius: 14px; }
+  .hub-ic { font-size: 1.9rem; }
+  .hub-c .fc-sum { font-size: .84rem; }
+}
+@media (max-width: 380px) { .hub-grid { grid-template-columns: 1fr 1fr; } }

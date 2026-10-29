@@ -22,7 +22,7 @@
   const STUDENT_DOMAIN = "@studentmail.unimap.edu.my";
   const EX_KEY = "nmk-ex-log", UID_KEY = "nmk-sync-uid";
   // progress kept in this browser that is not worth syncing
-  const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-|sched|role|preview|gal|bell|msnd|mus|pj-draft|pick)/;
+  const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-|sched|role|preview|gal|bell|msnd|mus|pj-draft|pick|lman)/;
   const SEM = (typeof COURSE !== "undefined" && (COURSE.semesterId || COURSE.session)) || "";
 
   firebase.initializeApp(CONFIG);
@@ -270,7 +270,7 @@
     if (!state.profile || state.profile.status !== "approved") { loadBell(false); return; }   // waiting for approval: checked again on every page
     // is the game released, is a survey round open? (for the menu links)
     const [mi, sv] = await Promise.all([db.collection("meta").doc("missions").get(), db.collection("meta").doc("survey").get()].map((p) => p.catch(() => null)));
-    missionsOpen = !!(mi && mi.exists && mi.data().released); surveyOpen = (sv && sv.exists && sv.data().open) || ""; navMine();
+    missionsOpen = !!(mi && mi.exists && mi.data().released); surveyOpen = (sv && sv.exists && sv.data().open) || ""; navMine(); hubPing();
     const now = Date.now();
     vset({ uid: u.uid, start: now, seen: now, profile: state.profile, roster: state.roster, missions: missionsOpen, survey: surveyOpen, bell: null });
     loadBell(true);
@@ -403,16 +403,14 @@
     if (h) h.insertAdjacentElement("afterend", b);
   }
   // the pages that need a login: in the My Class menu, and on phones in the main menu
+  // the My Class menu: short, everything else is a card on the hub (myclass.html)
   function myLinks() {
     const u = state.user, lec = u && isAdmin(u.email);
-    return [["attendance.html", "✅", lec ? "Attendance (lecturer)" : "Attendance"], ["kalam.html", "💬", "Kalam Feed"],
-      lec || missionsOpen ? ["missions.html", "⚔️", `INSTRUMENTA: Legends${lec && !missionsOpen ? " (not released)" : ""}`] : null,
-      ["board.html", "🏆", "Class Board and My Progress"], ["gallery.html", "📷", "Class Moments"], ["notifications.html", "🔔", "Notifications"],
-      lec || surveyOpen ? ["survey.html", "📝", lec ? "Course Survey" : "Course Survey (open now)"] : null,
-      lec ? ["picker.html", "🎯", "Name Picker"] : null,
-      lec ? ["evidence.html", "📊", "Teaching Evidence"] : null,
-      lec ? ["admin.html", "🛠", "Lecturer dashboard"] : ["profile.html", "👤", "My Profile"]].filter(Boolean);
+    return [["myclass.html", "🏠", "My Class Hub"], ["notifications.html", "🔔", "Notifications"],
+      lec ? ["admin.html", "🛠", "Lecturer dashboard"] : ["profile.html", "👤", "My Profile"]];
   }
+  // tell the hub page when the switches or the bell change (it reads nothing itself)
+  const hubPing = () => { try { document.dispatchEvent(new CustomEvent("nmk:hub")); } catch (e) { /* old browser */ } };
   function navMine() {
     const box = $("#navMine");
     if (!box) return;
@@ -563,7 +561,7 @@
   function showBell(items) {
     const seen = seenAt();
     bellItems = items.map((o) => Object.assign({}, o, { fresh: o.t > seen }));
-    paintBell(); paintLog();
+    paintBell(); paintLog(); hubPing();
     if (!bellBox.hidden) fillBell();
     const em = bellUser;
     // once per visit: a small reminder after signing in when something is waiting
@@ -669,5 +667,6 @@
     await db.collection("roster").doc(old).delete();
   }
 
-  window.NMKAccount = { db, auth, isAdmin, state, on: (f) => { listeners.push(f); if (state.ready) f(state); }, signIn, loadAttendance, push, SEM, refreshBell, changeEmail, boardRows, buildRankings, rankNote };
+  window.NMKAccount = { db, auth, isAdmin, state, on: (f) => { listeners.push(f); if (state.ready) f(state); }, signIn, loadAttendance, push, SEM, refreshBell, changeEmail, boardRows, buildRankings, rankNote,
+    hub: () => ({ missions: missionsOpen, survey: surveyOpen, bell: bellItems.slice(), bellOn: !!bellUser }) };
 })();

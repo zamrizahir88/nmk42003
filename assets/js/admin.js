@@ -246,6 +246,7 @@
   // Back returns to the dashboard view before (and a view survives a visit to a profile)
   if (window.NMKBack) {
     if (history.state && history.state.view && history.state.tab) tab = history.state.tab;
+    else { const qt = new URLSearchParams(location.search).get("tab"); if (TABS.some(([v]) => v === qt)) tab = qt; }
     NMKBack.view({ tab }, true);
     NMKBack.onView((st) => { tab = st.tab || "overview"; draw(); });
   }
