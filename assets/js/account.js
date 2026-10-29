@@ -22,7 +22,7 @@
   const STUDENT_DOMAIN = "@studentmail.unimap.edu.my";
   const EX_KEY = "nmk-ex-log", UID_KEY = "nmk-sync-uid";
   // progress kept in this browser that is not worth syncing
-  const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-|sched|role|preview|gal|bell|msnd|mus|pj-draft)/;
+  const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-|sched|role|preview|gal|bell|msnd|mus|pj-draft|pick)/;
   const SEM = (typeof COURSE !== "undefined" && (COURSE.semesterId || COURSE.session)) || "";
 
   firebase.initializeApp(CONFIG);
@@ -409,6 +409,7 @@
       lec || missionsOpen ? ["missions.html", "⚔️", `INSTRUMENTA: Legends${lec && !missionsOpen ? " (not released)" : ""}`] : null,
       ["board.html", "🏆", "Class Board and My Progress"], ["gallery.html", "📷", "Class Moments"], ["notifications.html", "🔔", "Notifications"],
       lec || surveyOpen ? ["survey.html", "📝", lec ? "Course Survey" : "Course Survey (open now)"] : null,
+      lec ? ["picker.html", "🎯", "Name Picker"] : null,
       lec ? ["evidence.html", "📊", "Teaching Evidence"] : null,
       lec ? ["admin.html", "🛠", "Lecturer dashboard"] : ["profile.html", "👤", "My Profile"]].filter(Boolean);
   }
