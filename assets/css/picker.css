@@ -33,10 +33,13 @@
 .pk-h .pk-glow { opacity: 0; transition: opacity .12s; }
 .pk-h.on .pk-glow { opacity: .55; }
 .pk-tag rect { fill: #0b1320; stroke: #38557a; stroke-width: 1.5; }
-.pk-tag text { fill: #e6edf3; font-size: 15px; font-weight: 600; }
+.pk-tag text { fill: #e6edf3; font-weight: 600; }
 .pk-h.on .pk-tag rect { fill: #ffd84d; stroke: #14213d; }
 .pk-h.on .pk-tag text { fill: #14213d; }
 .pk-stage.won .pk-h:not(.on) { opacity: .45; transition: opacity .4s; }
+.pk-h.out { opacity: .16; transition: opacity .5s; }
+.pk-h.on .pk-tag { opacity: 0; }
+.pk-ban { font-size: 30px; font-weight: 700; fill: #ffd84d; font-family: var(--serif); }
 .pk-stage.won .pk-h.on .pk-glow { opacity: .9; }
 .pk-mk { stroke: #9aa9b8; }
 .pk-mk.on { stroke: #ffd84d; }
@@ -46,16 +49,17 @@
 .pk-bth { font-size: 20px; font-weight: 700; fill: #14213d; }
 .pk-bts { font-size: 14px; fill: #2f8cff; font-weight: 600; }
 .pk-row rect { fill: #e8eef4; }
-.pk-row text { font-size: 14px; fill: #14213d; }
+.pk-row text { font-size: 16px; fill: #14213d; }
 .pk-row.on rect { fill: #38e1c9; }
 .pk-row.on text { font-weight: 700; }
 .pk-ph rect:first-child { fill: #1b2a4a; stroke: #e6edf3; stroke-width: 1.5; }
 .pk-phs { fill: #38557a; }
+.pk-ph.found .pk-phs { fill: #2f8cff; }
 .pk-ph.on .pk-phs { fill: #5ad1ff; }
 .pk-ph.on rect:first-child { stroke: #5ad1ff; stroke-width: 3; }
 .pk-vt { font-size: 22px; font-weight: 600; fill: #e6edf3; }
 #pkBeam { fill: #38e1c9; opacity: .22; }
-#pkVolt.lock #pkBeam { fill: #4cd964; opacity: .45; }
+#pkBeam.lock { fill: #4cd964; opacity: .45; }
 .pk-prop { transform-box: fill-box; transform-origin: center; animation: pk-spin .18s linear infinite; }
 @keyframes pk-spin { 50% { transform: scaleX(.2); } }
 
@@ -94,7 +98,7 @@
 /* full screen: the stage fills the window */
 .pk-full { position: fixed; inset: 0; z-index: 2000; border-radius: 0; display: flex; flex-direction: column; padding: 12px 16px; overflow: auto; }
 .pk-full .pk-box { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
-.pk-full .pk-stage { width: auto; height: auto; max-width: 100%; max-height: calc(100vh - 150px); aspect-ratio: 1000 / 560; }
+.pk-full .pk-stage { width: auto; height: auto; max-width: 100%; max-height: calc(100vh - 130px); aspect-ratio: 1000 / 640; }
 .pk-full .pk-bar p { font-size: 1.1rem; }
 body.pk-noscroll { overflow: hidden; }
 
