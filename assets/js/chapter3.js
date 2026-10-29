@@ -588,8 +588,11 @@
     const box = extra.querySelector(".lv-graph");
     if (!res) { box.innerHTML = ""; return; }
     sec.lastL = v.L;
-    const f = (x) => (res.a * x) / 100 + res.b, A = axes({ x: [0, v.L], y: [0, f(v.L) * 1.08], xt: [0, v.L / 4, v.L / 2, (3 * v.L) / 4, v.L].map((q) => Math.round(q * 10) / 10), yt: [0, f(v.L) / 2, f(v.L)], fy: (y) => eng(y, "F", 3), l: 62, xl: "Water depth x (cm)", yl: "" });
-    box.innerHTML = svg(A.W, A.H, "Net capacitance against water depth: a straight line", A.s + poly(curve(A, f, 0, v.L, 4), "trace-a") + dot(A.X(res.x), A.Y(res.C)) + label(A.X(res.x) + (res.x > v.L * 0.6 ? -8 : 8), A.Y(res.C) - 10, eng(res.C, "F"), res.x > v.L * 0.6 ? "end" : "start"));
+    // a fixed axis (from the default tank) and the default line, so a wider plate or another liquid visibly tilts the line
+    const d0 = defaultsOf(sec), r0 = sec.compute(d0), f0 = (x) => (r0.a * x) / 100 + r0.b;
+    const f = (x) => (res.a * x) / 100 + res.b, top = fitTop(f0(d0.L), f(v.L));
+    const A = axes({ x: [0, v.L], y: [0, top], xt: [0, v.L / 4, v.L / 2, (3 * v.L) / 4, v.L].map((q) => Math.round(q * 10) / 10), yt: ticks3(top), fy: (y) => eng(y, "F", 3), l: 62, xl: "Water depth x (cm)", yl: "" });
+    box.innerHTML = svg(A.W, A.H, "Net capacitance against water depth: a straight line", A.s + poly(curve(A, (x) => Math.min(f0(x), top), 0, Math.min(v.L, d0.L), 4), "ghost") + poly(curve(A, (x) => Math.min(f(x), top), 0, v.L, 4), "trace-a") + dot(A.X(res.x), A.Y(Math.min(res.C, top))) + label(A.X(res.x) + (res.x > v.L * 0.6 ? -8 : 8), A.Y(Math.min(res.C, top)) - 10, eng(res.C, "F"), res.x > v.L * 0.6 ? "end" : "start")) + ghostKey("your tank");
   }
 
   /* =====================================================================
@@ -781,9 +784,10 @@ void loop()
   }
   function photoRender(extra, res, v) {
     if (!res) { extra.innerHTML = ""; return; }
-    const emax = Math.max(2000, v.E * 1.2), f = (e) => Math.min(v.Vcc, RESP * e * v.RL);
-    const A = axes({ x: [0, emax], y: [0, v.Vcc * 1.15], xt: [0, emax / 4, emax / 2, (3 * emax) / 4, emax].map((q) => Math.round(q)), yt: [0, v.Vcc / 2, v.Vcc], fy: (y) => y.toFixed(2), xl: "Light (lux)", yl: "Vout (V)" });
-    extra.innerHTML = `<div class="plot-box">${svg(A.W, A.H, "Output voltage against light level", A.s + poly(curve(A, f, 0, emax, 120), "trace-a") + dot(A.X(v.E), A.Y(res.vout)))}</div>`;
+    const d0 = defaultsOf(this), emax = Math.max(2000, v.E * 1.2), f = (e) => Math.min(v.Vcc, RESP * e * v.RL), f0 = (e) => Math.min(d0.Vcc, RESP * e * d0.RL);
+    const top = vTop(d0.Vcc, v.Vcc);
+    const A = axes({ x: [0, emax], y: [0, top], xt: [0, emax / 4, emax / 2, (3 * emax) / 4, emax].map((q) => Math.round(q)), yt: ticks3(top), fy: (y) => +y.toPrecision(2), xl: "Light (lux)", yl: "Vout (V)" });
+    extra.innerHTML = `<div class="plot-box">${svg(A.W, A.H, "Output voltage against light level", A.s + poly(curve(A, f0, 0, emax, 120), "ghost") + poly(curve(A, f, 0, emax, 120), "trace-a") + dot(A.X(v.E), A.Y(res.vout)))}${ghostKey()}</div>`;
   }
   function mountHall(el) {
     const c = pvCard(el, "", fold("Step-by-Step Working: The Hall Voltage", `<ol class="steps"></ol>`));
@@ -864,10 +868,11 @@ void loop()
   }
   function ldrRender(extra, res, v) {
     if (!res) { extra.innerHTML = ""; return; }
-    const emax = Math.max(1000, v.E * 1.2), f = (e) => (v.Vs * v.R) / (v.R + ldrR(e)), top = Math.max(v.Vs, ESP_MAX) * 1.12;
-    const A = axes({ x: [0, emax], y: [0, top], xt: [0, emax / 4, emax / 2, (3 * emax) / 4, emax].map((q) => Math.round(q)), yt: [0, ESP_MAX, v.Vs].filter((y, i, a) => a.indexOf(y) === i).sort((a, b) => a - b), fy: (y) => y.toFixed(1), xl: "Light (lux)", yl: "Vout (V)" });
+    const d0 = defaultsOf(this), emax = Math.max(1000, v.E * 1.2), f = (e) => (v.Vs * v.R) / (v.R + ldrR(e)), f0 = (e) => (d0.Vs * d0.R) / (d0.R + ldrR(e));
+    const top = vTop(d0.Vs, v.Vs);
+    const A = axes({ x: [0, emax], y: [0, top], xt: [0, emax / 4, emax / 2, (3 * emax) / 4, emax].map((q) => Math.round(q)), yt: [0, ESP_MAX, top].filter((y, i, a) => a.indexOf(y) === i), fy: (y) => +y.toPrecision(2), xl: "Light (lux)", yl: "Vout (V)" });
     const ref = `<line class="ref" x1="${A.l}" x2="${A.l + A.pw}" y1="${A.Y(ESP_MAX)}" y2="${A.Y(ESP_MAX)}"/>` + T(A.l + 6, A.Y(ESP_MAX) - 5, "ESP32 limit 3.3 V", "start", "reflab");
-    extra.innerHTML = `<div class="plot-box">${svg(A.W, A.H, "Output voltage against light level, with the 3.3 V ESP32 limit", A.s + ref + poly(curve(A, f, 1, emax, 160), "trace-a") + dot(A.X(v.E), A.Y(res.vout)))}</div>`;
+    extra.innerHTML = `<div class="plot-box">${svg(A.W, A.H, "Output voltage against light level, with the 3.3 V ESP32 limit", A.s + ref + poly(curve(A, f0, 1, emax, 160), "ghost") + poly(curve(A, f, 1, emax, 160), "trace-a") + dot(A.X(v.E), A.Y(res.vout)))}${ghostKey()}</div>`;
   }
 
   // Strain gauge: a stretched gauge in one arm of a Wheatstone bridge (a quarter bridge)
@@ -906,21 +911,45 @@ void loop()
   }
 
 
+  /* ---------- graphs that react: fixed axes and a faint "default values" curve ----------
+     An axis keeps a fixed top (from the section's default values) and only steps up, or down, when the curve leaves it,
+     so changing an input visibly moves the curve. The faint curve is the same graph with the default values. */
+  const niceUp = (x) => { const p = 10 ** Math.floor(Math.log10(x)), m = x / p; return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * p; };
+  // headroom: the default curve fills about half the height, so doubling or halving an input stays on the same axis
+  const fitTop = (base, need) => { const t = niceUp(base * 2); return need > t || need < t / 10 ? niceUp(need * 2) : t; };
+  const vTop = (v0, v1) => Math.max(v0, v1, ESP_MAX) * 1.1;   // voltage graphs: the supply sets the top, never below the default
+  const defaultsOf = (sec) => Object.fromEntries(sec.inputs.map((f) => [f.k, f.d]));
+  const ghostKey = (you = "your values") => `<p class="legend"><span class="key"></span>${you} <span class="key ghostk"></span>default values</p>`;
+  const ticks3 = (top) => [0, top / 2, top];
   // Resistive: R after stretching at the same volume (k²) against only making it longer (k)
   function wireRender(extra, res, v) {
     if (!res) { extra.innerHTML = ""; return; }
-    const A = axes({ x: [1, 2], y: [0, 4.4], xt: [1, 1.25, 1.5, 1.75, 2], fx: (x) => `${x}×`, yt: [1, 2, 3, 4], fy: (y) => `${y}R`, xl: "Stretch: new length ÷ old length", yl: "New resistance" });
-    const g = A.s + poly(curve(A, (k) => k * k, 1, 2, 80), "trace-a") + poly(curve(A, (k) => k, 1, 2, 2), "trace-in") + dot(A.X(v.k), A.Y(v.k * v.k)) + label(A.X(v.k) + (v.k > 1.6 ? -8 : 8), A.Y(v.k * v.k) - 10, `${num(v.k * v.k)}R`, v.k > 1.6 ? "end" : "start");
-    extra.innerHTML = `<div class="plot-box">${svg(A.W, A.H, "Resistance after stretching: k squared at the same volume, against k for a longer wire of the same thickness", g)}<p class="legend"><span class="key"></span>stretched (longer and thinner): R × k² <span class="key input"></span>only longer (same thickness): R × k</p></div>`;
+    const d0 = defaultsOf(this), R = res.R, R0 = (d0.rho * d0.l) / (d0.A * 1e-6), Rof = (A) => (v.rho * v.l) / (A * 1e-6), R0of = (A) => (d0.rho * d0.l) / (A * 1e-6);
+    const unit = (top) => (top >= 1e3 ? [1e3, "kΩ"] : [1, "Ω"]);
+    // 1. stretching, in ohms
+    const t1 = fitTop(4 * R0, 4 * R), [s1, u1] = unit(t1);
+    const A1 = axes({ x: [1, 2], y: [0, t1 / s1], xt: [1, 1.25, 1.5, 1.75, 2], fx: (x) => `${x}×`, yt: ticks3(t1 / s1), fy: (y) => +y.toPrecision(3), xl: "Stretch k (new length ÷ old)", yl: `R (${u1})`, W: 340, H: 220 });
+    const g1 = A1.s + poly(curve(A1, (k) => Math.min((k * k * R0) / s1, t1 / s1), 1, 2, 60), "ghost") + poly(curve(A1, (k) => Math.min((k * R) / s1, t1 / s1), 1, 2, 2), "trace-in")
+      + poly(curve(A1, (k) => Math.min((k * k * R) / s1, t1 / s1), 1, 2, 80), "trace-a") + dot(A1.X(v.k), A1.Y(Math.min((v.k * v.k * R) / s1, t1 / s1)));
+    // 2. resistance against area (same length): R falls as 1 ÷ A
+    const t2 = fitTop(R0of(0.2), Math.max(Rof(0.2), v.A <= 2 ? R : 0)), [s2, u2] = unit(t2);
+    const A2 = axes({ x: [0, 2], y: [0, t2 / s2], xt: [0, 0.5, 1, 1.5, 2], yt: ticks3(t2 / s2), fy: (y) => +y.toPrecision(3), xl: "Cross-section area A (mm²)", yl: `R (${u2})`, W: 340, H: 220 });
+    const g2 = A2.s + poly(curve(A2, (a) => Math.min(R0of(a) / s2, t2 / s2), 0.02, 2, 120), "ghost") + poly(curve(A2, (a) => Math.min(Rof(a) / s2, t2 / s2), 0.02, 2, 120), "trace-a")
+      + (v.A <= 2 ? dot(A2.X(v.A), A2.Y(Math.min(R / s2, t2 / s2))) : "");
+    extra.innerHTML = `<div class="plot-pair"><div class="plot-box">${svg(A1.W, A1.H, "Resistance after stretching, in ohms: k squared at the same volume, against k for a longer wire of the same thickness", g1)}
+        <p class="legend"><span class="key"></span>stretched: k² R <span class="key input"></span>only longer: k R <span class="key ghostk"></span>default wire</p></div>
+      <div class="plot-box">${svg(A2.W, A2.H, "Resistance against cross-section area at this length: it falls as 1 over A", g2)}${ghostKey("your wire")}</div></div>
+      <p class="small-note">Right: a <strong>thinner</strong> wire (smaller A) has a <strong>higher</strong> resistance, R = ρl ÷ A; halve A and R doubles. Left: stretching makes it longer <em>and</em> thinner, so R rises as k².</p>`;
   }
   // Capacitive: C against the gap d (a curve, 1/d), with the chosen point
   function plateRender(extra, res, v) {
     if (!res) { extra.innerHTML = ""; return; }
-    const f = (d) => (v.er * E0 * v.A) / (d / 1000), dmax = Math.max(10, v.d * 1.2), top = res.C * 2.5, s = top > 1e-8 ? 1e9 : 1e12, u = s === 1e9 ? "nF" : "pF";
-    const A = axes({ x: [0, dmax], y: [0, top * s], xt: [0, dmax / 4, dmax / 2, (3 * dmax) / 4, dmax].map((x) => +x.toFixed(1)), yt: [0, +(top * s / 2).toPrecision(2), +(top * s).toPrecision(2)].filter((y) => y <= top * s), fy: (y) => +y.toPrecision(3), xl: "Plate gap d (mm)", yl: `C (${u})` });
-    const g = A.s + poly(curve(A, (d) => Math.min(f(d) * s, top * s), 0.05, dmax, 160), "trace-a") + dot(A.X(v.d), A.Y(A.clipY(res.C * s)));
-    extra.innerHTML = `<div class="plot-box">${svg(A.W, A.H, "Capacitance against plate gap: a curve, because C is proportional to 1 over d", g)}</div>
-      <p class="small-note">C rises in a <strong>straight line</strong> with ε<sub>r</sub> and with A (double either and C doubles), but falls as <strong>1 ÷ d</strong>: halve the gap and C doubles, so a gap (displacement) sensor is <strong>non-linear</strong>, very sensitive when the plates are close.</p>`;
+    const d0 = defaultsOf(this), f = (d) => (v.er * E0 * v.A) / (d / 1000), f0 = (d) => (d0.er * E0 * d0.A) / (d / 1000), dmax = Math.max(10, v.d * 1.2);
+    const top = fitTop(f0(1), f(1)), s = top >= 1e-9 ? 1e9 : 1e12, u = s === 1e9 ? "nF" : "pF";
+    const A = axes({ x: [0, dmax], y: [0, top * s], xt: [0, dmax / 4, dmax / 2, (3 * dmax) / 4, dmax].map((x) => +x.toFixed(1)), yt: ticks3(top * s), fy: (y) => +y.toPrecision(3), xl: "Plate gap d (mm)", yl: `C (${u})` });
+    const g = A.s + poly(curve(A, (d) => Math.min(f0(d) * s, top * s), 0.05, dmax, 160), "ghost") + poly(curve(A, (d) => Math.min(f(d) * s, top * s), 0.05, dmax, 160), "trace-a") + dot(A.X(v.d), A.Y(A.clipY(res.C * s)));
+    extra.innerHTML = `<div class="plot-box">${svg(A.W, A.H, "Capacitance against plate gap: a curve, because C is proportional to 1 over d", g)}${ghostKey()}</div>
+      <p class="small-note">C rises in a <strong>straight line</strong> with ε<sub>r</sub> and with A (double either and the whole curve doubles), but falls as <strong>1 ÷ d</strong>: halve the gap and C doubles, so a gap (displacement) sensor is <strong>non-linear</strong>, very sensitive when the plates are close.</p>`;
   }
   // NTC thermistor in a divider to the ESP32 (thermistor on top, so V rises with temperature)
   function thDiagram(Tl, lab, v, res) {
@@ -937,10 +966,10 @@ void loop()
   const thV = (v, T) => (v.Vs * v.R) / (v.R + ntcR(T));
   function thRender(extra, res, v) {
     if (!res) { extra.innerHTML = ""; return; }
-    const top = Math.max(v.Vs, ESP_MAX) * 1.1;
-    const A = axes({ x: [0, 100], y: [0, top], xt: [0, 25, 50, 75, 100], yt: [0, 1, 2, 3].filter((y) => y < top), fy: (y) => y, xl: "Temperature (°C)", yl: "Vout (V)" });
-    const ref = v.Vs > ESP_MAX ? `<line class="ref" x1="${A.l}" x2="${A.l + A.pw}" y1="${A.Y(ESP_MAX)}" y2="${A.Y(ESP_MAX)}"/>` + T(A.l + 6, A.Y(ESP_MAX) - 5, "ESP32 limit 3.3 V", "start", "reflab") : "";
-    extra.innerHTML = `<div class="plot-box">${svg(A.W, A.H, "Divider output against temperature for an NTC thermistor", A.s + ref + poly(curve(A, (T) => thV(v, T), 0, 100, 120), "trace-a") + dot(A.X(v.T), A.Y(res.vout)))}</div>
+    const d0 = defaultsOf(this), top = vTop(d0.Vs, v.Vs);
+    const A = axes({ x: [0, 100], y: [0, top], xt: [0, 25, 50, 75, 100], yt: [0, 1, 2, 3, 4, 5].filter((y) => y < top), fy: (y) => y, xl: "Temperature (°C)", yl: "Vout (V)" });
+    const ref = `<line class="ref" x1="${A.l}" x2="${A.l + A.pw}" y1="${A.Y(ESP_MAX)}" y2="${A.Y(ESP_MAX)}"/>` + T(A.l + 6, A.Y(ESP_MAX) - 5, "ESP32 limit 3.3 V", "start", "reflab");
+    extra.innerHTML = `<div class="plot-box">${svg(A.W, A.H, "Divider output against temperature for an NTC thermistor", A.s + ref + poly(curve(A, (T) => thV(d0, T), 0, 100, 120), "ghost") + poly(curve(A, (T) => thV(v, T), 0, 100, 120), "trace-a") + dot(A.X(v.T), A.Y(res.vout)))}${ghostKey()}</div>
       <p class="small-note">The curve is steepest where R<sub>NTC</sub> is close to R, so choose R equal to the thermistor's resistance in the middle of the range you care about (10 kΩ for around 25 °C).</p>`;
   }
   // Piezo pressed and held: the voltage leaks away although the force stays
