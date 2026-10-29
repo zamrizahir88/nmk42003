@@ -390,9 +390,9 @@
   /* ---------- the page ---------- */
   function drawList() {
     const box = $("#pkList"); if (!box) return;
-    const rows = picked.log.slice().reverse().filter((x) => byId[x.e]);
+    const rows = picked.log.slice().reverse().filter((x) => byId[x.e] && picked.ids.includes(x.e));   // this round only
     const fmt = (t) => { const d = new Date(t + 8 * 3600000), h = d.getUTCHours(); return `${d.getUTCDate()}/${d.getUTCMonth() + 1}, ${((h + 11) % 12) + 1}:${String(d.getUTCMinutes()).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
-    box.innerHTML = `<div class="pk-lh"><h2 class="h3">Picked So Far (${picked.ids.filter((e) => byId[e]).length})</h2>${picked.ids.length ? `<button type="button" class="btn ghost" data-reset>Start a new round for everyone</button>` : ""}</div>
+    box.innerHTML = `<div class="pk-lh"><h2 class="h3">Picked So Far (${picked.ids.filter((e) => byId[e]).length})</h2>${picked.ids.length ? `<span class="pk-lbtn"><button type="button" class="btn ghost" data-reset>Start a new round for everyone</button><button type="button" class="btn ghost" data-clear>🗑 Clear the list</button></span>` : ""}</div>
       ${rows.length ? `<ol class="pk-log">${rows.slice(0, 40).map((x) => { const st = byId[x.e], back = picked.ids.includes(x.e); return `<li><span class="pk-lt">${fmt(x.at)}</span><strong>${esc(nameOf(st, set.show))}</strong>${set.show !== "full" ? `<span class="pk-ln">${esc(title(st.name))}</span>` : ""}<span class="pk-how">${x.how === "team" ? "Team up" : ""}</span>${back ? `<button type="button" class="pk-back" data-back="${esc(x.e)}" title="Put back in the pool">↺ Put back</button>` : ""}</li>`; }).join("")}</ol>`
         : `<p class="small-note">No one picked yet. Students picked here sit out until everyone in the pool has had a turn (when "Skip students already picked" is ticked).</p>`}`;
   }
@@ -484,6 +484,7 @@
       if (t.closest("[data-reload]")) loadPresent(true);
       else if (t.closest("[data-round]")) { const ids = new Set(pool().map((s) => s.id)); picked.ids = picked.ids.filter((x) => !ids.has(x)); savePicked(); refresh(); }
       else if (t.closest("[data-reset]")) { const b = t.closest("[data-reset]"); if (b.dataset.sure) { picked = { ids: [], log: picked.log }; savePicked(); refresh(); } else { b.dataset.sure = "1"; b.textContent = "Tap again to put everyone back"; } }
+      else if (t.closest("[data-clear]")) { const b = t.closest("[data-clear]"); if (b.dataset.sure) { picked = { ids: [], log: [] }; savePicked(); refresh(); } else { b.dataset.sure = "1"; b.textContent = "Tap again to clear the list"; } }
       else if (t.closest("[data-back]")) { const id = t.closest("[data-back]").dataset.back; picked.ids = picked.ids.filter((x) => x !== id); savePicked(); status(); drawList(); }
       else if (t.closest("[data-done]")) closeResult();
       else if (t.closest("[data-team]")) teamUp(t.closest("[data-team]"));
