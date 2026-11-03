@@ -1369,9 +1369,11 @@
     try {
       const b = db.batch();
       b.update(db.collection("notices").doc(id), { status: ok ? "approved" : "rejected", note: note || "", decidedBy: by, decidedAt: FV.serverTimestamp() });
-      // a session already held: an approved notice turns the mark into Excused; a rejected one leaves an Absent
-      if (s && s.state !== "planned") {
-        const x = recOf(s.id, n.email);
+      // a session already held (opened, already marked by hand, or its day has come): an approved notice turns the mark
+      // into Excused; a rejected one leaves an Absent. A session still to come gets the Excused when it is closed.
+      const x0 = s && recOf(s.id, n.email);
+      if (s && (s.state !== "planned" || x0 || s.date <= todayIso())) {
+        const x = x0;
         if (ok) b.set(db.collection("attendance").doc(`${s.id}_${n.email}`), Object.assign(recBase(s, n.email, "E"), { remark: `${REASONS[n.reason] || n.reason}: ${n.detail}`.slice(0, 200) }));
         else if (x && x.status === "E" && n.status === "approved") b.set(db.collection("attendance").doc(x.id), Object.assign(recBase(s, n.email, "A"), { remark: "Absence notice not approved" }));
         else if (x && x.remark === "Absence notice waiting for approval") b.update(db.collection("attendance").doc(x.id), { remark: "Absence notice not approved" });
