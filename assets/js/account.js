@@ -22,7 +22,7 @@
   const STUDENT_DOMAIN = "@studentmail.unimap.edu.my";
   const EX_KEY = "nmk-ex-log", UID_KEY = "nmk-sync-uid";
   // progress kept in this browser that is not worth syncing
-  const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-|sched|role|preview|gal|bell|msnd|mus|pj-draft|pick|lman)/;
+  const LOCAL_ONLY = /^nmk-(theme|last|chat|sync-|sched|role|preview|gal|bell|msnd|mus|pj-draft|pick|lman|who)/;
   const SEM = (typeof COURSE !== "undefined" && (COURSE.semesterId || COURSE.session)) || "";
 
   firebase.initializeApp(CONFIG);
@@ -139,6 +139,7 @@
         if (nb !== bh) { await db.collection("board").doc(uid).set(Object.assign({ updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, bd)); bh = nb; }
       }
       ls.set(SENT_KEY, `${kh}|${bh}`);
+      noteXp();
       if (Date.now() - (+ls.get(ACTIVE_KEY) || 0) > 30 * 60000) {
         await db.collection("users").doc(uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() });
         ls.set(ACTIVE_KEY, String(Date.now()));
@@ -196,6 +197,7 @@
       }
     });
     ls.set(UID_KEY, state.user.uid);
+    noteXp();
     const now = snapshot();
     if (JSON.stringify(now) !== before) document.dispatchEvent(new CustomEvent("nmk:synced"));
     // save back only when this browser has something the account doesn't (a few writes saved on every visit)
@@ -647,6 +649,86 @@
   }
   function closeModal() { if (back) { back.remove(); back = null; } }
   const notice = (title, html) => modal(`<h2>${title}</h2>${html.startsWith("<p>") ? html : `<p>${html}</p>`}`);
+
+
+  /* ---------- Sign-in reminders (no Firebase: all in this browser) ----------
+     Most students practise without signing in, so their XP stays on that device only (it moves to the account the next
+     time they sign in there). A centred card over frosted glass asks once on the first visit whether this is a student
+     or a visitor (nmk-who, local only); students then get one reminder per visit after solving an exercise or winning a
+     station, and a small amber chip beside Sign in shows how much XP is not on their account yet. Visitors are never
+     asked again. Not on the showcase page, the projector screen, or for a browser a lecturer uses. */
+  const WHO_KEY = "nmk-who", XP_KEY = "nmk-sync-xp";
+  const page = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+  const quiet = () => page === "showcase.html" || /[?&]show=/.test(location.search) || ls.get("nmk-role") === "lecturer";
+  const localXp = () => { try { return window.NMKGame ? window.NMKGame.local().xp || 0 : 0; } catch (e) { return 0; } };
+  const keptXp = () => (ls.get(UID_KEY) ? +ls.get(XP_KEY) || 0 : 0);
+  const unsaved = () => Math.max(0, localXp() - keptXp());
+  const noteXp = () => ls.set(XP_KEY, String(localXp()));   // after a sync: what the account now holds
+  let pop = null;
+  function glass(html, onClose) {
+    closeGlass();
+    const g = document.createElement("div");
+    g.className = "acc-glass";
+    g.innerHTML = `<div class="acc-pop" role="dialog" aria-modal="true" aria-labelledby="accPopT"><button type="button" class="acc-px" data-gx aria-label="Close">✕</button>${html}</div>`;
+    document.body.appendChild(g);
+    const step = window.NMKBack ? NMKBack.layer(() => { pop && (pop.step = null); closeGlass(); }) : null;
+    pop = { g, step, onClose };
+    g.addEventListener("click", (e) => { if (e.target === g || e.target.closest("[data-gx]")) closeGlass(); });
+    setTimeout(() => g.classList.add("on"), 20);
+    const f = g.querySelector(".btn"); if (f) f.focus();
+    return g;
+  }
+  function closeGlass() {
+    if (!pop) return;
+    const p = pop; pop = null;
+    p.g.remove();
+    if (p.step) p.step.closed();
+    if (p.onClose) p.onClose();
+  }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && pop) closeGlass(); });
+  function welcome() {
+    const g = glass(`<img class="acc-plogo" src="assets/img/unimap-logo.png" alt="" width="640" height="299">
+      <h2 id="accPopT">Welcome to NMK42003 Instrumentation</h2>
+      <p>Are you taking this course? Sign in with your studentmail account so your XP, badges and progress are kept on your account, on every device.</p>
+      <div class="acc-pbtns"><button type="button" class="btn" data-gin>🎓 I'm an NMK42003 student<small>Sign in with my studentmail</small></button>
+        <button type="button" class="btn ghost" data-gvis>👀 Just looking around<small>Everything is open to read</small></button></div>`,
+    () => { if (!ls.get(WHO_KEY)) ls.set(WHO_KEY, "later"); });
+    g.querySelector("[data-gin]").addEventListener("click", () => { ls.set(WHO_KEY, "student"); closeGlass(); signIn(); });
+    g.querySelector("[data-gvis]").addEventListener("click", () => { ls.set(WHO_KEY, "visitor"); closeGlass(); chip(); });
+  }
+  function remind(what) {
+    if (state.user || quiet() || ls.get(WHO_KEY) === "visitor" || pop) return;
+    try { if (sessionStorage.getItem("nmk-remind")) return; sessionStorage.setItem("nmk-remind", "1"); } catch (e) { return; }
+    const n = unsaved();
+    if (!n) return;
+    const g = glass(`<div class="acc-pxp" aria-hidden="true">+${n} XP</div><h2 id="accPopT">${esc(what)}</h2>
+      <p><strong>Your ${n} XP is saved on this device only.</strong> Sign in to keep it on your account: it moves across straight away, and it follows you to your phone and laptop.</p>
+      <div class="acc-row"><button type="button" class="btn" data-gin>Sign in</button><button type="button" class="btn ghost" data-gx>Later</button></div>`);
+    g.querySelector("[data-gin]").addEventListener("click", () => { ls.set(WHO_KEY, "student"); closeGlass(); signIn(); });
+  }
+  // the amber chip beside Sign in: XP on this device that the account doesn't have yet
+  const xchip = document.createElement("button");
+  xchip.type = "button"; xchip.className = "acc-xchip"; xchip.hidden = true;
+  xchip.addEventListener("click", () => { ls.set(WHO_KEY, "student"); signIn(); });
+  function chip() {
+    const n = state.ready && !state.user && !quiet() && ls.get(WHO_KEY) !== "visitor" ? unsaved() : 0;
+    xchip.hidden = !n;
+    if (n) { xchip.innerHTML = `⚠ <span class="acc-xn">${n} XP</span><span class="acc-xl"> not on your account</span>`; xchip.title = `${n} XP is saved on this device only. Sign in to keep it on your account.`; xchip.setAttribute("aria-label", xchip.title); }
+    if (!xchip.isConnected && btn.parentNode) btn.parentNode.insertBefore(xchip, btn);
+  }
+  const later = (f) => setTimeout(f, 1400);   // let the student see the result first
+  document.addEventListener("nmk:exercise", (e) => { const d = e.detail || {}; if (d.solved && !state.user) later(() => { chip(); remind("Nice work, solved!"); }); });
+  document.addEventListener("nmk:store", (e) => {
+    if (state.user) return;
+    const k = e.detail;
+    if (k === "nmk-missions") later(() => { chip(); remind("Station cleared!"); });
+    else if (k === "nmk-solved" || k === "nmk-quiz-log") later(chip);
+  });
+  listeners.push((s) => {
+    if (s.user) { closeGlass(); xchip.hidden = true; if (!isAdmin(s.user.email)) ls.set(WHO_KEY, "student"); return; }
+    chip();
+    if (!ls.get(WHO_KEY) && !ls.get(UID_KEY) && !quiet()) setTimeout(() => { if (!state.user && !ls.get(WHO_KEY)) welcome(); }, 1200);
+  });
 
   paint();
   // For admin.html and later pages: read-only access to the signed-in state and the database
