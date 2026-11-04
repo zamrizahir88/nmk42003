@@ -279,6 +279,30 @@
   .ink-bhint.nudge { color: #b35c00; font-weight: 700; }
   .ink-bb.idle canvas { cursor: default; }
   .ink-bb.er canvas { cursor: none; }
+  .ink-bpan { position: absolute; right: 8px; z-index: 3; width: min(380px, calc(100% - 16px)); max-height: calc(100% - 120px); overflow-y: auto; background: var(--surface, #fff); color: var(--ink, #15243a); border: 1px solid var(--rule, #d6dee4); border-radius: 14px; box-shadow: 0 14px 34px rgba(21, 36, 58, .25); padding: 14px 14px 12px; cursor: default; }
+  .ink-bpan[hidden] { display: none; }
+  .ink-bpan h3 { margin: 0 30px 10px 0; font: 600 1.05rem var(--serif, serif); }
+  .ink-bpan h4 { margin: 14px 0 6px; font: 700 .7rem var(--sans, sans-serif); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3, #6f7f91); }
+  .ink-px { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
+  .ink-px:hover { background: var(--teal-soft, #e0efee); }
+  .ink-pl { display: grid; gap: 4px; font-size: .8rem; font-weight: 600; color: var(--ink-2, #4a5a6e); }
+  .ink-pin { font: inherit; font-size: .95rem; height: 38px; padding: 0 10px; border: 1px solid var(--rule, #d6dee4); border-radius: 8px; background: var(--paper, #fff); color: var(--ink, #15243a); width: 100%; box-sizing: border-box; }
+  .ink-prow { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+  .ink-pb { font: 600 .85rem var(--sans, sans-serif); height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--teal, #0b6e6e); background: var(--teal, #0b6e6e); color: #fff; cursor: pointer; display: inline-flex; align-items: center; }
+  .ink-pb.ghost { background: transparent; color: var(--teal, #0b6e6e); }
+  .ink-pb:disabled { opacity: .5; cursor: default; }
+  .ink-pb:focus-visible, .ink-px:focus-visible, .ink-pin:focus-visible { outline: 3px solid var(--focus, #1a73c7); outline-offset: 1px; }
+  .ink-pdel.sure { background: #d62828; border-color: #d62828; color: #fff; }
+  .ink-pnote { margin: 6px 0 0; font-size: .8rem; color: var(--ink-2, #4a5a6e); }
+  .ink-pmsg { margin: 10px 0 0; font-size: .85rem; font-weight: 600; color: var(--teal, #0b6e6e); }
+  .ink-pask { margin: 10px 0 0; padding: 10px; border-radius: 10px; background: var(--amber-soft, #fbf1dc); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .ink-pask p { margin: 0 0 4px; flex-basis: 100%; font-size: .85rem; }
+  .ink-plist { list-style: none; margin: 0; padding: 0; }
+  .ink-plist li { padding: 8px 0; border-top: 1px solid var(--rule, #d6dee4); }
+  .ink-plist li:first-child { border-top: 0; }
+  .ink-pn { display: grid; } .ink-pn small { color: var(--ink-3, #6f7f91); font-size: .75rem; }
+  .ink-plist .ink-prow { margin-top: 6px; }
+  .ink-pfile { position: relative; }
   @media print { .ink-bd, .ink-chip { display: none !important; } }`;
   const bd = document.createElement("div"), chip = document.createElement("button");
   bd.className = "ink-bd"; bd.hidden = true; bd.setAttribute("role", "dialog"); bd.setAttribute("aria-label", "Writing board");
@@ -288,7 +312,8 @@
       <select class="ink-bgs" aria-label="Background">${BGS.map(([k, l]) => `<option value="${k}">${l}</option>`).join("")}</select>
       <label class="ink-op" title="See-through: lower lets the page show through (your writing stays solid)">◐<input type="range" min="20" max="100" step="5" aria-label="Board opacity"></label>
       <button type="button" data-bpen title="Pen only: only the stylus writes, so your palm or finger leaves no marks" aria-label="Pen only">✍️</button>
-      <button type="button" data-bimg title="Save this page as an image" aria-label="Save this page as an image">💾</button>
+      <button type="button" data-bopen title="My Boards: open a saved board" aria-label="My Boards: open a saved board">📂</button>
+      <button type="button" data-bsave title="Save this board: to your account, a file or an image" aria-label="Save this board">💾</button>
       <button type="button" class="ink-bdel" data-bdel title="Delete this page" aria-label="Delete this page">🗑</button>
       <span class="ink-bsp"></span>
       <button type="button" data-bmin title="Minimise" aria-label="Minimise the board">–</button><button type="button" data-bfull title="Full screen" aria-label="Full screen">⛶</button><button type="button" data-bx title="Close (your writing stays)" aria-label="Close the board">✕</button>
@@ -421,7 +446,8 @@
     else if (b.dataset.bp) { B.pi = Math.max(0, Math.min(B.pages.length - 1, B.pi + +b.dataset.bp)); bsave(); bdraw(); }
     else if (b.hasAttribute("data-bnew")) newPage();
     else if (b.hasAttribute("data-bpen")) { B.penOnly = !penOnly(); bsave(); bdraw(); }
-    else if (b.hasAttribute("data-bimg")) saveImage();
+    else if (b.hasAttribute("data-bsave")) panel(P.view === "save" ? null : "save");
+    else if (b.hasAttribute("data-bopen")) panel(P.view === "open" ? null : "open");
     else if (b.hasAttribute("data-bdel")) {
       if (!b.classList.contains("sure")) { b.classList.add("sure"); b.textContent = "Delete page?"; setTimeout(() => { if (b.isConnected) { b.classList.remove("sure"); b.textContent = "🗑"; } }, 3000); return; }
       b.classList.remove("sure"); b.textContent = "🗑";
@@ -447,6 +473,199 @@
     const a = document.createElement("a"), d = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 16).replace(/[-:T]/g, "");
     a.download = `nmk42003-board-${d}-page${B.pi + 1}.png`; a.href = c.toDataURL("image/png"); document.body.appendChild(a); a.click(); a.remove();
   }
+  /* ---------- My Boards: save a board to the signed-in account and open it again (Firestore boards/{uid}_{id}, one
+     per board, its pages packed into one text field; boardidx/{uid} lists them, so the list costs 1 read). Saving only
+     happens on Save (2 writes). Limits: students 10 boards of up to 500 KB, lecturers 50 of up to 900 KB. Anyone can
+     also save to a file and open it again, without an account. ---------- */
+  const KB = (n) => Math.ceil(n / 1024);
+  const hashS = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return String(h); };
+  // pack: whole-pixel points, each one as the change from the one before (about half the size)
+  function enc(pages) {
+    return JSON.stringify(pages.map((pg) => pg.map((s) => {
+      const d = []; let px = 0, py = 0, pp = 0;
+      s.p.forEach((q) => { const x = Math.round(q[0]), y = Math.round(q[1]), p = Math.round((q[2] || 0) * 100); d.push(x - px, y - py); if (s.pr) d.push(p - pp); px = x; py = y; pp = p; });
+      return [s.t === "hl" ? 1 : 0, s.c, s.w, s.pr ? 1 : 0, d];
+    })));
+  }
+  function dec(str) {
+    const a = JSON.parse(str);
+    if (!Array.isArray(a)) throw new Error("not a board");
+    return a.map((pg) => (Array.isArray(pg) ? pg : []).map(([h, c, w, pr, d]) => {
+      const p = [], k = pr ? 3 : 2; let x = 0, y = 0, pp = 0;
+      for (let i = 0; i + 1 < (d || []).length; i += k) { x += d[i]; y += d[i + 1]; if (pr) pp += d[i + 2] || 0; p.push([x, y, pr ? pp / 100 : 0]); }
+      return { t: h ? "hl" : "pen", c: /^#[0-9a-f]{6}$/i.test(c) ? c : PENS[0], w: +w || SIZES[1], pr: pr ? 1 : 0, p };
+    }).filter((s) => s.p.length));
+  }
+  const hasInk = () => B.pages.some((pg) => pg.length);
+  const unsavedBoard = () => hasInk() && hashS(enc(B.pages)) !== B.sh;
+  const acct = () => { const A = window.NMKAccount, u = A && A.state && A.state.user; return u ? { A, u, db: A.db, lec: A.isAdmin(u.email) } : null; };
+  const limits = (lec) => (lec ? { n: 50, kb: 900 } : { n: 10, kb: 500 });
+  const escH = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const today = () => new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+  const fmtAt = (ms) => { try { return new Date(ms).toLocaleString("en-GB", { timeZone: "Asia/Kuala_Lumpur", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }); } catch (e) { return ""; } };
+  let idx = null, idxUid = null;   // this account's list of boards, read once per page
+  async function loadIdx(a) {
+    if (idx && idxUid === a.u.uid) return idx;
+    const d = await a.db.collection("boardidx").doc(a.u.uid).get();
+    idx = (d.exists && d.data().list) || {}; idxUid = a.u.uid;
+    return idx;
+  }
+  const pan = document.createElement("div");
+  pan.className = "ink-bpan"; pan.hidden = true; pan.setAttribute("role", "dialog"); pan.setAttribute("aria-label", "Save or open a board");
+  bd.appendChild(pan);
+  let P = { view: null, msg: "", ask: null, ren: null, busy: false };
+  function panel(view) {
+    P = Object.assign(P, { view, msg: view === P.view ? P.msg : "", ask: null, ren: null });
+    if (!view) { pan.hidden = true; return; }
+    pan.hidden = false; pan.style.top = `${bh.offsetHeight + 8}px`;
+    drawPan();
+    if (view === "open" && acct() && !idx) refreshList();
+  }
+  function drawPan() {
+    const a = acct(), L = a && limits(a.lec), x = `<button type="button" class="ink-px" data-px aria-label="Close">✕</button>`, msg = P.msg ? `<p class="ink-pmsg" aria-live="polite">${P.msg}</p>` : "";
+    const signin = `<p class="ink-pnote">Sign in to keep boards on your account and open them on any device.</p><button type="button" class="ink-pb" data-psignin>Sign in</button>`;
+    if (P.view === "save") {
+      const name = B.name || `Board ${today()}`, size = KB(enc(B.pages).length), mine = a && B.cid && B.cuid === a.u.uid;
+      pan.innerHTML = `${x}<h3>💾 Save This Board</h3>
+        <label class="ink-pl">Name<input class="ink-pin" maxlength="60" value="${escH(name)}" aria-label="Board name"></label>
+        <p class="ink-pnote">${B.pages.length} page${B.pages.length === 1 ? "" : "s"} · about ${size} KB${a ? ` (up to ${L.kb} KB)` : ""}</p>
+        ${P.ask ? `<div class="ink-pask"><p>${P.ask.text}</p><button type="button" class="ink-pb" data-pyes>${P.ask.yes}</button><button type="button" class="ink-pb ghost" data-pno>Cancel</button></div>` : ""}
+        ${a ? `<div class="ink-prow"><button type="button" class="ink-pb" data-pcloud ${P.busy ? "disabled" : ""}>Save to my account</button>${mine ? `<button type="button" class="ink-pb ghost" data-pnew ${P.busy ? "disabled" : ""}>Save as new</button>` : ""}</div>
+          ${mine ? `<p class="ink-pnote">Opened from your account: Save updates it.</p>` : ""}` : signin}
+        ${msg}<h4>On This Device</h4><div class="ink-prow"><button type="button" class="ink-pb ghost" data-pfile>Save to file</button><button type="button" class="ink-pb ghost" data-bimg>Save page as image</button></div>`;
+      const i = pan.querySelector(".ink-pin"); if (i && !P.ask) setTimeout(() => { i.focus(); i.select(); }, 0);
+      return;
+    }
+    let list = "";
+    if (!a) list = signin;
+    else if (!idx) list = `<p class="ink-pnote">Loading your boards…</p>`;
+    else {
+      const rows = Object.entries(idx).sort((p, q) => (q[1].at || 0) - (p[1].at || 0));
+      list = rows.length ? `<ul class="ink-plist">${rows.map(([id, v]) => P.ren === id
+        ? `<li><input class="ink-pin" data-rin maxlength="60" value="${escH(v.name)}" aria-label="New name"><span class="ink-prow"><button type="button" class="ink-pb" data-prs="${id}">Save name</button><button type="button" class="ink-pb ghost" data-pno>Cancel</button></span></li>`
+        : `<li><span class="ink-pn"><strong>${escH(v.name)}</strong><small>${v.n || 1} page${v.n === 1 ? "" : "s"} · ${v.kb || 1} KB · ${escH(fmtAt(v.at))}</small></span>
+          <span class="ink-prow"><button type="button" class="ink-pb" data-pop="${id}" ${P.busy ? "disabled" : ""}>Open</button><button type="button" class="ink-pb ghost" data-pren="${id}" aria-label="Rename ${escH(v.name)}">✎</button><button type="button" class="ink-pb ghost ink-pdel${P.del === id ? " sure" : ""}" data-pdel="${id}" aria-label="Delete ${escH(v.name)}">${P.del === id ? "Delete?" : "🗑"}</button></span></li>`).join("")}</ul>
+        <p class="ink-pnote">${rows.length} of ${L.n} boards.</p>` : `<p class="ink-pnote">No boards saved yet. Write something, then 💾 Save to my account.</p>`;
+    }
+    pan.innerHTML = `${x}<h3>📂 My Boards</h3>
+      ${P.ask ? `<div class="ink-pask"><p>${P.ask.text}</p><button type="button" class="ink-pb" data-pyes>${P.ask.yes}</button><button type="button" class="ink-pb ghost" data-pno>Cancel</button></div>` : ""}
+      ${list}${msg}<h4>From This Device</h4><label class="ink-pb ghost ink-pfile">Open a file…<input type="file" accept=".json,application/json" data-pfin hidden></label>`;
+  }
+  const say = (m) => { P.msg = m; drawPan(); };
+  async function refreshList() {
+    const a = acct(); if (!a) return;
+    try { await loadIdx(a); } catch (e) { P.msg = `Couldn't load your boards (${escH(e.code || e.message || e)}).`; idx = idx || {}; }
+    if (P.view === "open") drawPan();
+  }
+  // put a board on screen (from the account or a file)
+  function useBoard(o) {
+    B.pages = o.pages.length ? o.pages : [[]]; B.pi = 0; B.bg = BGS.some(([k]) => k === o.bg) ? o.bg : B.bg; B.name = o.name || "";
+    B.cid = o.cid || null; B.cuid = o.cuid || null; B.sh = hashS(enc(B.pages)); bhist = {};
+    bsave(); bdraw(); bTools();
+  }
+  // asks before something on the board that isn't saved is replaced
+  function replaceOk(go) { if (!unsavedBoard()) return go(); P.ask = { text: "The board on screen has writing that isn't saved. Replace it?", yes: "Replace it", go }; drawPan(); }
+  async function cloudSave(asNew, sure) {
+    const a = acct(); if (!a) return;
+    const inp = pan.querySelector(".ink-pin"), name = ((inp && inp.value) || B.name || `Board ${today()}`).trim().slice(0, 60) || `Board ${today()}`;
+    const data = enc(B.pages), L = limits(a.lec);
+    if (!hasInk()) return say("The board is empty: write something first.");
+    if (KB(data.length) > L.kb) return say(`This board is about ${KB(data.length)} KB, more than the ${L.kb} KB a board can hold. Delete a few pages (or split it into two boards), or use Save to file.`);
+    P.busy = true; say("Saving…"); B.name = name;
+    try {
+      const list = await loadIdx(a);
+      let id = !asNew && B.cid && B.cuid === a.u.uid && list[B.cid] ? B.cid : null;
+      if (!id) {
+        const same = Object.entries(list).find(([, v]) => String(v.name).toLowerCase() === name.toLowerCase());
+        if (same && !sure) { P.busy = false; P.msg = ""; P.ask = { text: `You already have a board named “${escH(name)}”. Replace it?`, yes: "Replace it", go: () => cloudSave(asNew, true) }; return drawPan(); }
+        if (same) id = same[0];
+      }
+      if (!id && Object.keys(list).length >= L.n) { P.busy = false; return say(`You have ${L.n} boards, the most an account can keep. Delete one in 📂 My Boards first.`); }
+      id = id || Date.now().toString(36);
+      const FV = firebase.firestore.FieldValue, b = a.db.batch(), nl = Object.assign({}, list, { [id]: { name, n: B.pages.length, kb: KB(data.length), at: Date.now() } });
+      b.set(a.db.collection("boards").doc(`${a.u.uid}_${id}`), { uid: a.u.uid, name, bg: B.bg, n: B.pages.length, data, at: FV.serverTimestamp() });
+      b.set(a.db.collection("boardidx").doc(a.u.uid), { list: nl, at: FV.serverTimestamp() });
+      await b.commit();
+      idx = nl; B.cid = id; B.cuid = a.u.uid; B.sh = hashS(data); bsave();
+      P.busy = false; say(`Saved to your account ✓ “${escH(name)}”`);
+    } catch (e) { P.busy = false; say(`Not saved (${escH(e.code || e.message || e)}).${e.code === "permission-denied" ? " The lecturer needs to publish the latest Firestore rules." : ""}`); }
+  }
+  async function cloudOpen(id) {
+    const a = acct(); if (!a) return;
+    P.busy = true; say("Opening…");
+    try {
+      const d = await a.db.collection("boards").doc(`${a.u.uid}_${id}`).get();
+      P.busy = false;
+      if (!d.exists) { delete idx[id]; return say("That board isn't there any more."); }
+      const x = d.data(), o = { pages: dec(x.data), bg: x.bg, name: x.name, cid: id, cuid: a.u.uid };
+      replaceOk(() => { useBoard(o); panel(null); });
+      if (P.view) say("");
+    } catch (e) { P.busy = false; say(`Couldn't open it (${escH(e.code || e.message || e)}).`); }
+  }
+  async function cloudRename(id, name) {
+    const a = acct(); name = String(name || "").trim().slice(0, 60); if (!a || !name) return;
+    try {
+      const nl = Object.assign({}, idx, { [id]: Object.assign({}, idx[id], { name }) }), b = a.db.batch();
+      b.update(a.db.collection("boards").doc(`${a.u.uid}_${id}`), { name });
+      b.set(a.db.collection("boardidx").doc(a.u.uid), { list: nl, at: firebase.firestore.FieldValue.serverTimestamp() });
+      await b.commit(); idx = nl; if (B.cid === id) { B.name = name; bsave(); }
+      P.ren = null; say("Renamed ✓");
+    } catch (e) { say(`Not renamed (${escH(e.code || e.message || e)}).`); }
+  }
+  async function cloudDelete(id) {
+    const a = acct(); if (!a) return;
+    try {
+      const nl = Object.assign({}, idx); delete nl[id];
+      const b = a.db.batch();
+      b.delete(a.db.collection("boards").doc(`${a.u.uid}_${id}`));
+      b.set(a.db.collection("boardidx").doc(a.u.uid), { list: nl, at: firebase.firestore.FieldValue.serverTimestamp() });
+      await b.commit(); idx = nl; if (B.cid === id) { B.cid = null; bsave(); }
+      P.del = null; say("Deleted.");
+    } catch (e) { say(`Not deleted (${escH(e.code || e.message || e)}).`); }
+  }
+  function fileSave() {
+    const inp = pan.querySelector(".ink-pin"), name = ((inp && inp.value) || B.name || `Board ${today()}`).trim() || "Board";
+    const blob = new Blob([JSON.stringify({ app: "nmk42003-board", v: 1, name, bg: B.bg, pages: enc(B.pages) })], { type: "application/json" });
+    const el = document.createElement("a"); el.href = URL.createObjectURL(blob);
+    el.download = `${name.replace(/[^\w\- ]+/g, "").replace(/\s+/g, "-").toLowerCase() || "board"}.json`;
+    document.body.appendChild(el); el.click(); el.remove(); setTimeout(() => URL.revokeObjectURL(el.href), 5000);
+    B.name = name; B.sh = hashS(enc(B.pages)); bsave(); say("Saved to a file ✓ (look in your Downloads).");
+  }
+  function fileOpen(f) {
+    if (!f) return;
+    if (f.size > 5e6) return say("That file is too big for a board.");
+    const r = new FileReader();
+    r.onload = () => {
+      try { const o = JSON.parse(r.result); if (o.app !== "nmk42003-board") throw new Error("x"); const b = { pages: dec(o.pages), bg: o.bg, name: o.name }; replaceOk(() => { useBoard(b); panel(null); }); }
+      catch (e) { say("That isn't a board file saved from this site."); }
+    };
+    r.readAsText(f);
+  }
+  pan.addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b || b.disabled) return;
+    if (b.hasAttribute("data-px")) return panel(null);
+    if (b.hasAttribute("data-psignin")) { const A = window.NMKAccount; if (A) A.signIn(); return; }
+    if (b.hasAttribute("data-pyes")) { const g = P.ask && P.ask.go; P.ask = null; drawPan(); if (g) g(); return; }
+    if (b.hasAttribute("data-pno")) { P.ask = null; P.ren = null; return drawPan(); }
+    if (b.hasAttribute("data-pcloud")) return cloudSave(false);
+    if (b.hasAttribute("data-pnew")) return cloudSave(true);
+    if (b.hasAttribute("data-pfile")) return fileSave();
+    if (b.hasAttribute("data-bimg")) return saveImage();
+    if (b.dataset.pop) return cloudOpen(b.dataset.pop);
+    if (b.dataset.pren) { P.ren = b.dataset.pren; P.del = null; drawPan(); const i = pan.querySelector("[data-rin]"); if (i) { i.focus(); i.select(); } return; }
+    if (b.dataset.prs) return cloudRename(b.dataset.prs, (pan.querySelector("[data-rin]") || {}).value);
+    if (b.dataset.pdel) { const id = b.dataset.pdel; if (P.del === id) return cloudDelete(id); P.del = id; drawPan(); setTimeout(() => { if (P.del === id) { P.del = null; if (P.view === "open") drawPan(); } }, 3000); }
+  });
+  pan.addEventListener("change", (e) => { if (e.target.matches("[data-pfin]")) { fileOpen(e.target.files[0]); e.target.value = ""; } });
+  pan.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { e.stopPropagation(); panel(null); }
+    else if (e.key === "Enter" && e.target.matches(".ink-pin")) { e.preventDefault(); if (e.target.matches("[data-rin]")) cloudRename(P.ren, e.target.value); else if (acct()) cloudSave(false); else fileSave(); }
+  });
+  pan.addEventListener("pointerdown", (e) => e.stopPropagation());
+  // the account changed (signed in or out): another account's list must not show
+  if (window.NMKAccount && window.NMKAccount.on) window.NMKAccount.on(() => { const a = acct(); if (!a || a.u.uid !== idxUid) idx = null; if (P.view) drawPan(); });
+  else addEventListener("load", () => { if (window.NMKAccount && window.NMKAccount.on) window.NMKAccount.on(() => { const a = acct(); if (!a || a.u.uid !== idxUid) idx = null; if (P.view) drawPan(); }); });
+
   bdraw(); bTools();
 
   /* ---------- buttons and keys ---------- */
