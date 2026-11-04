@@ -159,4 +159,6 @@ table.adm { width: 100%; border-collapse: collapse; font-size: .9rem; font-varia
 .acc-xchip[hidden] { display: none; }
 .acc-xchip:focus-visible, .acc-px:focus-visible { outline: 3px solid var(--focus, #1a73c7); outline-offset: 2px; }
 @media (max-width: 760px) { .acc-xl { display: none; } .acc-xchip { height: 30px; padding: 0 8px; margin-right: 4px; font-size: .74rem; } }
-@media (prefers-reduced-motion: reduce) { .acc-glass, .acc-pop { transition: none; } }
+.acc-pop.nudge { animation: accNudge .4s ease; }
+@keyframes accNudge { 20% { transform: translateX(-8px); } 40% { transform: translateX(7px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(3px); } }
+@media (prefers-reduced-motion: reduce) { .acc-glass, .acc-pop { transition: none; } .acc-pop.nudge { animation: none; } }

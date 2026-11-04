@@ -656,7 +656,7 @@
      time they sign in there). A centred card over frosted glass asks once on the first visit whether this is a student
      or a visitor (nmk-who, local only); students then get one reminder per visit after solving an exercise or winning a
      station, and a small amber chip beside Sign in shows how much XP is not on their account yet. Visitors are never
-     asked again. Not on the showcase page, the projector screen, or for a browser a lecturer uses. */
+     asked again. The card can't be skipped (lecturer's choice): only its two buttons close it. Not on the showcase page, the projector screen, or for a browser a lecturer uses. */
   const WHO_KEY = "nmk-who", XP_KEY = "nmk-sync-xp";
   const page = (location.pathname.split("/").pop() || "index.html").toLowerCase();
   const quiet = () => page === "showcase.html" || /[?&]show=/.test(location.search) || ls.get("nmk-role") === "lecturer";
@@ -669,11 +669,14 @@
     closeGlass();
     const g = document.createElement("div");
     g.className = "acc-glass";
-    g.innerHTML = `<div class="acc-pop" role="dialog" aria-modal="true" aria-labelledby="accPopT"><button type="button" class="acc-px" data-gx aria-label="Close">✕</button>${html}</div>`;
+    g.innerHTML = `<div class="acc-pop" role="dialog" aria-modal="true" aria-labelledby="accPopT">${html}</div>`;
     document.body.appendChild(g);
-    const step = window.NMKBack ? NMKBack.layer(() => { pop && (pop.step = null); closeGlass(); }) : null;
-    pop = { g, step, onClose };
-    g.addEventListener("click", (e) => { if (e.target === g || e.target.closest("[data-gx]")) closeGlass(); });
+    // no skipping (lecturer's choice): only the card's own buttons close it; a tap on the glass gives the card a little nudge
+    pop = { g, step: null, onClose };
+    g.addEventListener("click", (e) => {
+      if (e.target.closest("[data-gx]")) return closeGlass();
+      if (e.target === g) { const c = g.firstElementChild; c.classList.remove("nudge"); void c.offsetWidth; c.classList.add("nudge"); }
+    });
     setTimeout(() => g.classList.add("on"), 20);
     const f = g.querySelector(".btn"); if (f) f.focus();
     return g;
@@ -685,14 +688,13 @@
     if (p.step) p.step.closed();
     if (p.onClose) p.onClose();
   }
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && pop) closeGlass(); });
   function welcome() {
     const g = glass(`<img class="acc-plogo" src="assets/img/unimap-logo.png" alt="" width="640" height="299">
       <h2 id="accPopT">Welcome to NMK42003 Instrumentation</h2>
       <p>Are you taking this course? Sign in with your studentmail account so your XP, badges and progress are kept on your account, on every device.</p>
       <div class="acc-pbtns"><button type="button" class="btn" data-gin>🎓 I'm an NMK42003 student<small>Sign in with my studentmail</small></button>
         <button type="button" class="btn ghost" data-gvis>👀 Just looking around<small>Everything is open to read</small></button></div>`,
-    () => { if (!ls.get(WHO_KEY)) ls.set(WHO_KEY, "later"); });
+    null);
     g.querySelector("[data-gin]").addEventListener("click", () => { ls.set(WHO_KEY, "student"); closeGlass(); signIn(); });
     g.querySelector("[data-gvis]").addEventListener("click", () => { ls.set(WHO_KEY, "visitor"); closeGlass(); chip(); });
   }
