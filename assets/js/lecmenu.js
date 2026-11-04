@@ -6,7 +6,8 @@
   // [group, [[tab, icon, title, page]]]
   const MENU = [
     ["", [["overview", "🏠", "Overview", "admin.html"]]],
-    ["Attendance", [["sessions", "🗓", "Sessions", "attendance.html"], ["notices", "✉️", "Absence Notices", "attendance.html"], ["swaps", "🔁", "Lab Swaps", "attendance.html"],
+    ["Today", [["today", "📍", "Today's Sessions", "attendance.html"]]],
+    ["Attendance", [["sessions", "🗓", "All Sessions", "attendance.html"], ["notices", "✉️", "Absence Notices", "attendance.html"], ["swaps", "🔁", "Lab Swaps", "attendance.html"],
       ["warnings", "⚠️", "Warnings", "attendance.html"], ["report", "📄", "Attendance Report", "attendance.html"]]],
     ["Students", [["roster", "👥", "Class List and Lab Groups", "attendance.html"], ["pending", "✔️", "Account Approvals", "admin.html"], ["students", "🧑‍🎓", "All Students", "admin.html"]]],
     ["Lab Assessment", [["marks", "📝", "Mark Entry", "attendance.html"], ["marksov", "📋", "Marks Overview", "attendance.html"], ["analysis", "📈", "Mark Analysis", "attendance.html"],

@@ -472,23 +472,23 @@
       if (isAdmin(em)) {
         const [sw, nt, us] = await Promise.all([db.collection("swaps").where("semester", "==", SEM).get(),
           db.collection("notices").where("status", "==", "pending").get(), db.collection("users").where("status", "==", "pending").get()]);
-        nt.docs.map((d) => d.data()).filter((n) => !n.semester || n.semester === SEM).forEach((n) => add({ todo: true, t: tms(n.at), href: "attendance.html", text: `<strong>${esc(n.name)}</strong> sent an absence notice for ${esc(n.title)}${n.docLater && !n.doc ? " (document to follow)" : ""}` }));
+        nt.docs.map((d) => d.data()).filter((n) => !n.semester || n.semester === SEM).forEach((n) => add({ todo: true, t: tms(n.at), href: "attendance.html?tab=notices", text: `<strong>${esc(n.name)}</strong> sent an absence notice for ${esc(n.title)}${n.docLater && !n.doc ? " (document to follow)" : ""}` }));
         // notices sent before their document was ready: the document arrived, or is overdue
         const later = await db.collection("notices").where("docLater", "==", true).get().catch(() => ({ docs: [] }));
         later.docs.map((d) => d.data()).filter((n) => (!n.semester || n.semester === SEM) && n.status !== "rejected").forEach((n) => {
           if (n.doc && n.docAddedAt) add({ t: tms(n.docAddedAt), href: "attendance.html", text: `<strong>${esc(n.name)}</strong> added the supporting document for ${esc(n.title)}` });
-          else if (!n.doc && n.status === "approved" && klToday() > n.docDue) add({ todo: true, t: Date.parse(`${n.docDue}T23:59:00+08:00`), href: "attendance.html", text: `Document overdue: <strong>${esc(n.name)}</strong>, ${esc(n.title)} (due ${esc(n.docDue)})` });
+          else if (!n.doc && n.status === "approved" && klToday() > n.docDue) add({ todo: true, t: Date.parse(`${n.docDue}T23:59:00+08:00`), href: "attendance.html?tab=notices", text: `Document overdue: <strong>${esc(n.name)}</strong>, ${esc(n.title)} (due ${esc(n.docDue)})` });
         });
-        us.docs.map((d) => d.data()).forEach((x) => add({ todo: true, t: tms(x.createdAt), href: "admin.html", text: `<strong>${esc(x.nickname || x.email)}</strong> is waiting for account approval` }));
+        us.docs.map((d) => d.data()).forEach((x) => add({ todo: true, t: tms(x.createdAt), href: "admin.html?tab=pending", text: `<strong>${esc(x.nickname || x.email)}</strong> is waiting for account approval` }));
         // attendance warnings waiting for you to send (Manual mode)
         const [wm, wd] = await Promise.all([db.collection("meta").doc("warnings").get(), db.collection("warnings").where("hasDue", "==", true).get()].map((p) => p.catch(() => null)));
         const due = wd ? wd.docs.map((d) => d.data()).filter((w) => w.semester === SEM) : [];
-        if (wm && wm.exists && wm.data().mode !== "auto" && due.length) add({ todo: true, t: Math.max(...due.map((w) => tms(w.updatedAt))), href: "attendance.html", text: `<strong>${due.length}</strong> student${due.length === 1 ? " has" : "s have"} attendance warnings waiting to be sent (Attendance > Warnings)` });
+        if (wm && wm.exists && wm.data().mode !== "auto" && due.length) add({ todo: true, t: Math.max(...due.map((w) => tms(w.updatedAt))), href: "attendance.html?tab=warnings", text: `<strong>${due.length}</strong> student${due.length === 1 ? " has" : "s have"} attendance warnings waiting to be sent (Attendance > Warnings)` });
         // mini project proposals waiting for review
         const pg = await db.collection("pgroups").where("status", "==", "submitted").get().catch(() => ({ docs: [] }));
         pg.docs.map((d) => d.data()).filter((g) => g.semester === SEM).forEach((g) => add({ todo: true, t: tms(g.submittedAt), href: "project.html", text: `Mini project proposal to review: <strong>${esc((g.proposal && g.proposal.title) || "untitled")}</strong>${g.version > 1 ? " (resubmitted)" : ""}` }));
         sw.docs.map((d) => d.data()).forEach((x) => {
-          if (x.status === "accepted") add({ todo: true, t: tms(x.updatedAt), href: "attendance.html", text: `Lab swap waiting for your approval: ${esc(x.fromName)} ⇄ ${esc(x.toName)}, ${esc(x.labTitle)}` });
+          if (x.status === "accepted") add({ todo: true, t: tms(x.updatedAt), href: "attendance.html?tab=swaps", text: `Lab swap waiting for your approval: ${esc(x.fromName)} ⇄ ${esc(x.toName)}, ${esc(x.labTitle)}` });
           else if (x.status === "requested") add({ t: tms(x.createdAt), href: "attendance.html", text: `Lab swap asked: <strong>${esc(x.fromName)}</strong> (${SEC[x.fromSection] || "–"}) asks <strong>${esc(x.toName)}</strong> (${SEC[x.toSection] || "–"}), ${esc(x.labTitle)}` });
           else if (x.status === "declined") add({ t: tms(x.updatedAt), href: "attendance.html", text: `Lab swap declined: ${esc(x.toName)} declined ${esc(x.fromName)}, ${esc(x.labTitle)}` });
           else if (x.status === "approved" && x.auto) add({ t: tms(x.updatedAt), href: "attendance.html", text: `Lab swap done: <strong>${esc(x.fromName)}</strong> (${SEC[x.fromSection] || "–"}) ⇄ <strong>${esc(x.toName)}</strong> (${SEC[x.toSection] || "–"}), ${esc(x.labTitle)}` });

@@ -10,7 +10,7 @@
   // [href, icon, title, what it does, which bell items count on its badge]
   const LEC = [
     ["In Class", [
-      ["attendance.html", "✅", "Attendance", "Open a session, show the key or QR code on the projector, and mark students by hand.", /^attendance\.html(#|$)/],
+      ["attendance.html?tab=today", "✅", "Attendance", "Today's sessions: open one, show the key or QR code on the projector, and mark students by hand.", /^attendance\.html/],
       ["picker.html", "🎯", "Name Picker", "Pick a student to answer a question, starring their INSTRUMENTA character."],
       ["kalam.html", "💬", "Kalam Feed", "Post announcements and read the students' replies and reactions.", /^kalam\.html/],
       ["gallery.html", "📷", "Class Moments", "Class photos from your Drive folder, grouped by session."]]],

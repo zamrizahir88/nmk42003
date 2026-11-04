@@ -59,7 +59,14 @@
     const max = Math.max(1, ap.length), W = 640, H = 170, bw = Math.min(40, (W - 40) / perWeek.length - 6);
     const bars = perWeek.map((n, i) => { const x = 34 + i * ((W - 40) / perWeek.length), h = (n / max) * (H - 40); return `<rect class="adm-bar" x="${x.toFixed(1)}" y="${(H - 22 - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="3"><title>Week ${i + 1}: ${n} active</title></rect><text x="${(x + bw / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle" class="adm-ax">${i + 1}</text>${n ? `<text x="${(x + bw / 2).toFixed(1)}" y="${(H - 26 - h).toFixed(1)}" text-anchor="middle" class="adm-ax n">${n}</text>` : ""}`; }).join("");
     const nextStop = (u) => { const s = game[u.uid].stops.find((x) => (x.kind === "ch" || x.built) && x.done < x.total); return s ? s.label : "all done"; };
-    return `<div class="adm-sum"><div><strong>${ap.length}</strong><span>approved students</span></div><div><strong>${students().filter((u) => u.status === "pending").length}</strong><span>waiting for approval</span></div>
+    const todo = (A.hub ? A.hub().bell : []).filter((x) => x.todo);
+    const need = `<div class="adm-need"><h3>Needs Your Attention</h3>${todo.length ? `<ul>${todo.slice(0, 12).map((x) => `<li><span>${x.text}</span><a class="btn small" href="${esc(x.href || "#")}">Open</a></li>`).join("")}</ul>${todo.length > 12 ? `<p class="small-note">and ${todo.length - 12} more in <a href="notifications.html">Notifications</a>.</p>` : ""}` : `<p class="small-note">Nothing waiting. 🎉</p>`}</div>`;
+    const tday = todaySes === null ? (loadToday(), `<p class="small-note">Loading today's sessions…</p>`) : todaySes.length
+      ? `<ul class="adm-today">${todaySes.map((x) => `<li><strong>${esc(x.title)}</strong><small>${x.start ? `${hm(x.start)} to ${hm(x.end)} · ` : ""}${x.venue ? `${esc(x.venue)} · ` : ""}${{ planned: "not opened yet", open: "open now", closed: "closed" }[x.state] || esc(x.state)}</small></li>`).join("")}</ul>`
+      : `<p class="small-note">No lecture or lab today.</p>`;
+    return `${need}<div class="adm-two"><div class="adm-card"><h3>Today</h3>${tday}<p><a class="btn small" href="attendance.html?tab=today">Go to Today's Sessions</a></p></div>
+      <div class="adm-card"><h3>This Week</h3><p class="small-note">Week ${now} of the semester.</p><p><a class="btn ghost small" href="attendance.html?tab=sessions">All sessions</a> <a class="btn ghost small" href="attendance.html?tab=analysis">Mark Analysis</a></p></div></div>
+      <div class="adm-sum"><div><strong>${ap.length}</strong><span>approved students</span></div><div><strong>${students().filter((u) => u.status === "pending").length}</strong><span>waiting for approval</span></div>
         <div><strong>${active.length}</strong><span>active in the last 7 days</span></div><div class="${stalled.length ? "warn" : ""}"><strong>${stalled.length}</strong><span>no progress for 2+ weeks</span></div><div><strong>${avg}</strong><span>average XP</span></div><div><strong>Week ${now}</strong><span>of the semester</span></div></div>
       <h3 class="bd-h">Students Active Each Week</h3>
       <div class="adm-chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Number of students active in each week of the semester: ${perWeek.join(", ")}"><line x1="30" x2="${W - 4}" y1="${H - 22}" y2="${H - 22}" class="adm-axl"/>${bars}<text x="4" y="14" class="adm-ax">students</text></svg></div>
@@ -69,10 +76,21 @@
   function heatmap() {
     const list = sorted(approved().filter(matches));
     const cell = (s) => { const p = s.pct, cls = !s.total ? "na" : p >= 100 ? "c4" : p >= 60 ? "c3" : p >= 30 ? "c2" : p > 0 ? "c1" : "c0"; return `<td class="hm ${cls}" title="${esc(s.label)}: ${s.done} of ${s.total}">${s.total ? `${s.done}/${s.total}` : ""}</td>`; };
-    return `${tools(true, "heatmap")}<p class="small-note">Each cell: items done out of the total for that chapter or lab (lab = Pre-Lab Check + review exercises). Grey none, then lighter to darker teal as it fills up.</p>
+    const key = `<span class="hm-key"><i class="hm c0"></i>none <i class="hm c1"></i>started <i class="hm c2"></i>30% <i class="hm c3"></i>60% <i class="hm c4"></i>all done</span>`;
+    return `<div class="adm-what"><strong>What it shows:</strong> one row per student and one column per chapter (C1…) and virtual lab (L1…). Each cell is how much of that chapter's exercises (or the lab's Pre-Lab Check and review exercises) the student has done on the site, as done / total. Use it to spot who hasn't started a chapter yet. It counts practice on the website only, not lab marks or attendance.</div>
+      ${tools(true)}<div class="hm-print"><p class="hm-ph">NMK42003 Instrumentation · Class Heatmap · ${esc(sem)} · ${esc(klNow().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kuala_Lumpur" }))} · ${list.length} students</p>${key}
       <div class="adm-scroll"><table class="adm hmap"><thead><tr><th scope="col">Student</th><th scope="col">Level</th><th scope="col">XP</th>${STOPS.map((s) => `<th scope="col" title="${esc(s.title)}">${s.kind === "lab" ? `L${s.no}` : `C${s.no}`}</th>`).join("")}<th scope="col">Last active</th></tr></thead>
       <tbody>${list.map((u) => { const g = game[u.uid]; return `<tr><td>${who(u)}</td><td>L${g.levelNo}</td><td>${g.xp}</td>${STOPS.map((s) => cell(g.stops.find((x) => x.key === s.key))).join("")}<td>${fmt(lastOf(u))}</td></tr>`; }).join("")}</tbody></table></div>
-      ${list.length ? "" : `<p class="adm-empty">No approved students yet.</p>`}`;
+      </div>${list.length ? "" : `<p class="adm-empty">No approved students yet.</p>`}`;
+  }
+  // the heatmap on A4 landscape with the colour key and the date (the browser's Save as PDF)
+  function heatPdf() {
+    const st = document.createElement("style");
+    st.textContent = "@page { size: A4 landscape; margin: 10mm; }";
+    document.head.appendChild(st); document.body.classList.add("hm-printing");
+    const done = () => { st.remove(); document.body.classList.remove("hm-printing"); };
+    addEventListener("afterprint", done, { once: true });
+    window.print();
   }
   function difficulty() {
     const ap = approved(), logs = ap.map((u) => parse(((progress[u.uid] || {}).keys || {})["nmk-ex-log"], {}));
@@ -147,7 +165,16 @@
      reads meta/missions when it opens, so a lock costs students no extra reads; it shows at their next opening.
      A lock only hides a station in the game: the chapter file can still be read by approved students, so a chapter
      that must stay secret is deleted (or not uploaded) instead. */
-  let ms = null, msMsg = "", msDel = null;
+  let ms = null, msMsg = "", msDel = null, todaySes = null;
+  const hm = (t) => { if (!t) return ""; const [h, m] = String(t).split(":").map(Number); return `${h % 12 || 12}${m ? ":" + String(m).padStart(2, "0") : ""} ${h < 12 ? "AM" : "PM"}`; };
+  // the bell's to-do items arrive after the page is drawn: draw the Overview again when they do (no extra reads)
+  document.addEventListener("nmk:hub", () => { if (tab === "overview" && users.length) draw(); });
+  async function loadToday() {
+    const d = new Date(G.today() + 8 * 3600000).toISOString().slice(0, 10);
+    try { const q = await db.collection("sessions").where("date", "==", d).get(); todaySes = q.docs.map((x) => x.data()).filter((x) => !x.semester || x.semester === A.SEM).sort((x, y) => (x.start < y.start ? -1 : 1)); }
+    catch (e) { todaySes = []; }
+    if (tab === "overview") draw();
+  }
   async function loadMissions() {
     try {
       const [m, q] = await Promise.all([db.collection("meta").doc("missions").get(), db.collection("missions").get()]);
@@ -214,13 +241,27 @@
   }
 
   /* ---------- page frame ---------- */
+  const klNow = () => new Date(G.today());
+  const HEAD = {
+    overview: () => ["Overview", `${klNow().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kuala_Lumpur" })} · Week ${G.weekOf(G.today())}`],
+    pending: () => ["Account Approvals", "Students who signed in but aren't on the class list wait here. Students on the class list are approved automatically."],
+    students: () => ["All Students", "Every account that has signed in this semester."],
+    missions: () => ["INSTRUMENTA Chapters", "Release the game, upload each chapter's file, and lock chapters or stations."],
+    board: () => ["Class Board", "The class ranked by XP, with levels, badges and streaks."],
+    heatmap: () => ["Class Heatmap", "", `<button type="button" class="btn ghost small" data-hmpdf>⬇ Download PDF</button><button type="button" class="btn ghost small" data-csv="heatmap">⬇ Download CSV</button>`],
+    exercises: () => ["Exercise Difficulty", "The exercises students find hardest, from their tries on the site."]
+  };
   const TABS = [["overview", "Overview"], ["heatmap", "Class Heatmap"], ["exercises", "Exercise Difficulty"], ["board", "Board"], ["pending", "Waiting for Approval"], ["students", "All Students"], ["missions", "Missions"]];
   function draw() {
     const sems = [...new Set(users.map((u) => u.semester || G.SEM).concat(G.SEM))].sort();
     const pending = students().filter((u) => u.status === "pending").length;
     const view = tab === "overview" ? overview() : tab === "heatmap" ? heatmap() : tab === "exercises" ? difficulty() : tab === "board" ? board() : tab === "missions" ? missionsTab() : people(tab === "pending");
-    host.innerHTML = `<div class="adm-top"><div class="adm-tabs" role="group" aria-label="Dashboard view">${TABS.map(([v, l]) => `<button type="button" class="chip-btn" data-tab="${v}" aria-pressed="${tab === v}">${l}${v === "pending" && pending ? ` (${pending})` : ""}</button>`).join("")}</div>
-        ${sems.length > 1 ? `<label class="adm-sem">Semester <select data-sem>${sems.map((s) => `<option${s === sem ? " selected" : ""}>${esc(s)}</option>`).join("")}</select></label>` : `<span class="adm-sem">${esc(sem)}</span>`}<a class="btn ghost small" href="evidence.html">Teaching Evidence ›</a><a class="btn ghost small" href="attendance.html">Attendance ›</a></div>${view}`;
+    const semSel = sems.length > 1 ? `<label class="adm-sem">Semester <select data-sem>${sems.map((x) => `<option${x === sem ? " selected" : ""}>${esc(x)}</option>`).join("")}</select></label>` : "";
+    const [t, lead, btns] = HEAD[tab] ? HEAD[tab]() : ["Lecturer Dashboard", "", ""];
+    const nav = window.NMKLecMenu ? NMKLecMenu.html("admin.html", tab, { pending }) : "";
+    const wasOpen = host.querySelector(".lt-nav.lt-open");
+    host.innerHTML = `<div class="lt"><div class="lt-nav${wasOpen ? " lt-open" : ""}">${nav}</div><div class="lt-main">
+      <div class="lt-head"><div><h2>${t}</h2>${lead ? `<p>${lead}</p>` : ""}</div><div class="lt-btns">${btns || ""}${semSel}</div></div>${view}</div></div>`;
     const s = host.querySelector("[data-q]");
     if (s && typing) { s.focus(); s.setSelectionRange(filter.length, filter.length); }
     typing = false;
@@ -252,8 +293,11 @@
   }
 
   host.addEventListener("click", (e) => {
+    const m = e.target.closest("a[data-tab]");
+    if (m) { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); tab = m.dataset.tab; if (window.NMKBack) NMKBack.view({ tab }); draw(); scrollTo({ top: Math.min(scrollY, host.getBoundingClientRect().top + scrollY - 80) }); return; }
     const b = e.target.closest("button");
     if (!b) return;
+    if (b.hasAttribute("data-hmpdf")) return heatPdf();
     if (b.dataset.tab) { tab = b.dataset.tab; if (window.NMKBack) NMKBack.view({ tab }); draw(); }
     else if (b.dataset.detail) location.href = `profile.html?u=${encodeURIComponent(b.dataset.detail)}`;
     else if (b.dataset.ok) setStatus(b.dataset.ok, "approved");

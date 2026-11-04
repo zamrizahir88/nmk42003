@@ -176,7 +176,7 @@
   const profileLink = (email, name) => `<a class="at-pl" href="profile.html?e=${encodeURIComponent(email)}">${esc(name)}</a>`;
 
   // the lecturer's view: what is loaded and what is shown
-  const L = { got: {}, sessions: [], roster: [], att: [], moves: [], swaps: [], notices: [], users: [], sched: null, tab: "sessions", sid: null, keys: {}, filter: "all", rsec: "all", rkind: "all",
+  const L = { got: {}, sessions: [], roster: [], att: [], moves: [], swaps: [], notices: [], users: [], sched: null, tab: "today", sid: null, keys: {}, filter: "all", ssec: "all", wkOpen: {}, rsec: "all", rkind: "all",
     rview: "list", q: "", watched: new Set(), edits: {}, openWeek: null, dirSent: "", picked: new Set() };
 
   /* ---------- who is here ---------- */
@@ -679,9 +679,14 @@
   /* =====================================================================
      LECTURERS
      ===================================================================== */
-  const TABS = ["sessions", "roster", "swaps", "notices", "warnings", "report", "marks", "marksov", "analysis", "weights", "schedule"];
+  const TABS = ["today", "sessions", "roster", "swaps", "notices", "warnings", "report", "marks", "marksov", "analysis", "weights", "schedule"];
   function lecturer() {
     // the lecturer tools: the shared left menu (lecmenu.js) beside the view
+    // the page's banner speaks to the lecturer (the same page is the students' own attendance page)
+    const h1 = document.querySelector(".page-hero h1"), lead = document.querySelector(".page-hero .page-lead");
+    if (h1) h1.textContent = "Lecturer Tools";
+    if (lead) lead.textContent = "Attendance, students, lab marks and the course, in one menu. Lecturers only.";
+    host.addEventListener("toggle", (e) => { const d = e.target; if (d.matches && d.matches(".at-wk")) L.wkOpen[d.dataset.wk] = d.open; }, true);
     host.innerHTML = `<div class="lt"><div class="lt-nav"></div><div class="lt-main"><div class="at-body"></div></div></div><div class="at-savebar" hidden></div>`;
     // the tab and session shown before (after Back from a profile), and Back between them
     const hs = history.state || {};
@@ -796,42 +801,88 @@
     L.pending = false;
     const pend = (k) => k.filter((x) => x.status === "accepted").length, np = L.notices.filter((x) => x.status === "pending").length;
     if (window.NMKLecMenu) {
-      tabs.innerHTML = NMKLecMenu.html("attendance.html", L.sid ? "sessions" : L.tab, { swaps: pend(L.swaps), notices: np });
+      tabs.innerHTML = NMKLecMenu.html("attendance.html", L.tab, { swaps: pend(L.swaps), notices: np });
       const sb = tabs.querySelector(".lt-secbtn"); if (sb) sb.setAttribute("aria-expanded", tabs.classList.contains("lt-open"));
     }
     const keepPanel = panelEl && body.contains(panelEl) ? panelEl : null;
     if (L.sid) { const s = L.sessions.find((x) => x.id === L.sid); if (s) drawSession(body, s); else if (L.sessLoaded) L.sid = null; else body.innerHTML = `<p class="small-note">Loading…</p>`; }
-    if (!L.sid) ({ sessions: drawSessions, roster: drawRoster, swaps: drawSwaps, notices: drawNotices, report: drawReport, schedule: drawSchedule, warnings: drawWarnings,
+    if (!L.sid) ({ today: drawToday, sessions: drawSessions, roster: drawRoster, swaps: drawSwaps, notices: drawNotices, report: drawReport, schedule: drawSchedule, warnings: drawWarnings,
       marks: (b) => drawMarks(b, "entry"), marksov: (b) => drawMarks(b, "overview"), analysis: (b) => drawMarks(b, "analysis"), weights: (b) => drawMarks(b, "weights") })[L.tab](body);
     if (keepPanel) body.prepend(keepPanel);
     paintSaveBar();
     if (L.typing) { const q = $("[data-q]"); if (q) { q.focus(); q.setSelectionRange(L.q.length, L.q.length); } L.typing = false; }
   }
 
-  /* ---------- the sessions list ---------- */
+  /* ---------- Needs Your Attention: everything about sessions that wants the lecturer, in one box ---------- */
+  function needsHtml() {
+    const t = todayIso(), li = [];
+    if (skewKnown && Math.abs(skew) > 60000) { const m = Math.round(Math.abs(skew) / 60000); li.push(`<li><span>🕒 This device's clock is ${m} minute${m === 1 ? "" : "s"} ${skew > 0 ? "slow" : "fast"}. Attendance uses the server's time, so it still works, but please set the clock to automatic.</span></li>`); }
+    L.sessions.filter((x) => x.state === "open" && x.date < t).sort((x, y) => (x.date < y.date ? -1 : 1))
+      .forEach((x) => li.push(`<li><span>⏳ Still open from ${fmtDate(x.date)}: <strong>${esc(x.title)}</strong>. Students can still mark themselves, and nobody who missed it is Absent until you close it.</span><button type="button" class="btn small" data-sid="${x.id}">Open it to close</button></li>`));
+    if (L.sessions.some(fromPlan)) {
+      const d = planDiff(), dn = duplicates(new Set(d.del.map((x) => x.id))).length;
+      const parts = [d.add.length && `${d.add.length} to add`, d.upd.length && `${d.upd.length} to update`, d.del.length && `${d.del.length} to remove`, d.link.length && `${d.link.length} already there to link`, dn && `${dn} duplicate${dn === 1 ? "" : "s"} to check`].filter(Boolean);
+      if (parts.length) li.push(`<li><span>🗓 The course timetable has changed: ${parts.join(", ")}. Sessions already held are never changed.</span><button type="button" class="btn small" data-bulk>Review and update</button></li>`);
+    }
+    const np = L.notices.filter((x) => x.status === "pending").length, ns = L.swaps.filter((x) => x.status === "accepted").length;
+    if (np) li.push(`<li><span>✉️ ${np} absence notice${np === 1 ? "" : "s"} waiting.</span><a class="btn small" href="attendance.html?tab=notices" data-tab="notices">Review</a></li>`);
+    if (ns) li.push(`<li><span>🔁 ${ns} lab swap${ns === 1 ? "" : "s"} waiting for your approval.</span><a class="btn small" href="attendance.html?tab=swaps" data-tab="swaps">Review</a></li>`);
+    return li.length ? `<div class="adm-need"><h3>Needs Your Attention</h3><ul>${li.join("")}</ul></div>` : "";
+  }
+  const stateOf = (s) => { const n = counts(s), done = n.P + n.L + n.E + n.A, byHand = s.state === "planned" && done; return { n, done, byHand, label: byHand ? "Marked by hand" : { planned: "Not opened", open: "Open", closed: "Closed" }[s.state] || s.state, cls: byHand ? "hand" : s.state }; };
+
+  /* ---------- Today's Sessions: open, show the key, close, all for class on one screen ---------- */
+  function drawToday(body) {
+    const t = todayIso(), all = sortedSessions(), list = all.filter((s) => s.date === t), next = list.length ? null : all.find((s) => s.date > t);
+    const d = new Date(t + "T00:00:00Z"), day = d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+    const card = (s) => {
+      const k = stateOf(s), total = studentsFor(s).length;
+      return `<div class="at-tcard ${s.state}"><span class="at-state ${k.cls}">${s.state === "open" ? "● Open now" : k.label}</span><h3>${esc(s.title)}</h3>
+        <p class="at-tmeta">${fmtTime(s.start)} to ${fmtTime(s.end)}${s.venue ? ` · ${esc(s.venue)}` : ""} · ${SECTION[s.section] || esc(s.section)} · ${total} student${total === 1 ? "" : "s"}</p>
+        ${k.done ? `<p class="at-tmeta"><strong>${k.n.P + k.n.L}</strong> present or late · ${k.n.E} excused · ${k.n.A} absent${k.done < total ? ` · ${total - k.done} not yet` : ""}</p>` : ""}
+        <div class="lt-btns">${s.state === "open" ? `<a class="btn" href="attendance.html?show=${encodeURIComponent(s.id)}" target="_blank" rel="noopener">📽 Show on projector</a><button type="button" class="btn ghost" data-sid="${s.id}">Manage ›</button>`
+          : `<button type="button" class="btn${s.state === "planned" ? "" : " ghost"}" data-sid="${s.id}">${s.state === "planned" ? "Open the session ›" : "Manage ›"}</button>`}</div></div>`;
+    };
+    body.innerHTML = `<div class="lt-head"><div><h2>Today's Sessions</h2><p>${esc(day)} · Week ${weekOfDate(t)}. Open a session, show the key, close it: everything for class on one screen.</p></div></div>
+      ${needsHtml()}
+      ${list.length ? `<div class="at-today">${list.map(card).join("")}</div>` : `<div class="adm-card"><p>No lecture or lab today.</p>${next ? `<p class="small-note">Next: <strong>${esc(next.title)}</strong>, ${fmtDate(next.date)}, ${fmtTime(next.start)}.</p>` : ""}</div>`}
+      ${next ? `<div class="at-today">${card(next)}</div>` : ""}
+      <p class="small-note"><a href="attendance.html?tab=sessions" data-tab="sessions">See all sessions →</a></p>`;
+  }
+
+  /* ---------- the sessions list, grouped by week (this week and next open, past weeks folded with their totals) ---------- */
   function drawSessions(body) {
-    const list = sortedSessions().filter((s) => L.filter === "all" || s.kind === L.filter);
-    const t = todayIso();
-    body.innerHTML = `<div class="adm-tools"><button type="button" class="btn" data-new>+ New session</button><button type="button" class="btn ghost" data-bulk>${L.sessions.some(fromPlan) ? "Update sessions from the timetable" : "Create the semester's sessions"}</button>
-        ${["all", "lecture", "lab"].map((f) => `<button type="button" class="chip-btn" data-filter="${f}" aria-pressed="${L.filter === f}">${{ all: "All", lecture: "Lectures", lab: "Labs" }[f]}</button>`).join("")}
-        ${L.picked.size ? `<button type="button" class="btn small at-danger" data-delpicked>Delete selected (${L.picked.size})</button><button type="button" class="btn ghost small" data-unpick>Clear selection</button>` : ""}</div>
-      ${skewKnown && Math.abs(skew) > 60000 ? `<div class="at-card warn"><strong>This device's clock is ${Math.round(Math.abs(skew) / 60000)} minute${Math.round(Math.abs(skew) / 60000) === 1 ? "" : "s"} ${skew > 0 ? "slow" : "fast"}.</strong> Attendance uses the server's time, so it still works correctly, but please set the clock to automatic (Settings → Date and time).</div>` : ""}
-      ${(() => { const old = L.sessions.filter((x) => x.state === "open" && x.date < t).sort((x, y) => (x.date < y.date ? -1 : 1));
-        return old.length ? `<div class="at-card warn at-stale"><strong>${old.length} session${old.length === 1 ? " is" : "s are"} still open from past days.</strong> Students can still mark themselves, and nobody who missed it is marked Absent until you close it.
-          <ul class="at-list">${old.map((x) => `<li>${fmtDate(x.date)} · ${esc(x.title)} <button type="button" class="btn ghost small" data-sid="${x.id}">Open it to close</button></li>`).join("")}</ul></div>` : ""; })()}
-      ${(() => { if (!L.sessions.some(fromPlan)) return ""; const d = planDiff(), dn = duplicates(new Set(d.del.map((x) => x.id))).length, n = d.add.length + d.upd.length + d.del.length + d.link.length + dn;
-        return n ? `<div class="at-card warn at-sync"><strong>The course timetable has changed.</strong> ${[d.add.length && `${d.add.length} to add`, d.upd.length && `${d.upd.length} to update`, d.del.length && `${d.del.length} to remove`, d.link.length && `${d.link.length} already there to link`, dn && `${dn} duplicate${dn === 1 ? "" : "s"} to check`].filter(Boolean).join(", ")}. Sessions already held are never changed. <button type="button" class="btn small" data-bulk>Review and update</button></div>` : ""; })()}
-      ${!list.length ? `<p class="adm-empty">No sessions yet. Press <strong>Create the semester's sessions</strong> to add every lecture and lab from the course timetable, or add one with <strong>+ New session</strong>.</p>` :
-      `<div class="adm-scroll"><table class="adm at-ses"><thead><tr><th scope="col"><input type="checkbox" class="at-cb" data-pickall aria-label="Select every session in this list"${list.length && list.every((s) => L.picked.has(s.id)) ? " checked" : ""}></th><th scope="col">Week</th><th scope="col">Date</th><th scope="col">Session</th><th scope="col">For</th><th scope="col">State</th><th scope="col">P / L / E / A</th><th scope="col"><span class="vh">Manage</span></th></tr></thead><tbody>
-      ${list.map((s) => { const n = counts(s), sw = s.kind === "lab" ? L.moves.filter((m) => m.slot === slotOf(s) && m.section === s.section).length : 0; return `<tr class="${s.date === t ? "today" : ""}${L.picked.has(s.id) ? " picked" : ""}"><td><input type="checkbox" class="at-cb" data-pick="${s.id}" aria-label="Select ${esc(s.title)}"${L.picked.has(s.id) ? " checked" : ""}></td><td>${s.week || weekOfDate(s.date)}</td><td>${fmtDate(s.date)}<br><small>${fmtTime(s.start)} to ${fmtTime(s.end)}</small></td>
+    const t = todayIso(), cur = weekOfDate(t);
+    const list = sortedSessions().filter((s) => (L.filter === "all" || s.kind === L.filter) && (L.ssec === "all" || s.section === L.ssec || s.section === "all"));
+    const wkOf = (s) => s.week || weekOfDate(s.date), weeks = [];
+    list.forEach((s) => { const w = wkOf(s), g = weeks.find((x) => x.w === w); if (g) g.s.push(s); else weeks.push({ w, s: [s] }); });
+    const opt = (v, l, on) => `<option value="${v}"${on === v ? " selected" : ""}>${l}</option>`;
+    const row = (s) => {
+      const k = stateOf(s), total = k.done ? studentsFor(s).length : 0, sw = s.kind === "lab" ? L.moves.filter((m) => m.slot === slotOf(s) && m.section === s.section).length : 0;
+      return `<tr class="${s.date === t ? "today" : ""}${L.picked.has(s.id) ? " picked" : ""}"><td><input type="checkbox" class="at-cb" data-pick="${s.id}" aria-label="Select ${esc(s.title)}"${L.picked.has(s.id) ? " checked" : ""}></td>
+        <td>${fmtDate(s.date)}<br><small>${fmtTime(s.start)} to ${fmtTime(s.end)}</small></td>
         <td><strong>${esc(s.title)}</strong>${s.venue ? `<br><small>${esc(s.venue)}</small>` : ""}${sw ? `<br><small class="at-swn">⇄ ${sw} swapped in</small>` : ""}</td><td>${SECTION[s.section] || s.section}</td>
-        ${(() => {
-          // marks count whether the session was opened or marked by hand afterwards
-          const done = n.P + n.L + n.E + n.A, byHand = s.state === "planned" && done, total = done ? studentsFor(s).length : 0;
-          return `<td><span class="at-state ${byHand ? "hand" : s.state}">${byHand ? "Marked by hand" : { planned: "Not opened", open: "Open", closed: "Closed" }[s.state] || s.state}</span></td>
-        <td class="at-n">${done ? `${n.P} / ${n.L} / ${n.E} / ${n.A}${done < total ? `<br><small class="at-part">${done} of ${total} marked</small>` : ""}` : "–"}</td>`;
-        })()}<td><button type="button" class="btn small${s.state === "open" ? "" : " ghost"}" data-sid="${s.id}">${s.state === "open" ? "Open ›" : "Manage"}</button></td></tr>`; }).join("")}
-      </tbody></table></div>`}`;
+        <td><span class="at-state ${k.cls}">${k.label}</span></td>
+        <td class="at-n">${k.done ? `${k.n.P} / ${k.n.L} / ${k.n.E} / ${k.n.A}${k.done < total ? `<br><small class="at-part">${k.done} of ${total} marked</small>` : ""}` : "–"}</td>
+        <td><button type="button" class="btn small${s.state === "open" ? "" : " ghost"}" data-sid="${s.id}">${s.state === "open" ? "Open ›" : "Manage"}</button></td></tr>`;
+    };
+    const group = ({ w, s }) => {
+      const tot = s.reduce((a, x) => { const k = stateOf(x); a.p += k.n.P + k.n.L; a.m += k.done; return a; }, { p: 0, m: 0 });
+      const tag = w === cur ? "This week" : w === cur + 1 ? "Next week" : w < cur ? `${s.length} session${s.length === 1 ? "" : "s"}${tot.m ? ` · ${Math.round((tot.p / tot.m) * 100)}% present` : ""}` : `${s.length} session${s.length === 1 ? "" : "s"}`;
+      const open = L.wkOpen[w] !== undefined ? L.wkOpen[w] : w === cur || w === cur + 1 || s.some((x) => x.state === "open");
+      const range = s[0].date !== s[s.length - 1].date ? `${fmtDate(s[0].date)} to ${fmtDate(s[s.length - 1].date)}` : fmtDate(s[0].date);
+      return `<details class="at-wk" data-wk="${w}"${open ? " open" : ""}><summary><strong>Week ${w}</strong> · ${range} <span>${tag}</span></summary>
+        <div class="adm-scroll"><table class="adm at-ses"><thead><tr><th scope="col"><span class="vh">Select</span></th><th scope="col">Date</th><th scope="col">Session</th><th scope="col">For</th><th scope="col">State</th><th scope="col">P / L / E / A</th><th scope="col"><span class="vh">Manage</span></th></tr></thead>
+        <tbody>${s.map(row).join("")}</tbody></table></div></details>`;
+    };
+    body.innerHTML = `<div class="lt-head"><div><h2>All Sessions</h2><p>Grouped by week. This week and next are open; past weeks are folded with their totals.</p></div>
+        <div class="lt-btns"><button type="button" class="btn" data-new>+ New session</button><button type="button" class="btn ghost" data-bulk>${L.sessions.some(fromPlan) ? "Update sessions from the timetable" : "Create the semester's sessions"}</button></div></div>
+      ${needsHtml()}
+      <div class="lm-fbar"><label>Show<select class="at-in" data-sfilter>${opt("all", "All sessions", L.filter)}${opt("lecture", "Lectures", L.filter)}${opt("lab", "Labs", L.filter)}</select></label>
+        <label>Section<select class="at-in" data-ssec>${opt("all", "All sections", L.ssec)}${opt("mon", "Monday", L.ssec)}${opt("wed", "Wednesday", L.ssec)}${opt("thu", "Thursday", L.ssec)}</select></label>
+        <span class="lm-sp"></span><label class="at-pickall"><input type="checkbox" class="at-cb" data-pickall${list.length && list.every((s) => L.picked.has(s.id)) ? " checked" : ""}> Select all shown</label>
+        ${L.picked.size ? `<button type="button" class="btn small at-danger" data-delpicked>Delete selected (${L.picked.size})</button><button type="button" class="btn ghost small" data-unpick>Clear selection</button>` : ""}</div>
+      ${!list.length ? `<p class="adm-empty">${L.sessions.length ? "No sessions match." : "No sessions yet. Press <strong>Create the semester's sessions</strong> to add every lecture and lab from the course timetable, or add one with <strong>+ New session</strong>."}</p>` : weeks.map(group).join("")}`;
   }
 
   // delete several sessions at once (e.g. made by mistake), optionally with their attendance records
@@ -1093,7 +1144,7 @@
         <td><input class="at-rm" value="${esc(rm)}" placeholder="${st === "E" ? "Reason, e.g. MC" : ""}" aria-label="Remark for ${esc(r.name)}"></td>
         <td><small>${x ? `${x.by === "self" ? "Self" : x.by === "auto" ? "Auto (closed)" : "Lecturer"}${x.at ? `, ${fmtStamp(x.at)}` : ""}` : ""}</small></td></tr>`;
     }).join("");
-    body.innerHTML = `<p><button type="button" class="btn ghost small" data-back>‹ All sessions</button></p>
+    body.innerHTML = `<p><button type="button" class="btn ghost small" data-back>‹ ${L.tab === "today" ? "Today's sessions" : "All sessions"}</button></p>
       <div class="at-shead"><div><h2 class="h3">${esc(s.title)}</h2><p class="small-note">${sessionLine(s)} · ${SECTION[s.section] || s.section} · week ${s.week || weekOfDate(s.date)}</p></div>
         <div class="acc-row"><button type="button" class="btn ghost small" data-edit>Edit</button>${slot ? `<button type="button" class="btn ghost small" data-movelab>Move this lab…</button>` : ""}<button type="button" class="btn ghost small" data-del>Delete</button></div></div>
       ${waiting.length ? `<div class="at-card warn"><h3>Swaps Waiting for Your Approval</h3>${waiting.map(swapRow).join("")}</div>` : ""}
@@ -1684,7 +1735,9 @@
     const t = e.target;
     if (t.matches("[data-file]") && t.files[0]) { importList(t.files[0]); t.value = ""; return; }
     if (t.matches("[data-pick]")) { if (t.checked) L.picked.add(t.dataset.pick); else L.picked.delete(t.dataset.pick); draw(); return; }
-    if (t.matches("[data-pickall]")) { sortedSessions().filter((s) => L.filter === "all" || s.kind === L.filter).forEach((s) => (t.checked ? L.picked.add(s.id) : L.picked.delete(s.id))); draw(); return; }
+    if (t.matches("[data-sfilter]")) { L.filter = t.value; draw(); return; }
+    if (t.matches("[data-ssec]")) { L.ssec = t.value; draw(); return; }
+    if (t.matches("[data-pickall]")) { sortedSessions().filter((s) => (L.filter === "all" || s.kind === L.filter) && (L.ssec === "all" || s.section === L.ssec || s.section === "all")).forEach((s) => (t.checked ? L.picked.add(s.id) : L.picked.delete(s.id))); draw(); return; }
     if (t.closest(".at-wkform")) return;
     const tr = t.closest("tr[data-em]");
     if (!tr || !t.matches("[data-f]")) return;

@@ -349,3 +349,19 @@ table.at-ses tr.picked td { background: color-mix(in srgb, var(--danger) 8%, tra
 .at-reqpart { border-top: 1px solid var(--rule); padding-top: 8px; margin-top: 8px; }
 .at-stale { margin: 0 0 12px; }
 .at-stale .at-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+/* Lecturer tools: Today's Sessions cards and the sessions list grouped by week */
+.at-today { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); gap: 14px; margin: 0 0 16px; }
+.at-tcard { background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; padding: 16px; display: grid; gap: 8px; align-content: start; }
+.at-tcard.open { border: 2px solid var(--teal); }
+.at-tcard h3 { margin: 0; font-size: 1.1rem; }
+.at-tcard .at-state { justify-self: start; }
+.at-tmeta { margin: 0; font-size: .88rem; color: var(--ink-2); }
+.at-wk { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; margin: 0 0 10px; overflow: hidden; }
+.at-wk summary { cursor: pointer; padding: 11px 16px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.at-wk summary span { color: var(--ink-2); font-size: .88rem; margin-left: auto; }
+.at-wk[open] summary { border-bottom: 1px solid var(--rule); }
+.at-wk .adm-scroll { margin: 0; }
+.at-wk table.adm { margin: 0; border: 0; }
+.at-pickall { display: inline-flex !important; grid-auto-flow: column; align-items: center; gap: 6px !important; font-size: .85rem !important; }
+.lm-fbar .btn { align-self: flex-end; }
