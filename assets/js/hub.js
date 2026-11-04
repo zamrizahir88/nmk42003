@@ -15,8 +15,8 @@
       ["kalam.html", "💬", "Kalam Feed", "Post announcements and read the students' replies and reactions.", /^kalam\.html/],
       ["gallery.html", "📷", "Class Moments", "Class photos from your Drive folder, grouped by session."]]],
     ["Marks and Records", [
-      ["attendance.html?tab=marks", "📝", "Lab Marks", "Key in each student's demo and report marks for every lab, with the rubric beside them."],
-      ["attendance.html?tab=marks&lm=analysis", "📈", "Lab Mark Analysis", "Graphs for each lab: demo, report or both, the sections compared, the weakest report part and who needs help."],
+      ["attendance.html?tab=marks", "📝", "Mark Entry", "Key in each student's demo and report marks for every lab, with the rubric beside them."],
+      ["attendance.html?tab=analysis", "📈", "Mark Analysis", "Graphs for each lab, view only: demo, report or both, the sections compared, the weakest report part and who needs help."],
       ["attendance.html?tab=warnings", "⚠️", "Attendance Warnings", "Warning letters waiting to be sent, and the ones already emailed to students and their RPS."],
       ["project.html#group", "🧩", "Mini Project", "Groups and title approvals, possible clashes, the logbook, peer evaluation and marks.", /^project\.html/]]],
     ["Students", [

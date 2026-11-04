@@ -210,7 +210,16 @@ table.at-ses tr.picked td { background: color-mix(in srgb, var(--danger) 8%, tra
 /* Lab Marks (lecturers): demo and report marks per lab */
 .lm-head .adm-tools { margin-bottom: 8px; }
 .lm-sp { flex: 1; }
-.lm-q { max-width: 280px; margin: 0 0 10px; }
+.lm-fbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 10px 14px; margin: 0 0 12px; }
+.lm-fbar label { display: grid; gap: 3px; font-size: .78rem; font-weight: 600; color: var(--ink-2); }
+.lm-fbar .at-in { min-width: 150px; height: 38px; margin: 0; }
+.lm-fbar .lm-q { min-width: 200px; max-width: 280px; }
+.lm-vo { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--lm-vo-bg); border: 1px solid var(--lm-vo-bd); color: var(--lm-vo-ink); border-radius: 10px; padding: 9px 14px; margin: 0 0 12px; font-size: .9rem; }
+.lm-vo a { color: inherit; font-weight: 700; }
+:root { --lm-vo-bg: #e8f1fb; --lm-vo-bd: #b9d3ee; --lm-vo-ink: #12406b; }
+:root[data-theme="dark"] { --lm-vo-bg: #142739; --lm-vo-bd: #2b4a68; --lm-vo-ink: #b9d6f2; }
+.lm-v-weights .lm-rub { margin-bottom: 8px; }
+@media (max-width: 640px) { .lm-fbar label { flex: 1 1 45%; } .lm-fbar .at-in, .lm-fbar .lm-q { min-width: 0; width: 100%; max-width: none; } .lm-fbar .lm-sp { display: none; } }
 .lm-grp { margin: 16px 0 6px; font-size: .95rem; color: var(--teal); }
 .lm-row { display: grid; grid-template-columns: minmax(180px, 1.2fr) auto auto auto auto; gap: 6px 12px; align-items: center; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 8px 12px; margin: 0 0 6px; }
 .lm-rep { grid-template-columns: minmax(180px, 1.2fr) repeat(3, auto) auto auto; }
@@ -275,7 +284,7 @@ table.at-ses tr.picked td { background: color-mix(in srgb, var(--danger) 8%, tra
   body.lm-printing * { visibility: hidden; }
   body.lm-printing .lm-an, body.lm-printing .lm-an * { visibility: visible; }
   body.lm-printing .lm-an { position: absolute; left: 0; top: 0; width: 100%; }
-  body.lm-printing .lm-anc { display: none; }
+  body.lm-printing .lm-fbar, body.lm-printing .lm-vo, body.lm-printing .lt-btns { display: none; }
   body.lm-printing .lm-fig, body.lm-printing .at-card { break-inside: avoid; }
   body.lm-printing .lm-list { max-height: none; overflow: visible; }
 }

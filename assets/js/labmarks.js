@@ -32,7 +32,7 @@
     { k: "c", label: "Conclusion", max: 10, bands: [["10", "Exceptional synthesis of the key findings; insightful conclusions and implications."], ["8–9", "Well organised; synthesises the findings; appropriate conclusions."], ["6–7", "Adequate summary; basic conclusions; some implications."], ["4–5", "Limited synthesis; vague conclusions; no implications."], ["0–3", "Poor or missing conclusion."]] }
   ];
   const r2 = (x) => Math.round(x * 100) / 100, f2 = (x) => (x == null || isNaN(x) ? "–" : r2(x).toFixed(2));
-  let C = null, W = DEFAULT_W, M = {}, ready = false, unsub = null, unsubW = null, st = { lab: 1, sec: "mon", mode: "demo", q: "", show: null };
+  let C = null, W = DEFAULT_W, M = {}, ready = false, unsub = null, unsubW = null, st = { lab: 1, sec: "mon", mode: "demo", q: "", show: null, view: "entry" };
   const timers = {};
 
   const reportOf = (x) => (x && x.i != null && x.r != null && x.c != null ? x.i + x.r + x.c : null);
@@ -82,14 +82,25 @@
   }
 
   /* ---------- the tab ---------- */
-  const chips = (key, list) => list.map(([v, l]) => `<button type="button" class="chip-btn" data-lm${key}="${v}" aria-pressed="${String(key === "part" ? an.part : st[key]) === String(v)}">${l}</button>`).join("");
+  /* ---------- the four views: Mark Entry, Marks Overview, Mark Analysis (view only), Weights and Rubric ---------- */
+  const opt = (list, on) => list.map(([v, l]) => `<option value="${v}"${String(on) === String(v) ? " selected" : ""}>${l}</option>`).join("");
+  const sel = (k, label, list, on) => `<label>${label}<select class="at-in lm-sel" data-k="${k}">${opt(list, on)}</select></label>`;
+  const LABS = [1, 2, 3, 4, 5].map((k) => [k, `Lab ${k}`]);
+  const SECSEL = (first) => (first === "all" ? [["all", "All sections"], ["mon", "Monday"], ["wed", "Wednesday"], ["thu", "Thursday"]] : [["mon", "Monday"], ["wed", "Wednesday"], ["thu", "Thursday"], ["all", "All sections"]]);
+  const title = (t, p, btns) => `<div class="lt-head"><div><h2>${t}</h2>${p ? `<p>${p}</p>` : ""}</div>${btns ? `<div class="lt-btns">${btns}</div>` : ""}</div>`;
+  const findBox = () => `<span class="lm-sp"></span><label>Find a student<input class="at-in lm-q" type="search" placeholder="Name or matric" value="${esc(st.q)}"></label>`;
   function head() {
-    const n = st.lab, w = W[n];
-    return `<div class="lm-head"><div class="adm-tools">${chips("lab", [1, 2, 3, 4, 5].map((k) => [k, `Lab ${k}`]))}</div>
-      <div class="adm-tools">${chips("sec", [["mon", "Monday"], ["wed", "Wednesday"], ["thu", "Thursday"], ["all", "All sections"]])}<span class="lm-sp"></span>
-        ${n === 5 ? chips("mode", [["demo", "Lab 5 total"], ["overview", "Overview"], ["analysis", "📈 Analysis"]]) : chips("mode", [["demo", "Demo"], ["report", "Report"], ["overview", "Overview"], ["analysis", "📈 Analysis"]])}</div>
-      <p class="small-note">Lab ${n}: ${esc(LAB_NAME[n])} · ${n === 5 ? `total out of ${w.t} (from the Lab 5 lecturer)` : `demo ${w.d} + report ${w.r} = ${w.d + w.r} marks`} · lecturers only, students don't see these marks. Marks save as you type.</p>
-      ${st.mode === "analysis" ? "" : `<input class="at-in lm-q" type="search" placeholder="Find a student" value="${esc(st.q)}" aria-label="Find a student">`}</div>`;
+    const n = st.lab, w = W[n], v = st.view;
+    if (v === "entry") return title("Mark Entry", "Key in the marks for one lab, one section and one part at a time. Marks save as you type. This is the only page where marks can be changed.")
+      + `<div class="lm-fbar">${sel("lab", "Lab", LABS, n)}${sel("sec", "Section", SECSEL(), st.sec)}${n === 5 ? "" : sel("mode", "Part", [["demo", "Demo (0 to 50)"], ["report", "Report (/10, /30, /10)"]], st.mode)}${findBox()}</div>
+        <p class="small-note">Lab ${n}: ${esc(LAB_NAME[n])} · ${n === 5 ? `total out of ${w.t} (from the Lab 5 lecturer)` : `demo ${w.d} + report ${w.r} = ${w.d + w.r} marks`} · lecturers only, students don't see these marks.</p>`;
+    if (v === "overview") return title("Marks Overview", "Every student's marks for all five labs. View only.", `<button type="button" class="btn ghost small" data-lmcsv>⬇ Download CSV</button>`)
+      + `<div class="lm-fbar">${sel("sec", "Section", SECSEL("all"), st.sec)}${findBox()}</div>`;
+    if (v === "analysis") return title("Mark Analysis", "Graphs of one lab's marks. View only.", `<button type="button" class="btn ghost small" data-lmprint>🖨 Print / Save as PDF</button>`)
+      + `<div class="lm-vo">👁 View only: nothing on this page changes a mark. To change one, go to <a href="attendance.html?tab=marks" data-tab="marks">Mark Entry</a>.</div>
+        <div class="lm-fbar">${sel("lab", "Lab", LABS, n)}${sel("sec", "Section", SECSEL("all"), st.sec)}${n === 5 ? "" : sel("part", "Show", [["demo", "Demo only"], ["report", "Report only"], ["both", "Demo and report"]], an.part)}
+          ${sel("thr", "Needs attention below", [40, 50, 60, 70].map((x) => [x, `${x}%`]), an.thr)}</div>`;
+    return title("Weights and Rubric", `How many marks each lab is worth (total ${maxTotal()} marks), and the rubric for each lab.`);
   }
   const esc = (s) => C.esc(s);
   function attLine(p) {
@@ -123,10 +134,9 @@
     });
     return out;
   }
-  function rubricHtml() {
-    const n = st.lab;
-    if (n === 5 || st.mode === "overview") return "";
-    if (st.mode === "demo") { const b = n === 4 ? BANDS4 : BANDS; return `<details class="at-card lm-rub"><summary><strong>Demo rubric</strong> · ${esc(DEMO[n][0])}</summary><table class="adm"><tbody>${b.map(([lo, hi], k) => `<tr><th>${lo === hi ? lo : `${lo}–${hi}`}</th><td>${esc(DEMO[n][k + 1])}</td></tr>`).join("")}</tbody></table></details>`; }
+  function rubricHtml(n = st.lab, mode = st.mode) {
+    if (n === 5) return "";
+    if (mode === "demo") { const b = n === 4 ? BANDS4 : BANDS; return `<details class="at-card lm-rub"><summary><strong>${st.view === "weights" ? `Lab ${n} demo rubric` : "Demo rubric"}</strong> · ${esc(DEMO[n][0])}</summary><table class="adm"><tbody>${b.map(([lo, hi], k) => `<tr><th>${lo === hi ? lo : `${lo}–${hi}`}</th><td>${esc(DEMO[n][k + 1])}</td></tr>`).join("")}</tbody></table></details>`; }
     return `<details class="at-card lm-rub"><summary><strong>Report rubric</strong> · Introduction /10, Results &amp; Discussion /30, Conclusion /10</summary>${REPORT.map((c) => `<h4>${c.label} (${c.max})</h4><table class="adm"><tbody>${c.bands.map(([m, d]) => `<tr><th>${m}</th><td>${esc(d)}</td></tr>`).join("")}</tbody></table>`).join("")}</details>`;
   }
   function overviewHtml() {
@@ -134,13 +144,12 @@
       .sort((a, b) => ((a.section || "z") + String(a.group || 0).padStart(2, "0") + a.name < (b.section || "z") + String(b.group || 0).padStart(2, "0") + b.name ? -1 : 1));
     const missing = (n) => all.filter((r) => { const m = labMarks(M[r.id], n); return n === 5 ? m.total == null : !m.done; }).length;
     return `<div class="adm-sum">${[1, 2, 3, 4, 5].map((n) => `<div><strong>${all.length - missing(n)}/${all.length}</strong><span>Lab ${n} complete</span></div>`).join("")}</div>
-      <p><button type="button" class="btn ghost small" data-lmcsv>Download CSV (Lab Assessment layout)</button></p>
       <div class="adm-scroll"><table class="adm lm-ov"><thead><tr><th scope="col">Student</th>${[1, 2, 3, 4].map((n) => `<th scope="col">Lab ${n}<br><small>D ${W[n].d} · R ${W[n].r}</small></th>`).join("")}<th scope="col">Lab 5<br><small>/ ${W[5].t}</small></th><th scope="col">Total<br><small>/ ${maxTotal()}</small></th></tr></thead><tbody>
       ${all.map((r) => { const rec = M[r.id];
         return `<tr><td>${C.profileLink(r.id, r.name)}<small>${esc(r.matric)} · ${r.section ? C.SECTION[r.section].replace(" lab", "") : "–"} G${r.group || "–"}</small></td>${[1, 2, 3, 4].map((n) => { const m = labMarks(rec, n);
           return `<td class="${m.done ? "" : m.total == null ? "lm-none" : "lm-part"}" title="Demo ${m.demo ?? "–"}/50 → ${f2(m.dm)}; report ${m.rep ?? "–"}/50 → ${f2(m.rm)}">${m.total == null ? "–" : f2(m.total)}<small>${m.demo ?? "–"} · ${m.rep ?? "–"}</small></td>`; }).join("")}
           <td class="${labMarks(rec, 5).total == null ? "lm-none" : ""}">${f2(labMarks(rec, 5).total)}</td><td><strong>${f2(totalOf(rec))}</strong></td></tr>`; }).join("")}</tbody></table></div>
-      <p class="small-note">Each lab cell: marks, then the demo score (/50) · report score (/50). Amber: only one part done; grey: nothing yet.</p>`;
+      <p class="small-note">Each lab cell: marks, then the demo score (/50) · report score (/50). Amber: only one part done; grey: nothing yet. The CSV follows the column order of the "Lab Assessment" sheet.</p>`;
   }
   /* ---------- Analysis (lecturers only): graphs of one lab's marks, drawn from the marks already loaded for this tab,
      so it costs no extra Firestore reads. Demo only / Report only / Both; the settings stay in this browser. ---------- */
@@ -225,9 +234,6 @@
   function analysisHtml() {
     const n = st.lab, ks = partsOf(n), rows = pool(n, st.sec), N = rows.length;
     const secName = st.sec === "all" ? "all sections" : C.SECTION[st.sec].replace(" lab", "");
-    const ctrl = `<div class="adm-tools lm-anc">${n === 5 ? `<span class="small-note">Lab 5 has one total (from the Lab 5 lecturer).</span>` : chips("part", [["demo", "Demo only"], ["report", "Report only"], ["both", "Both"]])}
-      <label class="lm-thrl">Needs attention below <select class="at-in lm-thr">${[40, 50, 60, 70].map((v) => `<option value="${v}"${an.thr === v ? " selected" : ""}>${v}%</option>`).join("")}</select></label>
-      <button type="button" class="btn ghost small" data-lmprint>Print / Save as PDF</button></div>`;
     const any = rows.some((x) => ks.some((k) => x[k] != null));
     // summary tiles
     const tiles = ks.map((k) => {
@@ -282,26 +288,30 @@
     const who = (x) => `<li>${C.profileLink(x.p.r.id, x.p.r.name)} <small>${x.p.sec ? C.SECTION[x.p.sec].replace(" lab", "") : "–"} · G${x.p.grp || "–"} · ${ks.map((k) => `${AN_L[k]} ${x[k] ?? "–"}/${outOf(k)}`).join(" · ")} · ${attLine(x.p)}</small></li>`;
     const att = `<div class="lm-two"><div class="at-card"><h4>Below ${an.thr}% (${low.length})</h4>${low.length ? `<ul class="lm-list">${low.map(who).join("")}</ul>` : `<p class="small-note">Nobody.</p>`}</div>
       <div class="at-card"><h4>No Mark Yet (${none.length})</h4>${none.length ? `<ul class="lm-list">${none.map(who).join("")}</ul>` : `<p class="small-note">Everyone is marked.</p>`}</div></div>`;
-    return `<div class="lm-an">${ctrl}<h3 class="lm-ah">Lab ${n}: ${esc(LAB_NAME[n])} · ${secName} · ${N} students</h3>
+    return `<div class="lm-an"><h3 class="lm-ah">Lab ${n}: ${esc(LAB_NAME[n])} · ${secName} · ${N} students</h3>
       ${any ? `${tiles}<div class="lm-two">${dist}${secs}</div>${brk || sc ? `<div class="lm-two">${brk}${sc}</div>` : ""}` : `<p class="adm-empty">No ${ks.map((k) => AN_L[k].toLowerCase()).join(" or ")} marks for Lab ${n} in ${secName} yet.</p>`}
       ${trend}<h3 class="lm-ah">Needs Attention</h3>${att}
       <p class="small-note">Drawn from the marks already loaded for this tab, so it costs no extra reads. Lecturers only.</p></div>`;
   }
 
   function weightsHtml() {
-    return `<details class="at-card lm-set"><summary><strong>Weights</strong> · total ${maxTotal()} marks</summary>
+    return `<div class="at-card lm-set"><h3 class="h4">Weights</h3><p class="small-note">Marks = score ÷ 50 × weight. Changing a weight changes every student's marks for that lab.</p>
       <form class="lm-wf" novalidate><div class="lm-wgrid">${[1, 2, 3, 4].map((n) => `<span>Lab ${n}</span><label>Demo <input class="at-in" name="d${n}" inputmode="decimal" value="${W[n].d}"></label><label>Report <input class="at-in" name="r${n}" inputmode="decimal" value="${W[n].r}"></label>`).join("")}
         <span>Lab 5</span><label>Total <input class="at-in" name="t5" inputmode="decimal" value="${W[5].t}"></label><span></span></div>
-        <p class="small-note lm-wmsg" aria-live="polite"></p><button class="btn small">Save weights</button></form></details>`;
+        <p class="small-note lm-wmsg" aria-live="polite"></p><button class="btn small">Save weights</button></form></div>
+      <h3 class="lm-ah">Rubric</h3>${[1, 2, 3, 4].map((n) => rubricHtml(n, "demo")).join("")}${rubricHtml(1, "report").replace("<strong>Report rubric</strong>", "<strong>Report rubric (every lab)</strong>")}
+      <p class="small-note">Lab 5 is assessed by the Lab 5 lecturer: only its total is keyed in.</p>`;
   }
   function render(body) {
-    body.innerHTML = `<div class="lm-root">${head()}${st.mode === "analysis" ? analysisHtml() : st.mode === "overview" ? overviewHtml() : `${rubricHtml()}<div class="lm-rows">${ready ? rowsHtml() : `<p class="small-note">Loading…</p>`}</div>`}${weightsHtml()}</div>`;
+    const v = st.view, wait = `<p class="small-note">Loading…</p>`;
+    body.innerHTML = `<div class="lm-root lm-v-${v}">${head()}${v === "analysis" ? (ready ? analysisHtml() : wait) : v === "overview" ? (ready ? overviewHtml() : wait) : v === "weights" ? weightsHtml()
+      : `${rubricHtml()}<div class="lm-rows">${ready ? rowsHtml() : wait}</div>`}</div>`;
     const qi = body.querySelector(".lm-q");
     if (st.focusQ && qi) { qi.focus(); qi.setSelectionRange(st.q.length, st.q.length); st.focusQ = false; }
   }
   // live numbers in place, without rebuilding the boxes the lecturer may be typing in
   function refresh(body) {
-    if (st.mode === "overview" || st.mode === "analysis") return render(body);
+    if (st.view !== "entry") return render(body);
     body.querySelectorAll(".lm-row").forEach((row) => {
       const n = st.lab, em = row.dataset.em, lm = labMarks(M[em], n), w = row.querySelector(".lm-w"), x = (M[em] || {})[`l${n}`] || {};
       // boxes the lecturer isn't typing in show the saved value (e.g. marks keyed in by the other lecturer)
@@ -336,10 +346,6 @@
       if (!body.querySelector(".lm-root")) return;
       const b = e.target.closest("button");
       if (!b) return;
-      if (b.dataset.lmlab) { st.lab = +b.dataset.lmlab; if (st.lab === 5 && st.mode === "report") st.mode = "demo"; return render(body); }
-      if (b.dataset.lmsec) { st.sec = b.dataset.lmsec; return render(body); }
-      if (b.dataset.lmmode) { st.mode = b.dataset.lmmode; return render(body); }
-      if (b.dataset.lmpart) { an.part = b.dataset.lmpart; saveAn(); return render(body); }
       if (b.hasAttribute("data-lmprint")) { document.body.classList.add("lm-printing"); addEventListener("afterprint", () => document.body.classList.remove("lm-printing"), { once: true }); return window.print(); }
       if (b.hasAttribute("data-lmcsv")) return csv();
       if (b.dataset.band !== undefined) {
@@ -353,7 +359,12 @@
     body.addEventListener("input", (e) => {
       if (!body.querySelector(".lm-root")) return;
       if (e.target.matches(".lm-q")) { st.q = e.target.value; st.focusQ = true; return render(body); }
-      if (e.target.matches(".lm-thr")) { an.thr = +e.target.value; saveAn(); return render(body); }
+      if (e.target.matches(".lm-sel")) {
+        const k = e.target.dataset.k, v = e.target.value;
+        if (k === "lab") st.lab = +v; else if (k === "sec") st.sec = v; else if (k === "mode") st.mode = v;
+        else { an[k] = k === "thr" ? +v : v; saveAn(); }
+        return render(body);
+      }
       if (!e.target.matches(".lm-in")) return;
       const row = e.target.closest(".lm-row"), f = e.target.dataset.f, n = st.lab;
       save(row.dataset.em, n, f, e.target.value, f === "note" ? 0 : Number(e.target.dataset.max), row);
@@ -373,12 +384,16 @@
 
   window.NMKLabMarks = {
     // attendance.js calls this whenever the Lab Marks tab is drawn (also after its own data changes)
-    draw(body, ctx) {
+    draw(body, ctx, view) {
       C = ctx;
+      const vChanged = view && view !== st.view;
+      // each view keeps its own section (Mark Entry: the lab's section; Overview and Analysis start on all sections)
+      if (vChanged) { st.secOf = st.secOf || {}; st.secOf[st.view] = st.sec; st.sec = st.secOf[view] || (view === "entry" || view === "weights" ? st.sec : "all"); }
+      if (view) st.view = view;
       if (!unsub) {
         unsub = C.db.collection("labmarks").where("semester", "==", C.SEM).onSnapshot((q) => {
           M = {}; q.docs.forEach((d) => { const x = d.data(); M[x.email] = x; }); ready = true;
-          const b = document.querySelector(".lm-root"); if (b) { if (b.querySelector(".lm-rows .small-note")) render(b.parentNode); else refresh(b.parentNode); }
+          const b = document.querySelector(".lm-root"); if (b) { if (st.view !== "entry" || b.querySelector(".lm-rows .small-note")) render(b.parentNode); else refresh(b.parentNode); }
         }, (e) => { const b = document.querySelector(".lm-rows"); if (b) b.innerHTML = `<p class="small-note">Could not load the marks (${esc(e.code || e)}). If this says permission-denied, publish the latest firebase/firestore.rules.</p>`; });
         unsubW = C.db.collection("meta").doc("labmarks").onSnapshot((d) => {
           const w = d.exists && d.data().w; W = w ? Object.assign({}, DEFAULT_W, w) : DEFAULT_W;
@@ -386,17 +401,15 @@
         }, () => {});
       }
       // first time: open on the most recent lab session (on assessment day, today's lab and section)
-      // the hub's card opens the analysis (attendance.html?tab=marks&lm=analysis), for all sections
-      if (!st.urlDone) { st.urlDone = true; if (new URLSearchParams(location.search).get("lm") === "analysis") st.mode = "analysis"; }
       if (!st.picked && C.L.sessLoaded) {
         st.picked = true;
         const q = new URLSearchParams(location.search).get("today"), today = q || new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
         const last = C.L.sessions.filter((s) => s.kind === "lab" && labNo(s) && s.date <= today && s.section !== "all").sort((a, b) => (a.date < b.date ? 1 : -1))[0];
-        if (last) { st.lab = labNo(last); st.sec = st.mode === "analysis" ? "all" : last.section; }
+        if (last) { st.lab = labNo(last); if (st.view === "analysis" || st.view === "overview") { st.secOf = Object.assign(st.secOf || {}, { entry: last.section }); st.sec = "all"; } else st.sec = last.section; }
       }
       bind(body);
       const mine = body.querySelector(".lm-root");
-      if (mine && mine.contains(document.activeElement)) refresh(body); else render(body);
+      if (!vChanged && mine && mine.contains(document.activeElement)) refresh(body); else render(body);
     },
     // the marks of one student (for later use, e.g. their profile for lecturers)
     of: (email) => M[email] || null, total: (email) => totalOf(M[email]), maxTotal

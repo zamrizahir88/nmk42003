@@ -108,3 +108,31 @@ table.adm { width: 100%; border-collapse: collapse; font-size: .9rem; font-varia
 .ms-delask .ms-row2 { margin: 10px 0 0; display: flex; gap: 8px; flex-wrap: wrap; }
 .ms-ltab .ms-delbtn { margin-top: 6px; }
 .ms-ltab td:last-child { width: 1%; }
+
+/* Lecturer tools: the left menu shared by Attendance and the Lecturer dashboard (lecmenu.js) */
+.lt { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 24px; align-items: start; }
+.lt-main { min-width: 0; }
+.lt-side { position: sticky; top: 80px; max-height: calc(100vh - 96px); overflow-y: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; padding: 8px; }
+.lt-g { margin: 12px 10px 4px; font: 700 .7rem var(--sans, inherit); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+.lt-side a { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 8px; color: var(--ink); text-decoration: none; font-size: .9rem; line-height: 1.25; }
+.lt-side a:hover { background: var(--teal-soft); color: var(--teal); }
+.lt-side a.on { background: var(--teal); color: #fff; font-weight: 600; }
+:root[data-theme="dark"] .lt-side a.on { color: #0d1720; }
+.lt-side a i { font-style: normal; width: 20px; text-align: center; flex: none; }
+.lt-side a b { margin-left: auto; font-size: .72rem; background: var(--amber-soft); color: var(--amber); border-radius: 999px; padding: 1px 8px; }
+.lt-side a.on b { background: #fff; }
+.lt-secbtn { display: none; }
+.lt-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px; margin: 0 0 14px; }
+.lt-head h2 { margin: 0; font-size: 1.55rem; }
+.lt-head p { margin: 4px 0 0; color: var(--ink-2); font-size: .92rem; max-width: 70ch; }
+.lt-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 900px) {
+  .lt { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .lt-side { display: none; position: static; max-height: none; margin-top: 8px; }
+  .lt-open .lt-side { display: block; }
+  .lt-secbtn { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; font: 600 .95rem inherit; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 11px 14px; color: var(--ink); cursor: pointer; text-align: left; }
+  .lt-secbtn b { color: var(--teal); margin-right: auto; }
+  .lt-open .lt-secbtn span { transform: rotate(180deg); }
+  .lt-head h2 { font-size: 1.3rem; }
+}
+@media print { .lt { display: block; } .lt-nav { display: none; } }

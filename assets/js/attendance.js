@@ -679,13 +679,15 @@
   /* =====================================================================
      LECTURERS
      ===================================================================== */
+  const TABS = ["sessions", "roster", "swaps", "notices", "warnings", "report", "marks", "marksov", "analysis", "weights", "schedule"];
   function lecturer() {
-    host.innerHTML = `<div class="at-tabs adm-tabs" role="group" aria-label="Attendance view"></div><div class="at-body"></div><div class="at-savebar" hidden></div>`;
+    // the lecturer tools: the shared left menu (lecmenu.js) beside the view
+    host.innerHTML = `<div class="lt"><div class="lt-nav"></div><div class="lt-main"><div class="at-body"></div></div></div><div class="at-savebar" hidden></div>`;
     // the tab and session shown before (after Back from a profile), and Back between them
     const hs = history.state || {};
     if (hs.view) { L.tab = hs.tab || "sessions"; L.sid = hs.sid || null; }
     // a card on the hub opens a tab straight away (attendance.html?tab=marks)
-    else { const qt = new URLSearchParams(location.search).get("tab"); if (["sessions", "roster", "swaps", "notices", "warnings", "report", "marks", "schedule"].includes(qt)) L.tab = qt; }
+    else { const qp = new URLSearchParams(location.search), qt = qp.get("lm") === "analysis" ? "analysis" : qp.get("tab"); if (TABS.includes(qt)) L.tab = qt; }
     if (window.NMKBack) {
       NMKBack.view({ tab: L.tab, sid: L.sid }, true);
       NMKBack.onView((st) => {
@@ -786,19 +788,21 @@
   const editsFor = (sid) => Object.entries(L.edits).filter(([k]) => k.startsWith(sid + "|"));
 
   function draw() {
-    const tabs = $(".at-tabs"), body = $(".at-body");
+    const tabs = $(".lt-nav"), body = $(".at-body");
     if (!tabs || !body) return;
     // don't redraw under the lecturer's fingers while they type: redraw when they leave the box
     const ae = document.activeElement;
     if (ae && host.contains(ae) && ae.matches(".at-rm, .at-grp, .at-panel input, .at-panel textarea, .at-panel select, .lm-in, .lm-q, .lm-wf input")) { L.pending = true; return; }
     L.pending = false;
     const pend = (k) => k.filter((x) => x.status === "accepted").length, np = L.notices.filter((x) => x.status === "pending").length;
-    const T = [["sessions", "Sessions"], ["roster", `Class List (${L.roster.filter((r) => r.status === "active").length})`], ["swaps", `Swaps${pend(L.swaps) ? ` (${pend(L.swaps)})` : ""}`],
-      ["notices", `Notices${np ? ` (${np})` : ""}`], ["warnings", "Warnings"], ["report", "Report"], ["marks", "Lab Marks"], ["schedule", "Schedule"]];
-    tabs.innerHTML = T.map(([v, l]) => `<button type="button" class="chip-btn${/\(\d+\)$/.test(l) && v !== "roster" ? " has" : ""}" data-tab="${v}" aria-pressed="${L.tab === v && !L.sid}">${l}</button>`).join("");
+    if (window.NMKLecMenu) {
+      tabs.innerHTML = NMKLecMenu.html("attendance.html", L.sid ? "sessions" : L.tab, { swaps: pend(L.swaps), notices: np });
+      const sb = tabs.querySelector(".lt-secbtn"); if (sb) sb.setAttribute("aria-expanded", tabs.classList.contains("lt-open"));
+    }
     const keepPanel = panelEl && body.contains(panelEl) ? panelEl : null;
     if (L.sid) { const s = L.sessions.find((x) => x.id === L.sid); if (s) drawSession(body, s); else if (L.sessLoaded) L.sid = null; else body.innerHTML = `<p class="small-note">Loading…</p>`; }
-    if (!L.sid) ({ sessions: drawSessions, roster: drawRoster, swaps: drawSwaps, notices: drawNotices, report: drawReport, schedule: drawSchedule, marks: drawMarks, warnings: drawWarnings })[L.tab](body);
+    if (!L.sid) ({ sessions: drawSessions, roster: drawRoster, swaps: drawSwaps, notices: drawNotices, report: drawReport, schedule: drawSchedule, warnings: drawWarnings,
+      marks: (b) => drawMarks(b, "entry"), marksov: (b) => drawMarks(b, "overview"), analysis: (b) => drawMarks(b, "analysis"), weights: (b) => drawMarks(b, "weights") })[L.tab](body);
     if (keepPanel) body.prepend(keepPanel);
     paintSaveBar();
     if (L.typing) { const q = $("[data-q]"); if (q) { q.focus(); q.setSelectionRange(L.q.length, L.q.length); } L.typing = false; }
@@ -1546,9 +1550,9 @@
     if (!window.NMKWarnings) { body.innerHTML = `<p class="small-note">Warnings didn't load. Reload the page.</p>`; return; }
     NMKWarnings.draw(body, { L, db, FV, A, SEM, semSlug, esc, fmtStamp, profileLink });
   }
-  function drawMarks(body) {
+  function drawMarks(body, view) {
     if (!window.NMKLabMarks) { body.innerHTML = `<p class="small-note">Lab Marks didn't load. Reload the page.</p>`; return; }
-    NMKLabMarks.draw(body, { L, db, FV, A, SEM, semSlug, esc, SECTION, fmtDate, slotOf, moveOf, recOf, profileLink });
+    NMKLabMarks.draw(body, { L, db, FV, A, SEM, semSlug, esc, SECTION, fmtDate, slotOf, moveOf, recOf, profileLink }, view);
   }
   function drawReport(body) {
     const { ses, rows } = reportData();
@@ -1629,7 +1633,7 @@
   /* ---------- clicks and changes (lecturer) ---------- */
   function onClick(e) {
     const t = e.target, b = (s) => t.closest(s);
-    if (b("[data-tab]")) { if (!leaveOk()) return; goView(b("[data-tab]").dataset.tab, null); return; }
+    if (b("[data-tab]")) { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); if (!leaveOk()) return; goView(b("[data-tab]").dataset.tab, null); scrollTo({ top: Math.min(scrollY, host.getBoundingClientRect().top + scrollY - 80) }); return; }
     if (b("[data-filter]")) { L.filter = b("[data-filter]").dataset.filter; draw(); return; }
     if (b("[data-delpicked]")) return deletePicked();
     if (b("[data-unpick]")) { L.picked.clear(); draw(); return; }
