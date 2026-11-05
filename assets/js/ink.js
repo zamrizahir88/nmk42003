@@ -8,7 +8,7 @@
    📋 Board: a floating sheet to write on (see below), one for the whole site, also kept for one day. The board has its
    OWN pen, highlighter and eraser in its top bar: with a board tool on, only the board takes writing and the page
    outside works as normal; with a page tool on, the board takes no writing (lecturer's choice). ⬚ Select moves, resizes,
-   recolours, duplicates or deletes what was written. */
+   recolours, duplicates or deletes what was written. The board scrolls and zooms (see "the view"). */
 (function () {
   "use strict";
   if (window.NMKInk) return;
@@ -175,8 +175,8 @@
     return changed ? out : list;
   }
   // erase along the move from a to b (a fast swipe still erases everything in between)
-  function erased(list, a, b) {
-    const R = ER[E.r] || 16, pts = [];
+  function erased(list, a, b, k = 1) {
+    const R = (ER[E.r] || 16) / k, pts = [];
     if (a) { const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / (R / 2))); for (let i = 1; i <= n; i++) pts.push([a[0] + ((b[0] - a[0]) * i) / n, a[1] + ((b[1] - a[1]) * i) / n]); } else pts.push(b);
     let out = list;
     pts.forEach(([x, y]) => { out = E.mode === "stroke" ? wholeOut(out, x, y, R) : rubOut(out, x, y, R); });
@@ -291,6 +291,11 @@
   .ink-bb.sel canvas { cursor: default; }
   .ink-bb.las canvas { cursor: none; }
   .ink-bb.txt canvas { cursor: text; }
+  .ink-bb.pan canvas { cursor: grab; }
+  .ink-zm { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; }
+  .ink-zm [data-bz="0"] { min-width: 52px; font-variant-numeric: tabular-nums; font-size: .8rem; }
+  .ink-zm [data-bfit] { font-size: .8rem; font-weight: 600; }
+  .ink-zm [data-bfit].hot { background: #fff3cd; border-color: #e0a800; color: #7a5300; }
   .ink-btl .ink-sym { font-size: .78rem; font-weight: 600; padding: 0 7px; }
   .ink-tx { position: absolute; z-index: 2; margin: 0; padding: 2px; border: 1px dashed #1a73c7; border-radius: 4px; background: rgba(255, 255, 255, .92); resize: none; overflow: hidden; outline: none; white-space: pre; box-sizing: content-box; }
   .ink-bb.chalk .ink-tx { background: rgba(28, 52, 44, .92); }
@@ -363,10 +368,11 @@
         <button type="button" data-bsdup title="Duplicate the selection" aria-label="Duplicate the selection">⧉ Duplicate</button><button type="button" data-bsdel title="Delete the selection (Delete key)" aria-label="Delete the selection">🗑 Delete</button>`
       : `<span class="ink-bhint">Draw a loop round what you want to move, or tap one line</span>`;
     btl.innerHTML = [["pen", "✏️", "Board pen (P). Hold still at the end of a line, box or circle to tidy it"], ["hl", "🖍", "Board highlighter (H)"], ["erase", "🧽", "Board eraser (E)"], ["sel", "⬚", "Select and move (V)"],
-      ["shape", "📐", "Shapes: line, arrow, rectangle, circle"], ["sym", "Ω", "Circuit symbols"], ["text", "T", "Text (T)"], ["laser", "🔴", "Laser pointer (L)"]].map(([k, i, l]) => `<button type="button" data-bt="${k}" aria-pressed="${t === k}" title="${l}" aria-label="${l}">${i}</button>`).join("")
+      ["shape", "📐", "Shapes: line, arrow, rectangle, circle"], ["sym", "Ω", "Circuit symbols"], ["text", "T", "Text (T)"], ["laser", "🔴", "Laser pointer (L)"], ["pan", "✋", "Move the view: drag the board (also two fingers, or the mouse wheel)"]].map(([k, i, l]) => `<button type="button" data-bt="${k}" aria-pressed="${t === k}" title="${l}" aria-label="${l}">${i}</button>`).join("")
       + (o ? `<span class="ink-sep"></span>${o}` : "") + `<span class="ink-sep"></span><button type="button" data-bundo title="Undo on the board (Ctrl+Z)" aria-label="Undo on the board">↶</button>`
+      + `<span class="ink-zm"><button type="button" data-bz="-1" title="Zoom out (Ctrl + wheel, or pinch)" aria-label="Zoom out">−</button><button type="button" data-bz="0" title="Back to 100%" aria-label="Zoom back to 100 percent">${Math.round(VZ() * 100)}%</button><button type="button" data-bz="1" title="Zoom in" aria-label="Zoom in">＋</button><button type="button" data-bfit class="${offScreen() ? "hot" : ""}" title="Show all the writing on this page" aria-label="Show all the writing on this page">⤢ Show all</button></span>`
       + (t ? "" : `<span class="ink-bhint">Tap ✏️ here to write on the board</span>`);
-    bb.classList.toggle("idle", !t); bb.classList.toggle("er", t === "erase"); bb.classList.toggle("sel", t === "sel"); bb.classList.toggle("las", t === "laser"); bb.classList.toggle("txt", t === "text");
+    bb.classList.toggle("idle", !t); bb.classList.toggle("er", t === "erase"); bb.classList.toggle("sel", t === "sel"); bb.classList.toggle("las", t === "laser"); bb.classList.toggle("txt", t === "text"); bb.classList.toggle("pan", t === "pan");
   }
   function setBoardTool(t) {
     if (t !== "sel" || Q.tool !== "sel") clearSel();
@@ -386,20 +392,64 @@
     Object.assign(bd.style, { left: `${B.x}px`, top: `${B.y}px`, width: `${B.w}px`, height: `${B.h}px` });
   }
   function bgStyle() {
-    const a = B.op / 100, line = `rgba(26, 115, 199, ${(0.22 * a).toFixed(3)})`;
-    if (B.bg === "chalk") return { backgroundColor: `rgba(28, 52, 44, ${a})`, backgroundImage: "none" };
-    if (B.bg === "grid") return { backgroundColor: `rgba(255, 255, 255, ${a})`, backgroundImage: `linear-gradient(${line} 1px, transparent 1px), linear-gradient(90deg, ${line} 1px, transparent 1px)`, backgroundSize: "24px 24px" };
-    if (B.bg === "lined") return { backgroundColor: `rgba(255, 255, 255, ${a})`, backgroundImage: `linear-gradient(transparent 31px, ${line} 31px, ${line} 32px)`, backgroundSize: "100% 32px" };
-    return { backgroundColor: `rgba(255, 255, 255, ${a})`, backgroundImage: "none" };
+    const a = B.op / 100;
+    return { backgroundColor: B.bg === "chalk" ? `rgba(28, 52, 44, ${a})` : `rgba(255, 255, 255, ${a})`, backgroundImage: "none" };
   }
+  /* ---------- the view: the board is bigger than the window, so it scrolls and zooms (B.view {x, y, z}: the top-left
+     corner shown, in board units, and the zoom). Mouse wheel or trackpad scrolls, Ctrl + wheel or a pinch zooms, two
+     fingers scroll and zoom on a tablet (one finger too when Pen only is on), ✋ drags it, ⤢ Show all fits every
+     piece of writing on the page into view. A board opened from My Boards or a file opens showing all of it. ---------- */
+  const vw = () => { if (!B.view || !(B.view.z > 0)) B.view = { x: 0, y: 0, z: 1 }; return B.view; };
+  const VZ = () => vw().z;
+  const ZMIN = 0.2, ZMAX = 4, clampZ = (z) => Math.max(ZMIN, Math.min(ZMAX, z));
+  function contentBox(pg) {
+    let a = Infinity, b = -Infinity, c = Infinity, d = -Infinity;
+    (pg || []).forEach((s) => { if (s.t === "tx") { const t = txBox(s); a = Math.min(a, t.x); b = Math.max(b, t.x + t.w); c = Math.min(c, t.y); d = Math.max(d, t.y + t.h); return; } const hw = halfW(s); s.p.forEach((q) => { a = Math.min(a, q[0] - hw); b = Math.max(b, q[0] + hw); c = Math.min(c, q[1] - hw); d = Math.max(d, q[1] + hw); }); });
+    return a === Infinity ? null : { x: a, y: c, w: b - a, h: d - c };
+  }
+  // grid or lined paper, in board units (so its lines move and zoom with the writing)
+  function drawPaper(c, x0, y0, x1, y1, lw, alpha, z) {
+    if (B.bg !== "grid" && B.bg !== "lined") return;
+    const step = B.bg === "grid" ? 24 : 32, off = B.bg === "grid" ? 0 : 31;
+    if (step * z < 6) return;
+    c.save(); c.strokeStyle = `rgba(26, 115, 199, ${(0.22 * alpha).toFixed(3)})`; c.lineWidth = lw; c.beginPath();
+    if (B.bg === "grid") for (let x = Math.floor(x0 / step) * step; x <= x1; x += step) { c.moveTo(x, y0); c.lineTo(x, y1); }
+    for (let y = Math.floor((y0 - off) / step) * step + off; y <= y1; y += step) { c.moveTo(x0, y); c.lineTo(x1, y); }
+    c.stroke(); c.restore();
+  }
+  function offScreen() {
+    const b = contentBox(bpage()), v = vw(), w = bb.clientWidth, h = bb.clientHeight;
+    return !!b && (b.x < v.x - 1 || b.y < v.y - 1 || b.x + b.w > v.x + w / v.z + 1 || b.y + b.h > v.y + h / v.z + 1);
+  }
+  function fitView() {
+    const b = contentBox(bpage()), w = bb.clientWidth || 600, h = bb.clientHeight || 400;
+    if (!b) B.view = { x: 0, y: 0, z: 1 };
+    else {
+      const z = clampZ(Math.min(1, (w - 40) / Math.max(1, b.w), (h - 40) / Math.max(1, b.h)));
+      B.view = { x: b.x - (w / z - b.w) / 2, y: b.y - (h / z - b.h) / 2, z };
+    }
+    bsave(); bpaint();
+  }
+  // zoom by f, keeping the point under (sx, sy) (pixels from the board's top-left) where it is
+  function zoomAt(f, sx, sy) {
+    const v = vw(), z = clampZ(v.z * f); if (z === v.z) return;
+    const wx = sx / v.z + v.x, wy = sy / v.z + v.y;
+    B.view = { x: wx - sx / z, y: wy - sy / z, z };
+    bpaint(); clearTimeout(viewT); viewT = setTimeout(bsave, 400);
+  }
+  let viewT = 0;
   function bpaint() {
-    const w = bb.clientWidth, h = bb.clientHeight;
+    const w = bb.clientWidth, h = bb.clientHeight, v = vw(), z = v.z;
     if (bcv.width !== Math.round(w * dpr) || bcv.height !== Math.round(h * dpr)) { bcv.width = Math.round(w * dpr); bcv.height = Math.round(h * dpr); }
     bctx.setTransform(dpr, 0, 0, dpr, 0, 0); bctx.clearRect(0, 0, w, h);
+    bctx.setTransform(dpr * z, 0, 0, dpr * z, -v.x * z * dpr, -v.y * z * dpr);
+    drawPaper(bctx, v.x, v.y, v.x + w / z, v.y + h / z, 1 / z, B.op / 100, z);
     const chalk = B.bg === "chalk";
     bpage().forEach((s) => { if (!s.hide) drawStroke(s, bctx, 0, 0, chalk); });
-    if (cur && cur.board && !cur.erasing && !cur.sel) { if (cur.g) cur.g.forEach((x) => drawStroke(x, bctx, 0, 0, chalk)); else drawStroke(cur, bctx, 0, 0, chalk); }
+    if (cur && cur.board && !cur.erasing && !cur.sel && !cur.pan) { if (cur.g) cur.g.forEach((x) => drawStroke(x, bctx, 0, 0, chalk)); else drawStroke(cur, bctx, 0, 0, chalk); }
     selPaint();
+    const zl = btl.querySelector("[data-bz='0']"); if (zl) zl.textContent = `${Math.round(z * 100)}%`;
+    const fb = btl.querySelector("[data-bfit]"); if (fb) fb.classList.toggle("hot", offScreen());
   }
   function bdraw() {
     bd.hidden = !B.open || B.min; chip.hidden = !B.open || !B.min;
@@ -424,9 +474,30 @@
     if (open) drawBar();
   }
   // writing on the board (board coordinates, so it stays put when the board moves)
-  const bpt = (e) => { const r = bcv.getBoundingClientRect(); return [Math.round((e.clientX - r.left) * 10) / 10, Math.round((e.clientY - r.top) * 10) / 10, e.pointerType === "pen" ? Math.round((e.pressure || 0.5) * 100) / 100 : 0]; };
+  const bpt = (e) => { const r = bcv.getBoundingClientRect(), v = vw(); return [Math.round(((e.clientX - r.left) / v.z + v.x) * 10) / 10, Math.round(((e.clientY - r.top) / v.z + v.y) * 10) / 10, e.pointerType === "pen" ? Math.round((e.pressure || 0.5) * 100) / 100 : 0]; };
   let nudgeT = 0;
+  const tp = new Map(); let gest = null;
+  function startGest() {
+    const r = bcv.getBoundingClientRect(), pts = [...tp.values()], mx0 = pts.reduce((a, q) => a + q[0], 0) / pts.length, my0 = pts.reduce((a, q) => a + q[1], 0) / pts.length;
+    gest = { mx: mx0 - r.left, my: my0 - r.top, d: pts.length > 1 ? Math.hypot(pts[0][0] - pts[1][0], pts[0][1] - pts[1][1]) : 0, v0: Object.assign({}, vw()) };
+  }
+  function moveGest() {
+    const r = bcv.getBoundingClientRect(), pts = [...tp.values()], mx1 = pts.reduce((a, q) => a + q[0], 0) / pts.length - r.left, my1 = pts.reduce((a, q) => a + q[1], 0) / pts.length - r.top, v0 = gest.v0;
+    const z = pts.length > 1 && gest.d > 10 ? clampZ(v0.z * (Math.hypot(pts[0][0] - pts[1][0], pts[0][1] - pts[1][1]) / gest.d)) : v0.z;
+    const wx = gest.mx / v0.z + v0.x, wy = gest.my / v0.z + v0.y;
+    B.view = { x: wx - mx1 / z, y: wy - my1 / z, z }; bpaint();
+  }
   bcv.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "touch") {
+      tp.set(e.pointerId, [e.clientX, e.clientY]);
+      // two fingers scroll and zoom (the stroke the first finger began is dropped); with Pen only on, one finger scrolls
+      if (tp.size >= 2 || penOnly()) { e.preventDefault(); cap(bcv, e); if (cur && cur.touch) { cur = null; clearTimeout(tidyT); } if (txEd) textDone(true); startGest(); bpaint(); return; }
+    }
+    if (e.button === 1) { e.preventDefault(); cap(bcv, e); cur = { board: true, pan: [e.clientX, e.clientY, Object.assign({}, vw())] }; return; }   // the middle mouse button drags the view
+    bdown(e);
+    if (cur && cur.board) cur.touch = e.pointerType === "touch";
+  });
+  function bdown(e) {
     const t = Q.tool;
     if (!t) {   // a page tool is on: the board takes no writing, it points to its own pen instead
       const h = btl.querySelector(".ink-bhint"); if (h) { h.classList.add("nudge"); clearTimeout(nudgeT); nudgeT = setTimeout(() => h.classList.remove("nudge"), 1500); }
@@ -437,22 +508,25 @@
     e.preventDefault(); cap(bcv, e);
     if (txEd) { textDone(true); return; }   // a tap outside the text being typed finishes it
     if (t === "laser") return;
+    if (t === "pan") { cur = { board: true, pan: [e.clientX, e.clientY, Object.assign({}, vw())] }; return; }
     if (t === "sel") return selDown(bpt(e));
     if (t === "text") return textAt(bpt(e));
-    if (t === "shape") { const q = bpt(e); cur = { board: true, t: "pen", c: Q.pen, w: SIZES[Q.size], pr: 0, ln: 1, shape: Q.shape, a: q, p: shapePts(Q.shape, q, q) }; bpaint(); return; }
+    if (t === "shape") { const q = bpt(e); cur = { board: true, t: "pen", c: Q.pen, w: SIZES[Q.size] / VZ(), pr: 0, ln: 1, shape: Q.shape, a: q, p: shapePts(Q.shape, q, q) }; bpaint(); return; }
     if (t === "sym") { const q = bpt(e); cur = { board: true, sym: true, g: symbolStrokes(Q.sym, q) }; bpaint(); return; }
     if (t === "erase") { cur = { board: true, erasing: true, last: null }; berase(e); return; }
-    cur = { board: true, t, c: t === "hl" ? Q.hl : Q.pen, w: SIZES[Q.size], pr: e.pointerType === "pen" && t === "pen" ? 1 : 0, p: [bpt(e)] };
+    cur = { board: true, t, c: t === "hl" ? Q.hl : Q.pen, w: Math.round((SIZES[Q.size] / VZ()) * 100) / 100, pr: e.pointerType === "pen" && t === "pen" ? 1 : 0, p: [bpt(e)] };
     bpaint();
-  });
+  }
   function berase(e) {
-    const q = bpt(e), list = bpage(), n = erased(list, cur.last, q);
+    const q = bpt(e), list = bpage(), n = erased(list, cur.last, q, VZ());
     cur.last = q;
     if (n !== list) { if (!cur.changed) { keep(bh_(), list); cur.changed = true; } B.pages[B.pi] = n; bpaint(); }
   }
   function bundo() { clearSel(); const h = bh_(); if (h.length) B.pages[B.pi] = h.pop(); else bpage().pop(); bsave(); bpaint(); }
   bcv.addEventListener("pointermove", (e) => {
+    if (e.pointerType === "touch" && tp.has(e.pointerId)) { tp.set(e.pointerId, [e.clientX, e.clientY]); if (gest) return moveGest(); }
     if (!cur || !cur.board) return;
+    if (cur.pan) { const [sx, sy, v0] = cur.pan; B.view = { x: v0.x - (e.clientX - sx) / v0.z, y: v0.y - (e.clientY - sy) / v0.z, z: v0.z }; return bpaint(); }
     if (cur.sel) return selMove(bpt(e));
     if (cur.erasing) { berase(e); return; }
     if (cur.shape) { cur.p = shapePts(cur.shape, cur.a, bpt(e)); bpaint(); return; }
@@ -465,9 +539,11 @@
     bpaint();
   });
   let tidyT = 0;
-  const bend = () => {
+  const bend = (e) => {
+    if (e && e.pointerType === "touch" && tp.has(e.pointerId)) { tp.delete(e.pointerId); if (gest) { if (tp.size) startGest(); else { gest = null; bsave(); } return; } }
     clearTimeout(tidyT);
     if (!cur || !cur.board) return; const c = cur; cur = null;
+    if (c.pan) { bsave(); return; }
     if (c.sel) return selUp(c);
     if (c.erasing) { if (c.changed) bsave(); }
     else if (c.sym) { keep(bh_(), bpage()); B.pages[B.pi] = bpage().concat(c.g); bsave(); }
@@ -479,6 +555,14 @@
     bpaint();
   };
   bcv.addEventListener("pointerup", bend); bcv.addEventListener("pointercancel", bend); bcv.addEventListener("lostpointercapture", bend);
+  // the mouse wheel or trackpad scrolls the board; Ctrl + wheel (and a trackpad pinch) zooms
+  bb.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const k = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? bb.clientHeight : 1, r = bcv.getBoundingClientRect();
+    if (e.ctrlKey || e.metaKey) return zoomAt(Math.exp(-e.deltaY * k * 0.0022), e.clientX - r.left, e.clientY - r.top);
+    const v = vw(), dx = (e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX) * k, dy = e.shiftKey ? 0 : e.deltaY * k;
+    B.view = { x: v.x + dx / v.z, y: v.y + dy / v.z, z: v.z }; bpaint(); clearTimeout(viewT); viewT = setTimeout(bsave, 400);
+  }, { passive: false });
   // dragging by the top bar, resizing from the corner
   function dragFrom(e, resize) {
     if (B.full) return;
@@ -508,6 +592,8 @@
     else if (b.dataset.bs) { Q.size = +b.dataset.bs; bsave(); bTools(); }
     else if (b.dataset.em || b.dataset.er) erPick(b);
     else if (b.hasAttribute("data-bundo")) bundo();
+    else if (b.dataset.bz) { const v = vw(); if (b.dataset.bz === "0") zoomAt(1 / v.z, bb.clientWidth / 2, bb.clientHeight / 2); else zoomAt(b.dataset.bz === "1" ? 1.25 : 0.8, bb.clientWidth / 2, bb.clientHeight / 2); }
+    else if (b.hasAttribute("data-bfit")) fitView();
     else if (b.dataset.bp) { B.pi = Math.max(0, Math.min(B.pages.length - 1, B.pi + +b.dataset.bp)); clearSel(); bsave(); bdraw(); if (P.view === "pages") drawPan(); }
     else if (b.hasAttribute("data-bnew")) newPage();
     else if (b.hasAttribute("data-bpen")) { B.penOnly = !penOnly(); bsave(); bdraw(); }
@@ -531,13 +617,7 @@
   addEventListener("resize", () => { if (!bd.hidden) bdraw(); });
   // the page as a picture: the paper (solid), then the writing
   function saveImage() {
-    const w = bb.clientWidth, h = bb.clientHeight, k = 2, c = document.createElement("canvas"); c.width = w * k; c.height = h * k;
-    const x = c.getContext("2d"); x.scale(k, k);
-    x.fillStyle = B.bg === "chalk" ? "#1c342c" : "#ffffff"; x.fillRect(0, 0, w, h);
-    x.strokeStyle = "rgba(26, 115, 199, .22)"; x.lineWidth = 1;
-    if (B.bg === "grid") { for (let i = 0; i < w; i += 24) { x.beginPath(); x.moveTo(i + 0.5, 0); x.lineTo(i + 0.5, h); x.stroke(); } for (let j = 0; j < h; j += 24) { x.beginPath(); x.moveTo(0, j + 0.5); x.lineTo(w, j + 0.5); x.stroke(); } }
-    if (B.bg === "lined") for (let j = 31; j < h; j += 32) { x.beginPath(); x.moveTo(0, j + 0.5); x.lineTo(w, j + 0.5); x.stroke(); }
-    bpage().forEach((s) => drawStroke(s, x, 0, 0, B.bg === "chalk"));
+    const c = pageCanvas(B.pi, 3200, 2);
     const a = document.createElement("a"), d = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 16).replace(/[-:T]/g, "");
     a.download = `nmk42003-board-${d}-page${B.pi + 1}.png`; a.href = c.toDataURL("image/png"); document.body.appendChild(a); a.click(); a.remove();
   }
@@ -562,7 +642,7 @@
   function selDown(q) {
     if (selOn()) {
       const r = selBox(), hx = r.x + r.w, hy = r.y + r.h;
-      if (Math.hypot(q[0] - hx, q[1] - hy) < 18) { const at = selCopy(); cur = { board: true, sel: "size", at, o: [r.x, r.y], d0: Math.max(10, Math.hypot(hx - r.x, hy - r.y)), base: SEL.list.map((s) => s.p.map((p) => p.slice())), ws: SEL.list.map((s) => s.w) }; return; }
+      if (Math.hypot(q[0] - hx, q[1] - hy) < 18 / VZ()) { const at = selCopy(); cur = { board: true, sel: "size", at, o: [r.x, r.y], d0: Math.max(10, Math.hypot(hx - r.x, hy - r.y)), base: SEL.list.map((s) => s.p.map((p) => p.slice())), ws: SEL.list.map((s) => s.w) }; return; }
       if (q[0] >= r.x && q[0] <= hx && q[1] >= r.y && q[1] <= hy) { const at = selCopy(); cur = { board: true, sel: "move", at, last: q }; return; }
     }
     clearSel(); cur = { board: true, sel: "lasso", p: [q] }; bTools(); bpaint();
@@ -580,7 +660,7 @@
   function selUp(c) {
     const pg = bpage();
     if (c.sel === "lasso") {
-      const xs = c.p.map((q) => q[0]), ys = c.p.map((q) => q[1]), tap = Math.max(...xs) - Math.min(...xs) < 10 && Math.max(...ys) - Math.min(...ys) < 10;
+      const xs = c.p.map((q) => q[0]), ys = c.p.map((q) => q[1]), tap = Math.max(...xs) - Math.min(...xs) < 10 / VZ() && Math.max(...ys) - Math.min(...ys) < 10 / VZ();
       let pick;
       if (tap) { const [x, y] = c.p[0], hit = pg.filter((s) => wholeOut([s], x, y, 10).length === 0); pick = hit.length ? [hit[hit.length - 1]] : []; }
       else pick = pg.filter((s) => { if (s.t === "tx") { const t = txBox(s); return inPoly([t.x + t.w / 2, t.y + t.h / 2], c.p); } return s.p.filter((q) => inPoly(q, c.p)).length >= s.p.length * 0.6; });
@@ -601,14 +681,14 @@
   // the selection drawn over the writing: the loop while drawing it, then a dashed box with a round handle
   function selPaint() {
     if (cur && cur.sel === "lasso" && cur.p.length > 1) {
-      bctx.save(); bctx.setLineDash([5, 4]); bctx.strokeStyle = "#1a73c7"; bctx.lineWidth = 1.5; bctx.beginPath();
+      const z0 = VZ(); bctx.save(); bctx.setLineDash([5 / z0, 4 / z0]); bctx.strokeStyle = "#1a73c7"; bctx.lineWidth = 1.5 / z0; bctx.beginPath();
       cur.p.forEach((q, i) => (i ? bctx.lineTo(q[0], q[1]) : bctx.moveTo(q[0], q[1]))); bctx.stroke(); bctx.restore();
     }
     if (selOn() && Q.tool === "sel") {
-      const r = selBox();
+      const r = selBox(), z0 = VZ();
       bctx.save(); bctx.fillStyle = "rgba(26, 115, 199, .07)"; bctx.fillRect(r.x, r.y, r.w, r.h);
-      bctx.setLineDash([6, 4]); bctx.strokeStyle = "#1a73c7"; bctx.lineWidth = 1.5; bctx.strokeRect(r.x, r.y, r.w, r.h);
-      bctx.setLineDash([]); bctx.fillStyle = "#fff"; bctx.beginPath(); bctx.arc(r.x + r.w, r.y + r.h, 8, 0, Math.PI * 2); bctx.fill(); bctx.stroke();
+      bctx.setLineDash([6 / z0, 4 / z0]); bctx.strokeStyle = "#1a73c7"; bctx.lineWidth = 1.5 / z0; bctx.strokeRect(r.x, r.y, r.w, r.h);
+      bctx.setLineDash([]); bctx.fillStyle = "#fff"; bctx.beginPath(); bctx.arc(r.x + r.w, r.y + r.h, 8 / z0, 0, Math.PI * 2); bctx.fill(); bctx.stroke();
       bctx.restore();
     }
   }
@@ -665,7 +745,7 @@
   };
   const SYMSZ = [0.8, 1.1, 1.5];
   function symbolStrokes(key, at) {
-    const [, make, label] = SYMBOLS[key], k = SYMSZ[Q.size] || 1.1, w = Math.max(1.5, SIZES[Q.size] * 0.7);
+    const [, make, label] = SYMBOLS[key], k = (SYMSZ[Q.size] || 1.1) / VZ(), w = Math.max(1.5, SIZES[Q.size] * 0.7) / VZ();
     const out = make().map((pl) => ({ t: "pen", c: Q.pen, w, pr: 0, ln: 1, p: pl.map(([x, y]) => [Math.round((at[0] + x * k) * 10) / 10, Math.round((at[1] + y * k) * 10) / 10, 0]) }));
     if (label) { const fs = Math.round(11 * k); mctx.font = TXF(fs); out.push({ t: "tx", c: Q.pen, w: fs, s: label, p: [[Math.round(at[0] - mctx.measureText(label).width / 2), Math.round(at[1] - fs * 0.62), 0]] }); }
     return out;
@@ -679,13 +759,13 @@
     const pg = bpage(), hit = pg.slice().reverse().find((s) => s.t === "tx" && txHit(s, q[0], q[1], 4));
     const ed = document.createElement("textarea");
     ed.className = "ink-tx"; ed.setAttribute("aria-label", "Text on the board"); ed.rows = 1;
-    const size = hit ? hit.w : TXS[Q.size] || 26, col = hit ? hit.c : Q.pen, at = hit ? hit.p[0] : [q[0], q[1] - size * 0.6, 0];
-    Object.assign(ed.style, { left: `${at[0] - 3}px`, top: `${at[1] - 3}px`, font: TXF(size), color: B.bg === "chalk" && col === PENS[0] ? "#f4f6f8" : col, lineHeight: "1.25" });
+    const size = hit ? hit.w : Math.round((TXS[Q.size] || 26) / VZ()), col = hit ? hit.c : Q.pen, at = hit ? hit.p[0] : [q[0], q[1] - size * 0.6, 0], v = vw();
+    Object.assign(ed.style, { left: `${(at[0] - v.x) * v.z - 3}px`, top: `${(at[1] - v.y) * v.z - 3}px`, font: TXF(size * v.z), color: B.bg === "chalk" && col === PENS[0] ? "#f4f6f8" : col, lineHeight: "1.25" });
     ed.value = hit ? hit.s : "";
     txEd = { ed, hit, size, col, at };
     if (hit) { hit.hide = true; bpaint(); }
     bb.appendChild(ed);
-    const grow = () => { ed.style.height = "auto"; ed.style.height = `${ed.scrollHeight}px`; mctx.font = TXF(size); ed.style.width = `${Math.max(140, ...ed.value.split("\n").map((l) => mctx.measureText(l).width + 24))}px`; };
+    const grow = () => { ed.style.height = "auto"; ed.style.height = `${ed.scrollHeight}px`; mctx.font = TXF(size * v.z); ed.style.width = `${Math.max(140, ...ed.value.split("\n").map((l) => mctx.measureText(l).width + 24))}px`; };
     ed.addEventListener("input", grow); grow();
     ed.addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); textDone(true); } else if (e.key === "Escape") { e.preventDefault(); textDone(false); } });
     ed.addEventListener("blur", () => textDone(true));
@@ -707,13 +787,14 @@
   }
 
   /* ---------- ▦ Pages: every page as a small picture; tap one to go there, ◀ ▶ to move it, ⧉ to copy it ---------- */
-  function pageCanvas(i, k) {
-    const w = bb.clientWidth || B.w || 760, h = bb.clientHeight || B.h || 480, c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(h * k);
-    const x = c.getContext("2d"); x.scale(k, k);
-    x.fillStyle = B.bg === "chalk" ? "#1c342c" : "#ffffff"; x.fillRect(0, 0, w, h);
-    x.strokeStyle = "rgba(26, 115, 199, .22)"; x.lineWidth = 1;
-    if (B.bg === "grid") { for (let a = 0; a < w; a += 24) { x.beginPath(); x.moveTo(a + 0.5, 0); x.lineTo(a + 0.5, h); x.stroke(); } for (let b = 0; b < h; b += 24) { x.beginPath(); x.moveTo(0, b + 0.5); x.lineTo(w, b + 0.5); x.stroke(); } }
-    if (B.bg === "lined") for (let b = 31; b < h; b += 32) { x.beginPath(); x.moveTo(0, b + 0.5); x.lineTo(w, b + 0.5); x.stroke(); }
+  // a page as a picture: the area from the top-left corner to the board's size, grown to take in every piece of writing
+  function pageCanvas(i, maxW, maxK) {
+    const W0 = bb.clientWidth || B.w || 760, H0 = bb.clientHeight || B.h || 480, cb = contentBox(B.pages[i]);
+    const x0 = cb ? Math.min(0, cb.x - 30) : 0, y0 = cb ? Math.min(0, cb.y - 30) : 0, x1 = cb ? Math.max(W0, cb.x + cb.w + 30) : W0, y1 = cb ? Math.max(H0, cb.y + cb.h + 30) : H0;
+    const k = Math.min(maxK, maxW / (x1 - x0)), c = document.createElement("canvas"); c.width = Math.max(1, Math.round((x1 - x0) * k)); c.height = Math.max(1, Math.round((y1 - y0) * k));
+    const x = c.getContext("2d"); x.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+    x.fillStyle = B.bg === "chalk" ? "#1c342c" : "#ffffff"; x.fillRect(x0, y0, x1 - x0, y1 - y0);
+    drawPaper(x, x0, y0, x1, y1, 1, 1, 1);
     (B.pages[i] || []).forEach((s) => drawStroke(s, x, 0, 0, B.bg === "chalk"));
     return c;
   }
@@ -728,7 +809,7 @@
   /* ---------- Export all pages as one PDF: the browser's print window, one page of the board per sheet ---------- */
   function exportPdf() {
     const name = B.name || "Board", d = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
-    const imgs = B.pages.map((pg, i) => `<section><p>${escH(name)} · page ${i + 1} of ${B.pages.length} · ${d}</p><img src="${pageCanvas(i, 2).toDataURL("image/png")}" alt="Page ${i + 1}"></section>`).join("");
+    const imgs = B.pages.map((pg, i) => `<section><p>${escH(name)} · page ${i + 1} of ${B.pages.length} · ${d}</p><img src="${pageCanvas(i, 2600, 2).toDataURL("image/png")}" alt="Page ${i + 1}"></section>`).join("");
     const f = document.createElement("iframe");
     f.setAttribute("aria-hidden", "true"); Object.assign(f.style, { position: "fixed", right: "0", bottom: "0", width: "0", height: "0", border: "0" });
     document.body.appendChild(f);
@@ -828,7 +909,7 @@
     if (P.view === "pages") {
       const n = B.pages.length;
       pan.innerHTML = `${x}<h3>▦ Pages</h3><p class="ink-pnote">Tap a page to go to it. ◀ ▶ move it earlier or later, ⧉ copies it.</p>
-        <ol class="ink-pgs">${B.pages.map((pg, i) => `<li class="${i === B.pi ? "on" : ""}"><button type="button" class="ink-pgi" data-pgo="${i}" aria-label="Go to page ${i + 1}"><img src="${pageCanvas(i, 0.22).toDataURL("image/png")}" alt=""></button>
+        <ol class="ink-pgs">${B.pages.map((pg, i) => `<li class="${i === B.pi ? "on" : ""}"><button type="button" class="ink-pgi" data-pgo="${i}" aria-label="Go to page ${i + 1}"><img src="${pageCanvas(i, 160, 0.3).toDataURL("image/png")}" alt=""></button>
           <span class="ink-prow"><button type="button" class="ink-pb ghost" data-pmv="${i}" data-d="-1" ${i ? "" : "disabled"} aria-label="Move page ${i + 1} earlier">◀</button><strong>${i + 1}</strong><button type="button" class="ink-pb ghost" data-pmv="${i}" data-d="1" ${i < n - 1 ? "" : "disabled"} aria-label="Move page ${i + 1} later">▶</button><button type="button" class="ink-pb ghost" data-pcp="${i}" aria-label="Copy page ${i + 1}">⧉</button></span></li>`).join("")}</ol>
         <div class="ink-prow"><button type="button" class="ink-pb" data-pnewpg>＋ New page</button><button type="button" class="ink-pb ghost" data-ppdf>Export all pages as PDF</button></div>`;
       return;
@@ -848,7 +929,7 @@
     B.pages = o.pages.length ? o.pages : [[]]; B.pi = 0; B.bg = BGS.some(([k]) => k === o.bg) ? o.bg : B.bg; B.name = o.name || "";
     if (txEd) textDone(false);
     B.cid = o.cid || null; B.cuid = o.cuid || null; B.lid = o.lid || null; B.sh = hashS(enc(B.pages)); bhist = {}; clearSel();
-    bsave(); bdraw(); bTools();
+    bsave(); bdraw(); bTools(); requestAnimationFrame(fitView);
   }
   // asks before writing on the board that isn't saved is replaced
   function replaceOk(go) { if (!unsavedBoard()) return go(); P.ask = { text: "The board on screen has writing that isn't saved. Replace it?", yes: "Replace it", go }; drawPan(); }
