@@ -230,7 +230,7 @@
       const tile = (n, t, href, warn) => `<a class="gm-tile${warn ? " warn" : ""}" href="${href}"><strong>${n}</strong><span>${t}</span></a>`;
       host.innerHTML = `<div class="gm-tiles">${tile(approved, "students signed in", "admin.html")}${tile(pending, "waiting for approval", "admin.html", pending)}${tile(active, "active in the last 7 days", "admin.html")}
           ${tile(stalled, "no progress for 2+ weeks", "admin.html", stalled)}${tile(avg, "average XP", "board.html")}${tile(swaps.docs.length, "lab swaps to approve", "attendance.html", swaps.docs.length)}${tile(notices.docs.length, "absence notices to check", "attendance.html", notices.docs.length)}</div>
-        <div class="gm-lecbar"><a class="btn" href="admin.html">Lecturer dashboard</a><a class="btn ghost" href="attendance.html">Attendance</a><a class="btn ghost" href="board.html">Progress board</a>
+        <div class="gm-lecbar"><a class="btn" href="admin.html">Lecturer Tools</a><a class="btn ghost" href="attendance.html">Attendance</a><a class="btn ghost" href="board.html">Progress board</a>
           <button type="button" class="btn ghost" data-gm-preview="1">Preview as a student</button></div>`;
     } finally { lecBusy = false; }
   }

@@ -227,7 +227,7 @@
   function frame(body, battleView) {
     const coins = totalCoins(), rk = ART.rankOf(coins), R = ART.RANKS[rk], nx = ART.RANKS[rk + 1];
     if (MUS) MUS.setMood(rk);
-    const lec = isLec ? `<div class="ms-lec">${A.released ? "Released: students can play." : "<strong>Not released yet:</strong> only lecturers can see this page."} Lecturer plays are saved on this device only and never appear on the board. <a href="admin.html">Release or upload on the dashboard ›</a>
+    const lec = isLec ? `<div class="ms-lec">${A.released ? "Released: students can play." : "<strong>Not released yet:</strong> only lecturers can see this page."} Lecturer plays are saved on this device only and never appear on the board. <a href="admin.html?tab=missions">Release or upload in Lecturer Tools ›</a>
       <label class="ms-asstu"><input type="checkbox" data-asstu${asStudent ? " checked" : ""}> Preview as a student: stations unlock one by one, and chapters open in the week they are lectured</label></div>` : "";
     const stage = battleView ? `<div class="lg-mini"><strong class="lg-mlogo">INSTRUMENTA: <em>Legends</em></strong><span class="lg-mrank">${esc(R.n)}</span><span class="ms-sp"></span>${coinPill()}${sounds()}<button type="button" class="lg-btn lg-save" data-saveexit><span aria-hidden="true" style="font-size:1.2em">💾</span> Save and exit</button></div>`
       : `<div class="lg-stage">${ART.bg(rk)}<div class="lg-hud">
@@ -262,7 +262,7 @@
           <span class="lg-wch">Chapter ${w.chapter}</span><strong>${esc(w.title.replace(/^(Station|Chapter) \d+:\s*/, ""))}</strong>
           <span class="lg-trio">${w.missions.slice(0, 3).map((m) => `<span class="lg-tri${b[m.id] ? " won" : ""}">${portrait(enemyOf(m))}</span>`).join("")}</span>
           <span class="lg-wfoot">${open ? `${done} of ${w.missions.length} defeated${isLec && chLocked(w) ? " · 🔒 locked for students" : ""}` : chLocked(w) ? LOCKED : `🔒 Opens ${fmtDay(o.iso)} (week ${o.week})`}</span></button>`;
-      }).join("") || `<p class="small-note">No chapters yet.${isLec ? " Upload a mission file on the dashboard." : ""}</p>`}</div>`);
+      }).join("") || `<p class="small-note">No chapters yet.${isLec ? " Upload a mission file in Lecturer Tools (INSTRUMENTA Chapters)." : ""}</p>`}</div>`);
   }
   function worldView(w) {
     const b = best();

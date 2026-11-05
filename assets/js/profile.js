@@ -42,7 +42,7 @@
     let uid = params.get("u"), email = (params.get("e") || "").toLowerCase();
     if (email && !lec && email !== meEmail) { uid = null; email = ""; }
     if (!uid && !email && lec) {
-      host.innerHTML = `<div class="pf-card"><h2 class="pf-h">Lecturers Don't Have a Profile</h2><p>Open a student's profile from the dashboard, the progress board or the class list.</p><p><a class="btn" href="admin.html">Lecturer dashboard</a> <a class="btn ghost" href="attendance.html">Attendance</a></p></div>`;
+      host.innerHTML = `<div class="pf-card"><h2 class="pf-h">Lecturers Don't Have a Profile</h2><p>Open a student's profile from Lecturer Tools, the progress board or the class list.</p><p><a class="btn" href="admin.html">Lecturer Tools</a></p></div>`;
       return;
     }
     if (!uid && !email) uid = st.user.uid;

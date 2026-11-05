@@ -111,6 +111,7 @@
     const p = s.p; if (!p.length) return;
     c.beginPath();
     c.moveTo(p[0][0] - ox, p[0][1] - oy);
+    if (s.ln) { for (let i = 1; i < p.length; i++) c.lineTo(p[i][0] - ox, p[i][1] - oy); if (p.length === 1) c.lineTo(p[0][0] - ox + 0.1, p[0][1] - oy); return; }   // shapes and symbols: straight pieces
     if (p.length === 1) c.lineTo(p[0][0] - ox + 0.1, p[0][1] - oy);
     for (let i = 1; i < p.length; i++) { const a = p[i - 1], b = p[i]; c.quadraticCurveTo(a[0] - ox, a[1] - oy, (a[0] + b[0]) / 2 - ox, (a[1] + b[1]) / 2 - oy); }
     c.lineTo(p[p.length - 1][0] - ox, p[p.length - 1][1] - oy);
@@ -118,6 +119,7 @@
   function drawStroke(s, c = ctx, ox = scrollX, oy = scrollY, chalk = false) {
     const col = chalk && s.c === PENS[0] ? "#f4f6f8" : s.c;   // the dark pen shows white on the chalkboard
     c.save(); c.lineCap = "round"; c.lineJoin = "round";
+    if (s.t === "tx") { c.font = TXF(s.w); c.fillStyle = col; c.textBaseline = "top"; String(s.s || "").split("\n").forEach((l, i) => c.fillText(l, s.p[0][0] - ox, s.p[0][1] - oy + i * s.w * 1.25)); c.restore(); return; }
     if (s.t === "hl") { c.globalAlpha = chalk ? 0.5 : 0.38; c.strokeStyle = col; c.lineWidth = s.w * 4 + 8; if (!chalk) c.globalCompositeOperation = "multiply"; strokePath(s, c, ox, oy); c.stroke(); }
     else if (s.pr) {   // a stylus: each piece as thick as the pressure there
       c.strokeStyle = col;
@@ -142,18 +144,23 @@
   const cap = (el, e) => { try { el.setPointerCapture(e.pointerId); } catch (x) { /* the pointer is already gone */ } };
   const ptOf = (e) => [Math.round((e.clientX + scrollX) * 10) / 10, Math.round((e.clientY + scrollY) * 10) / 10, e.pointerType === "pen" ? Math.round((e.pressure || 0.5) * 100) / 100 : 0];
   /* ---------- erasing (the same list in, the same list back when nothing was touched) ---------- */
+  // text on the board: its box, measured with the font it is drawn in
+  const TXF = (px) => `${px}px "IBM Plex Sans", system-ui, sans-serif`, mctx = document.createElement("canvas").getContext("2d");
+  function txBox(s) { mctx.font = TXF(s.w); const ls = String(s.s || "").split("\n"); return { x: s.p[0][0], y: s.p[0][1], w: Math.max(8, ...ls.map((l) => mctx.measureText(l).width)), h: ls.length * s.w * 1.25 }; }
+  const txHit = (s, x, y, R) => { const b = txBox(s); return x > b.x - R && x < b.x + b.w + R && y > b.y - R && y < b.y + b.h + R; };
   const halfW = (s) => (s.t === "hl" ? s.w * 4 + 8 : s.w * (s.pr ? 1.6 : 1)) / 2;
   const near = (s, x, y, rr) => { let a = Infinity, b = -Infinity, c = Infinity, d = -Infinity; for (const q of s.p) { if (q[0] < a) a = q[0]; if (q[0] > b) b = q[0]; if (q[1] < c) c = q[1]; if (q[1] > d) d = q[1]; } return x > a - rr && x < b + rr && y > c - rr && y < d + rr; };
   // Whole line: drop every stroke the eraser touches
   function wholeOut(list, x, y, R) {
-    const out = list.filter((s) => !s.p.some((q, i) => { const rr = R + halfW(s); if (Math.hypot(q[0] - x, q[1] - y) < rr) return true; const a = s.p[i - 1]; if (!a) return false;
-      const dx = q[0] - a[0], dy = q[1] - a[1], L = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L)); return Math.hypot(a[0] + t * dx - x, a[1] + t * dy - y) < rr; }));
+    const out = list.filter((s) => (s.t === "tx" ? !txHit(s, x, y, R) : !s.p.some((q, i) => { const rr = R + halfW(s); if (Math.hypot(q[0] - x, q[1] - y) < rr) return true; const a = s.p[i - 1]; if (!a) return false;
+      const dx = q[0] - a[0], dy = q[1] - a[1], L = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L)); return Math.hypot(a[0] + t * dx - x, a[1] + t * dy - y) < rr; })));
     return out.length === list.length ? list : out;
   }
   // Rub out: remove only the points under the eraser; a stroke rubbed through the middle becomes two
   function rubOut(list, x, y, R) {
     let changed = false; const out = [];
     for (const s of list) {
+      if (s.t === "tx") { if (txHit(s, x, y, R)) changed = true; else out.push(s); continue; }   // text goes as a whole
       const rr = R + halfW(s);
       if (!near(s, x, y, rr)) { out.push(s); continue; }
       const step = Math.max(1.5, R / 3), pts = [];
@@ -199,7 +206,8 @@
 
   /* ---------- laser pointer and spotlight (follow the pointer; the page still works underneath) ---------- */
   const trail = []; let mx = -999, my = -999, looping = false, spotR = 150;
-  addEventListener("pointermove", (e) => { mx = e.clientX; my = e.clientY; if (tool === "laser") trail.push([mx, my, performance.now()]); if (tool === "spot") placeSpot(); ring(); }, { passive: true });
+  const lasering = () => tool === "laser" || (B && Q.tool === "laser" && !bd.hidden);
+  addEventListener("pointermove", (e) => { mx = e.clientX; my = e.clientY; if (lasering()) trail.push([mx, my, performance.now()]); if (tool === "spot") placeSpot(); ring(); }, { passive: true });
   addEventListener("pointerdown", (e) => { mx = e.clientX; my = e.clientY; ring(); }, { passive: true, capture: true });
   // the eraser's size shown as a ring round the pointer, on the surface it erases
   function ring() {
@@ -218,7 +226,7 @@
     if (looping) return; looping = true;
     const step = () => {
       fctx.setTransform(dpr, 0, 0, dpr, 0, 0); fctx.clearRect(0, 0, innerWidth, innerHeight);
-      if (tool === "laser") {
+      if (lasering()) {
         const now = performance.now();
         while (trail.length && now - trail[0][2] > 600) trail.shift();
         fctx.lineCap = "round"; fctx.lineJoin = "round";
@@ -226,7 +234,7 @@
         if (mx > -900) { fctx.shadowColor = "#ff2a2a"; fctx.shadowBlur = 18; fctx.fillStyle = "#ff2a2a"; fctx.beginPath(); fctx.arc(mx, my, 7, 0, Math.PI * 2); fctx.fill(); fctx.shadowBlur = 0; fctx.fillStyle = "#fff"; fctx.beginPath(); fctx.arc(mx, my, 2.5, 0, Math.PI * 2); fctx.fill(); }
       }
       if (tool === "spot") placeSpot();
-      if (tool === "laser" || tool === "spot") requestAnimationFrame(step); else { fctx.clearRect(0, 0, innerWidth, innerHeight); looping = false; ring(); }
+      if (lasering() || tool === "spot") requestAnimationFrame(step); else { fctx.clearRect(0, 0, innerWidth, innerHeight); looping = false; ring(); }
     };
     requestAnimationFrame(step);
   }
@@ -241,8 +249,8 @@
   try { B = JSON.parse(ls.get(BKEY) || "null"); } catch (e) { B = null; }
   if (!B || !Array.isArray(B.pages) || !B.at || Date.now() - B.at > DAY) B = { pages: [[]], pi: 0, bg: "white", op: 100, open: false, min: false, full: false, penOnly: null, seenPen: false };
   // the board's own tools (tool null: the board takes no writing); its colours and size are kept with the board
-  const Q = Object.assign({ tool: null, pen: PENS[0], hl: HLS[0], size: 1 }, B.q || {}, { tool: null });
-  const bsave = () => { B.at = Date.now(); B.q = { pen: Q.pen, hl: Q.hl, size: Q.size }; ls.set(BKEY, JSON.stringify(B)); };
+  const Q = Object.assign({ tool: null, pen: PENS[0], hl: HLS[0], size: 1, shape: "line", sym: "res" }, B.q || {}, { tool: null });
+  const bsave = () => { B.at = Date.now(); B.q = { pen: Q.pen, hl: Q.hl, size: Q.size, shape: Q.shape, sym: Q.sym }; ls.set(BKEY, JSON.stringify(B)); };
   let bhist = {};
   const bh_ = () => bhist[B.pi] || (bhist[B.pi] = []);
   const bpage = () => B.pages[B.pi] || (B.pages[B.pi] = []);
@@ -281,6 +289,18 @@
   .ink-bb.idle canvas { cursor: default; }
   .ink-bb.er canvas { cursor: none; }
   .ink-bb.sel canvas { cursor: default; }
+  .ink-bb.las canvas { cursor: none; }
+  .ink-bb.txt canvas { cursor: text; }
+  .ink-btl .ink-sym { font-size: .78rem; font-weight: 600; padding: 0 7px; }
+  .ink-tx { position: absolute; z-index: 2; margin: 0; padding: 2px; border: 1px dashed #1a73c7; border-radius: 4px; background: rgba(255, 255, 255, .92); resize: none; overflow: hidden; outline: none; white-space: pre; box-sizing: content-box; }
+  .ink-bb.chalk .ink-tx { background: rgba(28, 52, 44, .92); }
+  .ink-pgs { list-style: none; margin: 8px 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .ink-pgs li { border: 1px solid var(--rule, #d6dee4); border-radius: 10px; padding: 6px; text-align: center; }
+  .ink-pgs li.on { border: 2px solid var(--teal, #0b6e6e); }
+  .ink-pgi { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; }
+  .ink-pgi img { display: block; width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--rule, #d6dee4); }
+  .ink-pgs .ink-prow { justify-content: center; align-items: center; gap: 4px; margin-top: 6px; }
+  .ink-pgs .ink-pb { height: 30px; padding: 0 8px; }
   .ink-bpan { position: absolute; right: 8px; z-index: 3; width: min(380px, calc(100% - 16px)); max-height: calc(100% - 120px); overflow-y: auto; background: var(--surface, #fff); color: var(--ink, #15243a); border: 1px solid var(--rule, #d6dee4); border-radius: 14px; box-shadow: 0 14px 34px rgba(21, 36, 58, .25); padding: 14px 14px 12px; cursor: default; }
   .ink-bpan[hidden] { display: none; }
   .ink-bpan h3 { margin: 0 30px 10px 0; font: 600 1.05rem var(--serif, serif); }
@@ -314,6 +334,7 @@
       <select class="ink-bgs" aria-label="Background">${BGS.map(([k, l]) => `<option value="${k}">${l}</option>`).join("")}</select>
       <label class="ink-op" title="See-through: lower lets the page show through (your writing stays solid)">◐<input type="range" min="20" max="100" step="5" aria-label="Board opacity"></label>
       <button type="button" data-bpen title="Pen only: only the stylus writes, so your palm or finger leaves no marks" aria-label="Pen only">✍️</button>
+      <button type="button" data-bpages title="Pages: see every page, reorder or copy them" aria-label="Pages">▦</button>
       <button type="button" data-bopen title="My Boards: open a saved board" aria-label="My Boards: open a saved board">📂</button>
       <button type="button" data-bsave title="Save this board: to your account, a file or an image" aria-label="Save this board">💾</button>
       <button type="button" class="ink-bdel" data-bdel title="Delete this page" aria-label="Delete this page">🗑</button>
@@ -328,6 +349,12 @@
   function bTools() {
     const t = Q.tool, chalk = B.bg === "chalk";
     let o = "";
+    const penSw = `<span class="ink-sw">${PENS.map((c) => `<button type="button" data-bc="${c}" style="background:${chalk && c === PENS[0] ? "#f4f6f8" : c}" aria-label="Colour" aria-pressed="${c === Q.pen}"></button>`).join("")}</span>`;
+    const sizes = (lab) => `<span class="ink-sep"></span>${SIZES.map((x, i) => `<button type="button" class="ink-sz" data-bs="${i}" aria-pressed="${Q.size === i}" aria-label="${lab} ${i + 1}" title="${lab} ${i + 1}"><i style="width:${4 + i * 4}px;height:${4 + i * 4}px"></i></button>`).join("")}`;
+    if (t === "shape") o = SHAPES.map(([k, i, l]) => `<button type="button" data-bshape="${k}" aria-pressed="${Q.shape === k}" title="${l}" aria-label="${l}">${i}</button>`).join("") + `<span class="ink-sep"></span>${penSw}${sizes("Thickness")}<span class="ink-bhint">Drag on the board</span>`;
+    if (t === "sym") o = Object.entries(SYMBOLS).map(([k, [l]]) => `<button type="button" class="ink-sym" data-bsym="${k}" aria-pressed="${Q.sym === k}" title="${l}">${l.split(" ")[0]}</button>`).join("") + `<span class="ink-sep"></span>${penSw}${sizes("Size")}<span class="ink-bhint">Tap the board to place it</span>`;
+    if (t === "text") o = `${penSw}${sizes("Text size")}<span class="ink-bhint">Tap where the words go · Enter to finish</span>`;
+    if (t === "laser") o = `<span class="ink-bhint">Point at the board: a red trail follows and fades</span>`;
     if (t === "pen") o = `<span class="ink-sw">${PENS.map((c) => `<button type="button" data-bc="${c}" style="background:${chalk && c === PENS[0] ? "#f4f6f8" : c}" aria-label="Board pen colour" aria-pressed="${c === Q.pen}"></button>`).join("")}</span>`;
     if (t === "hl") o = `<span class="ink-sw">${HLS.map((c) => `<button type="button" data-bhc="${c}" style="background:${c}" aria-label="Board highlighter colour" aria-pressed="${c === Q.hl}"></button>`).join("")}</span>`;
     if (t === "pen" || t === "hl") o += `<span class="ink-sep"></span>${SIZES.map((x, i) => `<button type="button" class="ink-sz" data-bs="${i}" aria-pressed="${Q.size === i}" aria-label="Size ${i + 1}" title="Size ${i + 1}"><i style="width:${4 + i * 4}px;height:${4 + i * 4}px"></i></button>`).join("")}`;
@@ -335,14 +362,17 @@
     if (t === "sel") o = selOn() ? `<span class="ink-bhint">${SEL.list.length} selected: drag to move, the ○ corner to resize</span><span class="ink-sw">${PENS.map((c) => `<button type="button" data-bsc="${c}" style="background:${chalk && c === PENS[0] ? "#f4f6f8" : c}" aria-label="Change the colour of the selection" title="Change colour"></button>`).join("")}</span>
         <button type="button" data-bsdup title="Duplicate the selection" aria-label="Duplicate the selection">⧉ Duplicate</button><button type="button" data-bsdel title="Delete the selection (Delete key)" aria-label="Delete the selection">🗑 Delete</button>`
       : `<span class="ink-bhint">Draw a loop round what you want to move, or tap one line</span>`;
-    btl.innerHTML = [["pen", "✏️", "Board pen (P)"], ["hl", "🖍", "Board highlighter (H)"], ["erase", "🧽", "Board eraser (E)"], ["sel", "⬚", "Select and move (V)"]].map(([k, i, l]) => `<button type="button" data-bt="${k}" aria-pressed="${t === k}" title="${l}" aria-label="${l}">${i}</button>`).join("")
+    btl.innerHTML = [["pen", "✏️", "Board pen (P). Hold still at the end of a line, box or circle to tidy it"], ["hl", "🖍", "Board highlighter (H)"], ["erase", "🧽", "Board eraser (E)"], ["sel", "⬚", "Select and move (V)"],
+      ["shape", "📐", "Shapes: line, arrow, rectangle, circle"], ["sym", "Ω", "Circuit symbols"], ["text", "T", "Text (T)"], ["laser", "🔴", "Laser pointer (L)"]].map(([k, i, l]) => `<button type="button" data-bt="${k}" aria-pressed="${t === k}" title="${l}" aria-label="${l}">${i}</button>`).join("")
       + (o ? `<span class="ink-sep"></span>${o}` : "") + `<span class="ink-sep"></span><button type="button" data-bundo title="Undo on the board (Ctrl+Z)" aria-label="Undo on the board">↶</button>`
       + (t ? "" : `<span class="ink-bhint">Tap ✏️ here to write on the board</span>`);
-    bb.classList.toggle("idle", !t); bb.classList.toggle("er", t === "erase"); bb.classList.toggle("sel", t === "sel");
+    bb.classList.toggle("idle", !t); bb.classList.toggle("er", t === "erase"); bb.classList.toggle("sel", t === "sel"); bb.classList.toggle("las", t === "laser"); bb.classList.toggle("txt", t === "text");
   }
   function setBoardTool(t) {
     if (t !== "sel" || Q.tool !== "sel") clearSel();
+    if (txEd) textDone(true);
     Q.tool = t;
+    if (t === "laser") loop();
     if (t && tool !== "off") setTool("off");   // the page tools step back: the page works as normal outside the board
     bTools(); ring();
   }
@@ -367,8 +397,8 @@
     if (bcv.width !== Math.round(w * dpr) || bcv.height !== Math.round(h * dpr)) { bcv.width = Math.round(w * dpr); bcv.height = Math.round(h * dpr); }
     bctx.setTransform(dpr, 0, 0, dpr, 0, 0); bctx.clearRect(0, 0, w, h);
     const chalk = B.bg === "chalk";
-    bpage().forEach((s) => drawStroke(s, bctx, 0, 0, chalk));
-    if (cur && cur.board && !cur.erasing && !cur.sel) drawStroke(cur, bctx, 0, 0, chalk);
+    bpage().forEach((s) => { if (!s.hide) drawStroke(s, bctx, 0, 0, chalk); });
+    if (cur && cur.board && !cur.erasing && !cur.sel) { if (cur.g) cur.g.forEach((x) => drawStroke(x, bctx, 0, 0, chalk)); else drawStroke(cur, bctx, 0, 0, chalk); }
     selPaint();
   }
   function bdraw() {
@@ -376,7 +406,7 @@
     chip.textContent = `📋 Board · page ${B.pi + 1}`;
     bd.classList.toggle("full", !!B.full);
     if (!B.full) place();
-    Object.assign(bb.style, bgStyle());
+    Object.assign(bb.style, bgStyle()); bb.classList.toggle("chalk", B.bg === "chalk");
     bd.querySelector(".ink-pg").textContent = `${B.pi + 1} / ${B.pages.length}`;
     bd.querySelector('[data-bp="-1"]').disabled = B.pi === 0;
     bd.querySelector('[data-bp="1"]').disabled = B.pi >= B.pages.length - 1;
@@ -405,7 +435,12 @@
     if (e.pointerType === "pen" && !B.seenPen) { B.seenPen = true; bsave(); bdraw(); }
     if (e.pointerType === "touch" && penOnly()) return;   // pen only: the palm and fingers don't write
     e.preventDefault(); cap(bcv, e);
+    if (txEd) { textDone(true); return; }   // a tap outside the text being typed finishes it
+    if (t === "laser") return;
     if (t === "sel") return selDown(bpt(e));
+    if (t === "text") return textAt(bpt(e));
+    if (t === "shape") { const q = bpt(e); cur = { board: true, t: "pen", c: Q.pen, w: SIZES[Q.size], pr: 0, ln: 1, shape: Q.shape, a: q, p: shapePts(Q.shape, q, q) }; bpaint(); return; }
+    if (t === "sym") { const q = bpt(e); cur = { board: true, sym: true, g: symbolStrokes(Q.sym, q) }; bpaint(); return; }
     if (t === "erase") { cur = { board: true, erasing: true, last: null }; berase(e); return; }
     cur = { board: true, t, c: t === "hl" ? Q.hl : Q.pen, w: SIZES[Q.size], pr: e.pointerType === "pen" && t === "pen" ? 1 : 0, p: [bpt(e)] };
     bpaint();
@@ -420,11 +455,29 @@
     if (!cur || !cur.board) return;
     if (cur.sel) return selMove(bpt(e));
     if (cur.erasing) { berase(e); return; }
+    if (cur.shape) { cur.p = shapePts(cur.shape, cur.a, bpt(e)); bpaint(); return; }
+    if (cur.sym) { cur.g = symbolStrokes(Q.sym, bpt(e)); bpaint(); return; }
+    if (cur.tidied) return;
+    clearTimeout(tidyT);
+    if (cur.t === "pen") tidyT = setTimeout(() => { if (cur && cur.board && cur.t === "pen" && !cur.shape && !cur.tidied && tidy(cur)) bpaint(); }, 650);
     const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
     (evs.length ? evs : [e]).forEach((x) => { const q = bpt(x), l = cur.p[cur.p.length - 1]; if (Math.hypot(q[0] - l[0], q[1] - l[1]) >= 1.2) cur.p.push(q); });
     bpaint();
   });
-  const bend = () => { if (!cur || !cur.board) return; const c = cur; cur = null; if (c.sel) return selUp(c); if (c.erasing) { if (c.changed) bsave(); } else { delete c.board; keep(bh_(), bpage()); bpage().push(c); bsave(); } bpaint(); };
+  let tidyT = 0;
+  const bend = () => {
+    clearTimeout(tidyT);
+    if (!cur || !cur.board) return; const c = cur; cur = null;
+    if (c.sel) return selUp(c);
+    if (c.erasing) { if (c.changed) bsave(); }
+    else if (c.sym) { keep(bh_(), bpage()); B.pages[B.pi] = bpage().concat(c.g); bsave(); }
+    else {
+      const tap = c.shape && Math.hypot(c.p[c.p.length - 1][0] - c.a[0], c.p[c.p.length - 1][1] - c.a[1]) < 3 && c.shape !== "line";
+      ["board", "shape", "a", "tidied"].forEach((k) => delete c[k]);
+      if (!tap) { keep(bh_(), bpage()); bpage().push(c); bsave(); }
+    }
+    bpaint();
+  };
   bcv.addEventListener("pointerup", bend); bcv.addEventListener("pointercancel", bend); bcv.addEventListener("lostpointercapture", bend);
   // dragging by the top bar, resizing from the corner
   function dragFrom(e, resize) {
@@ -442,7 +495,7 @@
   bh.addEventListener("dblclick", (e) => { if (!e.target.closest("button, select, input, label")) { B.full = !B.full; bsave(); bdraw(); } });
   bh.addEventListener("change", (e) => { if (e.target.matches(".ink-bgs")) { B.bg = e.target.value; bsave(); bdraw(); bTools(); } });
   bh.addEventListener("input", (e) => { if (e.target.matches(".ink-op input")) { B.op = +e.target.value; Object.assign(bb.style, bgStyle()); bsave(); } });
-  function newPage() { B.pages.push([]); B.pi = B.pages.length - 1; bsave(); bdraw(); }
+  function newPage() { B.pages.push([]); B.pi = B.pages.length - 1; clearSel(); bsave(); bdraw(); if (P.view === "pages") drawPan(); }
   const erPick = (b) => { if (b.dataset.em) E.mode = b.dataset.em; else E.r = +b.dataset.er; saveE(); bTools(); if (open) drawBar(); ring(); };
   bh.addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
@@ -455,16 +508,19 @@
     else if (b.dataset.bs) { Q.size = +b.dataset.bs; bsave(); bTools(); }
     else if (b.dataset.em || b.dataset.er) erPick(b);
     else if (b.hasAttribute("data-bundo")) bundo();
-    else if (b.dataset.bp) { B.pi = Math.max(0, Math.min(B.pages.length - 1, B.pi + +b.dataset.bp)); bsave(); bdraw(); }
+    else if (b.dataset.bp) { B.pi = Math.max(0, Math.min(B.pages.length - 1, B.pi + +b.dataset.bp)); clearSel(); bsave(); bdraw(); if (P.view === "pages") drawPan(); }
     else if (b.hasAttribute("data-bnew")) newPage();
     else if (b.hasAttribute("data-bpen")) { B.penOnly = !penOnly(); bsave(); bdraw(); }
     else if (b.hasAttribute("data-bsave")) panel(P.view === "save" ? null : "save");
     else if (b.hasAttribute("data-bopen")) panel(P.view === "open" ? null : "open");
+    else if (b.hasAttribute("data-bpages")) panel(P.view === "pages" ? null : "pages");
+    else if (b.dataset.bshape) { Q.shape = b.dataset.bshape; bsave(); bTools(); }
+    else if (b.dataset.bsym) { Q.sym = b.dataset.bsym; bsave(); bTools(); }
     else if (b.hasAttribute("data-bdel")) {
       if (!b.classList.contains("sure")) { b.classList.add("sure"); b.textContent = "Delete page?"; setTimeout(() => { if (b.isConnected) { b.classList.remove("sure"); b.textContent = "🗑"; } }, 3000); return; }
       b.classList.remove("sure"); b.textContent = "🗑";
       if (B.pages.length > 1) { B.pages.splice(B.pi, 1); B.pi = Math.min(B.pi, B.pages.length - 1); } else B.pages = [[]];
-      bhist = {};
+      bhist = {}; clearSel(); if (P.view === "pages") drawPan();
       bsave(); bdraw();
     }
     else if (b.hasAttribute("data-bmin")) { B.min = true; bsave(); bdraw(); chip.focus(); }
@@ -492,7 +548,7 @@
   function clearSel() { SEL = { pi: -1, list: [] }; }
   function selBox() {
     let a = Infinity, b = -Infinity, c = Infinity, d = -Infinity;
-    SEL.list.forEach((s) => { const hw = halfW(s); s.p.forEach((q) => { a = Math.min(a, q[0] - hw); b = Math.max(b, q[0] + hw); c = Math.min(c, q[1] - hw); d = Math.max(d, q[1] + hw); }); });
+    SEL.list.forEach((s) => { if (s.t === "tx") { const t = txBox(s); a = Math.min(a, t.x); b = Math.max(b, t.x + t.w); c = Math.min(c, t.y); d = Math.max(d, t.y + t.h); return; } const hw = halfW(s); s.p.forEach((q) => { a = Math.min(a, q[0] - hw); b = Math.max(b, q[0] + hw); c = Math.min(c, q[1] - hw); d = Math.max(d, q[1] + hw); }); });
     return { x: a - 6, y: c - 6, w: b - a + 12, h: d - c + 12 };
   }
   const inPoly = (pt, poly) => { let ins = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < ((xj - xi) * (pt[1] - yi)) / (yj - yi) + xi) ins = !ins; } return ins; };
@@ -517,7 +573,7 @@
     else {
       const [ox, oy] = cur.o, k = Math.max(0.15, Math.min(8, Math.hypot(q[0] - ox, q[1] - oy) / cur.d0));
       cur.moved = true;
-      SEL.list.forEach((s, i) => { s.p.forEach((p, j) => { const b = cur.base[i][j]; p[0] = Math.round((ox + (b[0] - ox) * k) * 10) / 10; p[1] = Math.round((oy + (b[1] - oy) * k) * 10) / 10; }); s.w = Math.max(1, Math.round(cur.ws[i] * Math.sqrt(k) * 10) / 10); });
+      SEL.list.forEach((s, i) => { s.p.forEach((p, j) => { const b = cur.base[i][j]; p[0] = Math.round((ox + (b[0] - ox) * k) * 10) / 10; p[1] = Math.round((oy + (b[1] - oy) * k) * 10) / 10; }); s.w = s.t === "tx" ? Math.max(8, Math.round(cur.ws[i] * k)) : Math.max(1, Math.round(cur.ws[i] * Math.sqrt(k) * 10) / 10); });
     }
     bpaint();
   }
@@ -527,7 +583,7 @@
       const xs = c.p.map((q) => q[0]), ys = c.p.map((q) => q[1]), tap = Math.max(...xs) - Math.min(...xs) < 10 && Math.max(...ys) - Math.min(...ys) < 10;
       let pick;
       if (tap) { const [x, y] = c.p[0], hit = pg.filter((s) => wholeOut([s], x, y, 10).length === 0); pick = hit.length ? [hit[hit.length - 1]] : []; }
-      else pick = pg.filter((s) => s.p.filter((q) => inPoly(q, c.p)).length >= s.p.length * 0.6);
+      else pick = pg.filter((s) => { if (s.t === "tx") { const t = txBox(s); return inPoly([t.x + t.w / 2, t.y + t.h / 2], c.p); } return s.p.filter((q) => inPoly(q, c.p)).length >= s.p.length * 0.6; });
       SEL = { pi: B.pi, list: pick };
     } else if (!c.moved) {   // a tap inside the box: nothing changed, so take back the undo step
       const h = bh_(); B.pages[B.pi] = h.pop(); SEL.list = c.at.map((i) => B.pages[B.pi][i]);
@@ -556,6 +612,134 @@
       bctx.restore();
     }
   }
+  /* ---------- 📐 Shapes: line, arrow, rectangle, circle (drag from one corner to the other). The pen also tidies a
+     rough shape: hold still for a moment at the end of a line, rectangle or circle and it becomes a neat one. ---------- */
+  const SHAPES = [["line", "╱", "Straight line"], ["arrow", "↗", "Arrow"], ["rect", "▭", "Rectangle"], ["oval", "◯", "Circle or oval"]];
+  function shapePts(kind, a, b) {
+    const [x1, y1] = a, [x2, y2] = b;
+    if (kind === "line") return [[x1, y1, 0], [x2, y2, 0]];
+    if (kind === "arrow") {
+      const L = Math.hypot(x2 - x1, y2 - y1) || 1, h = Math.min(22, Math.max(10, L * 0.25)), ux = (x2 - x1) / L, uy = (y2 - y1) / L;
+      const p1 = [x2 - h * (ux * 0.87 - uy * 0.5), y2 - h * (uy * 0.87 + ux * 0.5), 0], p2 = [x2 - h * (ux * 0.87 + uy * 0.5), y2 - h * (uy * 0.87 - ux * 0.5), 0];
+      return [[x1, y1, 0], [x2, y2, 0], p1, [x2, y2, 0], p2];
+    }
+    if (kind === "rect") return [[x1, y1, 0], [x2, y1, 0], [x2, y2, 0], [x1, y2, 0], [x1, y1, 0]];
+    const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2, rx = Math.abs(x2 - x1) / 2, ry = Math.abs(y2 - y1) / 2, pts = [];
+    for (let i = 0; i <= 48; i++) { const t = (i / 48) * Math.PI * 2; pts.push([Math.round((cx + rx * Math.cos(t)) * 10) / 10, Math.round((cy + ry * Math.sin(t)) * 10) / 10, 0]); }
+    return pts;
+  }
+  // hold-to-tidy: is this rough stroke a line, a circle or a rectangle?
+  function tidy(st) {
+    const p = st.p; if (p.length < 8) return false;
+    let len = 0; for (let i = 1; i < p.length; i++) len += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]);
+    const a = p[0], z = p[p.length - 1], chord = Math.hypot(z[0] - a[0], z[1] - a[1]);
+    let kind = null, box;
+    if (chord / len > 0.92) kind = "line";
+    else if (chord / len < 0.2) {
+      const xs = p.map((q) => q[0]), ys = p.map((q) => q[1]); box = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+      const cx = (box[0] + box[2]) / 2, cy = (box[1] + box[3]) / 2, rx = (box[2] - box[0]) / 2 || 1, ry = (box[3] - box[1]) / 2 || 1;
+      const dev = p.reduce((s2, q) => s2 + Math.abs(Math.hypot((q[0] - cx) / rx, (q[1] - cy) / ry) - 1), 0) / p.length;
+      kind = dev < 0.12 ? "oval" : "rect";
+    }
+    if (!kind) return false;
+    st.p = kind === "line" ? shapePts("line", a, z) : shapePts(kind, [box[0], box[1]], [box[2], box[3]]);
+    st.ln = 1; st.pr = 0; st.tidied = true;
+    return true;
+  }
+
+  /* ---------- Ω Circuit symbols: tap to place (drag before letting go to place it exactly). Each symbol is drawn as
+     ordinary straight lines in the pen colour, so it can be selected, moved, resized, erased and saved like writing. ---------- */
+  const zig = () => { const z = [[-40, 0], [-24, 0]]; for (let i = 0; i < 6; i++) z.push([-20 + i * 8, i % 2 ? 8 : -8]); return z.concat([[24, 0], [40, 0]]); };
+  const coil = () => { const c = [[-40, 0], [-24, 0]]; for (let k = 0; k < 4; k++) for (let i = 0; i <= 8; i++) { const t = Math.PI - (i / 8) * Math.PI; c.push([-18 + k * 12 + 6 * Math.cos(t), -6 * Math.sin(t)]); } return c.concat([[24, 0], [40, 0]]); };
+  const SYMBOLS = {
+    res: ["Resistor", () => [zig()]],
+    cap: ["Capacitor", () => [[[-40, 0], [-5, 0]], [[-5, -14], [-5, 14]], [[5, -14], [5, 14]], [[5, 0], [40, 0]]]],
+    ind: ["Inductor", () => [coil()]],
+    opamp: ["Op-amp", () => [[[-24, -28], [-24, 28], [28, 0], [-24, -28]], [[-40, -14], [-24, -14]], [[-40, 14], [-24, 14]], [[28, 0], [44, 0]], [[-20, -14], [-13, -14]], [[-20, 14], [-13, 14]], [[-16.5, 10.5], [-16.5, 17.5]]]],
+    gnd: ["Ground", () => [[[0, -20], [0, 0]], [[-14, 0], [14, 0]], [[-9, 5], [9, 5]], [[-4, 10], [4, 10]]]],
+    bat: ["Battery / DC source", () => [[[-40, 0], [-6, 0]], [[-6, -16], [-6, 16]], [[6, -8], [6, 8]], [[6, 0], [40, 0]], [[-19, -22], [-12, -22]], [[-15.5, -25.5], [-15.5, -18.5]]]],
+    diode: ["Diode", () => [[[-40, 0], [-10, 0]], [[-10, -12], [-10, 12], [10, 0], [-10, -12]], [[10, -12], [10, 12]], [[10, 0], [40, 0]]]],
+    led: ["LED", () => [[[-40, 0], [-10, 0]], [[-10, -12], [-10, 12], [10, 0], [-10, -12]], [[10, -12], [10, 12]], [[10, 0], [40, 0]], [[0, -16], [10, -26]], [[5, -26], [10, -26], [10, -21]], [[8, -12], [18, -22]], [[13, -22], [18, -22], [18, -17]]]],
+    sensor: ["Sensor (box)", () => [[[-30, -18], [30, -18], [30, 18], [-30, 18], [-30, -18]], [[-40, -8], [-30, -8]], [[-40, 8], [-30, 8]], [[30, 0], [40, 0]]], "SENSOR"],
+    esp32: ["ESP32 board", () => { const g = [[[-40, -28], [40, -28], [40, 28], [-40, 28], [-40, -28]]]; for (let x = -28; x <= 28; x += 14) { g.push([[x, -28], [x, -36]]); g.push([[x, 28], [x, 36]]); } return g; }, "ESP32"]
+  };
+  const SYMSZ = [0.8, 1.1, 1.5];
+  function symbolStrokes(key, at) {
+    const [, make, label] = SYMBOLS[key], k = SYMSZ[Q.size] || 1.1, w = Math.max(1.5, SIZES[Q.size] * 0.7);
+    const out = make().map((pl) => ({ t: "pen", c: Q.pen, w, pr: 0, ln: 1, p: pl.map(([x, y]) => [Math.round((at[0] + x * k) * 10) / 10, Math.round((at[1] + y * k) * 10) / 10, 0]) }));
+    if (label) { const fs = Math.round(11 * k); mctx.font = TXF(fs); out.push({ t: "tx", c: Q.pen, w: fs, s: label, p: [[Math.round(at[0] - mctx.measureText(label).width / 2), Math.round(at[1] - fs * 0.62), 0]] }); }
+    return out;
+  }
+
+  /* ---------- T Text: tap where the words go and type; Enter finishes (Shift+Enter starts a new line), Esc cancels.
+     Tap a text with T to change it. ---------- */
+  const TXS = [18, 26, 38];
+  let txEd = null;
+  function textAt(q) {
+    const pg = bpage(), hit = pg.slice().reverse().find((s) => s.t === "tx" && txHit(s, q[0], q[1], 4));
+    const ed = document.createElement("textarea");
+    ed.className = "ink-tx"; ed.setAttribute("aria-label", "Text on the board"); ed.rows = 1;
+    const size = hit ? hit.w : TXS[Q.size] || 26, col = hit ? hit.c : Q.pen, at = hit ? hit.p[0] : [q[0], q[1] - size * 0.6, 0];
+    Object.assign(ed.style, { left: `${at[0] - 3}px`, top: `${at[1] - 3}px`, font: TXF(size), color: B.bg === "chalk" && col === PENS[0] ? "#f4f6f8" : col, lineHeight: "1.25" });
+    ed.value = hit ? hit.s : "";
+    txEd = { ed, hit, size, col, at };
+    if (hit) { hit.hide = true; bpaint(); }
+    bb.appendChild(ed);
+    const grow = () => { ed.style.height = "auto"; ed.style.height = `${ed.scrollHeight}px`; mctx.font = TXF(size); ed.style.width = `${Math.max(140, ...ed.value.split("\n").map((l) => mctx.measureText(l).width + 24))}px`; };
+    ed.addEventListener("input", grow); grow();
+    ed.addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); textDone(true); } else if (e.key === "Escape") { e.preventDefault(); textDone(false); } });
+    ed.addEventListener("blur", () => textDone(true));
+    ed.addEventListener("pointerdown", (e) => e.stopPropagation());
+    setTimeout(() => ed.focus(), 0);
+  }
+  function textDone(ok) {
+    if (!txEd) return;
+    const { ed, hit, size, col, at } = txEd; txEd = null;
+    const v = ed.value.replace(/\s+$/, "").slice(0, 400); ed.remove();
+    if (hit) delete hit.hide;
+    if (ok && (v || hit) && (!hit || v !== hit.s)) {
+      const pg = bpage(); keep(bh_(), pg);
+      const st = { t: "tx", c: col, w: size, s: v, p: [[at[0], at[1], 0]] };
+      if (hit) { const i = pg.indexOf(hit); if (v) pg[i] = st; else pg.splice(i, 1); } else pg.push(st);
+      bsave();
+    }
+    bpaint();
+  }
+
+  /* ---------- ▦ Pages: every page as a small picture; tap one to go there, ◀ ▶ to move it, ⧉ to copy it ---------- */
+  function pageCanvas(i, k) {
+    const w = bb.clientWidth || B.w || 760, h = bb.clientHeight || B.h || 480, c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(h * k);
+    const x = c.getContext("2d"); x.scale(k, k);
+    x.fillStyle = B.bg === "chalk" ? "#1c342c" : "#ffffff"; x.fillRect(0, 0, w, h);
+    x.strokeStyle = "rgba(26, 115, 199, .22)"; x.lineWidth = 1;
+    if (B.bg === "grid") { for (let a = 0; a < w; a += 24) { x.beginPath(); x.moveTo(a + 0.5, 0); x.lineTo(a + 0.5, h); x.stroke(); } for (let b = 0; b < h; b += 24) { x.beginPath(); x.moveTo(0, b + 0.5); x.lineTo(w, b + 0.5); x.stroke(); } }
+    if (B.bg === "lined") for (let b = 31; b < h; b += 32) { x.beginPath(); x.moveTo(0, b + 0.5); x.lineTo(w, b + 0.5); x.stroke(); }
+    (B.pages[i] || []).forEach((s) => drawStroke(s, x, 0, 0, B.bg === "chalk"));
+    return c;
+  }
+  function movePage(i, d) {
+    const j = i + d; if (j < 0 || j >= B.pages.length) return;
+    const cur0 = B.pages[B.pi];
+    [B.pages[i], B.pages[j]] = [B.pages[j], B.pages[i]];
+    B.pi = B.pages.indexOf(cur0); bhist = {}; clearSel(); bsave(); bdraw();
+  }
+  function copyPage(i) { B.pages.splice(i + 1, 0, B.pages[i].map((s) => Object.assign({}, s, { p: s.p.map((q) => q.slice()) }))); B.pi = i + 1; bhist = {}; clearSel(); bsave(); bdraw(); }
+
+  /* ---------- Export all pages as one PDF: the browser's print window, one page of the board per sheet ---------- */
+  function exportPdf() {
+    const name = B.name || "Board", d = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+    const imgs = B.pages.map((pg, i) => `<section><p>${escH(name)} · page ${i + 1} of ${B.pages.length} · ${d}</p><img src="${pageCanvas(i, 2).toDataURL("image/png")}" alt="Page ${i + 1}"></section>`).join("");
+    const f = document.createElement("iframe");
+    f.setAttribute("aria-hidden", "true"); Object.assign(f.style, { position: "fixed", right: "0", bottom: "0", width: "0", height: "0", border: "0" });
+    document.body.appendChild(f);
+    const doc = f.contentDocument;
+    doc.open(); doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escH(name)}</title><style>@page { size: A4 landscape; margin: 10mm; } body { margin: 0; font: 10pt system-ui, sans-serif; color: #333; }
+      section { break-after: page; page-break-after: always; text-align: center; } section:last-child { break-after: auto; page-break-after: auto; }
+      p { margin: 0 0 4mm; text-align: left; } img { max-width: 100%; max-height: 178mm; border: 1px solid #ccc; }</style></head><body>${imgs}</body></html>`); doc.close();
+    const go = () => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { /* print blocked */ } setTimeout(() => f.remove(), 60000); };
+    const all = [...doc.images]; let left = all.length;
+    if (!left) go(); else all.forEach((im) => { if (im.complete) { if (!--left) go(); } else im.onload = im.onerror = () => { if (!--left) go(); }; });
+  }
   /* ---------- My Boards. Lecturers save boards to their account (Firestore boards/{uid}_{id}, the pages packed into one
      text field; boardidx/{uid} lists them, so the list costs 1 read and a save 2 writes; up to 50 boards of 900 KB).
      Everyone else saves on this device (localStorage "nmkboards", not "nmk-" so it never syncs: up to 10 boards, about
@@ -566,18 +750,21 @@
   // pack: whole-pixel points, each one as the change from the one before (about half the size)
   function enc(pages) {
     return JSON.stringify(pages.map((pg) => pg.map((s) => {
+      if (s.t === "tx") return [2, s.c, s.w, 0, [Math.round(s.p[0][0]), Math.round(s.p[0][1])], 0, String(s.s || "")];
       const d = []; let px = 0, py = 0, pp = 0;
       s.p.forEach((q) => { const x = Math.round(q[0]), y = Math.round(q[1]), p = Math.round((q[2] || 0) * 100); d.push(x - px, y - py); if (s.pr) d.push(p - pp); px = x; py = y; pp = p; });
-      return [s.t === "hl" ? 1 : 0, s.c, s.w, s.pr ? 1 : 0, d];
+      return [s.t === "hl" ? 1 : 0, s.c, s.w, s.pr ? 1 : 0, d, s.ln ? 1 : 0];
     })));
   }
   function dec(str) {
     const a = JSON.parse(str);
     if (!Array.isArray(a)) throw new Error("not a board");
-    return a.map((pg) => (Array.isArray(pg) ? pg : []).map(([h, c, w, pr, d]) => {
+    return a.map((pg) => (Array.isArray(pg) ? pg : []).map(([h, c, w, pr, d, ln, tx]) => {
+      const col = /^#[0-9a-f]{6}$/i.test(c) ? c : PENS[0];
+      if (h === 2) return { t: "tx", c: col, w: Math.max(8, Math.min(120, +w || 26)), s: String(tx || "").slice(0, 400), p: [[+(d || [])[0] || 0, +(d || [])[1] || 0, 0]] };
       const p = [], k = pr ? 3 : 2; let x = 0, y = 0, pp = 0;
       for (let i = 0; i + 1 < (d || []).length; i += k) { x += d[i]; y += d[i + 1]; if (pr) pp += d[i + 2] || 0; p.push([x, y, pr ? pp / 100 : 0]); }
-      return { t: h ? "hl" : "pen", c: /^#[0-9a-f]{6}$/i.test(c) ? c : PENS[0], w: +w || SIZES[1], pr: pr ? 1 : 0, p };
+      const st = { t: h ? "hl" : "pen", c: col, w: +w || SIZES[1], pr: pr ? 1 : 0, p }; if (ln) st.ln = 1; return st;
     }).filter((s) => s.p.length));
   }
   const hasInk = () => B.pages.some((pg) => pg.length);
@@ -633,9 +820,17 @@
         ${lec ? `<div class="ink-prow"><button type="button" class="ink-pb" data-pcloud ${P.busy ? "disabled" : ""}>Save to my account</button>${mineC ? `<button type="button" class="ink-pb ghost" data-pnew ${P.busy ? "disabled" : ""}>Save as new</button>` : ""}</div>
             ${mineC ? `<p class="ink-pnote">Opened from your account: Save updates it.</p>` : ""}<h4>On This Device</h4><div class="ink-prow">`
           : `<div class="ink-prow"><button type="button" class="ink-pb" data-pdev>Save on this device</button>${mineD ? `<button type="button" class="ink-pb ghost" data-pdnew>Save as new</button>` : ""}`}
-          <button type="button" class="ink-pb ghost" data-pfile>Save to file</button><button type="button" class="ink-pb ghost" data-bimg>Save page as image</button></div>
+          <button type="button" class="ink-pb ghost" data-pfile>Save to file</button><button type="button" class="ink-pb ghost" data-bimg>Save page as image</button><button type="button" class="ink-pb ghost" data-ppdf>Export all pages as PDF</button></div>
         ${lec ? "" : `<p class="ink-pnote">Boards saved here stay in this browser. To open one on another phone or laptop, use Save to file and keep the file.</p>`}${msg}`;
       const i = pan.querySelector(".ink-pin"); if (i && !P.ask) setTimeout(() => { i.focus(); i.select(); }, 0);
+      return;
+    }
+    if (P.view === "pages") {
+      const n = B.pages.length;
+      pan.innerHTML = `${x}<h3>▦ Pages</h3><p class="ink-pnote">Tap a page to go to it. ◀ ▶ move it earlier or later, ⧉ copies it.</p>
+        <ol class="ink-pgs">${B.pages.map((pg, i) => `<li class="${i === B.pi ? "on" : ""}"><button type="button" class="ink-pgi" data-pgo="${i}" aria-label="Go to page ${i + 1}"><img src="${pageCanvas(i, 0.22).toDataURL("image/png")}" alt=""></button>
+          <span class="ink-prow"><button type="button" class="ink-pb ghost" data-pmv="${i}" data-d="-1" ${i ? "" : "disabled"} aria-label="Move page ${i + 1} earlier">◀</button><strong>${i + 1}</strong><button type="button" class="ink-pb ghost" data-pmv="${i}" data-d="1" ${i < n - 1 ? "" : "disabled"} aria-label="Move page ${i + 1} later">▶</button><button type="button" class="ink-pb ghost" data-pcp="${i}" aria-label="Copy page ${i + 1}">⧉</button></span></li>`).join("")}</ol>
+        <div class="ink-prow"><button type="button" class="ink-pb" data-pnewpg>＋ New page</button><button type="button" class="ink-pb ghost" data-ppdf>Export all pages as PDF</button></div>`;
       return;
     }
     pan.innerHTML = `${x}<h3>📂 My Boards</h3>${askHtml()}
@@ -651,6 +846,7 @@
   // put a board on screen (from the account, this device or a file)
   function useBoard(o) {
     B.pages = o.pages.length ? o.pages : [[]]; B.pi = 0; B.bg = BGS.some(([k]) => k === o.bg) ? o.bg : B.bg; B.name = o.name || "";
+    if (txEd) textDone(false);
     B.cid = o.cid || null; B.cuid = o.cuid || null; B.lid = o.lid || null; B.sh = hashS(enc(B.pages)); bhist = {}; clearSel();
     bsave(); bdraw(); bTools();
   }
@@ -769,6 +965,11 @@
     if (b.hasAttribute("data-pdnew")) return devSave(true);
     if (b.hasAttribute("data-pfile")) return fileSave();
     if (b.hasAttribute("data-bimg")) return saveImage();
+    if (b.hasAttribute("data-ppdf")) return exportPdf();
+    if (b.dataset.pgo) { B.pi = +b.dataset.pgo; clearSel(); bsave(); bdraw(); return drawPan(); }
+    if (b.dataset.pmv) { movePage(+b.dataset.pmv, +b.dataset.d); return drawPan(); }
+    if (b.dataset.pcp) { copyPage(+b.dataset.pcp); return drawPan(); }
+    if (b.hasAttribute("data-pnewpg")) { newPage(); return drawPan(); }
     if (b.dataset.pop) return openBoard(k, b.dataset.pop);
     if (b.dataset.pren) { P.ren = k + b.dataset.pren; P.del = null; drawPan(); const i = pan.querySelector("[data-rin]"); if (i) { i.focus(); i.select(); } return; }
     if (b.dataset.prs) return renameBoard(k, b.dataset.prs, (pan.querySelector("[data-rin]") || {}).value);
@@ -818,7 +1019,7 @@
     const k = e.key.toLowerCase(), m = { p: "pen", h: "hl", e: "erase", l: "laser", s: "spot" };
     if (k === "b") { e.preventDefault(); if (B.open && B.min) { B.min = false; bsave(); bdraw(); } else boardOpen(!B.open); }
     else if (k === "n" && bOn) { e.preventDefault(); newPage(); }
-    else if (bAct && (k === "p" || k === "h" || k === "e" || k === "v")) { e.preventDefault(); setBoardTool(k === "v" ? "sel" : m[k]); }
+    else if (bAct && (k === "p" || k === "h" || k === "e" || k === "v" || k === "t" || k === "l")) { e.preventDefault(); setBoardTool({ v: "sel", t: "text", l: "laser" }[k] || m[k]); }
     else if (bAct && Q.tool === "sel" && (e.key === "Delete" || e.key === "Backspace") && selOn()) { e.preventDefault(); selDelete(); }
     else if (bAct && e.key === "Escape" && Q.tool === "sel" && selOn()) { clearSel(); bTools(); bpaint(); }
     else if (bAct && e.key === "Escape") setBoardTool(null);

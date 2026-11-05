@@ -6,7 +6,7 @@
   const host = document.getElementById("admin");
   if (!host) return;
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  if (!window.NMKAccount || !window.NMKGame) { host.innerHTML = `<div class="callout warn"><strong>The dashboard could not load</strong>Check your internet connection and reload the page.</div>`; return; }
+  if (!window.NMKAccount || !window.NMKGame) { host.innerHTML = `<div class="callout warn"><strong>Lecturer Tools could not load</strong>Check your internet connection and reload the page.</div>`; return; }
   const A = window.NMKAccount, G = window.NMKGame, db = A.db;
   const parse = (s, d) => { try { return s == null ? d : JSON.parse(s); } catch (e) { return d; } };
   const toDate = (v) => (v && v.toDate ? v.toDate() : v ? new Date(v) : null);
@@ -257,7 +257,7 @@
     const pending = students().filter((u) => u.status === "pending").length;
     const view = tab === "overview" ? overview() : tab === "heatmap" ? heatmap() : tab === "exercises" ? difficulty() : tab === "board" ? board() : tab === "missions" ? missionsTab() : people(tab === "pending");
     const semSel = sems.length > 1 ? `<label class="adm-sem">Semester <select data-sem>${sems.map((x) => `<option${x === sem ? " selected" : ""}>${esc(x)}</option>`).join("")}</select></label>` : "";
-    const [t, lead, btns] = HEAD[tab] ? HEAD[tab]() : ["Lecturer Dashboard", "", ""];
+    const [t, lead, btns] = HEAD[tab] ? HEAD[tab]() : ["Lecturer Tools", "", ""];
     const nav = window.NMKLecMenu ? NMKLecMenu.html("admin.html", tab, { pending }) : "";
     const wasOpen = host.querySelector(".lt-nav.lt-open");
     host.innerHTML = `<div class="lt"><div class="lt-nav${wasOpen ? " lt-open" : ""}">${nav}</div><div class="lt-main">

@@ -409,7 +409,7 @@
   function myLinks() {
     const u = state.user, lec = u && isAdmin(u.email);
     return [["myclass.html", "🏠", "My Class Hub"], ["notifications.html", "🔔", "Notifications"],
-      lec ? ["admin.html", "🛠", "Lecturer dashboard"] : ["profile.html", "👤", "My Profile"]];
+      lec ? ["admin.html", "🛠", "Lecturer Tools"] : ["profile.html", "👤", "My Profile"]];
   }
   // tell the hub page when the switches or the bell change (it reads nothing itself)
   const hubPing = () => { try { document.dispatchEvent(new CustomEvent("nmk:hub")); } catch (e) { /* old browser */ } };

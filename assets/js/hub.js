@@ -25,7 +25,7 @@
       ["missions.html", "⚔️", "INSTRUMENTA: Legends", "The game: play any station, lock chapters and see the leaderboard."],
       ["survey.html", "📋", "Course Survey", "Open a survey round and read the results.", /^survey\.html/]]],
     ["Running the Course", [
-      ["admin.html", "🛠", "Lecturer Dashboard", "Account approvals, the class heatmap, exercise difficulty and the game's chapters.", /^admin\.html/],
+      ["admin.html", "🛠", "Lecturer Tools", "One menu for everything: today's sessions, attendance, students, lab marks, the timetable, the class heatmap and the game.", /^admin\.html/],
       ["evidence.html", "📊", "Teaching Evidence", "Reach, CO attainment, lab marks and survey results for the teaching award."],
       ["attendance.html?tab=schedule", "📅", "Schedule", "Change the public timetable: dates, rooms and lab sessions."],
       ["notifications.html", "🔔", "Notifications", "Everything the bell has told you, with the to-do items first.", "all"]]]

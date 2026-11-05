@@ -1,4 +1,4 @@
-/* NMK42003 lecturer tools menu: one left menu shared by the lecturer's Attendance page and the Lecturer dashboard
+/* NMK42003 lecturer tools menu: one left menu shared by the lecturer's Attendance page and admin.html (together: Lecturer Tools)
    (lecturer's choice, replacing the rows of tab buttons). Items on the page that draws the menu switch the view in
    place (data-tab, the page handles the click); the others are plain links to the other page's tab (?tab=…). */
 (function () {
