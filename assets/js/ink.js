@@ -7,7 +7,8 @@
    (localStorage "nmkink:<page>", not "nmk-" so they never sync to an account). No Firebase at all.
    📋 Board: a floating sheet to write on (see below), one for the whole site, also kept for one day. The board has its
    OWN pen, highlighter and eraser in its top bar: with a board tool on, only the board takes writing and the page
-   outside works as normal; with a page tool on, the board takes no writing (lecturer's choice). */
+   outside works as normal; with a page tool on, the board takes no writing (lecturer's choice). ⬚ Select moves, resizes,
+   recolours, duplicates or deletes what was written. */
 (function () {
   "use strict";
   if (window.NMKInk) return;
@@ -279,6 +280,7 @@
   .ink-bhint.nudge { color: #b35c00; font-weight: 700; }
   .ink-bb.idle canvas { cursor: default; }
   .ink-bb.er canvas { cursor: none; }
+  .ink-bb.sel canvas { cursor: default; }
   .ink-bpan { position: absolute; right: 8px; z-index: 3; width: min(380px, calc(100% - 16px)); max-height: calc(100% - 120px); overflow-y: auto; background: var(--surface, #fff); color: var(--ink, #15243a); border: 1px solid var(--rule, #d6dee4); border-radius: 14px; box-shadow: 0 14px 34px rgba(21, 36, 58, .25); padding: 14px 14px 12px; cursor: default; }
   .ink-bpan[hidden] { display: none; }
   .ink-bpan h3 { margin: 0 30px 10px 0; font: 600 1.05rem var(--serif, serif); }
@@ -330,12 +332,16 @@
     if (t === "hl") o = `<span class="ink-sw">${HLS.map((c) => `<button type="button" data-bhc="${c}" style="background:${c}" aria-label="Board highlighter colour" aria-pressed="${c === Q.hl}"></button>`).join("")}</span>`;
     if (t === "pen" || t === "hl") o += `<span class="ink-sep"></span>${SIZES.map((x, i) => `<button type="button" class="ink-sz" data-bs="${i}" aria-pressed="${Q.size === i}" aria-label="Size ${i + 1}" title="Size ${i + 1}"><i style="width:${4 + i * 4}px;height:${4 + i * 4}px"></i></button>`).join("")}`;
     if (t === "erase") o = erHtml();
-    btl.innerHTML = [["pen", "✏️", "Board pen"], ["hl", "🖍", "Board highlighter"], ["erase", "🧽", "Board eraser"]].map(([k, i, l]) => `<button type="button" data-bt="${k}" aria-pressed="${t === k}" title="${l}" aria-label="${l}">${i}</button>`).join("")
+    if (t === "sel") o = selOn() ? `<span class="ink-bhint">${SEL.list.length} selected: drag to move, the ○ corner to resize</span><span class="ink-sw">${PENS.map((c) => `<button type="button" data-bsc="${c}" style="background:${chalk && c === PENS[0] ? "#f4f6f8" : c}" aria-label="Change the colour of the selection" title="Change colour"></button>`).join("")}</span>
+        <button type="button" data-bsdup title="Duplicate the selection" aria-label="Duplicate the selection">⧉ Duplicate</button><button type="button" data-bsdel title="Delete the selection (Delete key)" aria-label="Delete the selection">🗑 Delete</button>`
+      : `<span class="ink-bhint">Draw a loop round what you want to move, or tap one line</span>`;
+    btl.innerHTML = [["pen", "✏️", "Board pen (P)"], ["hl", "🖍", "Board highlighter (H)"], ["erase", "🧽", "Board eraser (E)"], ["sel", "⬚", "Select and move (V)"]].map(([k, i, l]) => `<button type="button" data-bt="${k}" aria-pressed="${t === k}" title="${l}" aria-label="${l}">${i}</button>`).join("")
       + (o ? `<span class="ink-sep"></span>${o}` : "") + `<span class="ink-sep"></span><button type="button" data-bundo title="Undo on the board (Ctrl+Z)" aria-label="Undo on the board">↶</button>`
       + (t ? "" : `<span class="ink-bhint">Tap ✏️ here to write on the board</span>`);
-    bb.classList.toggle("idle", !t); bb.classList.toggle("er", t === "erase");
+    bb.classList.toggle("idle", !t); bb.classList.toggle("er", t === "erase"); bb.classList.toggle("sel", t === "sel");
   }
   function setBoardTool(t) {
+    if (t !== "sel" || Q.tool !== "sel") clearSel();
     Q.tool = t;
     if (t && tool !== "off") setTool("off");   // the page tools step back: the page works as normal outside the board
     bTools(); ring();
@@ -362,7 +368,8 @@
     bctx.setTransform(dpr, 0, 0, dpr, 0, 0); bctx.clearRect(0, 0, w, h);
     const chalk = B.bg === "chalk";
     bpage().forEach((s) => drawStroke(s, bctx, 0, 0, chalk));
-    if (cur && cur.board && !cur.erasing) drawStroke(cur, bctx, 0, 0, chalk);
+    if (cur && cur.board && !cur.erasing && !cur.sel) drawStroke(cur, bctx, 0, 0, chalk);
+    selPaint();
   }
   function bdraw() {
     bd.hidden = !B.open || B.min; chip.hidden = !B.open || !B.min;
@@ -398,6 +405,7 @@
     if (e.pointerType === "pen" && !B.seenPen) { B.seenPen = true; bsave(); bdraw(); }
     if (e.pointerType === "touch" && penOnly()) return;   // pen only: the palm and fingers don't write
     e.preventDefault(); cap(bcv, e);
+    if (t === "sel") return selDown(bpt(e));
     if (t === "erase") { cur = { board: true, erasing: true, last: null }; berase(e); return; }
     cur = { board: true, t, c: t === "hl" ? Q.hl : Q.pen, w: SIZES[Q.size], pr: e.pointerType === "pen" && t === "pen" ? 1 : 0, p: [bpt(e)] };
     bpaint();
@@ -407,15 +415,16 @@
     cur.last = q;
     if (n !== list) { if (!cur.changed) { keep(bh_(), list); cur.changed = true; } B.pages[B.pi] = n; bpaint(); }
   }
-  function bundo() { const h = bh_(); if (h.length) B.pages[B.pi] = h.pop(); else bpage().pop(); bsave(); bpaint(); }
+  function bundo() { clearSel(); const h = bh_(); if (h.length) B.pages[B.pi] = h.pop(); else bpage().pop(); bsave(); bpaint(); }
   bcv.addEventListener("pointermove", (e) => {
     if (!cur || !cur.board) return;
+    if (cur.sel) return selMove(bpt(e));
     if (cur.erasing) { berase(e); return; }
     const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
     (evs.length ? evs : [e]).forEach((x) => { const q = bpt(x), l = cur.p[cur.p.length - 1]; if (Math.hypot(q[0] - l[0], q[1] - l[1]) >= 1.2) cur.p.push(q); });
     bpaint();
   });
-  const bend = () => { if (!cur || !cur.board) return; const c = cur; cur = null; if (c.erasing) { if (c.changed) bsave(); } else { delete c.board; keep(bh_(), bpage()); bpage().push(c); bsave(); } bpaint(); };
+  const bend = () => { if (!cur || !cur.board) return; const c = cur; cur = null; if (c.sel) return selUp(c); if (c.erasing) { if (c.changed) bsave(); } else { delete c.board; keep(bh_(), bpage()); bpage().push(c); bsave(); } bpaint(); };
   bcv.addEventListener("pointerup", bend); bcv.addEventListener("pointercancel", bend); bcv.addEventListener("lostpointercapture", bend);
   // dragging by the top bar, resizing from the corner
   function dragFrom(e, resize) {
@@ -439,6 +448,9 @@
     const b = e.target.closest("button"); if (!b) return;
     if (b.dataset.bt) setBoardTool(b.dataset.bt);
     else if (b.dataset.bc) { Q.pen = b.dataset.bc; bsave(); bTools(); }
+    else if (b.dataset.bsc) selColour(b.dataset.bsc);
+    else if (b.hasAttribute("data-bsdup")) selDuplicate();
+    else if (b.hasAttribute("data-bsdel")) selDelete();
     else if (b.dataset.bhc) { Q.hl = b.dataset.bhc; bsave(); bTools(); }
     else if (b.dataset.bs) { Q.size = +b.dataset.bs; bsave(); bTools(); }
     else if (b.dataset.em || b.dataset.er) erPick(b);
@@ -473,10 +485,82 @@
     const a = document.createElement("a"), d = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 16).replace(/[-:T]/g, "");
     a.download = `nmk42003-board-${d}-page${B.pi + 1}.png`; a.href = c.toDataURL("image/png"); document.body.appendChild(a); a.click(); a.remove();
   }
-  /* ---------- My Boards: save a board to the signed-in account and open it again (Firestore boards/{uid}_{id}, one
-     per board, its pages packed into one text field; boardidx/{uid} lists them, so the list costs 1 read). Saving only
-     happens on Save (2 writes). Limits: students 10 boards of up to 500 KB, lecturers 50 of up to 900 KB. Anyone can
-     also save to a file and open it again, without an account. ---------- */
+  /* ---------- ⬚ Select (V): draw a loop round what you wrote, or tap one line; then drag it to move it, drag the round
+     corner handle to make it bigger or smaller, and Duplicate, change its colour or Delete it. Undo puts it back. ---------- */
+  let SEL = { pi: -1, list: [] };
+  const selOn = () => SEL.pi === B.pi && SEL.list.length > 0 && SEL.list.every((s) => bpage().includes(s));
+  function clearSel() { SEL = { pi: -1, list: [] }; }
+  function selBox() {
+    let a = Infinity, b = -Infinity, c = Infinity, d = -Infinity;
+    SEL.list.forEach((s) => { const hw = halfW(s); s.p.forEach((q) => { a = Math.min(a, q[0] - hw); b = Math.max(b, q[0] + hw); c = Math.min(c, q[1] - hw); d = Math.max(d, q[1] + hw); }); });
+    return { x: a - 6, y: c - 6, w: b - a + 12, h: d - c + 12 };
+  }
+  const inPoly = (pt, poly) => { let ins = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < ((xj - xi) * (pt[1] - yi)) / (yj - yi) + xi) ins = !ins; } return ins; };
+  // before the selected strokes change: keep the page for undo and work on copies (the kept page has the old ones)
+  function selCopy() {
+    const pg = bpage(), at = SEL.list.map((s) => pg.indexOf(s));
+    keep(bh_(), pg);
+    SEL.list = at.map((i) => { const c = Object.assign({}, pg[i], { p: pg[i].p.map((q) => q.slice()) }); pg[i] = c; return c; });
+    return at;
+  }
+  function selDown(q) {
+    if (selOn()) {
+      const r = selBox(), hx = r.x + r.w, hy = r.y + r.h;
+      if (Math.hypot(q[0] - hx, q[1] - hy) < 18) { const at = selCopy(); cur = { board: true, sel: "size", at, o: [r.x, r.y], d0: Math.max(10, Math.hypot(hx - r.x, hy - r.y)), base: SEL.list.map((s) => s.p.map((p) => p.slice())), ws: SEL.list.map((s) => s.w) }; return; }
+      if (q[0] >= r.x && q[0] <= hx && q[1] >= r.y && q[1] <= hy) { const at = selCopy(); cur = { board: true, sel: "move", at, last: q }; return; }
+    }
+    clearSel(); cur = { board: true, sel: "lasso", p: [q] }; bTools(); bpaint();
+  }
+  function selMove(q) {
+    if (cur.sel === "lasso") cur.p.push(q);
+    else if (cur.sel === "move") { const dx = q[0] - cur.last[0], dy = q[1] - cur.last[1]; cur.last = q; if (dx || dy) cur.moved = true; SEL.list.forEach((s) => s.p.forEach((p) => { p[0] += dx; p[1] += dy; })); }
+    else {
+      const [ox, oy] = cur.o, k = Math.max(0.15, Math.min(8, Math.hypot(q[0] - ox, q[1] - oy) / cur.d0));
+      cur.moved = true;
+      SEL.list.forEach((s, i) => { s.p.forEach((p, j) => { const b = cur.base[i][j]; p[0] = Math.round((ox + (b[0] - ox) * k) * 10) / 10; p[1] = Math.round((oy + (b[1] - oy) * k) * 10) / 10; }); s.w = Math.max(1, Math.round(cur.ws[i] * Math.sqrt(k) * 10) / 10); });
+    }
+    bpaint();
+  }
+  function selUp(c) {
+    const pg = bpage();
+    if (c.sel === "lasso") {
+      const xs = c.p.map((q) => q[0]), ys = c.p.map((q) => q[1]), tap = Math.max(...xs) - Math.min(...xs) < 10 && Math.max(...ys) - Math.min(...ys) < 10;
+      let pick;
+      if (tap) { const [x, y] = c.p[0], hit = pg.filter((s) => wholeOut([s], x, y, 10).length === 0); pick = hit.length ? [hit[hit.length - 1]] : []; }
+      else pick = pg.filter((s) => s.p.filter((q) => inPoly(q, c.p)).length >= s.p.length * 0.6);
+      SEL = { pi: B.pi, list: pick };
+    } else if (!c.moved) {   // a tap inside the box: nothing changed, so take back the undo step
+      const h = bh_(); B.pages[B.pi] = h.pop(); SEL.list = c.at.map((i) => B.pages[B.pi][i]);
+    } else bsave();
+    bTools(); bpaint();
+  }
+  function selDelete() { if (!selOn()) return; const pg = bpage(); keep(bh_(), pg); B.pages[B.pi] = pg.filter((s) => !SEL.list.includes(s)); clearSel(); bsave(); bTools(); bpaint(); }
+  function selDuplicate() {
+    if (!selOn()) return;
+    const pg = bpage(); keep(bh_(), pg);
+    const copies = SEL.list.map((s) => Object.assign({}, s, { p: s.p.map((q) => [q[0] + 24, q[1] + 24, q[2]]) }));
+    B.pages[B.pi] = pg.concat(copies); SEL = { pi: B.pi, list: copies }; bsave(); bTools(); bpaint();
+  }
+  function selColour(c) { if (!selOn()) return; selCopy(); SEL.list.forEach((s) => { s.c = s.t === "hl" ? (HLS.includes(c) ? c : s.c) : c; }); bsave(); bTools(); bpaint(); }
+  // the selection drawn over the writing: the loop while drawing it, then a dashed box with a round handle
+  function selPaint() {
+    if (cur && cur.sel === "lasso" && cur.p.length > 1) {
+      bctx.save(); bctx.setLineDash([5, 4]); bctx.strokeStyle = "#1a73c7"; bctx.lineWidth = 1.5; bctx.beginPath();
+      cur.p.forEach((q, i) => (i ? bctx.lineTo(q[0], q[1]) : bctx.moveTo(q[0], q[1]))); bctx.stroke(); bctx.restore();
+    }
+    if (selOn() && Q.tool === "sel") {
+      const r = selBox();
+      bctx.save(); bctx.fillStyle = "rgba(26, 115, 199, .07)"; bctx.fillRect(r.x, r.y, r.w, r.h);
+      bctx.setLineDash([6, 4]); bctx.strokeStyle = "#1a73c7"; bctx.lineWidth = 1.5; bctx.strokeRect(r.x, r.y, r.w, r.h);
+      bctx.setLineDash([]); bctx.fillStyle = "#fff"; bctx.beginPath(); bctx.arc(r.x + r.w, r.y + r.h, 8, 0, Math.PI * 2); bctx.fill(); bctx.stroke();
+      bctx.restore();
+    }
+  }
+  /* ---------- My Boards. Lecturers save boards to their account (Firestore boards/{uid}_{id}, the pages packed into one
+     text field; boardidx/{uid} lists them, so the list costs 1 read and a save 2 writes; up to 50 boards of 900 KB).
+     Everyone else saves on this device (localStorage "nmkboards", not "nmk-" so it never syncs: up to 10 boards, about
+     3.5 MB in all) or to a file, and opens them again: no Firebase at all (lecturer's choice, to keep the reads and
+     writes for 61 students at zero). ---------- */
   const KB = (n) => Math.ceil(n / 1024);
   const hashS = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return String(h); };
   // pack: whole-pixel points, each one as the change from the one before (about half the size)
@@ -499,11 +583,17 @@
   const hasInk = () => B.pages.some((pg) => pg.length);
   const unsavedBoard = () => hasInk() && hashS(enc(B.pages)) !== B.sh;
   const acct = () => { const A = window.NMKAccount, u = A && A.state && A.state.user; return u ? { A, u, db: A.db, lec: A.isAdmin(u.email) } : null; };
-  const limits = (lec) => (lec ? { n: 50, kb: 900 } : { n: 10, kb: 500 });
+  const lecAcct = () => { const a = acct(); return a && a.lec ? a : null; };
   const escH = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const today = () => new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
   const fmtAt = (ms) => { try { return new Date(ms).toLocaleString("en-GB", { timeZone: "Asia/Kuala_Lumpur", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }); } catch (e) { return ""; } };
-  let idx = null, idxUid = null;   // this account's list of boards, read once per page
+  const nameIn = () => { const inp = pan.querySelector(".ink-pin:not([data-rin])"); return ((inp && inp.value) || B.name || `Board ${today()}`).trim().slice(0, 60) || `Board ${today()}`; };
+  // boards on this device
+  const DKEY = "nmkboards", DMAX = 10, DKB = 3500;
+  const dAll = () => { try { return JSON.parse(ls.get(DKEY) || "{}") || {}; } catch (e) { return {}; } };
+  const dWrite = (o) => { try { localStorage.setItem(DKEY, JSON.stringify(o)); return true; } catch (e) { return false; } };
+  // the lecturer's boards on the account, read once per page
+  let idx = null, idxUid = null;
   async function loadIdx(a) {
     if (idx && idxUid === a.u.uid) return idx;
     const d = await a.db.collection("boardidx").doc(a.u.uid).get();
@@ -513,64 +603,82 @@
   const pan = document.createElement("div");
   pan.className = "ink-bpan"; pan.hidden = true; pan.setAttribute("role", "dialog"); pan.setAttribute("aria-label", "Save or open a board");
   bd.appendChild(pan);
-  let P = { view: null, msg: "", ask: null, ren: null, busy: false };
+  let P = { view: null, msg: "", ask: null, ren: null, del: null, busy: false };
   function panel(view) {
-    P = Object.assign(P, { view, msg: view === P.view ? P.msg : "", ask: null, ren: null });
+    P = Object.assign(P, { view, msg: view === P.view ? P.msg : "", ask: null, ren: null, del: null });
     if (!view) { pan.hidden = true; return; }
     pan.hidden = false; pan.style.top = `${bh.offsetHeight + 8}px`;
     drawPan();
-    if (view === "open" && acct() && !idx) refreshList();
+    if (view === "open" && lecAcct() && !idx) refreshList();
+  }
+  const askHtml = () => (P.ask ? `<div class="ink-pask"><p>${P.ask.text}</p><button type="button" class="ink-pb" data-pyes>${P.ask.yes}</button><button type="button" class="ink-pb ghost" data-pno>Cancel</button></div>` : "");
+  // one list of saved boards: kind "c" (account) or "d" (this device)
+  function listHtml(kind, list, max) {
+    const rows = Object.entries(list).sort((p, q) => (q[1].at || 0) - (p[1].at || 0));
+    if (!rows.length) return `<p class="ink-pnote">${kind === "c" ? "No boards on your account yet." : "No boards saved on this device yet."}</p>`;
+    return `<ul class="ink-plist">${rows.map(([id, v]) => P.ren === kind + id
+      ? `<li><input class="ink-pin" data-rin maxlength="60" value="${escH(v.name)}" aria-label="New name"><span class="ink-prow"><button type="button" class="ink-pb" data-prs="${id}" data-k="${kind}">Save name</button><button type="button" class="ink-pb ghost" data-pno>Cancel</button></span></li>`
+      : `<li><span class="ink-pn"><strong>${escH(v.name)}</strong><small>${v.n || 1} page${v.n === 1 ? "" : "s"} · ${v.kb || 1} KB · ${escH(fmtAt(v.at))}</small></span>
+        <span class="ink-prow"><button type="button" class="ink-pb" data-pop="${id}" data-k="${kind}" ${P.busy ? "disabled" : ""}>Open</button><button type="button" class="ink-pb ghost" data-pren="${id}" data-k="${kind}" aria-label="Rename ${escH(v.name)}">✎</button><button type="button" class="ink-pb ghost ink-pdel${P.del === kind + id ? " sure" : ""}" data-pdel="${id}" data-k="${kind}" aria-label="Delete ${escH(v.name)}">${P.del === kind + id ? "Delete?" : "🗑"}</button></span></li>`).join("")}</ul>
+      <p class="ink-pnote">${rows.length} of ${max} boards.</p>`;
   }
   function drawPan() {
-    const a = acct(), L = a && limits(a.lec), x = `<button type="button" class="ink-px" data-px aria-label="Close">✕</button>`, msg = P.msg ? `<p class="ink-pmsg" aria-live="polite">${P.msg}</p>` : "";
-    const signin = `<p class="ink-pnote">Sign in to keep boards on your account and open them on any device.</p><button type="button" class="ink-pb" data-psignin>Sign in</button>`;
+    const lec = lecAcct(), x = `<button type="button" class="ink-px" data-px aria-label="Close">✕</button>`, msg = P.msg ? `<p class="ink-pmsg" aria-live="polite">${P.msg}</p>` : "";
     if (P.view === "save") {
-      const name = B.name || `Board ${today()}`, size = KB(enc(B.pages).length), mine = a && B.cid && B.cuid === a.u.uid;
+      const name = B.name || `Board ${today()}`, size = KB(enc(B.pages).length);
+      const mineC = lec && B.cid && B.cuid === lec.u.uid, mineD = !lec && B.lid && dAll()[B.lid];
       pan.innerHTML = `${x}<h3>💾 Save This Board</h3>
         <label class="ink-pl">Name<input class="ink-pin" maxlength="60" value="${escH(name)}" aria-label="Board name"></label>
-        <p class="ink-pnote">${B.pages.length} page${B.pages.length === 1 ? "" : "s"} · about ${size} KB${a ? ` (up to ${L.kb} KB)` : ""}</p>
-        ${P.ask ? `<div class="ink-pask"><p>${P.ask.text}</p><button type="button" class="ink-pb" data-pyes>${P.ask.yes}</button><button type="button" class="ink-pb ghost" data-pno>Cancel</button></div>` : ""}
-        ${a ? `<div class="ink-prow"><button type="button" class="ink-pb" data-pcloud ${P.busy ? "disabled" : ""}>Save to my account</button>${mine ? `<button type="button" class="ink-pb ghost" data-pnew ${P.busy ? "disabled" : ""}>Save as new</button>` : ""}</div>
-          ${mine ? `<p class="ink-pnote">Opened from your account: Save updates it.</p>` : ""}` : signin}
-        ${msg}<h4>On This Device</h4><div class="ink-prow"><button type="button" class="ink-pb ghost" data-pfile>Save to file</button><button type="button" class="ink-pb ghost" data-bimg>Save page as image</button></div>`;
+        <p class="ink-pnote">${B.pages.length} page${B.pages.length === 1 ? "" : "s"} · about ${size} KB</p>${askHtml()}
+        ${lec ? `<div class="ink-prow"><button type="button" class="ink-pb" data-pcloud ${P.busy ? "disabled" : ""}>Save to my account</button>${mineC ? `<button type="button" class="ink-pb ghost" data-pnew ${P.busy ? "disabled" : ""}>Save as new</button>` : ""}</div>
+            ${mineC ? `<p class="ink-pnote">Opened from your account: Save updates it.</p>` : ""}<h4>On This Device</h4><div class="ink-prow">`
+          : `<div class="ink-prow"><button type="button" class="ink-pb" data-pdev>Save on this device</button>${mineD ? `<button type="button" class="ink-pb ghost" data-pdnew>Save as new</button>` : ""}`}
+          <button type="button" class="ink-pb ghost" data-pfile>Save to file</button><button type="button" class="ink-pb ghost" data-bimg>Save page as image</button></div>
+        ${lec ? "" : `<p class="ink-pnote">Boards saved here stay in this browser. To open one on another phone or laptop, use Save to file and keep the file.</p>`}${msg}`;
       const i = pan.querySelector(".ink-pin"); if (i && !P.ask) setTimeout(() => { i.focus(); i.select(); }, 0);
       return;
     }
-    let list = "";
-    if (!a) list = signin;
-    else if (!idx) list = `<p class="ink-pnote">Loading your boards…</p>`;
-    else {
-      const rows = Object.entries(idx).sort((p, q) => (q[1].at || 0) - (p[1].at || 0));
-      list = rows.length ? `<ul class="ink-plist">${rows.map(([id, v]) => P.ren === id
-        ? `<li><input class="ink-pin" data-rin maxlength="60" value="${escH(v.name)}" aria-label="New name"><span class="ink-prow"><button type="button" class="ink-pb" data-prs="${id}">Save name</button><button type="button" class="ink-pb ghost" data-pno>Cancel</button></span></li>`
-        : `<li><span class="ink-pn"><strong>${escH(v.name)}</strong><small>${v.n || 1} page${v.n === 1 ? "" : "s"} · ${v.kb || 1} KB · ${escH(fmtAt(v.at))}</small></span>
-          <span class="ink-prow"><button type="button" class="ink-pb" data-pop="${id}" ${P.busy ? "disabled" : ""}>Open</button><button type="button" class="ink-pb ghost" data-pren="${id}" aria-label="Rename ${escH(v.name)}">✎</button><button type="button" class="ink-pb ghost ink-pdel${P.del === id ? " sure" : ""}" data-pdel="${id}" aria-label="Delete ${escH(v.name)}">${P.del === id ? "Delete?" : "🗑"}</button></span></li>`).join("")}</ul>
-        <p class="ink-pnote">${rows.length} of ${L.n} boards.</p>` : `<p class="ink-pnote">No boards saved yet. Write something, then 💾 Save to my account.</p>`;
-    }
-    pan.innerHTML = `${x}<h3>📂 My Boards</h3>
-      ${P.ask ? `<div class="ink-pask"><p>${P.ask.text}</p><button type="button" class="ink-pb" data-pyes>${P.ask.yes}</button><button type="button" class="ink-pb ghost" data-pno>Cancel</button></div>` : ""}
-      ${list}${msg}<h4>From This Device</h4><label class="ink-pb ghost ink-pfile">Open a file…<input type="file" accept=".json,application/json" data-pfin hidden></label>`;
+    pan.innerHTML = `${x}<h3>📂 My Boards</h3>${askHtml()}
+      ${lec ? `<h4>On My Account</h4>${idx ? listHtml("c", idx, 50) : `<p class="ink-pnote">Loading your boards…</p>`}` : `<h4>On This Device</h4>${listHtml("d", dAll(), DMAX)}`}
+      ${msg}<h4>From a File</h4><label class="ink-pb ghost ink-pfile">Open a file…<input type="file" accept=".json,application/json" data-pfin hidden></label>`;
   }
   const say = (m) => { P.msg = m; drawPan(); };
   async function refreshList() {
-    const a = acct(); if (!a) return;
+    const a = lecAcct(); if (!a) return;
     try { await loadIdx(a); } catch (e) { P.msg = `Couldn't load your boards (${escH(e.code || e.message || e)}).`; idx = idx || {}; }
     if (P.view === "open") drawPan();
   }
-  // put a board on screen (from the account or a file)
+  // put a board on screen (from the account, this device or a file)
   function useBoard(o) {
     B.pages = o.pages.length ? o.pages : [[]]; B.pi = 0; B.bg = BGS.some(([k]) => k === o.bg) ? o.bg : B.bg; B.name = o.name || "";
-    B.cid = o.cid || null; B.cuid = o.cuid || null; B.sh = hashS(enc(B.pages)); bhist = {};
+    B.cid = o.cid || null; B.cuid = o.cuid || null; B.lid = o.lid || null; B.sh = hashS(enc(B.pages)); bhist = {}; clearSel();
     bsave(); bdraw(); bTools();
   }
-  // asks before something on the board that isn't saved is replaced
+  // asks before writing on the board that isn't saved is replaced
   function replaceOk(go) { if (!unsavedBoard()) return go(); P.ask = { text: "The board on screen has writing that isn't saved. Replace it?", yes: "Replace it", go }; drawPan(); }
-  async function cloudSave(asNew, sure) {
-    const a = acct(); if (!a) return;
-    const inp = pan.querySelector(".ink-pin"), name = ((inp && inp.value) || B.name || `Board ${today()}`).trim().slice(0, 60) || `Board ${today()}`;
-    const data = enc(B.pages), L = limits(a.lec);
+  // on this device
+  function devSave(asNew, sure) {
+    const name = nameIn(), data = enc(B.pages), all = dAll();
     if (!hasInk()) return say("The board is empty: write something first.");
-    if (KB(data.length) > L.kb) return say(`This board is about ${KB(data.length)} KB, more than the ${L.kb} KB a board can hold. Delete a few pages (or split it into two boards), or use Save to file.`);
+    let id = !asNew && B.lid && all[B.lid] ? B.lid : null;
+    if (!id) {
+      const same = Object.entries(all).find(([, v]) => String(v.name).toLowerCase() === name.toLowerCase());
+      if (same && !sure) { P.msg = ""; P.ask = { text: `You already have a board named “${escH(name)}” on this device. Replace it?`, yes: "Replace it", go: () => devSave(asNew, true) }; return drawPan(); }
+      if (same) id = same[0];
+    }
+    if (!id && Object.keys(all).length >= DMAX) return say(`This device already keeps ${DMAX} boards. Delete one in 📂 My Boards first, or use Save to file.`);
+    id = id || Date.now().toString(36);
+    const nx = Object.assign({}, all, { [id]: { name, n: B.pages.length, kb: KB(data.length), at: Date.now(), bg: B.bg, data } });
+    if (KB(JSON.stringify(nx).length) > DKB || !dWrite(nx)) return say("This device has no room for this board. Delete an old board in 📂 My Boards, or use Save to file.");
+    B.name = name; B.lid = id; B.sh = hashS(data); bsave();
+    say(`Saved on this device ✓ “${escH(name)}”`);
+  }
+  // on the lecturer's account
+  async function cloudSave(asNew, sure) {
+    const a = lecAcct(); if (!a) return;
+    const name = nameIn(), data = enc(B.pages);
+    if (!hasInk()) return say("The board is empty: write something first.");
+    if (KB(data.length) > 900) return say(`This board is about ${KB(data.length)} KB, more than the 900 KB a board can hold. Delete a few pages (or split it into two boards), or use Save to file.`);
     P.busy = true; say("Saving…"); B.name = name;
     try {
       const list = await loadIdx(a);
@@ -580,7 +688,7 @@
         if (same && !sure) { P.busy = false; P.msg = ""; P.ask = { text: `You already have a board named “${escH(name)}”. Replace it?`, yes: "Replace it", go: () => cloudSave(asNew, true) }; return drawPan(); }
         if (same) id = same[0];
       }
-      if (!id && Object.keys(list).length >= L.n) { P.busy = false; return say(`You have ${L.n} boards, the most an account can keep. Delete one in 📂 My Boards first.`); }
+      if (!id && Object.keys(list).length >= 50) { P.busy = false; return say("You have 50 boards, the most an account can keep. Delete one in 📂 My Boards first."); }
       id = id || Date.now().toString(36);
       const FV = firebase.firestore.FieldValue, b = a.db.batch(), nl = Object.assign({}, list, { [id]: { name, n: B.pages.length, kb: KB(data.length), at: Date.now() } });
       b.set(a.db.collection("boards").doc(`${a.u.uid}_${id}`), { uid: a.u.uid, name, bg: B.bg, n: B.pages.length, data, at: FV.serverTimestamp() });
@@ -588,22 +696,29 @@
       await b.commit();
       idx = nl; B.cid = id; B.cuid = a.u.uid; B.sh = hashS(data); bsave();
       P.busy = false; say(`Saved to your account ✓ “${escH(name)}”`);
-    } catch (e) { P.busy = false; say(`Not saved (${escH(e.code || e.message || e)}).${e.code === "permission-denied" ? " The lecturer needs to publish the latest Firestore rules." : ""}`); }
+    } catch (e) { P.busy = false; say(`Not saved (${escH(e.code || e.message || e)}).${e.code === "permission-denied" ? " Publish the latest Firestore rules in the Firebase console." : ""}`); }
   }
-  async function cloudOpen(id) {
-    const a = acct(); if (!a) return;
+  async function openBoard(kind, id) {
+    if (kind === "d") {
+      const v = dAll()[id]; if (!v) return say("That board isn't there any more.");
+      let o; try { o = { pages: dec(v.data), bg: v.bg, name: v.name, lid: id }; } catch (e) { return say("That board couldn't be read."); }
+      return replaceOk(() => { useBoard(o); panel(null); });
+    }
+    const a = lecAcct(); if (!a) return;
     P.busy = true; say("Opening…");
     try {
       const d = await a.db.collection("boards").doc(`${a.u.uid}_${id}`).get();
       P.busy = false;
       if (!d.exists) { delete idx[id]; return say("That board isn't there any more."); }
       const x = d.data(), o = { pages: dec(x.data), bg: x.bg, name: x.name, cid: id, cuid: a.u.uid };
-      replaceOk(() => { useBoard(o); panel(null); });
-      if (P.view) say("");
+      P.msg = ""; replaceOk(() => { useBoard(o); panel(null); });
+      if (P.view) drawPan();
     } catch (e) { P.busy = false; say(`Couldn't open it (${escH(e.code || e.message || e)}).`); }
   }
-  async function cloudRename(id, name) {
-    const a = acct(); name = String(name || "").trim().slice(0, 60); if (!a || !name) return;
+  async function renameBoard(kind, id, name) {
+    name = String(name || "").trim().slice(0, 60); if (!name) return;
+    if (kind === "d") { const all = dAll(); if (!all[id]) return; all[id].name = name; dWrite(all); if (B.lid === id) { B.name = name; bsave(); } P.ren = null; return say("Renamed ✓"); }
+    const a = lecAcct(); if (!a) return;
     try {
       const nl = Object.assign({}, idx, { [id]: Object.assign({}, idx[id], { name }) }), b = a.db.batch();
       b.update(a.db.collection("boards").doc(`${a.u.uid}_${id}`), { name });
@@ -612,8 +727,9 @@
       P.ren = null; say("Renamed ✓");
     } catch (e) { say(`Not renamed (${escH(e.code || e.message || e)}).`); }
   }
-  async function cloudDelete(id) {
-    const a = acct(); if (!a) return;
+  async function deleteBoard(kind, id) {
+    if (kind === "d") { const all = dAll(); delete all[id]; dWrite(all); if (B.lid === id) { B.lid = null; bsave(); } P.del = null; return say("Deleted."); }
+    const a = lecAcct(); if (!a) return;
     try {
       const nl = Object.assign({}, idx); delete nl[id];
       const b = a.db.batch();
@@ -624,7 +740,7 @@
     } catch (e) { say(`Not deleted (${escH(e.code || e.message || e)}).`); }
   }
   function fileSave() {
-    const inp = pan.querySelector(".ink-pin"), name = ((inp && inp.value) || B.name || `Board ${today()}`).trim() || "Board";
+    const name = nameIn();
     const blob = new Blob([JSON.stringify({ app: "nmk42003-board", v: 1, name, bg: B.bg, pages: enc(B.pages) })], { type: "application/json" });
     const el = document.createElement("a"); el.href = URL.createObjectURL(blob);
     el.download = `${name.replace(/[^\w\- ]+/g, "").replace(/\s+/g, "-").toLowerCase() || "board"}.json`;
@@ -643,28 +759,35 @@
   }
   pan.addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b || b.disabled) return;
+    const k = b.dataset.k;
     if (b.hasAttribute("data-px")) return panel(null);
-    if (b.hasAttribute("data-psignin")) { const A = window.NMKAccount; if (A) A.signIn(); return; }
     if (b.hasAttribute("data-pyes")) { const g = P.ask && P.ask.go; P.ask = null; drawPan(); if (g) g(); return; }
     if (b.hasAttribute("data-pno")) { P.ask = null; P.ren = null; return drawPan(); }
     if (b.hasAttribute("data-pcloud")) return cloudSave(false);
     if (b.hasAttribute("data-pnew")) return cloudSave(true);
+    if (b.hasAttribute("data-pdev")) return devSave(false);
+    if (b.hasAttribute("data-pdnew")) return devSave(true);
     if (b.hasAttribute("data-pfile")) return fileSave();
     if (b.hasAttribute("data-bimg")) return saveImage();
-    if (b.dataset.pop) return cloudOpen(b.dataset.pop);
-    if (b.dataset.pren) { P.ren = b.dataset.pren; P.del = null; drawPan(); const i = pan.querySelector("[data-rin]"); if (i) { i.focus(); i.select(); } return; }
-    if (b.dataset.prs) return cloudRename(b.dataset.prs, (pan.querySelector("[data-rin]") || {}).value);
-    if (b.dataset.pdel) { const id = b.dataset.pdel; if (P.del === id) return cloudDelete(id); P.del = id; drawPan(); setTimeout(() => { if (P.del === id) { P.del = null; if (P.view === "open") drawPan(); } }, 3000); }
+    if (b.dataset.pop) return openBoard(k, b.dataset.pop);
+    if (b.dataset.pren) { P.ren = k + b.dataset.pren; P.del = null; drawPan(); const i = pan.querySelector("[data-rin]"); if (i) { i.focus(); i.select(); } return; }
+    if (b.dataset.prs) return renameBoard(k, b.dataset.prs, (pan.querySelector("[data-rin]") || {}).value);
+    if (b.dataset.pdel) { const key = k + b.dataset.pdel; if (P.del === key) return deleteBoard(k, b.dataset.pdel); P.del = key; drawPan(); setTimeout(() => { if (P.del === key) { P.del = null; if (P.view === "open") drawPan(); } }, 3000); }
   });
   pan.addEventListener("change", (e) => { if (e.target.matches("[data-pfin]")) { fileOpen(e.target.files[0]); e.target.value = ""; } });
   pan.addEventListener("keydown", (e) => {
     if (e.key === "Escape") { e.stopPropagation(); panel(null); }
-    else if (e.key === "Enter" && e.target.matches(".ink-pin")) { e.preventDefault(); if (e.target.matches("[data-rin]")) cloudRename(P.ren, e.target.value); else if (acct()) cloudSave(false); else fileSave(); }
+    else if (e.key === "Enter" && e.target.matches(".ink-pin")) {
+      e.preventDefault();
+      if (e.target.matches("[data-rin]")) { const b = pan.querySelector("[data-prs]"); if (b) renameBoard(b.dataset.k, b.dataset.prs, e.target.value); }
+      else if (lecAcct()) cloudSave(false); else devSave(false);
+    }
   });
   pan.addEventListener("pointerdown", (e) => e.stopPropagation());
   // the account changed (signed in or out): another account's list must not show
-  if (window.NMKAccount && window.NMKAccount.on) window.NMKAccount.on(() => { const a = acct(); if (!a || a.u.uid !== idxUid) idx = null; if (P.view) drawPan(); });
-  else addEventListener("load", () => { if (window.NMKAccount && window.NMKAccount.on) window.NMKAccount.on(() => { const a = acct(); if (!a || a.u.uid !== idxUid) idx = null; if (P.view) drawPan(); }); });
+  const onAcct = () => { const a = acct(); if (!a || a.u.uid !== idxUid) idx = null; if (P.view) drawPan(); };
+  if (window.NMKAccount && window.NMKAccount.on) window.NMKAccount.on(onAcct);
+  else addEventListener("load", () => { if (window.NMKAccount && window.NMKAccount.on) window.NMKAccount.on(onAcct); });
 
   bdraw(); bTools();
 
@@ -695,7 +818,9 @@
     const k = e.key.toLowerCase(), m = { p: "pen", h: "hl", e: "erase", l: "laser", s: "spot" };
     if (k === "b") { e.preventDefault(); if (B.open && B.min) { B.min = false; bsave(); bdraw(); } else boardOpen(!B.open); }
     else if (k === "n" && bOn) { e.preventDefault(); newPage(); }
-    else if (bAct && (k === "p" || k === "h" || k === "e")) { e.preventDefault(); setBoardTool(m[k]); }
+    else if (bAct && (k === "p" || k === "h" || k === "e" || k === "v")) { e.preventDefault(); setBoardTool(k === "v" ? "sel" : m[k]); }
+    else if (bAct && Q.tool === "sel" && (e.key === "Delete" || e.key === "Backspace") && selOn()) { e.preventDefault(); selDelete(); }
+    else if (bAct && e.key === "Escape" && Q.tool === "sel" && selOn()) { clearSel(); bTools(); bpaint(); }
     else if (bAct && e.key === "Escape") setBoardTool(null);
     else if (!open) return;
     else if (m[k]) { e.preventDefault(); setTool(m[k]); }

@@ -42,20 +42,19 @@ service cloud.firestore {
     }
 
     // Progress records: only an approved owner writes them; the owner and the lecturers read them.
-    // Saved writing boards (ink.js, 📂 My Boards): each person reads and writes only their own. One document per board
-    // (its pages packed into the text field "data"), and boardidx/{uid} lists them. Students: 10 boards of up to
-    // 500 KB; lecturers: 50 of up to 900 KB. No get() here, so saving costs no extra reads.
+    // Saved writing boards (ink.js, 📂 My Boards): LECTURERS ONLY (students save boards on their own device or to a file,
+    // lecturer's choice, so 61 students cost no reads or writes). One document per board (its pages packed into the text
+    // field "data"), and boardidx/{uid} lists them: up to 50 boards of 900 KB. No get() here, so saving costs no extra reads.
     match /boards/{id} {
       allow read, delete: if signedIn() && resource.data.uid == request.auth.uid;
-      allow create, update: if (isLecturer() || isStudentMail()) && request.resource.data.uid == request.auth.uid
+      allow create, update: if isLecturer() && request.resource.data.uid == request.auth.uid
         && id.matches(request.auth.uid + '_[a-z0-9]+') && request.resource.data.data is string
-        && request.resource.data.data.size() <= (isLecturer() ? 921600 : 512000)
+        && request.resource.data.data.size() <= 921600
         && request.resource.data.name is string && request.resource.data.name.size() <= 60;
     }
     match /boardidx/{uid} {
       allow read, delete: if isSelf(uid);
-      allow write: if isSelf(uid) && (isLecturer() || isStudentMail()) && request.resource.data.list is map
-        && request.resource.data.list.size() <= (isLecturer() ? 50 : 10);
+      allow write: if isSelf(uid) && isLecturer() && request.resource.data.list is map && request.resource.data.list.size() <= 50;
     }
 
     match /progress/{uid} {
