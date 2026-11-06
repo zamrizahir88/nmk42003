@@ -438,7 +438,16 @@
     return co ? `<span class="ex-co" title="${o ? esc(`${o.id} (${o.level}): ${o.text}`) : co}">${co}${o ? ` · ${esc(o.level.split(" ")[0])}` : ""}</span>` : "";
   }
 
+  // the answer guard of Ask Dr. Zamri (assistant.js): this page's exercises not yet solved, so the AI helper never gives their answers
+  const GUARD_EX = [];
+  (window.NMKAIGuards = window.NMKAIGuards || []).push(() => {
+    const solved = store.get(SOLVED_KEY, []);
+    return GUARD_EX.filter((ex) => !solved.includes(ex.id)).flatMap((ex) => ex.ans.map((a) => (a.opts
+      ? { q: `${ex.title}: ${ex.q} ${a.l || ""}`, opt: a.opts[a.v], others: a.opts.filter((o, k) => k !== a.v) }
+      : { q: `${ex.title}: ${ex.q} ${a.l || ""}`, given: ex.q, v: a.v, tol: a.tol !== undefined ? a.tol : (a.rel || 0.02) * Math.abs(a.v), u: a.u || "" })));
+  });
   function buildExercise(ex) {
+    GUARD_EX.push(ex);
     const el = document.createElement("article");
     el.className = "ex";
     el.id = ex.id;

@@ -2,14 +2,21 @@
    Messages go to a small proxy (a Cloudflare Worker that holds the API key), which passes them to the
    language model. The page sends its own instructions, a short course brief built from data.js, and the
    page and section the student is on. Nothing is stored on a server: the chat lives in this browser tab.
-   To change the service or the model, edit ENDPOINT and MODEL below. */
+   To change the service or the model, edit ENDPOINT and MODEL below.
+   Against answer-fishing (lecturer's choice): pages register the questions a student must answer themselves with
+   NMKAI.guard(fn) (lab.js: unsolved exercises; missions.js: every unfinished INSTRUMENTA station); the AI is told about
+   them, and a reply that contains one of their answers (a number within 2 %, also written with another prefix such as
+   mV for V, or the correct option) is hidden before the student sees it. During an INSTRUMENTA battle the helper rests
+   (NMKAI.rest): the button is replaced by a note pointing to Volt's hints. Each question asked fires "nmk:aiask". */
 (function () {
   "use strict";
   if (typeof COURSE === "undefined" || !window.fetch) return;
 
   const ENDPOINT = "https://fuzzy-ai-proxy.zamrizahir.workers.dev/";
   const MODEL = "openai/gpt-oss-120b";
-  window.NMKAI = { ENDPOINT, MODEL };   // also used by the mini project's title-clash check (lecturers)
+  const guards = window.NMKAIGuards = window.NMKAIGuards || [];   // pages that load before this file push into the same list
+  let resting = false;
+  window.NMKAI = { ENDPOINT, MODEL, guard: (fn) => guards.push(fn), rest: (on) => setRest(on) };   // ENDPOINT and MODEL are also used by the mini project's title-clash check (lecturers)
   const MAX_INPUT = 500, MAX_TURNS = 6, DAY_LIMIT = 40, GAP_MS = 4000; // the free service is shared by everyone, so each browser is rationed
   const HIST_KEY = "nmk-chat", OPEN_KEY = "nmk-chat-open", DAY_KEY = "nmk-chat-day";
 
@@ -66,6 +73,54 @@ ${weeks}`;
     return `The student is on the page "${page.trim()}"${sec ? `, at the section "${sec.trim()}"` : ""}. Today is ${today()} (Malaysia time). ${when}`;
   }
 
+  /* ---------- The answer guard ---------- */
+  // every question on this page the student still has to answer: {q, v, tol, u} (a number) or {q, opt, others} (a choice)
+  const secrets = () => { let out = []; guards.forEach((f) => { try { out = out.concat(f() || []); } catch (e) { /* that page's problem */ } }); return out.slice(0, 80); };
+  const dec = document.createElement("textarea");
+  const strip = (t) => { dec.innerHTML = String(t || "").replace(/<[^>]+>/g, " "); return dec.value.replace(/\s+/g, " ").trim(); };
+  function secretBrief(list) {
+    if (!list.length) return "";
+    const lines = [...new Set(list.map((x) => strip(x.q).slice(0, 160)).filter(Boolean))].slice(0, 12);
+    return `\n\nQUESTIONS THE STUDENT MUST ANSWER THEMSELVES (exercises or game questions on this page). Never give their final numbers, never say which option is right, never confirm or correct an answer the student proposes for them, and never do the calculation through to the end. Explain the idea and the first step only, then ask the student to try:\n${lines.map((l) => `- ${l}`).join("\n")}`;
+  }
+  const PRE = { p: 1e-12, n: 1e-9, u: 1e-6, "µ": 1e-6, "μ": 1e-6, m: 1e-3, k: 1e3, K: 1e3, M: 1e6, G: 1e9 };
+  const BASES = /^(Ω|ohms?|V|A|Hz|F|H|W|s|S|g|°C)$/i;
+  // the numbers in a reply, each as written and with its prefix applied (124 mV → 124 and 0.124)
+  function numsIn(t) {
+    const out = [], re = /(^|[^\w.])([−-]?\d+(?:[.,]\d+)?(?:[eE][−-]?\d+)?)\s*([pnuµμmkKMG]?)(Ω|ohms?|V|A|Hz|F|H|W|s|S|°C)?/g;
+    let m;
+    while ((m = re.exec(t))) {
+      const x = parseFloat(m[2].replace("−", "-").replace(",", "."));
+      if (!isFinite(x)) continue;
+      out.push(x);
+      if (m[3] && m[4] && PRE[m[3]]) out.push(x * PRE[m[3]]);
+    }
+    return out;
+  }
+  const norm = (t) => strip(t).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  function leaks(reply) {
+    const list = secrets(); if (!list.length) return false;
+    const nums = numsIn(reply), low = norm(reply);
+    return list.some((x) => {
+      if (x.opt !== undefined) {
+        const o = norm(x.opt); if (o.length < 3 || !low.includes(o)) return false;
+        const others = (x.others || []).map(norm).filter((y) => y.length >= 3 && low.includes(y)).length;
+        return !others || /\b(correct|right answer|the answer|answer is|betul|jawapan|tepat)\b/i.test(reply);
+      }
+      const a = +x.v; if (!isFinite(a) || a === 0) return false;
+      const u = strip(x.u), up = u.length > 1 && PRE[u[0]] && BASES.test(u.slice(1)) ? PRE[u[0]] : 1;
+      const tol = Math.max(x.tol || 0, Math.abs(a) * 0.02), tolB = tol * up, targets = [[a, tol], [a * up, tolB]];
+      // an answer that is one of the question's own given values (Vo = Vin = 15 V) gives nothing away
+      if (numsIn(strip(x.given !== undefined ? x.given : x.q)).some((y) => targets.some(([t, tl]) => Math.abs(Math.abs(y) - Math.abs(t)) <= tl))) return false;
+      if (Number.isInteger(a) && Math.abs(a) < 10) {   // a small whole number shows up everywhere: only "= 3", "is 3" or "3 V" gives it away
+        const n = String(Math.abs(a)), ue = u.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return new RegExp(`(=|≈|:|\\bis\\b|\\bialah\\b|\\badalah\\b|\\bequals?\\b)\\s*[−-]?${n}(?![\\d,/×*^(\\w]|\\.\\d)${ue ? `|(^|[^\\d.])[−-]?${n}\\s*${ue}` : ""}`, "i").test(reply);
+      }
+      return nums.some((y) => targets.some(([t, tl]) => Math.abs(Math.abs(y) - Math.abs(t)) <= tl));
+    });
+  }
+  const HIDDEN = "I can't give the answer to that one: it's yours to work out, and that's how it sticks! 🙂 Tell me which step you're stuck on, or ask which idea or formula to start with, and I'll guide you from there.\n(Saya tidak boleh beri jawapan, tetapi saya boleh bantu langkah demi langkah.)";
+
   /* ---------- Suggested first questions, by page ---------- */
   function starters() {
     const p = location.pathname;
@@ -111,6 +166,15 @@ ${weeks}`;
   document.body.appendChild(root);
 
   const fab = $(".chat-fab", root), panel = $(".chat-panel", root), log = $(".chat-log", root), form = $(".chat-form", root), input = $("#chatIn", root), sendBtn = $(".chat-send", root);
+  const restNote = document.createElement("div");
+  restNote.className = "chat-rest"; restNote.hidden = true; restNote.setAttribute("role", "status");
+  restNote.innerHTML = `<span aria-hidden="true">🤖💤</span><span>Ask Dr. Zamri is resting during the battle.<br><b>Ask Volt for a hint!</b></span>`;
+  root.appendChild(restNote);
+  function setRest(on) {
+    resting = !!on;
+    if (resting && !panel.hidden) setOpen(false, false);
+    fab.hidden = resting; restNote.hidden = !resting;
+  }
   let hist = ses.get(HIST_KEY, []), busy = false, lastSent = 0;
   if (!Array.isArray(hist)) hist = [];
 
@@ -133,7 +197,7 @@ ${weeks}`;
 
   async function ask(text) {
     text = text.trim().slice(0, MAX_INPUT);
-    if (!text || busy) return;
+    if (!text || busy || resting) return;
     const wait = GAP_MS - (Date.now() - lastSent);
     const say = (t, err) => { hist.push({ role: "assistant", text: t, err }); ses.set(HIST_KEY, hist.filter((h) => !h.err)); };
     hist.push({ role: "user", text });
@@ -141,16 +205,19 @@ ${weeks}`;
     busy = true; sendBtn.disabled = true; paint();
     if (wait > 0) await new Promise((r) => setTimeout(r, wait));
     lastSent = Date.now(); countOne();
+    const secret = secrets();
     const recent = hist.filter((h) => !h.err).slice(-(MAX_TURNS * 2 + 1)).map((h) => ({ role: h.role, content: h.text.slice(0, 1200) }));
     try {
       const resp = await fetch(ENDPOINT, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: MODEL, temperature: 0.4, max_tokens: 700, reasoning_effort: "low",
-          messages: [{ role: "system", content: `${RULES}\n\n${brief()}\n\n${where()}` }].concat(recent) })
+          messages: [{ role: "system", content: `${RULES}\n\n${brief()}\n\n${where()}${secretBrief(secret)}` }].concat(recent) })
       });
       const data = await resp.json().catch(() => ({}));
       const reply = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-      if (reply) say(reply.trim());
+      const blocked = !!reply && leaks(reply);
+      document.dispatchEvent(new CustomEvent("nmk:aiask", { detail: { blocked } }));
+      if (reply) say(blocked ? HIDDEN : reply.trim());
       else if (resp.status === 429 || /rate limit/i.test((data.error && data.error.message) || "")) say("The assistant is busy: too many questions are coming in at once. Please wait a minute and try again.", true);
       else say("Sorry, the assistant couldn't answer just now. Please try again in a moment.", true);
     } catch (e) {

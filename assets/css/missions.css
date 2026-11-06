@@ -341,3 +341,4 @@ label.ms-ol { display: block; }
   .ms-spark, .ms-float, .ms-shot, #msSlash, #msShield, #msOrb, .ms-cdrop, .lg-heart, .ms-wcard, .ms-ko, .ms-rank, .lg-spin > * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
   .ms-hpbar i, .lg-bar i, .lg-splash { transition: none; }
 }
+.lg-ai { color: var(--amber); font-weight: 700; }

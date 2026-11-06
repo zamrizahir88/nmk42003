@@ -47,3 +47,10 @@
 .chat-note { margin: 0; padding: 0 14px 10px; font-size: .74rem; line-height: 1.35; color: var(--ink-3); background: var(--surface); }
 .chat :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 @media print { .chat { display: none !important; } }
+
+/* During an INSTRUMENTA battle the helper rests: a note instead of the button (Volt gives the hints) */
+.chat-fab[hidden] { display: none; }
+.chat-rest { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 70; display: flex; align-items: center; gap: 8px; max-width: 250px; padding: 8px 14px; border-radius: 18px; background: var(--surface); color: var(--ink-2); border: 1px dashed var(--rule); font: .8rem/1.3 var(--sans); box-shadow: 0 6px 18px rgba(21, 36, 58, .18); }
+.chat-rest[hidden] { display: none; }
+.chat-rest b { color: var(--teal); }
+@media (max-width: 560px) { .chat-rest { max-width: 190px; font-size: .74rem; padding: 6px 10px; } }

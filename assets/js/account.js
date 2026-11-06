@@ -128,7 +128,8 @@
         const mis = pj(keys["nmk-missions"], {}), msv = pj(keys["nmk-msave"], {}), ids = Object.keys(mis).filter((id) => /^w\d+-s\d+$/.test(id));
         const game = { coins: ids.reduce((a, id) => a + (mis[id].c || 0), 0), cleared: ids.length, bosses: ids.filter((id) => mis[id].boss).length, stars: ids.reduce((a, id) => a + (mis[id].s || 0), 0),
           ch: ids.reduce((o, id) => { const w = id.match(/^w(\d+)/)[1]; o[w] = (o[w] || 0) + 1; return o; }, {}), started: ids.length > 0 || Object.values(msv).some((x) => x && !x.cleared),
-          last: ids.map((id) => mis[id].at).concat(Object.values(msv).map((x) => x && x.at)).filter(Boolean).sort().pop() || null, hero: keys["nmk-hero"] || "" };
+          last: ids.map((id) => mis[id].at).concat(Object.values(msv).map((x) => x && x.at)).filter(Boolean).sort().pop() || null, hero: keys["nmk-hero"] || "",
+          ai: Object.values(pj(keys["nmk-mai"], {})).reduce((a, n) => a + (+n || 0), 0) };
         // the public profile: classmates see the real name, matric and lab section from the class list, and the Google account photo
         const bd = { nickname: p.nickname || "", role: p.role || "student", semester: SEM, xp: g.xp, level: g.level, levelNo: g.levelNo,
           badges: g.badges.map((b) => b.id), streak: g.streak, solved: g.solved, lastActive: g.lastActive || null,
@@ -190,6 +191,7 @@
       else if (k === "nmk-solved") { try { ls.set(k, JSON.stringify([...new Set(JSON.parse(local).concat(JSON.parse(remote[k])))])); } catch (e) { /* keep local */ } }
       // the game: the best result of each station (the higher score wins), and a station in progress (the newer one wins)
       else if (k === "nmk-missions") { try { const a = JSON.parse(local), b = JSON.parse(remote[k]); Object.keys(b).forEach((id) => { const x = a[id], y = b[id]; a[id] = !x ? y : Object.assign({}, x, y, { c: Math.max(x.c || 0, y.c || 0), s: Math.max(x.s || 0, y.s || 0), mk: Math.max(x.mk || 0, y.mk || 0), n: Math.max(x.n || 0, y.n || 0), at: (x.c || 0) >= (y.c || 0) ? x.at : y.at }); if (a[id].mk === 0 && !a[id].boss) delete a[id].mk; }); ls.set(k, JSON.stringify(a)); } catch (e) { /* keep local */ } }
+      else if (k === "nmk-mai") { try { const a = JSON.parse(local), b = JSON.parse(remote[k]); Object.keys(b).forEach((id) => { a[id] = Math.max(a[id] || 0, b[id] || 0); }); ls.set(k, JSON.stringify(a)); } catch (e) { /* keep local */ } }
       else if (k === "nmk-hero") { try { if (String(JSON.parse(remote[k]).at || "") > String(JSON.parse(local).at || "")) ls.set(k, remote[k]); } catch (e) { /* keep local */ } }
       else if (k === "nmk-msave") { try { const a = JSON.parse(local), b = JSON.parse(remote[k]); Object.keys(b).forEach((id) => { if (!a[id] || String(b[id].at || "") > String(a[id].at || "")) a[id] = b[id]; }); ls.set(k, JSON.stringify(a)); } catch (e) { /* keep local */ } }
       else if (k === EX_KEY) {

@@ -66,6 +66,31 @@
   }
   const clearSave = (id) => putSave(id, { cleared: true }, "soon");
   // numbers drawn from a saved seed, so a continued station has the same questions
+  /* ---------- Ask Dr. Zamri and the game (lecturer's choice): the helper rests during a battle (Volt gives the hints);
+     its answer guard knows every question of each unfinished station (the same numbers come back from the saved seed),
+     so it never gives them; and each question asked to it while a station is unfinished is counted per station
+     (nmk-mai, synced; the 🤖 column on the lecturer's leaderboard). ---------- */
+  let liveQ = null;
+  function unfinished() {
+    const sv = saves(), out = [];
+    WORLDS.forEach((w) => w.missions.forEach((m) => { const x = sv[m.id]; if (x && !x.cleared && x.seed) out.push({ m, seed: x.seed, at: x.at || "" }); }));
+    if (liveQ && !out.some((o) => o.m.id === liveQ.m.id)) out.push({ m: liveQ.m, seed: liveQ.seed, at: new Date().toISOString() });
+    return out;
+  }
+  (window.NMKAIGuards = window.NMKAIGuards || []).push(() => unfinished().flatMap(({ m, seed }) => {
+    let v; try { v = m.make(seeded(seed)); } catch (e) { return []; }
+    return m.steps.map((st) => {
+      const q = asQuestion(val(st.q, v));
+      if (st.choice) { const ch = val(st.choice, v) || []; return { q, opt: ch[st.correct], others: ch.filter((o, k) => k !== st.correct) }; }
+      const a = st.ans(v); return { q, v: a, tol: st.fixed ? st.tol : Math.max(Math.abs(a) * 0.01, st.tol || 0), u: val(st.unit, v) || "" };
+    });
+  }));
+  document.addEventListener("nmk:aiask", () => {
+    if (isLec) return;
+    const list = unfinished().sort((a, b) => (a.at < b.at ? 1 : -1)); if (!list.length) return;
+    const all = parse(lsGet("nmk-mai"), {}) || {}, id = list[0].m.id; all[id] = (all[id] || 0) + 1;
+    lsSet("nmk-mai", JSON.stringify(all)); document.dispatchEvent(new CustomEvent("nmk:store", { detail: "nmk-mai" }));
+  });
   const seeded = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 
   /* ---------- sound effects and music: made in the browser (no files) ---------- */
@@ -369,14 +394,14 @@
     const medal = (k) => (k === 0 ? "🥇" : k === 1 ? "🥈" : k === 2 ? "🥉" : `#${k + 1}`);
     const hname = (d) => { const n = String(heroIn(d.game).name || "").trim(); return n && !isBanned(d.uid, n) ? n : ""; };
     const label = (d) => hname(d) || d.nickname || d.name || "Player";
-    const cols = 8 + WORLDS.length + (isLec ? 1 : 0);
+    const cols = 8 + WORLDS.length + (isLec ? 2 : 0);
     const row = (d, k) => { const g = d.game, R = ART.RANKS[ART.rankOf(g.coins || 0)], hn = hname(d);
       return `<tr class="${d.uid === me ? "me" : ""}"><td class="lg-pos">${medal(k)}</td><td><span class="lg-who">${avatar(heroIn(g))}<span><b class="lg-hn">${esc(hn || d.nickname || "Player")}</b>
         <a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname || "Student")}</a>${hn && d.nickname ? `<small>${esc(d.nickname)}</small>` : ""}
         ${isLec && hn ? `<button type="button" class="lg-rm" data-rmname="${esc(d.uid)}" data-name="${esc(hn)}">Remove hero name</button>` : ""}</span></span></td>
         ${isLec ? `<td>${esc(d.matric || "–")}</td>` : ""}<td>${esc(R.n)}</td><td class="lg-num"><strong>${g.coins || 0}</strong></td><td class="lg-num">${g.cleared || 0} / ${total}</td><td class="lg-num">${g.bosses || 0} / ${bossesT}</td><td class="lg-num">${g.stars || 0} ★</td>
-        ${WORLDS.map((w) => `<td class="lg-num">${((g.ch || {})[w.world] || 0)} / ${w.missions.length}</td>`).join("")}<td>${ago(g.last)}</td></tr>`; };
-    const head = `<tr><th scope="col">#</th><th scope="col">Player</th>${isLec ? `<th scope="col">Matric</th>` : ""}<th scope="col">Rank</th><th scope="col">Coins</th><th scope="col">Stations</th><th scope="col">Bosses</th><th scope="col">Stars</th>${WORLDS.map((w) => `<th scope="col">Ch ${w.chapter}</th>`).join("")}<th scope="col">Last played</th></tr>`;
+        ${WORLDS.map((w) => `<td class="lg-num">${((g.ch || {})[w.world] || 0)} / ${w.missions.length}</td>`).join("")}${isLec ? `<td class="lg-num${g.ai ? " lg-ai" : ""}" title="Questions asked to Ask Dr. Zamri while a station was unfinished">${g.ai || 0}</td>` : ""}<td>${ago(g.last)}</td></tr>`; };
+    const head = `<tr><th scope="col">#</th><th scope="col">Player</th>${isLec ? `<th scope="col">Matric</th>` : ""}<th scope="col">Rank</th><th scope="col">Coins</th><th scope="col">Stations</th><th scope="col">Bosses</th><th scope="col">Stars</th>${WORLDS.map((w) => `<th scope="col">Ch ${w.chapter}</th>`).join("")}${isLec ? `<th scope="col" title="Questions asked to Ask Dr. Zamri while a station was unfinished">🤖 AI asks</th>` : ""}<th scope="col">Last played</th></tr>`;
     const table = (rows) => `<div class="adm-scroll"><table class="adm lg-tab"><thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
     if (!isLec) {
       // the top 10, the player's own place, and the last 4 (everyone when 14 or fewer)
@@ -390,7 +415,7 @@
     const played = new Set(players.map((d) => String(d.matric)));
     const notYet = roster.filter((r) => !played.has(String(r.matric))).sort((a, b) => (a.name < b.name ? -1 : 1));
     host.innerHTML = `<div class="adm-tools"><button type="button" class="btn ghost small" data-bcsv>Download CSV</button></div>
-      <p class="small-note">${players.length} playing · ${notYet.length} not started yet. Lecturer plays never appear here. A rude hero name? Tap <strong>Remove hero name</strong>: the player's nickname shows instead, and they are asked to choose another one.</p>
+      <p class="small-note">${players.length} playing · ${notYet.length} not started yet. Lecturer plays never appear here. 🤖 AI asks: questions a student asked Ask Dr. Zamri while one of their stations was unfinished (only lecturers see this column). A rude hero name? Tap <strong>Remove hero name</strong>: the player's nickname shows instead, and they are asked to choose another one.</p>
       ${players.length ? table(players.map((d, k) => row(d, k)).join("")) : `<p class="adm-empty">Nobody has played yet.</p>`}
       <h3 class="h3 lg-nyh">Not Started Yet (${notYet.length})</h3>${notYet.length ? `<ul class="lg-ny">${notYet.map((r) => `<li><a href="profile.html?e=${encodeURIComponent(r.id)}">${esc(r.name)}</a> <small>${esc(r.matric)} · ${esc(SECN[r.section] || "–")}</small></li>`).join("")}</ul>` : `<p class="small-note">Everyone has started. 🎉</p>`}`;
     $$("[data-rmname]", host).forEach((b) => b.addEventListener("click", async () => {
@@ -400,9 +425,9 @@
     }));
     $("[data-bcsv]", host).addEventListener("click", () => {
       const q = (x) => `"${String(x == null ? "" : x).replace(/"/g, '""')}"`;
-      const lines = [["Position", "Name", "Hero name", "Nickname", "Matric", "Section", "Rank", "Coins", "Stations cleared", "Bosses", "Stars", ...WORLDS.map((w) => `Chapter ${w.chapter}`), "Last played"].map(q).join(",")]
-        .concat(players.map((d, k) => [k + 1, d.name || d.nickname, hname(d), d.nickname || "", d.matric, SECN[d.section] || "", ART.RANKS[ART.rankOf(d.game.coins || 0)].n, d.game.coins || 0, d.game.cleared || 0, d.game.bosses || 0, d.game.stars || 0, ...WORLDS.map((w) => (d.game.ch || {})[w.world] || 0), d.game.last ? d.game.last.slice(0, 10) : ""].map(q).join(",")))
-        .concat(notYet.map((r) => ["", r.name, "", "", r.matric, SECN[r.section] || "", "Not started", 0, 0, 0, 0, ...WORLDS.map(() => 0), ""].map(q).join(",")));
+      const lines = [["Position", "Name", "Hero name", "Nickname", "Matric", "Section", "Rank", "Coins", "Stations cleared", "Bosses", "Stars", ...WORLDS.map((w) => `Chapter ${w.chapter}`), "AI asks during unfinished stations", "Last played"].map(q).join(",")]
+        .concat(players.map((d, k) => [k + 1, d.name || d.nickname, hname(d), d.nickname || "", d.matric, SECN[d.section] || "", ART.RANKS[ART.rankOf(d.game.coins || 0)].n, d.game.coins || 0, d.game.cleared || 0, d.game.bosses || 0, d.game.stars || 0, ...WORLDS.map((w) => (d.game.ch || {})[w.world] || 0), d.game.ai || 0, d.game.last ? d.game.last.slice(0, 10) : ""].map(q).join(",")))
+        .concat(notYet.map((r) => ["", r.name, "", "", r.matric, SECN[r.section] || "", "Not started", 0, 0, 0, 0, ...WORLDS.map(() => 0), 0, ""].map(q).join(",")));
       const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\n")], { type: "text/csv" })); a.download = `INSTRUMENTA leaderboard ${new Date().toISOString().slice(0, 10)}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     });
   }
@@ -496,6 +521,8 @@
     const later = (f, ms) => { const t = setTimeout(f, ms); timers.push(t); return t; };
     teardown.push(() => timers.forEach(clearTimeout));
     view = "battle";
+    liveQ = { m, seed }; if (window.NMKAI && NMKAI.rest) NMKAI.rest(true);
+    teardown.push(() => { liveQ = null; if (window.NMKAI && NMKAI.rest) NMKAI.rest(false); });
     if (window.NMKBack) NMKBack.view({ mview: "battle", mworld: w.world });
     frame(`<div class="ms-scene${boss ? " boss" : ""}" id="msScene">${ART.bg(rk0)}
       <svg class="ms-fg" viewBox="0 0 640 300" role="img" aria-label="Your character facing ${esc(E.name)}">
