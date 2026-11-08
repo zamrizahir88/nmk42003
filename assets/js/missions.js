@@ -459,48 +459,52 @@
 
   /* ---------- Credits (the About button): the logo, the Creator's character, the creator card, Zamm Studio™ ---------- */
   /* ---------- 📖 the Game Guide (lecturer's choice): How to Play, Ranks, Battery and Credits (the old About page, unchanged).
-     It opens by itself once for each student (nmk-mguide, synced), the first time they open the game after this update. ---------- */
+     It opens by itself once for each student (nmk-mguide, synced), the first time they open the game after this update.
+     Game-menu look (9 Nov 2026): START PLAYING at the top and the bottom, icon tabs, mission cards. ---------- */
   let guideTab = "play";
-  const GTABS = [["play", "How to Play"], ["ranks", "Ranks"], ["battery", "Battery"], ["credits", "Credits"]];
-  const gtabs = () => `<div class="lg-guide-top"><h2 class="lg-gh">📖 Game Guide</h2><nav class="lg-gtabs" aria-label="Game guide">${GTABS.map(([k, l]) => `<button type="button" class="lg-gtab" data-gtab="${k}" aria-pressed="${guideTab === k}">${l}</button>`).join("")}</nav></div>`;
+  const GTABS = [["play", "🎮", "How to Play"], ["ranks", "🏅", "Ranks"], ["battery", "🔋", "Battery"], ["credits", "⭐", "Credits"]];
+  const gtabs = () => `<div class="gg-top"><div class="gg-hero"><div><span class="gg-kick">Game Guide</span><h2 class="gg-h">${guideTab === "credits" ? "About the Game" : guideTab === "ranks" ? "Climb the Ranks" : guideTab === "battery" ? "Stay Charged" : "How to Play"}</h2></div>
+      <button type="button" class="gg-start" data-guideok>⚔️ Start Playing</button></div>
+    <nav class="gg-tabs" aria-label="Game guide">${GTABS.map(([k, i, l]) => `<button type="button" class="gg-tab" data-gtab="${k}" aria-pressed="${guideTab === k}"><span aria-hidden="true">${i}</span>${l}</button>`).join("")}</nav></div>`;
   function markGuide() { if (!lsGet("nmk-mguide")) { lsSet("nmk-mguide", "1"); document.dispatchEvent(new CustomEvent("nmk:store", { detail: "nmk-mguide" })); } }
+  const card = (icon, title, text, n) => `<li class="gg-card">${n ? `<span class="gg-n">${n}</span>` : ""}<span class="gg-ic" aria-hidden="true">${icon}</span><div><strong>${title}</strong><p>${text}</p></div></li>`;
   function guideView() {
     view = "guide"; markGuide();
-    if (guideTab === "credits") return aboutView(gtabs());
-    const coins = totalCoins(), rk = ART.rankOf(coins), R = ART.RANKS[rk], b = bat();
+    if (guideTab === "credits") return aboutView(`<div class="gg">${gtabs()}</div>`);
+    const coins = totalCoins(), rk = ART.rankOf(coins), R = ART.RANKS[rk], nx = ART.RANKS[rk + 1], b = bat();
     let body = "";
-    if (guideTab === "play") body = `<p class="lg-lead-h">Play, learn and master each chapter.</p><ul class="lg-rules">
-        <li><span aria-hidden="true">⚔️</span>Three stations per chapter. Beat the first two to face the boss.</li>
-        <li><span aria-hidden="true">✍️</span>Work it out on paper, then key in your answer.</li>
-        <li><span aria-hidden="true">🪙</span>Right: you strike and earn coins. Wrong: the enemy blocks, strikes back, and you lose 2 coins.</li>
-        <li><span aria-hidden="true">❤️</span>Lose all your hearts and the station starts again.</li>
-        <li><span aria-hidden="true">📅</span>A new chapter opens in the week it is lectured.</li></ul>
-      <h3 class="lg-g3">Battle Basics</h3><ul class="lg-rules">
-        <li><span aria-hidden="true">❤️</span>You have 4 hearts, or 5 against a boss.</li>
-        <li><span aria-hidden="true">🪙</span>Right on the first try: +10 coins. After one hint: +6. After that: +3.</li>
-        <li><span aria-hidden="true">🔥</span>Right on the first try again and again builds a combo: bigger and bigger strikes!</li>
-        <li><span aria-hidden="true">⭐</span>Every answer right on the first try: 3 stars and +10 bonus coins. Beat a boss: +50 bonus coins.</li>
-        <li><span aria-hidden="true">🔢</span>“Almost!” means right but rounded too short. It costs nothing: fix the decimal places.</li>
-        <li><span aria-hidden="true">🤖</span>After a wrong answer, tap <b>Volt</b>, your drone, for a hint.</li>
-        <li><span aria-hidden="true">💾</span><b>Save and exit</b> keeps your place: the same numbers come back, on any device.</li>
-        <li><span aria-hidden="true">🔁</span><b>Fight again</b> for new numbers. Your best score at each station counts.</li></ul>`;
-    else if (guideTab === "ranks") body = `<p class="lg-gp">Your rank grows with your <b>coins</b>. Only the <b>best score of each station</b> counts, so playing a station again raises it until you get it perfect. You have <b>${coins} coins</b>.</p>
-      <ol class="lg-ladder">${ART.RANKS.map((x, k) => `<li class="${k === rk ? "me" : k < rk ? "got" : "next"}"><span class="lg-lth">${ART.bg(k).replace('class="lg-bg"', 'class="lg-bg lg-thumb"')}</span>
-        <span class="lg-lt"><b>${k + 1}. ${esc(x.n)}</b><small>${x.min.toLocaleString("en")} coins · ${esc(x.scene)}</small>${k === rk ? "<em>You are here</em>" : k > rk ? `<em class="need">${(x.min - coins).toLocaleString("en")} more coins</em>` : "<em class=\"done\">✓ Reached</em>"}</span></li>`).join("")}</ol>
-      <p class="small-note">A chapter is worth up to 260 coins: 10 for each question right on the first try, +10 for 3 stars at each station, and +50 for beating its boss.</p>`;
-    else body = `<p class="lg-gp">Your battery shows whether you keep playing. <b>Your rank, coins and XP never drop</b>: only the label beside your rank and your character's glow change.</p>
-      <div class="lg-bnow">${b ? `${batSvg(b.fill, b.st, "big")}<span><b>${GM.BATTERY[b.st][0]} ${GM.BATTERY[b.st][1]} ${esc(R.n)}</b><small>${batNote(b)}</small></span>` : "<span>Play your first battle to charge your battery.</span>"}</div>
-      <table class="lg-btab"><thead><tr><th scope="col">Last battle</th><th scope="col">Battery</th><th scope="col">Your rank shows as</th></tr></thead><tbody>
-        <tr><td>Within 7 days</td><td>⚡ Charged</td><td>⚡ Charged ${esc(R.n)}, with a golden glow</td></tr>
-        <tr><td>8 to 13 days ago</td><td>🔋 Low battery</td><td>🔋 Low-Battery ${esc(R.n)}</td></tr>
-        <tr><td>14 days or more</td><td>🪫 Flat battery</td><td>🪫 Flat-Battery ${esc(R.n)}, and your character looks sleepy</td></tr></tbody></table>
-      <ul class="lg-rules"><li><span aria-hidden="true">⚡</span>One battle recharges it fully, whether you win or get knocked out.</li>
-        <li><span aria-hidden="true">🔔</span>You'll get a reminder on day 8 and on day 12.</li>
-        <li><span aria-hidden="true">⏸</span>In exam weeks and breaks your lecturer can pause every battery. Nothing runs down while it's paused.</li></ul>`;
-    frame(`<div class="lg-guide">${gtabs()}<div class="lg-gbody">${body}</div><div class="lg-crbtns"><button type="button" class="lg-btn main" data-guideok>⚔️ Let's play!</button></div></div>`);
+    if (guideTab === "play") body = `<p class="gg-tag">Play, learn and master each chapter.</p>
+      <h3 class="gg-sub">The Rules</h3><ol class="gg-cards rules">
+        ${card("⚔️", "Three stations", "Three stations per chapter. Beat the first two to face the boss.", "01")}
+        ${card("✍️", "Paper first", "Work it out on paper, then key in your answer.", "02")}
+        ${card("🪙", "Strike or be blocked", "Right: you strike and earn coins. Wrong: the enemy blocks, strikes back, and you lose 2 coins.", "03")}
+        ${card("❤️", "Mind your hearts", "Lose all your hearts and the station starts again.", "04")}
+        ${card("📅", "New chapters", "A new chapter opens in the week it is lectured.", "05")}</ol>
+      <h3 class="gg-sub">Battle Basics</h3><ul class="gg-cards basics">
+        ${card("❤️", "Hearts", "4 at every station, 5 against a boss.")}
+        ${card("🪙", "Coins", "+10 right on the first try, +6 after one hint, +3 after that.")}
+        ${card("🔥", "Combo", "First-try answers in a row build a combo: bigger and bigger strikes.")}
+        ${card("⭐", "Stars and bonuses", "Every answer right first time: 3 stars and +10 coins. Beat a boss: +50 coins.")}
+        ${card("🔢", "Almost!", "Right, but rounded too short? It costs nothing: fix the decimal places.")}
+        ${card("🤖", "Volt", "After a wrong answer, tap Volt, your drone, for a hint.")}
+        ${card("💾", "Save and exit", "Keeps your place: the same numbers come back, on any device.")}
+        ${card("🔁", "Fight again", "New numbers every time. Your best score at each station counts.")}</ul>`;
+    else if (guideTab === "ranks") body = `<div class="gg-stat"><div><span>Your coins</span><strong>${coins.toLocaleString("en")}</strong></div><div><span>Your rank</span><strong>${rk + 1} of ${ART.RANKS.length}</strong></div>
+        <div class="gg-statw"><span>${nx ? `${(nx.min - coins).toLocaleString("en")} more coins to ${esc(nx.n)}` : "Top rank reached. Legendary!"}</span><i class="gg-bar"><b style="width:${nx ? Math.round(((coins - R.min) / (nx.min - R.min)) * 100) : 100}%"></b></i></div></div>
+      <p class="gg-p">Your rank grows with your <strong>coins</strong>. Only the <strong>best score of each station</strong> counts, so playing a station again raises it until you get it perfect. A chapter is worth up to <strong>260 coins</strong>.</p>
+      <ol class="gg-path">${ART.RANKS.map((x, k) => `<li class="${k === rk ? "me" : k < rk ? "got" : "next"}"><span class="gg-node" aria-hidden="true">${k < rk ? "✓" : k + 1}</span>
+        <span class="gg-th">${ART.bg(k).replace('class="lg-bg"', 'class="lg-bg lg-thumb"')}</span>
+        <span class="gg-rt"><strong>${esc(x.n)}</strong><small>${x.min.toLocaleString("en")} coins · ${esc(x.scene)}</small></span>
+        <span class="gg-chip">${k === rk ? "You are here" : k > rk ? `🔒 ${(x.min - coins).toLocaleString("en")} more` : "Reached"}</span></li>`).join("")}</ol>`;
+    else body = `<p class="gg-p">Your battery shows whether you keep playing. <strong>Your rank, coins and XP never drop</strong>: only the label beside your rank and your character's glow change.</p>
+      <div class="gg-bats">${[["charged", 1, "Within 7 days", `⚡ Charged ${esc(R.n)}`, "Golden title and a glowing character"], ["low", 0.45, "8 to 13 days ago", `🔋 Low-Battery ${esc(R.n)}`, "Normal title, no glow"], ["flat", 0, "14 days or more", `🪫 Flat-Battery ${esc(R.n)}`, "Grey title, your character falls asleep"]]
+        .map(([st, f, when, how, look]) => `<div class="gg-bat b-${st}${b && b.st === st ? " me" : ""}">${b && b.st === st ? `<span class="gg-you">You</span>` : ""}${batSvg(f, st, "big")}<strong>${{ charged: "Charged", low: "Low battery", flat: "Flat battery" }[st]}</strong><small>Last battle: ${when}</small><em>${how}</em><span>${look}</span></div>`).join("")}</div>
+      ${b ? `<p class="gg-now">${b.paused ? "⏸ Batteries are paused by your lecturer right now." : `Your battery: <strong>${BATL[b.st]}</strong>. ${batNote(b)}.`}</p>` : `<p class="gg-now">Play your first battle to charge your battery.</p>`}
+      <ul class="gg-cards basics">${card("⚡", "Recharge", "One battle fills it right up, whether you win or get knocked out.")}${card("🔔", "Reminders", "You'll get a reminder on day 8 and on day 12.")}${card("⏸", "Paused weeks", "In exam weeks and breaks your lecturer can pause every battery.")}</ul>`;
+    frame(`<div class="gg">${gtabs()}<div class="gg-body">${body}</div><div class="gg-foot"><button type="button" class="gg-start big" data-guideok>⚔️ Start Playing</button></div></div>`);
   }
   function aboutView(top = "") {
-    frame(`${top ? `<div class="lg-guide">${top}</div>` : ""}<div class="lg-cr"><div class="lg-crin"><h2 class="vh">About INSTRUMENTA: Legends</h2>${ART.logo()}<span class="lg-tag">THE CREATOR</span>
+    frame(`${top}<div class="lg-cr"><div class="lg-crin"><h2 class="vh">About INSTRUMENTA: Legends</h2>${ART.logo()}<span class="lg-tag">THE CREATOR</span>
       <svg class="lg-crhero" viewBox="-50 -82 168 168" role="img" aria-label="The Creator as a game character">${ART.heroSvg(ART.CREATOR, "", 2)}</svg>
       <div class="lg-crcard"><img src="assets/img/team/zamri.jpg" alt="" width="56" height="56"><div><b>Ts. Dr. Mohd Zamri Bin Zahir Ahmad</b><small>Course coordinator, NMK42003 Instrumentation<br>Faculty of Electronic Engineering &amp; Technology, UniMAP</small></div></div>
       ${ART.zamm(true)}
@@ -877,7 +881,7 @@
     if (view === "room" && roomUnsaved && roomUnsaved()) return roomLeave(() => go("guide"));
     if (view === "guide") { guideView(); if (window.NMKBack) NMKBack.view({ mview: "guide", mworld: null, mtab: tab }, true); }
     else { go("guide"); if (window.NMKBack) NMKBack.view({ mview: "guide", mworld: null, mtab: tab }, true); }
-    const t = $(".lg-guide"); if (t) t.scrollIntoView({ block: "start", behavior: "smooth" });
+    const t = $(".gg"); if (t && t.getBoundingClientRect().top < 0) t.scrollIntoView({ block: "start" });
   }
   page.addEventListener("click", (e) => {
     const gd = e.target.closest("[data-guide], [data-gtab]");

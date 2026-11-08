@@ -218,14 +218,21 @@
   const C = { cyan: "#38e1c9", blue: "#2f8cff", gold: "#ffd84d", orange: "#ff9f1c", navy: "#14213d", violet: "#8b5cf6" };
   let uid = 0;
   // "INSTRUMENTA:" with "Legends" centred under it (viewBox 470 x 150); inner = no <svg> wrapper (to place inside a card)
+  // the esports-style logo (9 Nov 2026, lecturer's request: "more gaming vibe", same colours and layout): a sharp tech
+  // face (Orbitron) for INSTRUMENTA: with a chrome cyan-to-blue fill, a navy outline and a cyan glow, and a bold italic
+  // gold "Legends" (Exo 2) centred under it. textLength keeps the width the same with the fallback fonts (share cards).
   function logo(inner) {
-    const k = `lgL${++uid}`;
-    const g = `<defs><linearGradient id="${k}c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7ff3e3"/><stop offset=".45" stop-color="${C.cyan}"/><stop offset="1" stop-color="${C.blue}"/></linearGradient>
-      <linearGradient id="${k}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0a3"/><stop offset=".5" stop-color="${C.gold}"/><stop offset="1" stop-color="${C.orange}"/></linearGradient></defs>
-      <g text-anchor="middle"><text x="235" y="71" font-family="Georgia, 'Times New Roman', serif" font-weight="900" font-size="51" letter-spacing="1" fill="${C.navy}" opacity=".5">INSTRUMENTA:</text>
-      <text x="235" y="68" font-family="Georgia, 'Times New Roman', serif" font-weight="900" font-size="51" letter-spacing="1" fill="url(#${k}c)" stroke="${C.navy}" stroke-width="7" paint-order="stroke" stroke-linejoin="round">INSTRUMENTA:</text>
-      <text x="235" y="131" font-family="Georgia, serif" font-style="italic" font-weight="800" font-size="46" letter-spacing="3" fill="${C.navy}" opacity=".5">Legends</text>
-      <text x="235" y="128" font-family="Georgia, serif" font-style="italic" font-weight="800" font-size="46" letter-spacing="3" fill="url(#${k}g)" stroke="${C.navy}" stroke-width="6" paint-order="stroke" stroke-linejoin="round">Legends</text></g>`;
+    const k = `lgL${++uid}`, F1 = "Orbitron, 'Arial Black', 'Segoe UI Black', sans-serif", F2 = "'Exo 2', 'Arial Black', 'Segoe UI Black', sans-serif";
+    const g = `<defs><linearGradient id="${k}c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".28" stop-color="#b6fff4"/><stop offset=".5" stop-color="${C.cyan}"/><stop offset=".52" stop-color="#1fb3e8"/><stop offset="1" stop-color="${C.blue}"/></linearGradient>
+      <linearGradient id="${k}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff7c2"/><stop offset=".45" stop-color="${C.gold}"/><stop offset=".55" stop-color="#ffb21c"/><stop offset="1" stop-color="${C.orange}"/></linearGradient>
+      <filter id="${k}f" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur in="SourceAlpha" stdDeviation="3.2" result="b"/><feFlood flood-color="${C.cyan}" flood-opacity=".55"/><feComposite in2="b" operator="in" result="gl"/><feMerge><feMergeNode in="gl"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <filter id="${k}h" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur in="SourceAlpha" stdDeviation="2.6" result="b"/><feFlood flood-color="${C.orange}" flood-opacity=".55"/><feComposite in2="b" operator="in" result="gl"/><feMerge><feMergeNode in="gl"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+      <g text-anchor="middle">
+        <text x="235" y="72" textLength="438" lengthAdjust="spacingAndGlyphs" font-family="${F1}" font-weight="900" font-size="50" fill="${C.navy}" opacity=".55">INSTRUMENTA:</text>
+        <text x="235" y="68" textLength="438" lengthAdjust="spacingAndGlyphs" font-family="${F1}" font-weight="900" font-size="50" fill="url(#${k}c)" stroke="${C.navy}" stroke-width="6" paint-order="stroke" stroke-linejoin="round" filter="url(#${k}f)">INSTRUMENTA:</text>
+        <path d="M70 84 H180 M290 84 H400" stroke="${C.cyan}" stroke-width="3" stroke-linecap="round" opacity=".8"/><path d="M226 84 l9 -6 l9 6 l-9 6 z" fill="${C.gold}" stroke="${C.navy}" stroke-width="1.5"/>
+        <text x="235" y="134" textLength="236" lengthAdjust="spacingAndGlyphs" font-family="${F2}" font-style="italic" font-weight="900" font-size="52" fill="${C.navy}" opacity=".55">Legends</text>
+        <text x="235" y="130" textLength="236" lengthAdjust="spacingAndGlyphs" font-family="${F2}" font-style="italic" font-weight="900" font-size="52" fill="url(#${k}g)" stroke="${C.navy}" stroke-width="5.5" paint-order="stroke" stroke-linejoin="round" filter="url(#${k}h)">Legends</text></g>`;
     return inner ? g : `<svg class="lg-logo-svg" viewBox="0 0 470 150" role="img" aria-label="INSTRUMENTA: Legends">${g}</svg>`;
   }
   // Zamm Studio™: ZA, a signal-waveform M, M; STUDIO under it (viewBox 300 x 110)
