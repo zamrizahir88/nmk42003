@@ -68,8 +68,7 @@
   // numbers drawn from a saved seed, so a continued station has the same questions
   /* ---------- Ask Dr. Zamri and the game (lecturer's choice): the helper rests during a battle (Volt gives the hints);
      its answer guard knows every question of each unfinished station (the same numbers come back from the saved seed),
-     so it never gives them; and each question asked to it while a station is unfinished is counted per station
-     (nmk-mai, synced; the 🤖 column on the lecturer's leaderboard). ---------- */
+     so it never gives them. (The old "AI asks" count was removed on 9 Nov 2026, lecturer's choice.) ---------- */
   let liveQ = null;
   function unfinished() {
     const sv = saves(), out = [];
@@ -85,12 +84,6 @@
       const a = st.ans(v); return { q, v: a, tol: st.fixed ? st.tol : Math.max(Math.abs(a) * 0.01, st.tol || 0), u: val(st.unit, v) || "" };
     });
   }));
-  document.addEventListener("nmk:aiask", () => {
-    if (isLec) return;
-    const list = unfinished().sort((a, b) => (a.at < b.at ? 1 : -1)); if (!list.length) return;
-    const all = parse(lsGet("nmk-mai"), {}) || {}, id = list[0].m.id; all[id] = (all[id] || 0) + 1;
-    lsSet("nmk-mai", JSON.stringify(all)); document.dispatchEvent(new CustomEvent("nmk:store", { detail: "nmk-mai" }));
-  });
   const seeded = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 
   /* ---------- sound effects and music: made in the browser (no files) ---------- */
@@ -426,8 +419,8 @@
     // the podium: the top 3 with their own characters, the leader under a gold spotlight
     const podium = () => players.length ? `<div class="lb-pod">${[1, 0, 2].map((k) => { const d = players[k]; if (!d) return "<div></div>"; const rk = rkOf(d);
         return `<div class="lb-p p${k + 1}${d.uid === me ? " me" : ""}" style="--rc:${RCOL[rk]}">${k === 0 ? `<i class="lb-light" aria-hidden="true"></i>` : ""}<span class="lb-medal" aria-hidden="true">${medal(k)}</span>
-          <svg class="lb-hero" viewBox="-46 -76 92 142" aria-hidden="true" focusable="false">${ART.heroSvg(heroIn(d.game), "", k === 0 ? 2 : 0)}</svg>
-          <b class="lb-pn">${esc(label(d))}</b><small>${batI(d.game)} ${esc(ART.RANKS[rk].n)}</small><span class="lb-pc">🪙 ${(d.game.coins || 0).toLocaleString("en")}</span><span class="lb-step">${k + 1}</span></div>`; }).join("")}</div>` : "";
+          <a class="lb-ph" href="profile.html?u=${encodeURIComponent(d.uid)}" tabindex="-1" aria-hidden="true"><svg class="lb-hero" viewBox="-46 -76 92 142" focusable="false">${ART.heroSvg(heroIn(d.game), "", k === 0 ? 2 : 0)}</svg></a>
+          <a class="lb-pn" href="profile.html?u=${encodeURIComponent(d.uid)}" title="Open the profile">${esc(label(d))}</a><small>${batI(d.game)} ${esc(ART.RANKS[rk].n)}</small><span class="lb-pc">🪙 ${(d.game.coins || 0).toLocaleString("en")}</span><span class="lb-step">${k + 1}</span></div>`; }).join("")}</div>` : "";
     const lrow = (d, k) => { const g = d.game, rk = rkOf(d), hn = hname(d);
       return `<li class="lb-row${d.uid === me ? " me" : ""}" style="--rc:${RCOL[rk]}"><span class="lb-pos">${k + 1}</span><span class="lb-av">${avatar(heroIn(g))}</span>
         <span class="lb-who"><b>${esc(hn || d.nickname || "Player")}</b><a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname || "Student")}</a></span>
@@ -435,14 +428,14 @@
         <span class="lb-coin"><b>${(g.coins || 0).toLocaleString("en")}</b><i class="lb-bar"><b style="width:${Math.max(3, Math.round(((g.coins || 0) / lead) * 100))}%"></b></i></span>
         <span class="lb-st"><span title="Stations cleared">⚔️ ${g.cleared || 0}/${total}</span><span title="Bosses defeated">👑 ${g.bosses || 0}</span><span title="Stars">★ ${g.stars || 0}</span></span>
         <span class="lb-last">${ago(g.last)}</span></li>`; };
-    const cols = 8 + WORLDS.length + (isLec ? 2 : 0);
+    const cols = 8 + WORLDS.length + (isLec ? 1 : 0);
     const row = (d, k) => { const g = d.game, R = ART.RANKS[rkOf(d)], hn = hname(d);
       return `<tr class="${d.uid === me ? "me" : ""}"><td class="lg-pos">${medal(k)}</td><td><span class="lg-who">${avatar(heroIn(g))}<span><b class="lg-hn">${esc(hn || d.nickname || "Player")}</b>
         <a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname || "Student")}</a>${hn && d.nickname ? `<small>${esc(d.nickname)}</small>` : ""}
         ${isLec && hn ? `<button type="button" class="lg-rm" data-rmname="${esc(d.uid)}" data-name="${esc(hn)}">Remove hero name</button>` : ""}</span></span></td>
         ${isLec ? `<td>${esc(d.matric || "–")}</td>` : ""}<td>${batI(g)} ${esc(R.n)}</td><td class="lg-num"><strong>${g.coins || 0}</strong></td><td class="lg-num">${g.cleared || 0} / ${total}</td><td class="lg-num">${g.bosses || 0} / ${bossesT}</td><td class="lg-num">${g.stars || 0} ★</td>
-        ${WORLDS.map((w) => `<td class="lg-num">${((g.ch || {})[w.world] || 0)} / ${w.missions.length}</td>`).join("")}${isLec ? `<td class="lg-num${g.ai ? " lg-ai" : ""}" title="Questions asked to Ask Dr. Zamri while a station was unfinished">${g.ai || 0}</td>` : ""}<td>${ago(g.last)}</td></tr>`; };
-    const head = `<tr><th scope="col">#</th><th scope="col">Player</th>${isLec ? `<th scope="col">Matric</th>` : ""}<th scope="col">Rank</th><th scope="col">Coins</th><th scope="col">Stations</th><th scope="col">Bosses</th><th scope="col">Stars</th>${WORLDS.map((w) => `<th scope="col">Ch ${w.chapter}</th>`).join("")}${isLec ? `<th scope="col" title="Questions asked to Ask Dr. Zamri while a station was unfinished">🤖 AI asks</th>` : ""}<th scope="col">Last played</th></tr>`;
+        ${WORLDS.map((w) => `<td class="lg-num">${((g.ch || {})[w.world] || 0)} / ${w.missions.length}</td>`).join("")}<td>${ago(g.last)}</td></tr>`; };
+    const head = `<tr><th scope="col">#</th><th scope="col">Player</th>${isLec ? `<th scope="col">Matric</th>` : ""}<th scope="col">Rank</th><th scope="col">Coins</th><th scope="col">Stations</th><th scope="col">Bosses</th><th scope="col">Stars</th>${WORLDS.map((w) => `<th scope="col">Ch ${w.chapter}</th>`).join("")}<th scope="col">Last played</th></tr>`;
     const table = (rows) => `<div class="adm-scroll"><table class="adm lg-tab"><thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
     if (!isLec) {
       // the top 10 (the first 3 on the podium), the player's own place, and the last 4 (everyone when 14 or fewer)
@@ -458,7 +451,7 @@
     const played = new Set(players.map((d) => String(d.matric)));
     const notYet = roster.filter((r) => !played.has(String(r.matric))).sort((a, b) => (a.name < b.name ? -1 : 1));
     host.innerHTML = `${podium()}<div class="adm-tools"><button type="button" class="lg-btn alt" data-bcsv>⬇ Download CSV</button></div>
-      <p class="lb-note">${players.length} playing · ${notYet.length} not started yet. Lecturer plays never appear here. 🤖 AI asks: questions a student asked Ask Dr. Zamri while one of their stations was unfinished (only lecturers see this column). A rude hero name? Tap <strong>Remove hero name</strong>: the player's nickname shows instead, and they are asked to choose another one.</p>
+      <p class="lb-note">${players.length} playing · ${notYet.length} not started yet. Lecturer plays never appear here. A rude hero name? Tap <strong>Remove hero name</strong>: the player's nickname shows instead, and they are asked to choose another one.</p>
       ${players.length ? table(players.map((d, k) => row(d, k)).join("")) : `<p class="adm-empty">Nobody has played yet.</p>`}
       ${(() => { const flat = players.filter((d) => { const b = bat(d.game.last || ""); return b && b.st === "flat"; });
         return `<h3 class="h3 lg-nyh">🪫 Flat Battery for 14+ Days (${flat.length})</h3>${flat.length ? `<ul class="lg-ny">${flat.map((d) => `<li><a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname)}</a> <small>${esc(d.matric || "")} · last battle ${ago(d.game.last)}</small></li>`).join("")}</ul>` : `<p class="small-note">Nobody: everyone who started has played in the last two weeks.</p>`}`; })()}
@@ -470,9 +463,9 @@
     }));
     $("[data-bcsv]", host).addEventListener("click", () => {
       const q = (x) => `"${String(x == null ? "" : x).replace(/"/g, '""')}"`;
-      const lines = [["Position", "Name", "Hero name", "Nickname", "Matric", "Section", "Rank", "Battery", "Coins", "Stations cleared", "Bosses", "Stars", ...WORLDS.map((w) => `Chapter ${w.chapter}`), "AI asks during unfinished stations", "Last played"].map(q).join(",")]
-        .concat(players.map((d, k) => [k + 1, d.name || d.nickname, hname(d), d.nickname || "", d.matric, SECN[d.section] || "", ART.RANKS[ART.rankOf(d.game.coins || 0)].n, (bat(d.game.last || "") || {}).st || "", d.game.coins || 0, d.game.cleared || 0, d.game.bosses || 0, d.game.stars || 0, ...WORLDS.map((w) => (d.game.ch || {})[w.world] || 0), d.game.ai || 0, d.game.last ? d.game.last.slice(0, 10) : ""].map(q).join(",")))
-        .concat(notYet.map((r) => ["", r.name, "", "", r.matric, SECN[r.section] || "", "Not started", "", 0, 0, 0, 0, ...WORLDS.map(() => 0), 0, ""].map(q).join(",")));
+      const lines = [["Position", "Name", "Hero name", "Nickname", "Matric", "Section", "Rank", "Battery", "Coins", "Stations cleared", "Bosses", "Stars", ...WORLDS.map((w) => `Chapter ${w.chapter}`), "Last played"].map(q).join(",")]
+        .concat(players.map((d, k) => [k + 1, d.name || d.nickname, hname(d), d.nickname || "", d.matric, SECN[d.section] || "", ART.RANKS[ART.rankOf(d.game.coins || 0)].n, (bat(d.game.last || "") || {}).st || "", d.game.coins || 0, d.game.cleared || 0, d.game.bosses || 0, d.game.stars || 0, ...WORLDS.map((w) => (d.game.ch || {})[w.world] || 0), d.game.last ? d.game.last.slice(0, 10) : ""].map(q).join(",")))
+        .concat(notYet.map((r) => ["", r.name, "", "", r.matric, SECN[r.section] || "", "Not started", "", 0, 0, 0, 0, ...WORLDS.map(() => 0), ""].map(q).join(",")));
       const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\n")], { type: "text/csv" })); a.download = `INSTRUMENTA leaderboard ${new Date().toISOString().slice(0, 10)}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     });
   }

@@ -341,7 +341,6 @@ label.ms-ol { display: block; }
   .ms-spark, .ms-float, .ms-shot, #msSlash, #msShield, #msOrb, .ms-cdrop, .lg-heart, .ms-wcard, .ms-ko, .ms-rank, .lg-spin > * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
   .ms-hpbar i, .lg-bar i, .lg-splash { transition: none; }
 }
-.lg-ai { color: var(--amber); font-weight: 700; }
 
 /* ===== 8 Nov 2026: ranks 5 to 9, the battery, the Game Guide and the new battle animations ===== */
 /* the new backgrounds */
@@ -699,3 +698,16 @@ label.ms-ol { display: block; }
   .lb-hero { filter: none; }
 }
 .lb .lg-tab td { white-space: nowrap; } .lb .lg-tab .lg-rm { white-space: nowrap; }
+/* the game panels keep their own dark colours in the light theme too (9 Nov 2026): the site's colour words are redefined inside them */
+.gg { --ink: #e8eef7; --ink-2: #c9d4e3; --ink-3: #9fb3c8; --surface: #101a36; --rule: rgba(255, 255, 255, .16); --grid: rgba(255, 255, 255, .08); --teal: #38e1c9; --teal-soft: rgba(56, 225, 201, .14); --amber: #ffd84d; --amber-soft: rgba(255, 216, 77, .16); color: var(--ink); }
+.lb .adm-scroll { background: rgba(4, 10, 28, .45); }
+.lb .lg-hn { color: #fff; }
+.lb .lg-num strong { color: #ffd84d; }
+.lb .lg-rm { background: transparent; color: #ff9b8f; border-color: #ff9b8f; }
+.lb .lg-rm:hover, .lb .lg-rm:focus-visible { background: #ff9b8f; color: #14213d; }
+.lb .small-note, .lb .adm-empty { color: #c9d4e3; }
+.lb a.lb-pn { color: #fff; text-decoration: underline dotted rgba(255, 255, 255, .45); text-underline-offset: 4px; }
+.lb a.lb-pn:hover, .lb a.lb-pn:focus-visible { color: #ffd84d; text-decoration: underline; text-underline-offset: 3px; }
+.lb-pn:focus-visible { outline: 3px solid #ffd84d; outline-offset: 2px; border-radius: 4px; }
+.lb-ph { display: block; position: relative; z-index: 1; cursor: pointer; }
+.lb-ph:hover .lb-hero { filter: drop-shadow(0 0 14px rgba(255, 216, 77, .8)); }
