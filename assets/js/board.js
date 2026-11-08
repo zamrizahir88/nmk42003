@@ -29,29 +29,39 @@
   const TABS = [["top", "🏆", "Top 10"], ["bottom", "📉", "Bottom 10"], ["all", "📊", "All Progress"], ["levels", "🎖", "Levels & XP"]];
   let tab = TABS.some(([k]) => k === location.hash.slice(1)) ? location.hash.slice(1) : "top";
 
-  const av = (r, big) => r.photo ? `<img class="bd-av${big ? " big" : ""}" src="${esc(r.photo)}" alt="" referrerpolicy="no-referrer" loading="lazy">` : `<span class="bd-av${big ? " big" : ""} bd-avn" aria-hidden="true">${esc(String(r.nickname || "?").trim()[0] || "?").toUpperCase()}</span>`;
+  // the photo in a ring of the level's colour (a star from L3, a double ring from L5, crowns at L7 and L8)
+  const av = (r, size) => G.ringAv(r.photo, r.nickname, r.xp, size || 40);
   const lvChip = (xp) => { const k = lvOf(xp); return `<span class="bd-lvc l${k + 1}" title="${esc(G.LEVELS[k][1])}">L${k + 1}</span>`; };
-  const badges = (r) => (r.badges || []).map((id) => BADGE[id] ? `<span title="${esc(BADGE[id].name)}">${BADGE[id].icon}</span>` : "").join("");
+  // badges as a short stack (3 icons + "+N"; "🏅 N" on phones); a tap lists them all
+  const badges = (r) => { const b = (r.badges || []).filter((id) => BADGE[id]);
+    if (!b.length) return `<span class="bd-bs none" title="No badges yet">–</span>`;
+    return `<button type="button" class="bd-bs" data-bpop="${esc(r.uid)}" aria-label="${b.length} badge${b.length === 1 ? "" : "s"}: ${esc(b.map((id) => BADGE[id].name).join(", "))}">${b.slice(0, 3).map((id) => `<i aria-hidden="true">${BADGE[id].icon}</i>`).join("")}<b aria-hidden="true">🏅 ${b.length}</b>${b.length > 3 ? `<em aria-hidden="true">+${b.length - 3}</em>` : ""}</button>`; };
   const you = (r) => (me && r.uid === me ? ' <span class="bd-you">you</span>' : "");
   const name = (r) => `<span class="bd-nmw"><a class="bd-name" href="profile.html?u=${encodeURIComponent(r.uid)}">${esc(r.nickname)}</a>${you(r)}</span>`;
   const sorted = () => rows.slice().sort((a, b) => (b.xp || 0) - (a.xp || 0) || String(a.nickname).localeCompare(b.nickname));
   // one player as a row: place, avatar and name, level, an XP bar against the leader, badges, last active
   const line = (r, i, max) => { const k = lvOf(r.xp);
-    return `<li class="bd-row${me && r.uid === me ? " me" : ""}"><span class="bd-pos">${i}</span>${av(r)}<span class="bd-who">${name(r)}<small>${lvChip(r.xp)} ${esc(G.LEVELS[k][1])}</small></span>
+    return `<li class="bd-row${me && r.uid === me ? " me" : ""}"><span class="bd-pos">${i}</span>${av(r, 40)}<span class="bd-who">${name(r)}<small>${lvChip(r.xp)} ${esc(G.LEVELS[k][1])}</small></span>
       <span class="bd-xpw"><span class="bd-xpn">${(r.xp || 0).toLocaleString("en")} XP</span><i class="bd-xpb"><b class="l${k + 1}" style="width:${max ? Math.max(3, Math.round(((r.xp || 0) / max) * 100)) : 0}%"></b></i></span>
-      <span class="bd-bs">${badges(r)}</span><span class="bd-last">${ago(r.lastActive)}</span></li>`; };
+      ${badges(r)}<span class="bd-last">${ago(r.lastActive)}</span></li>`; };
   const list = (arr, start, max) => `<ol class="bd-list">${arr.map((r, i) => line(r, start + i, max)).join("")}</ol>`;
 
   function topView(s) {
     if (!s.length) return `<p class="bd-empty">No one is on the board yet this semester.</p>`;
     const max = s[0].xp || 1, pod = [s[1], s[0], s[2]].map((r, k) => r ? `<div class="bd-pod p${[2, 1, 3][k]}${me && r.uid === me ? " me" : ""}">
-        <span class="bd-medal" aria-hidden="true">${["🥈", "🥇", "🥉"][k]}</span>${av(r, true)}<strong>${name(r)}</strong><small>${lvChip(r.xp)} ${(r.xp || 0).toLocaleString("en")} XP</small><span class="bd-step">${[2, 1, 3][k]}</span></div>` : "<div></div>").join("");
+        ${k === 1 ? `<i class="bd-spk s1" aria-hidden="true">✦</i><i class="bd-spk s2" aria-hidden="true">✦</i><i class="bd-spk s3" aria-hidden="true">✧</i><i class="bd-spk s4" aria-hidden="true">✦</i>` : ""}<span class="bd-medal" aria-hidden="true">${["🥈", "🥇", "🥉"][k]}</span>${av(r, k === 1 ? 72 : 60)}<strong>${name(r)}</strong><small>${lvChip(r.xp)} ${(r.xp || 0).toLocaleString("en")} XP</small><span class="bd-step">${[2, 1, 3][k]}</span></div>` : "<div></div>").join("");
     return `<div class="bd-podium">${pod}</div>${s.length > 3 ? list(s.slice(3, 10), 4, max) : ""}`;
   }
   function bottomView(s) {
     const n = s.length; if (n <= 10) return `<p class="bd-empty">The bottom 10 shows once more than 10 students are on the board.</p>`;
-    const start = Math.max(10, n - 10);
-    return `<p class="bd-note">💪 Not a ranking of ability: it shows who has done the least so far. Any exercise you solve moves you up.</p>${list(s.slice(start), start + 1, s[0].xp || 1)}`;
+    const start = Math.max(10, n - 10), last3 = s.slice(n - 3), at = me ? s.findIndex((r) => r.uid === me) : -1;
+    // the Climb-Out Zone (lecturer's choice): the last 3 as launch pads with arrows pointing up, amber, encouraging
+    const pads = last3.map((r, k) => `<div class="bd-pad${me && r.uid === me ? " me" : ""}"><span class="bd-ppos">#${n - 2 + k}</span><i class="bd-up" aria-hidden="true">⬆</i>${av(r, 54)}<strong>${name(r)}</strong><small>${lvChip(r.xp)} ${(r.xp || 0).toLocaleString("en")} XP</small></div>`).join("");
+    const out = s[n - 4], need = at >= n - 3 && out ? Math.max(1, (out.xp || 0) - (s[at].xp || 0) + 1) : 0;
+    const cheer = at >= n - 3 ? `<p class="bd-cheer mine">🚀 You need <strong>${need.toLocaleString("en")} XP</strong> to climb out: one or two exercises will do it!</p>` : `<p class="bd-cheer">🚀 One exercise could lift you out!</p>`;
+    return `<p class="bd-note">💪 Not a ranking of ability: it shows who has done the least so far. Any exercise you solve moves you up.</p>
+      <section class="bd-climb" aria-label="Climb-Out Zone"><h3>🚀 Climb-Out Zone</h3><p>The last three places. Solve an exercise, pass a Pre-Lab Check or come to class, and you're out.</p><div class="bd-pads">${pads}</div>${cheer}</section>
+      ${n - 3 > start ? `<h3 class="bd-h3">Almost There (#${start + 1} to #${n - 3})</h3>${list(s.slice(start, n - 3), start + 1, s[0].xp || 1)}` : ""}`;
   }
   function allView(s) {
     const t = q.trim().toLowerCase(), max = (s[0] && s[0].xp) || 1;
@@ -81,14 +91,44 @@
     const s = sorted(), myRank = me ? s.findIndex((r) => r.uid === me) + 1 : 0;
     const body = tab === "levels" ? levelsView() : gate ? gate : tab === "bottom" ? bottomView(s) : tab === "all" ? allView(s) : topView(s);
     host.innerHTML = `<div class="bd-wrap"><nav class="bd-tabs" aria-label="Class board">${TABS.map(([k, i, l]) => `<button type="button" class="bd-tab" data-btab="${k}" aria-pressed="${tab === k}"><span aria-hidden="true">${i}</span>${l}</button>`).join("")}</nav>
-      ${tab !== "levels" && !gate && s.length ? `<p class="bd-sum">${s.length} student${s.length === 1 ? "" : "s"} on the board this semester.${myRank ? ` You are <strong>number ${myRank}</strong>.` : ""} <span class="small-note">${note}</span></p>` : ""}
+      ${tab !== "levels" && !gate && s.length ? `<div class="bd-sumrow"><p class="bd-sum">${s.length} student${s.length === 1 ? "" : "s"} on the board this semester.${myRank ? ` You are <strong>number ${myRank}</strong>.` : ""} <span class="small-note">${note}</span></p>${myRank && window.NMKShare ? `<button type="button" class="bd-share" data-bshare>📤 Share my rank</button>` : ""}</div>` : ""}
       <div class="bd-body">${body}</div></div>`;
     if (focusQ) { const i = host.querySelector("[data-bq]"); if (i) { i.focus(); i.setSelectionRange(q.length, q.length); } focusQ = false; }
   }
-  let focusQ = false;
+  let focusQ = false, pop = null;
+  // the list of a student's badges, in a small panel beside the stack
+  function closePop() { if (!pop) return; const b = pop.back; pop.el.remove(); document.removeEventListener("keydown", popKey); pop = null; if (b && b.isConnected) b.focus({ preventScroll: true }); }
+  const popKey = (e) => { if (e.key === "Escape") closePop(); };
+  function popBadges(btn) {
+    const was = pop && pop.back === btn; closePop(); if (was) return;
+    const r = rows.find((x) => x.uid === btn.dataset.bpop); if (!r) return;
+    const b = (r.badges || []).filter((id) => BADGE[id]), wrap = host.querySelector(".bd-wrap");
+    const el = document.createElement("div"); el.className = "bd-pop"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", `Badges of ${r.nickname}`);
+    el.innerHTML = `<button type="button" class="bd-popx" data-popx aria-label="Close">✕</button><h3>${esc(r.nickname)}'s badges (${b.length})</h3><ul>${b.map((id) => `<li><span aria-hidden="true">${BADGE[id].icon}</span><div><strong>${esc(BADGE[id].name)}</strong>${BADGE[id].desc ? `<small>${esc(BADGE[id].desc)}</small>` : ""}</div></li>`).join("")}</ul>`;
+    wrap.appendChild(el);
+    const W = wrap.getBoundingClientRect(), B = btn.getBoundingClientRect(), w = el.offsetWidth;
+    el.style.left = `${Math.max(8, Math.min(B.left - W.left - w / 2 + B.width / 2, W.width - w - 8))}px`;
+    el.style.top = `${B.bottom - W.top + 6}px`;
+    pop = { el, back: btn }; document.addEventListener("keydown", popKey);
+    el.querySelector("[data-popx]").focus({ preventScroll: true });
+  }
+  // 📤 Share my rank: a 9:16 picture of my level, XP and badges; the place is named in the top 10 (or the top half)
+  function shareMine(btn) {
+    const s = sorted(), at = s.findIndex((r) => r.uid === me); if (at < 0) return;
+    const r = s[at], k = lvOf(r.xp), nx = G.LEVELS[k + 1], b = (r.badges || []).filter((id) => BADGE[id]);
+    const sem = String((typeof COURSE !== "undefined" && COURSE.semesterId) || ""), m = sem.match(/^(\d{4}\/\d{4}) Semester (\d)$/), pos = at + 1;
+    const d = { name: r.nickname || "Student", k, level: G.LEVELS[k][1], xp: r.xp || 0, from: G.LEVELS[k][0], next: nx ? { at: nx[0], name: nx[1] } : null,
+      pos, of: s.length, top10: pos <= 10, badges: b.map((id) => BADGE[id].icon), nBadges: b.length, sem: `UniMAP · ${m ? `Semester ${m[2]} ${m[1]}` : sem}`, photo: "" };
+    const text = `${pos <= 10 ? `I'm #${pos} on the NMK42003 Instrumentation class board` : "I'm levelling up in NMK42003 Instrumentation"}: L${k + 1} ${G.LEVELS[k][1]}, ${(r.xp || 0).toLocaleString("en")} XP! #NMK42003 #UniMAP https://${NMKShare.SITE}/board.html`;
+    NMKShare.open({ title: "Share my rank", back: btn, file: `NMK42003-class-board-${String(d.name).replace(/[^A-Za-z0-9]+/g, "-")}.png`, text,
+      svg: () => NMKShare.photoData(r.photo).then((ph) => NMKShare.classCard(Object.assign(d, { photo: ph }))) });
+  }
   host.addEventListener("click", (e) => {
     const b = e.target.closest("[data-btab]"); if (b) { tab = b.dataset.btab; history.replaceState(history.state, "", `#${tab}`); draw(); return; }
     if (e.target.closest("[data-signin]") && A) { A.signIn(); return; }
+    const bp = e.target.closest("[data-bpop]"); if (bp) { popBadges(bp); return; }
+    if (e.target.closest("[data-popx]") || (pop && !e.target.closest(".bd-pop"))) closePop();
+    const sb = e.target.closest("[data-bshare]"); if (sb) { shareMine(sb); return; }
     const u = e.target.closest("[data-bupd]"); if (u) { u.disabled = true; u.textContent = "Updating…"; load(true); }
   });
   host.addEventListener("input", (e) => { if (e.target.matches("[data-bq]")) { q = e.target.value; focusQ = true; draw(); } });

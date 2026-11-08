@@ -82,7 +82,7 @@
     const { lec, own, g, feed, info } = d;
     document.title = `${info.nickname || info.name || "Profile"} | NMK42003 Instrumentation`;
     const earned = new Set(g.badges.map((b) => b.id));
-    const header = `<section class="pf-card pf-top">${avatar(info.nickname || info.name, info.photo, true)}
+    const header = `<section class="pf-card pf-top">${G.ringAv ? G.ringAv(info.photo, info.nickname || info.name, g.xp, 92, "pf-ring") : avatar(info.nickname || info.name, info.photo, true)}
       <div class="pf-who"><h1 class="pf-nick">${esc(info.nickname || info.name || "Student")}</h1>
         <p class="pf-name">${esc(info.name)}${info.matric ? ` · ${esc(info.matric)}` : ""}</p>
         <p class="pf-meta">${info.section ? `<span>🧪 ${SECTION[info.section]}, group ${info.group || "–"}</span>` : ""}${d.partner ? `<span>👥 Lab partner: ${esc(d.partner.n)}</span>` : ""}

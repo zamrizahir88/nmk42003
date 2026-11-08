@@ -273,13 +273,21 @@
         ${tx(1440, nameSize, esc(d.name), { serif: true, w: 900, sw: 12 })}${tx(1505, 42, esc(d.rankName), { fill: C.gold, sw: 8 })}
         ${chip(110, esc(d.stars))}${chip(410, `+${d.coins} coins`)}${chip(710, esc(d.extra))}
         ${tx(1702, 34, "Can you beat my score?", { sw: 7 })}`;
+    } else if (d.kind === "rank") {
+      const ht = d.top10 ? `🏆 #${d.pos} OF ${d.of}` : d.half ? `TOP HALF · #${d.pos} OF ${d.of}` : "LEADERBOARD";
+      mid = `<rect x="140" y="430" width="800" height="130" rx="65" fill="${d.top10 ? C.gold : N}" stroke="${d.top10 ? N : C.gold}" stroke-width="6" opacity=".95"/>${tx(517, ht.length > 18 ? 46 : 58, ht, { w: 900, fill: d.top10 ? N : C.gold, sw: 0 })}
+        ${tx(628, 40, "HALL OF LEGENDS", { fill: "#fff", st: N, sw: 9 })}
+        <g transform="translate(480 1050) scale(4.6)">${heroSvg(d.hero, "", d.tier || 0)}</g>
+        ${tx(1440, nameSize, esc(d.name), { serif: true, w: 900, sw: 12 })}${tx(1505, 42, esc(d.rankName), { fill: C.gold, sw: 8 })}
+        ${chip(110, `${d.coins} coins`)}${chip(410, `${d.cleared}/${d.total} ⚔`)}${chip(710, `${d.stars} ★`)}
+        ${tx(1702, 34, "Can you beat my rank?", { sw: 7 })}`;
     } else {
       mid = `<rect x="160" y="430" width="760" height="120" rx="60" fill="${C.cyan}" stroke="${N}" stroke-width="6"/>${tx(510, 54, "Let's play!", { serif: true, w: 800, fill: N, sw: 0 })}
         <g transform="translate(480 1040) scale(5)">${heroSvg(d.hero, "", d.tier || 0)}</g>
         ${tx(1460, nameSize, esc(d.name), { serif: true, w: 900, sw: 12 })}${tx(1530, 42, `${esc(d.rankName)} · ${d.coins} coins`, { fill: C.gold, sw: 8 })}
         ${tx(1660, 40, "Join me in NMK42003!", { sw: 8 })}`;
     }
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">${scene}<rect width="1080" height="1920" fill="${N}" opacity="${d.kind === "win" ? 0.18 : 0.12}"/>${top}${mid}${foot}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">${scene}<rect width="1080" height="1920" fill="${N}" opacity="${d.kind === "play" ? 0.12 : 0.18}"/>${top}${mid}${foot}</svg>`;
   }
 
   window.NMKLegendsArt = { RANKS, rankOf, heroSvg, weaponSvg, ENEMIES, bg, INK, C, logo, zamm, CREATOR, SITE, card };

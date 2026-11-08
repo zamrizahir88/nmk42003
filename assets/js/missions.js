@@ -396,10 +396,13 @@
   const SECN = { mon: "Monday", wed: "Wednesday", thu: "Thursday" };
   const heroIn = (g) => { let o = null; try { o = g && g.hero ? JSON.parse(g.hero) : null; } catch (e) { o = null; } return Object.assign({}, HERO0, o || {}); };
   const avatar = (h) => `<svg class="lg-av" viewBox="-36 -66 72 76" aria-hidden="true" focusable="false">${ART.heroSvg(h, "", 0)}</svg>`;
-  // one list for the whole class (no sections); students see no matric numbers
+  // the leaderboard (fresh look, 9 Nov 2026): the game-menu panel, a podium of the top 3 with their characters, then
+  // rows framed in the colour of each player's rank. One list for the whole class; students see no matric numbers.
+  const RCOL = ["#9fb3c8", "#38e1c9", "#3fa9ff", "#8b5cf6", "#ff7a45", "#f0567a", "#5ee7ff", "#c4b5fd", "#ffd84d"];
   async function boardView(fresh) {
-    frame(`<p><button type="button" class="btn ghost small" data-go="map">‹ All chapters</button>${isLec ? ` <button type="button" class="btn ghost small" data-lgupd>⟳ Update rankings now</button>` : ""}</p><h2 class="h3">🏆 INSTRUMENTA Leaderboard</h2>
-      <p class="small-note">The whole class, ranked by game coins. <span id="lgWhen"></span> Your own coins and rank are always up to date on your own screen. Tap a name to open the profile. Points never count towards grades.</p><div id="lgBoard"><p class="small-note">Loading…</p></div>`);
+    frame(`<div class="gg lb"><div class="gg-top"><div class="gg-hero"><div><span class="gg-kick">Hall of Legends</span><h2 class="gg-h">🏆 Leaderboard</h2></div>
+        <div class="lb-acts"><button type="button" class="lg-btn alt" data-go="map">‹ All chapters</button>${isLec ? `<button type="button" class="lg-btn alt" data-lgupd>⟳ Update rankings now</button>` : ""}</div></div></div>
+      <div class="gg-body"><p class="lb-note">The whole class, ranked by game coins. <span id="lgWhen"></span> Your own coins and rank are always up to date on your own screen. Tap a name to open the profile. Points never count towards grades.</p><div id="lgBoard"><p class="lb-note">Loading…</p></div></div></div>`);
     const ub = $("[data-lgupd]"); if (ub) ub.addEventListener("click", () => { ub.disabled = true; ub.textContent = "Updating…"; boardView(true); });
     const host = $("#lgBoard");
     let docs = [], roster = [];
@@ -408,7 +411,7 @@
       docs = (r && r.rows) || [];
       const w = $("#lgWhen"); if (w) w.textContent = A.rankNote(r && r.at);
       if (isLec) roster = (await A.db.collection("roster").get()).docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((r) => r.status === "active");
-    } catch (e) { host.innerHTML = `<p class="small-note">Could not load the leaderboard (${esc(e.code || e)}).</p>`; return; }
+    } catch (e) { host.innerHTML = `<p class="lb-note">Could not load the leaderboard (${esc(e.code || e)}).</p>`; return; }
     if (view !== "board") return;
     const total = WORLDS.reduce((a, w) => a + w.missions.length, 0), bossesT = WORLDS.reduce((a, w) => a + w.missions.filter((m) => m.boss).length, 0);
     const players = docs.filter((d) => d.role !== "lecturer" && d.game && (d.game.coins || d.game.cleared || d.game.started))
@@ -417,28 +420,45 @@
     const medal = (k) => (k === 0 ? "🥇" : k === 1 ? "🥈" : k === 2 ? "🥉" : `#${k + 1}`);
     const hname = (d) => { const n = String(heroIn(d.game).name || "").trim(); return n && !isBanned(d.uid, n) ? n : ""; };
     const label = (d) => hname(d) || d.nickname || d.name || "Player";
+    const rkOf = (d) => ART.rankOf(d.game.coins || 0);
+    const batI = (g) => { const b = bat(g.last || ""); return b ? `<span class="lg-bi b-${b.st}" title="${BATL[b.st]}: last battle ${Math.floor(b.d)} day${Math.floor(b.d) === 1 ? "" : "s"} ago">${GM.BATTERY[b.st][0]}</span>` : ""; };
+    const lead = (players[0] && players[0].game.coins) || 1;
+    // the podium: the top 3 with their own characters, the leader under a gold spotlight
+    const podium = () => players.length ? `<div class="lb-pod">${[1, 0, 2].map((k) => { const d = players[k]; if (!d) return "<div></div>"; const rk = rkOf(d);
+        return `<div class="lb-p p${k + 1}${d.uid === me ? " me" : ""}" style="--rc:${RCOL[rk]}">${k === 0 ? `<i class="lb-light" aria-hidden="true"></i>` : ""}<span class="lb-medal" aria-hidden="true">${medal(k)}</span>
+          <svg class="lb-hero" viewBox="-46 -76 92 142" aria-hidden="true" focusable="false">${ART.heroSvg(heroIn(d.game), "", k === 0 ? 2 : 0)}</svg>
+          <b class="lb-pn">${esc(label(d))}</b><small>${batI(d.game)} ${esc(ART.RANKS[rk].n)}</small><span class="lb-pc">🪙 ${(d.game.coins || 0).toLocaleString("en")}</span><span class="lb-step">${k + 1}</span></div>`; }).join("")}</div>` : "";
+    const lrow = (d, k) => { const g = d.game, rk = rkOf(d), hn = hname(d);
+      return `<li class="lb-row${d.uid === me ? " me" : ""}" style="--rc:${RCOL[rk]}"><span class="lb-pos">${k + 1}</span><span class="lb-av">${avatar(heroIn(g))}</span>
+        <span class="lb-who"><b>${esc(hn || d.nickname || "Player")}</b><a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname || "Student")}</a></span>
+        <span class="lb-rk">${batI(g)}<span>${esc(ART.RANKS[rk].n)}</span></span>
+        <span class="lb-coin"><b>${(g.coins || 0).toLocaleString("en")}</b><i class="lb-bar"><b style="width:${Math.max(3, Math.round(((g.coins || 0) / lead) * 100))}%"></b></i></span>
+        <span class="lb-st"><span title="Stations cleared">⚔️ ${g.cleared || 0}/${total}</span><span title="Bosses defeated">👑 ${g.bosses || 0}</span><span title="Stars">★ ${g.stars || 0}</span></span>
+        <span class="lb-last">${ago(g.last)}</span></li>`; };
     const cols = 8 + WORLDS.length + (isLec ? 2 : 0);
-    const row = (d, k) => { const g = d.game, R = ART.RANKS[ART.rankOf(g.coins || 0)], hn = hname(d);
+    const row = (d, k) => { const g = d.game, R = ART.RANKS[rkOf(d)], hn = hname(d);
       return `<tr class="${d.uid === me ? "me" : ""}"><td class="lg-pos">${medal(k)}</td><td><span class="lg-who">${avatar(heroIn(g))}<span><b class="lg-hn">${esc(hn || d.nickname || "Player")}</b>
         <a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname || "Student")}</a>${hn && d.nickname ? `<small>${esc(d.nickname)}</small>` : ""}
         ${isLec && hn ? `<button type="button" class="lg-rm" data-rmname="${esc(d.uid)}" data-name="${esc(hn)}">Remove hero name</button>` : ""}</span></span></td>
-        ${isLec ? `<td>${esc(d.matric || "–")}</td>` : ""}<td>${(() => { const b = bat(g.last || ""); return b ? `<span class="lg-bi b-${b.st}" title="${BATL[b.st]}: last battle ${Math.floor(b.d)} day${Math.floor(b.d) === 1 ? "" : "s"} ago">${GM.BATTERY[b.st][0]}</span> ` : ""; })()}${esc(R.n)}</td><td class="lg-num"><strong>${g.coins || 0}</strong></td><td class="lg-num">${g.cleared || 0} / ${total}</td><td class="lg-num">${g.bosses || 0} / ${bossesT}</td><td class="lg-num">${g.stars || 0} ★</td>
+        ${isLec ? `<td>${esc(d.matric || "–")}</td>` : ""}<td>${batI(g)} ${esc(R.n)}</td><td class="lg-num"><strong>${g.coins || 0}</strong></td><td class="lg-num">${g.cleared || 0} / ${total}</td><td class="lg-num">${g.bosses || 0} / ${bossesT}</td><td class="lg-num">${g.stars || 0} ★</td>
         ${WORLDS.map((w) => `<td class="lg-num">${((g.ch || {})[w.world] || 0)} / ${w.missions.length}</td>`).join("")}${isLec ? `<td class="lg-num${g.ai ? " lg-ai" : ""}" title="Questions asked to Ask Dr. Zamri while a station was unfinished">${g.ai || 0}</td>` : ""}<td>${ago(g.last)}</td></tr>`; };
     const head = `<tr><th scope="col">#</th><th scope="col">Player</th>${isLec ? `<th scope="col">Matric</th>` : ""}<th scope="col">Rank</th><th scope="col">Coins</th><th scope="col">Stations</th><th scope="col">Bosses</th><th scope="col">Stars</th>${WORLDS.map((w) => `<th scope="col">Ch ${w.chapter}</th>`).join("")}${isLec ? `<th scope="col" title="Questions asked to Ask Dr. Zamri while a station was unfinished">🤖 AI asks</th>` : ""}<th scope="col">Last played</th></tr>`;
     const table = (rows) => `<div class="adm-scroll"><table class="adm lg-tab"><thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
     if (!isLec) {
-      // the top 10, the player's own place, and the last 4 (everyone when 14 or fewer)
+      // the top 10 (the first 3 on the podium), the player's own place, and the last 4 (everyone when 14 or fewer)
       const at = players.findIndex((d) => d.uid === me), n = players.length;
-      const show = n <= 14 ? players.map((d, k) => [d, k]) : players.slice(0, 10).map((d, k) => [d, k]).concat(at >= 10 && at < n - 4 ? [[null, -1], [players[at], at]] : [], [[null, -1]], players.slice(n - 4).map((d, k) => [d, n - 4 + k]));
+      const show = (n <= 14 ? players.map((d, k) => [d, k]) : players.slice(0, 10).map((d, k) => [d, k]).concat(at >= 10 && at < n - 4 ? [[null, -1], [players[at], at]] : [], [[null, -1]], players.slice(n - 4).map((d, k) => [d, n - 4 + k]))).filter(([, k]) => k < 0 || k >= 3);
       const above = at > 0 ? players[at - 1].game.coins - players[at].game.coins : 0;
-      host.innerHTML = `<div class="lg-mine">${at >= 0 ? `You: <strong>${medal(at)} of ${n}</strong> · ${players[at].game.coins} coins${at > 0 ? ` · ${above + 1} more to pass ${esc(label(players[at - 1]))}` : " · you're leading!"}` : "Play a station to join the leaderboard."}</div>
-        ${n ? table(show.map(([d, k]) => (d ? row(d, k) : `<tr class="lg-gap"><td colspan="${cols}">⋯</td></tr>`)).join("")) : `<p class="adm-empty">Nobody has played yet. Be the first!</p>`}`;
+      host.innerHTML = `<div class="lb-mine">${at >= 0 ? `<span class="lb-you">You</span><span><strong>${medal(at)} of ${n}</strong> · 🪙 ${players[at].game.coins} coins${at > 0 ? ` · ${above + 1} more to pass ${esc(label(players[at - 1]))}` : " · you're leading!"}</span><button type="button" class="lg-btn main" data-lbshare>📤 Share my rank</button>` : "Play a station to join the leaderboard."}</div>
+        ${n ? `${podium()}${show.length ? `<ol class="lb-list">${show.map(([d, k]) => (d ? lrow(d, k) : `<li class="lb-gap" aria-hidden="true">⋯</li>`)).join("")}</ol>` : ""}` : `<p class="lb-note">Nobody has played yet. Be the first!</p>`}`;
+      const sb = $("[data-lbshare]", host);
+      if (sb) sb.addEventListener("click", () => { SFX.click(); shareRank(players[at], at, n, total); });
       return;
     }
     const played = new Set(players.map((d) => String(d.matric)));
     const notYet = roster.filter((r) => !played.has(String(r.matric))).sort((a, b) => (a.name < b.name ? -1 : 1));
-    host.innerHTML = `<div class="adm-tools"><button type="button" class="btn ghost small" data-bcsv>Download CSV</button></div>
-      <p class="small-note">${players.length} playing · ${notYet.length} not started yet. Lecturer plays never appear here. 🤖 AI asks: questions a student asked Ask Dr. Zamri while one of their stations was unfinished (only lecturers see this column). A rude hero name? Tap <strong>Remove hero name</strong>: the player's nickname shows instead, and they are asked to choose another one.</p>
+    host.innerHTML = `${podium()}<div class="adm-tools"><button type="button" class="lg-btn alt" data-bcsv>⬇ Download CSV</button></div>
+      <p class="lb-note">${players.length} playing · ${notYet.length} not started yet. Lecturer plays never appear here. 🤖 AI asks: questions a student asked Ask Dr. Zamri while one of their stations was unfinished (only lecturers see this column). A rude hero name? Tap <strong>Remove hero name</strong>: the player's nickname shows instead, and they are asked to choose another one.</p>
       ${players.length ? table(players.map((d, k) => row(d, k)).join("")) : `<p class="adm-empty">Nobody has played yet.</p>`}
       ${(() => { const flat = players.filter((d) => { const b = bat(d.game.last || ""); return b && b.st === "flat"; });
         return `<h3 class="h3 lg-nyh">🪫 Flat Battery for 14+ Days (${flat.length})</h3>${flat.length ? `<ul class="lg-ny">${flat.map((d) => `<li><a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname)}</a> <small>${esc(d.matric || "")} · last battle ${ago(d.game.last)}</small></li>`).join("")}</ul>` : `<p class="small-note">Nobody: everyone who started has played in the last two weeks.</p>`}`; })()}
@@ -470,7 +490,6 @@
   const card = (icon, title, text, n) => `<li class="gg-card">${n ? `<span class="gg-n">${n}</span>` : ""}<span class="gg-ic" aria-hidden="true">${icon}</span><div><strong>${title}</strong><p>${text}</p></div></li>`;
   function guideView() {
     view = "guide"; markGuide();
-    if (guideTab === "credits") return aboutView(`<div class="gg">${gtabs()}</div>`);
     const coins = totalCoins(), rk = ART.rankOf(coins), R = ART.RANKS[rk], nx = ART.RANKS[rk + 1], b = bat();
     let body = "";
     if (guideTab === "play") body = `<p class="gg-tag">Play, learn and master each chapter.</p>
@@ -496,6 +515,16 @@
         <span class="gg-th">${ART.bg(k).replace('class="lg-bg"', 'class="lg-bg lg-thumb"')}</span>
         <span class="gg-rt"><strong>${esc(x.n)}</strong><small>${x.min.toLocaleString("en")} coins · ${esc(x.scene)}</small></span>
         <span class="gg-chip">${k === rk ? "You are here" : k > rk ? `🔒 ${(x.min - coins).toLocaleString("en")} more` : "Reached"}</span></li>`).join("")}</ol>`;
+    else if (guideTab === "credits") body = `<div class="gg-crtop">${ART.logo()}<p class="gg-tag">An original game made for NMK42003 Instrumentation.</p></div>
+      <h3 class="gg-sub">Made By</h3>
+      <div class="gg-cr"><div class="gg-crstand"><svg class="gg-crhero" viewBox="-50 -82 168 168" role="img" aria-label="The Creator as a game character">${ART.heroSvg(ART.CREATOR, "", 2)}</svg><span class="gg-crbase" aria-hidden="true"></span></div>
+        <div class="gg-crinfo"><span class="gg-crtag">THE CREATOR</span><div class="gg-crcard"><img src="assets/img/team/zamri.jpg" alt="" width="64" height="64"><div><b>Ts. Dr. Mohd Zamri Bin Zahir Ahmad</b><small>Course coordinator, NMK42003 Instrumentation<br>Faculty of Electronic Engineering &amp; Technology, UniMAP</small></div></div>
+        <div class="gg-crzamm">${ART.zamm(true)}</div></div></div>
+      <h3 class="gg-sub">About the Game</h3>
+      <p class="gg-p">INSTRUMENTA: Legends is an original game made for NMK42003 Instrumentation. Battle named enemies at every station, chapter by chapter, with Volt your helper drone, and grow from Apprentice to Legend of Measurement as you master each chapter.</p>
+      <ul class="gg-cards basics">${card("🌍", "One world per chapter", "Each chapter opens a new world, in the week it is lectured.")}${card("⚔️", "3 stations each", "Two stations, then the boss.")}${card("👾", "Named enemies and bosses", "Every station has its own enemy to calibrate.")}${card("🎵", "Original art and music", "Drawn and composed for this course.")}</ul>
+      <div class="gg-crbtns"><button type="button" class="lg-btn main" data-sharegame>📤 Share the game</button></div>
+      <p class="gg-crcopy">© 2026 Zamm Studio™ · Ts. Dr. Mohd Zamri Bin Zahir Ahmad. All rights reserved. #INSTRUMENTALegends</p>`;
     else body = `<p class="gg-p">Your battery shows whether you keep playing. <strong>Your rank, coins and XP never drop</strong>: only the label beside your rank and your character's glow change.</p>
       <div class="gg-bats">${[["charged", 1, "Within 7 days", `⚡ Charged ${esc(R.n)}`, "Golden title and a glowing character"], ["low", 0.45, "8 to 13 days ago", `🔋 Low-Battery ${esc(R.n)}`, "Normal title, no glow"], ["flat", 0, "14 days or more", `🪫 Flat-Battery ${esc(R.n)}`, "Grey title, your character falls asleep"]]
         .map(([st, f, when, how, look]) => `<div class="gg-bat b-${st}${b && b.st === st ? " me" : ""}">${b && b.st === st ? `<span class="gg-you">You</span>` : ""}${batSvg(f, st, "big")}<strong>${{ charged: "Charged", low: "Low battery", flat: "Flat battery" }[st]}</strong><small>Last battle: ${when}</small><em>${how}</em><span>${look}</span></div>`).join("")}</div>
@@ -503,17 +532,6 @@
       <ul class="gg-cards basics">${card("⚡", "Recharge", "One battle fills it right up, whether you win or get knocked out.")}${card("🔔", "Reminders", "You'll get a reminder on day 8 and on day 12.")}${card("⏸", "Paused weeks", "In exam weeks and breaks your lecturer can pause every battery.")}</ul>`;
     frame(`<div class="gg">${gtabs()}<div class="gg-body">${body}</div><div class="gg-foot"><button type="button" class="gg-start big" data-guideok>⚔️ Start Playing</button></div></div>`);
   }
-  function aboutView(top = "") {
-    frame(`${top}<div class="lg-cr"><div class="lg-crin"><h2 class="vh">About INSTRUMENTA: Legends</h2>${ART.logo()}<span class="lg-tag">THE CREATOR</span>
-      <svg class="lg-crhero" viewBox="-50 -82 168 168" role="img" aria-label="The Creator as a game character">${ART.heroSvg(ART.CREATOR, "", 2)}</svg>
-      <div class="lg-crcard"><img src="assets/img/team/zamri.jpg" alt="" width="56" height="56"><div><b>Ts. Dr. Mohd Zamri Bin Zahir Ahmad</b><small>Course coordinator, NMK42003 Instrumentation<br>Faculty of Electronic Engineering &amp; Technology, UniMAP</small></div></div>
-      ${ART.zamm(true)}
-      <p class="lg-crab">INSTRUMENTA: Legends is an original game made for NMK42003 Instrumentation. Battle named enemies at every station, chapter by chapter, with Volt your helper drone, and grow from Apprentice to Legend of Measurement as you master each chapter.</p>
-      <div class="lg-facts"><span>One world per chapter</span><span>3 stations each</span><span>Named enemies and bosses</span><span>Original art and music</span></div>
-      <div class="lg-crbtns"><button type="button" class="lg-btn main" data-go="map">⚔️ Back to the game</button><button type="button" class="lg-btn alt" data-sharegame>📤 Share the game</button></div>
-      <p class="lg-crcopy">© 2026 Zamm Studio™ · Ts. Dr. Mohd Zamri Bin Zahir Ahmad. All rights reserved. #INSTRUMENTALegends</p></div></div>`);
-  }
-
   /* ---------- share cards (9:16 PNG): the Web Share API with the file (WhatsApp status and more), or Save image ---------- */
   const SHARE_URL = "https://zamrizahir88.github.io/nmk42003/missions.html";
   const BY = "the game by Ts. Dr. Zamri Zahir (Zamm Studio)!";
@@ -533,6 +551,13 @@
     share({ kind: "win", hero, tier: tier(), name: heroLabel(), rank: rk, rankName: ART.RANKS[rk].n, coins: r.c, where: `CHAPTER ${w.chapter} · STATION ${i + 1}${E.boss ? " · BOSS" : ""}`,
       title: `I defeated ${E.name}!`, enemySvg: E.svg, enemyScale: E.scale || 1, stars: "★".repeat(r.s || 0) + "☆".repeat(3 - (r.s || 0)), extra: r.boss ? `${r.mk}/${r.of} marks` : "Defeated ✓" },
       `I defeated ${E.name} in INSTRUMENTA: Legends, ${BY} Can you beat my score? #INSTRUMENTALegends #UniMAP ${SHARE_URL}`, "win");
+  }
+  // 📤 Share my rank (leaderboard): the place is named in the top 10 or the top half, otherwise the rank and coins only
+  function shareRank(d, at, n, total) {
+    const g = d.game, rk = ART.rankOf(g.coins || 0), pos = at + 1, top10 = pos <= 10;
+    share({ kind: "rank", hero, tier: tier(), name: heroLabel(), rank: rk, rankName: ART.RANKS[rk].n, coins: g.coins || 0, pos, of: n, top10, half: pos <= Math.ceil(n / 2),
+      cleared: g.cleared || 0, total, bosses: g.bosses || 0, stars: g.stars || 0 },
+      `${top10 ? `I'm #${pos} on the INSTRUMENTA: Legends leaderboard` : `I'm a ${ART.RANKS[rk].n} in INSTRUMENTA: Legends`}, ${BY} Can you beat my rank? #INSTRUMENTALegends #UniMAP ${SHARE_URL}`, "rank");
   }
   const sharePlay = () => share(playCard(), `Let's play INSTRUMENTA: Legends, ${BY} Join me in NMK42003! #INSTRUMENTALegends #UniMAP ${SHARE_URL}`, "play");
   function share(d, text, tag) {
