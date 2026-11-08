@@ -8,11 +8,17 @@
 
   /* ---------- ranks: earned with coins in the game ---------- */
   const RANKS = [
-    { n: "Apprentice", min: 0, scene: "Lab at Dawn" },
-    { n: "Technician", min: 100, scene: "Circuit City" },
-    { n: "Engineer", min: 250, scene: "Signal Ocean" },
-    { n: "Master Engineer", min: 450, scene: "Data Sky" },
-    { n: "Legend of Measurement", min: 700, scene: "Neon Realm" }
+    // nine ranks (lecturer's choice, 8 Nov 2026): the first four unchanged; Legend stays the top and needs near-perfect play
+    // in all nine chapters (a chapter is worth up to 260 coins). s = which background and music mood (scene number)
+    { n: "Apprentice", min: 0, scene: "Lab at Dawn", s: 0 },
+    { n: "Technician", min: 100, scene: "Circuit City", s: 1 },
+    { n: "Engineer", min: 250, scene: "Signal Ocean", s: 2 },
+    { n: "Master Engineer", min: 450, scene: "Data Sky", s: 3 },
+    { n: "Chief Engineer", min: 750, scene: "Quantum Forge", s: 5 },
+    { n: "Grandmaster of Signals", min: 1050, scene: "Aurora Grid", s: 6 },
+    { n: "Guardian of Precision", min: 1400, scene: "Crystal Core", s: 7 },
+    { n: "Sage of Sensors", min: 1750, scene: "Starlight Observatory", s: 8 },
+    { n: "Legend of Measurement", min: 2100, scene: "Neon Realm", s: 4 }
   ];
   const rankOf = (coins) => { let r = 0; RANKS.forEach((x, i) => { if (coins >= x.min) r = i; }); return r; };
 
@@ -110,25 +116,25 @@
   };
   // name, the topic it tests (its weakness), its taunt, its colour (health bar), the size it is drawn at, and its card box
   const ENEMIES = {
-    misreadra: { name: "Misreadra", weak: "Errors and accuracy", taunt: "Read it from MY angle!", color: "#5b4a9e", scale: 0.9 },
-    scatterwisp: { name: "Scatterwisp", weak: "Mean, deviation and standard deviation", taunt: "Average me... if you can!", color: "#0f766e", scale: 0.95 },
-    nullus: { name: "Lord Nullus", weak: "Wheatstone bridge", taunt: "Bring me to balance, if you dare.", color: "#8e2b3b", scale: 0.88, boss: true },
-    bootloop: { name: "Bootloop Imp", weak: "Uploading and programming modes", taunt: "Connecting..... connecting.....", color: "#c25d17", scale: 1.25 },
-    pinjack: { name: "Pinjack", weak: "Digital and analog inputs and outputs", taunt: "Wrong pin, partner!", color: "#1f2a37", scale: 0.95 },
-    hydra: { name: "Protocol Hydra", weak: "UART, SPI, I²C, Bluetooth and Wi-Fi", taunt: "Three heads. One of you.", color: "#4b3ea3", scale: 0.8, boss: true },
-    driftgolem: { name: "Drift Golem", weak: "Sensor parameters and choosing a sensor", taunt: "Your readings... are... creeping...", color: "#5a5248", scale: 0.85 },
-    mimicrelay: { name: "Mimic Relay", weak: "Sensors, actuators and active/passive", taunt: "Sensor? Actuator? Guess wrong!", color: "#2f6fb0", scale: 1.05 },
-    fluxwarden: { name: "Flux Warden", weak: "Resistive, capacitive and inductive sensors", taunt: "Feel the field.", color: "#2b3445", scale: 0.85, boss: true }
+    misreadra: { name: "Misreadra", weak: "Errors and accuracy", taunt: "Read it from MY angle!", color: "#5b4a9e", scale: 0.9 , taunts: ["Hehe! Read the scale again!", "Parallax got you!", "Wrong angle, wrong answer!", "Is your eye level with the needle?", "Misread! My favourite!"] },
+    scatterwisp: { name: "Scatterwisp", weak: "Mean, deviation and standard deviation", taunt: "Average me... if you can!", color: "#0f766e", scale: 0.95 , taunts: ["Scattered, just like your readings!", "Average? You're below it!", "Too much deviation!", "Your answer spreads everywhere!", "Precision? Never heard of it!"] },
+    nullus: { name: "Lord Nullus", weak: "Wheatstone bridge", taunt: "Bring me to balance, if you dare.", color: "#8e2b3b", scale: 0.88, boss: true , taunts: ["Zero effort, zero damage!", "Unbalanced, as always!", "The galvanometer laughs at you!", "Null and void!", "Your bridge is falling down!"] },
+    bootloop: { name: "Bootloop Imp", weak: "Uploading and programming modes", taunt: "Connecting..... connecting.....", color: "#c25d17", scale: 1.25 , taunts: ["Rebooting your brain... failed!", "Error 404: answer not found!", "Hold BOOT and try again!", "Connecting... still wrong!", "Upload failed! Hehe!"] },
+    pinjack: { name: "Pinjack", weak: "Digital and analog inputs and outputs", taunt: "Wrong pin, partner!", color: "#1f2a37", scale: 0.95 , taunts: ["Wrong pin, partner!", "That pin is input only!", "Short circuit in your head!", "Analog? Digital? Ha!", "Jacked your pin!"] },
+    hydra: { name: "Protocol Hydra", weak: "UART, SPI, I²C, Bluetooth and Wi-Fi", taunt: "Three heads. One of you.", color: "#4b3ea3", scale: 0.8, boss: true , taunts: ["Three heads beat one brain!", "Wrong protocol, human!", "Baud rate mismatch!", "Your signal is lost!", "SPI, I2C... you pick wrong!"] },
+    driftgolem: { name: "Drift Golem", weak: "Sensor parameters and choosing a sensor", taunt: "Your readings... are... creeping...", color: "#5a5248", scale: 0.85 , taunts: ["Your answer... drifts... away...", "Calibrate yourself first!", "Creeping error wins!", "Slowly... wrong...", "Offset! Offset!"] },
+    mimicrelay: { name: "Mimic Relay", weak: "Sensors, actuators and active/passive", taunt: "Sensor? Actuator? Guess wrong!", color: "#2f6fb0", scale: 1.05 , taunts: ["Fooled you! Click!", "Sensor? Actuator? Wrong!", "Passive answer, active fail!", "I switched it on you!", "Copycat says: try again!"] },
+    fluxwarden: { name: "Flux Warden", weak: "Resistive, capacitive and inductive sensors", taunt: "Feel the field.", color: "#2b3445", scale: 0.85, boss: true , taunts: ["The field is too strong for you!", "Your inductance is weak!", "Capacitance... drained!", "Feel the resistance!", "My field flips your answer!"] }
   };
   Object.keys(ENEMIES).forEach((k) => { ENEMIES[k].svg = SVG[k] || ""; ENEMIES[k].key = k; });
 
-  /* ---------- the five rank backgrounds (640 x 300; the ground line is at y = 232) ---------- */
+  /* ---------- the nine rank backgrounds (640 x 300; the ground line is at y = 232) ---------- */
   const pan = (inner, cls) => `<g class="${cls}">${inner}<g transform="translate(640 0)">${inner}</g></g>`;
   const rnd = (seed) => { let s = seed; return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; }; };
   const motes = (n, colour, seed, cls = "lg-rise") => { const r = rnd(seed); let s = ""; for (let i = 0; i < n; i++) s += `<circle class="${cls}" cx="${(r() * 640).toFixed(0)}" cy="${(120 + r() * 110).toFixed(0)}" r="${(1.2 + r() * 2.6).toFixed(1)}" fill="${colour}" style="animation-delay:-${(r() * 8).toFixed(1)}s;animation-duration:${(6 + r() * 6).toFixed(1)}s"/>`; return s; };
   const grad = (id, a, b) => `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
   function bg(rank) {
-    const r = Math.max(0, Math.min(4, rank)), id = `lgS${r}`;
+    const r = (RANKS[Math.max(0, Math.min(RANKS.length - 1, rank | 0))] || RANKS[0]).s, id = `lgS${r}`;
     let d = "";
     if (r === 0) {   // Lab at Dawn
       const far = `<g fill="#f3e2c8" stroke="#e6cfae" stroke-width="2"><rect x="40" y="40" width="120" height="110" rx="4"/><path d="M100 40 V150 M40 95 H160"/><rect x="380" y="50" width="110" height="100" rx="4"/><path d="M435 50 V150 M380 100 H490"/></g>
@@ -159,6 +165,43 @@
         <rect width="640" height="300" fill="url(#${id})"/>${stars}${pan(`<path d="M0 140 Q160 90 320 130 T640 120 V170 Q480 180 320 165 T0 175 Z" fill="url(#${id}a)"/>`, "lg-pan-slow")}${pan(net, "lg-pan")}
         <circle cx="540" cy="60" r="22" fill="#f4f1d0"/><circle cx="550" cy="54" r="20" fill="#0a1130"/><path d="M0 232 Q160 214 320 230 T640 226 V300 H0 Z" fill="#101838"/>
         <g fill="#38e1c9" opacity=".5">${[40, 120, 200, 280, 360, 440, 520, 600].map((x) => `<circle cx="${x}" cy="262" r="2"/><circle cx="${x + 40}" cy="282" r="2"/>`).join("")}</g>`;
+    } else if (r === 5) {   // Quantum Forge: furnace glow, turning gears, sparks
+      const gear = (cx, cy, R, teeth, cls, col) => { let p = ""; for (let i = 0; i < teeth * 2; i++) { const a = (i * Math.PI) / teeth, rr = i % 2 ? R * 0.8 : R; p += `${i ? "L" : "M"}${(cx + rr * Math.cos(a)).toFixed(1)} ${(cy + rr * Math.sin(a)).toFixed(1)} `; } return `<g class="${cls}" style="transform-origin:${cx}px ${cy}px"><path d="${p}Z" fill="${col}"/><circle cx="${cx}" cy="${cy}" r="${(R * 0.34).toFixed(1)}" fill="#1a0d08"/></g>`; };
+      const pipes = `<g stroke="#4a2a1a" stroke-width="10" fill="none" stroke-linecap="round"><path d="M0 118 H200 Q216 118 216 102 V60"/><path d="M420 60 V96 Q420 112 436 112 H640"/></g><g fill="#ff9f1c">${[40, 110, 180, 470, 540, 610].map((x, k) => `<circle cx="${x}" cy="${k < 3 ? 118 : 112}" r="3"/>`).join("")}</g>`;
+      d = `<defs>${grad(id, "#160905", "#5a2410")}<radialGradient id="${id}f"><stop offset="0" stop-color="#fff0b3"/><stop offset=".45" stop-color="#ff8a1a"/><stop offset="1" stop-color="#ff3d00" stop-opacity="0"/></radialGradient></defs>
+        <rect width="640" height="300" fill="url(#${id})"/>${gear(84, 84, 44, 12, "lg-rot", "#3b2216")}${gear(572, 66, 34, 10, "lg-rot-r", "#3b2216")}${gear(140, 146, 22, 8, "lg-rot-r", "#4d2d1c")}${gear(520, 150, 26, 9, "lg-rot", "#4d2d1c")}
+        ${pan(pipes, "lg-pan-slow")}<circle class="lg-glow" cx="320" cy="168" r="96" fill="url(#${id}f)"/>
+        <path d="M262 232 V132 Q262 112 282 112 H358 Q378 112 378 132 V232 Z" fill="#2a150c" stroke="#ff9f1c" stroke-width="3"/><path class="lg-glow" d="M286 232 V160 Q286 140 306 140 H334 Q354 140 354 160 V232 Z" fill="#ffb347"/>
+        <rect y="232" width="640" height="68" fill="#22120a"/>${pan(`<g fill="#3d2214">${[0, 1, 2, 3, 4, 5, 6, 7].map((k) => `<rect x="${k * 80}" y="246" width="56" height="10" rx="3"/>`).join("")}</g>`, "lg-pan-fast")}${motes(24, "#ffb347", 57)}`;
+    } else if (r === 6) {   // Aurora Grid: northern lights over power lines, snow
+      const R = rnd(61); let st = "";
+      for (let i = 0; i < 40; i++) st += `<circle class="${R() > 0.5 ? "lg-twinkle" : ""}" cx="${(R() * 640).toFixed(0)}" cy="${(R() * 150).toFixed(0)}" r="${(0.6 + R() * 1.3).toFixed(1)}" fill="#e6fffb" style="animation-delay:-${(R() * 3).toFixed(1)}s"/>`;
+      const ribbon = (y, a, c) => { let p = `M0 ${y}`; for (let x = 0; x <= 640; x += 16) p += ` L${x} ${(y + a * Math.sin(x / 70)).toFixed(1)}`; for (let x = 640; x >= 0; x -= 16) p += ` L${x} ${(y + 46 + a * Math.sin(x / 70 + 1)).toFixed(1)}`; return `<path d="${p} Z" fill="url(#${id}${c})"/>`; };
+      const pylon = (x, h) => `<g stroke="#08202a" stroke-width="3" fill="none"><path d="M${x - 16} 232 L${x} ${232 - h} L${x + 16} 232 M${x - 11} ${232 - h * 0.35} H${x + 11} M${x - 7} ${232 - h * 0.65} H${x + 7} M${x - 22} ${232 - h * 0.8} H${x + 22}"/></g>`;
+      const lines = `${[60, 260, 460].map((x, k) => pylon(x, 96 + k * 6)).join("")}<g stroke="#08202a" stroke-width="1.5" fill="none" opacity=".8"><path d="M38 154 Q160 176 238 148 Q360 170 438 142 Q560 166 640 150"/><path d="M82 154 Q160 170 282 148 Q400 168 482 142"/></g>`;
+      d = `<defs>${grad(id, "#021820", "#0d4250")}<linearGradient id="${id}a" x1="0" x2="1"><stop offset="0" stop-color="#3dffb0" stop-opacity="0"/><stop offset=".4" stop-color="#3dffb0" stop-opacity=".55"/><stop offset=".7" stop-color="#38e1c9" stop-opacity=".45"/><stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/></linearGradient>
+        <linearGradient id="${id}b" x1="0" x2="1"><stop offset="0" stop-color="#8b5cf6" stop-opacity="0"/><stop offset=".5" stop-color="#b78cff" stop-opacity=".4"/><stop offset="1" stop-color="#3dffb0" stop-opacity="0"/></linearGradient></defs>
+        <rect width="640" height="300" fill="url(#${id})"/>${st}${pan(ribbon(40, 16, "a"), "lg-pan-slow")}${pan(ribbon(78, 12, "b"), "lg-pan")}
+        <path d="M0 232 Q120 206 240 222 T480 214 T640 220 V300 H0 Z" fill="#0a2c36"/>${pan(lines, "lg-pan-slow")}<rect y="232" width="640" height="68" fill="#dff4f7"/><path d="M0 232 H640" stroke="#b9dfe6" stroke-width="3"/>
+        <g fill="#ffffff" opacity=".8">${[30, 110, 190, 270, 350, 430, 510, 590].map((x) => `<circle cx="${x}" cy="258" r="1.6"/><circle cx="${x + 40}" cy="280" r="1.6"/>`).join("")}</g>`;
+    } else if (r === 7) {   // Crystal Core: a cave of glowing crystals round a floating core
+      const xtal = (x, y, h, w, c) => `<path d="M${x} ${y} L${x + w / 2} ${y - h} L${x + w} ${y} Z" fill="${c}" opacity=".85"/><path d="M${x + w / 2} ${y - h} L${x + w * 0.62} ${y}" stroke="#ffffff" stroke-width="1.4" opacity=".55"/>`;
+      const rocks = `<path d="M0 0 H640 V36 Q600 62 560 40 Q520 74 470 44 Q430 70 380 42 Q330 66 290 40 Q240 72 190 44 Q140 70 90 42 Q50 64 0 40 Z" fill="#1b0636"/>`;
+      d = `<defs>${grad(id, "#0e0222", "#3a1166")}<radialGradient id="${id}c"><stop offset="0" stop-color="#e9fbff"/><stop offset=".4" stop-color="#7fe3ff"/><stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/></radialGradient></defs>
+        <rect width="640" height="300" fill="url(#${id})"/>${rocks}<circle class="lg-glow" cx="320" cy="132" r="78" fill="url(#${id}c)"/>
+        <g class="lg-float"><path d="M320 84 L346 130 L320 176 L294 130 Z" fill="#bff3ff" stroke="#ffffff" stroke-width="2"/><path d="M320 84 L332 130 L320 176" fill="#7fe3ff" opacity=".7"/></g>
+        ${pan(`${xtal(30, 232, 70, 34, "#8b5cf6")}${xtal(70, 232, 44, 24, "#38e1c9")}${xtal(500, 232, 86, 40, "#b78cff")}${xtal(548, 232, 52, 26, "#38e1c9")}${xtal(600, 232, 64, 30, "#8b5cf6")}`, "lg-pan-slow")}
+        ${pan(`${xtal(170, 232, 38, 22, "#7fe3ff")}${xtal(410, 232, 30, 18, "#b78cff")}`, "lg-pan")}<rect y="232" width="640" height="68" fill="#1d0738"/><path d="M0 232 H640" stroke="#8b5cf6" stroke-width="2" opacity=".7"/>${motes(22, "#bff3ff", 71)}`;
+    } else if (r === 8) {   // Starlight Observatory: constellations, a shooting star and the dome on the hill
+      const R = rnd(81); let st = "";
+      for (let i = 0; i < 70; i++) st += `<circle class="${R() > 0.45 ? "lg-twinkle" : ""}" cx="${(R() * 640).toFixed(0)}" cy="${(R() * 210).toFixed(0)}" r="${(0.5 + R() * 1.5).toFixed(1)}" fill="#fff" style="animation-delay:-${(R() * 3).toFixed(1)}s"/>`;
+      const con = (pts) => `<path d="M${pts.map((q) => q.join(" ")).join(" L")}" stroke="#ffd84d" stroke-width="1" fill="none" opacity=".55"/>${pts.map(([x, y]) => `<circle class="lg-twinkle" cx="${x}" cy="${y}" r="2.6" fill="#ffd84d"/>`).join("")}`;
+      d = `<defs>${grad(id, "#020617", "#1e1b4b")}<linearGradient id="${id}m" x1="0" x2="1"><stop offset="0" stop-color="#c4b5fd" stop-opacity="0"/><stop offset=".5" stop-color="#c4b5fd" stop-opacity=".22"/><stop offset="1" stop-color="#c4b5fd" stop-opacity="0"/></linearGradient></defs>
+        <rect width="640" height="300" fill="url(#${id})"/>${pan(`<path d="M0 60 Q320 140 640 70 V120 Q320 190 0 112 Z" fill="url(#${id}m)"/>`, "lg-pan-slow")}${st}
+        ${con([[70, 50], [110, 80], [150, 62], [190, 96]])}${con([[420, 40], [460, 70], [500, 52], [540, 84], [580, 60]])}
+        <g class="lg-shoot"><path d="M0 0 L-60 -18" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity=".9"/><circle r="2.5" fill="#fff"/></g>
+        <path d="M0 232 Q200 176 400 206 T640 196 V300 H0 Z" fill="#0b1030"/><g transform="translate(430 170)"><rect x="-6" y="0" width="72" height="36" fill="#1c2152"/><path d="M-10 2 A40 40 0 0 1 70 2 Z" fill="#2a2f6e" stroke="#7fe3ff" stroke-width="1.5"/><path d="M26 -36 L34 -36 L34 2 L26 2 Z" fill="#0b1030"/><path d="M30 -30 L64 -54" stroke="#c4b5fd" stroke-width="5" stroke-linecap="round"/><rect x="24" y="16" width="12" height="20" fill="#ffd84d" opacity=".85"/></g>
+        <rect y="232" width="640" height="68" fill="#080c26"/>${motes(14, "#c4b5fd", 83, "lg-twinkle")}`;
     } else {   // Neon Realm
       let grid = ""; for (let k = 0; k < 10; k++) grid += `<path d="M0 ${236 + k * 8} H640" stroke="#ff4fd8" stroke-width="1.5" opacity="${(0.25 + k * 0.07).toFixed(2)}"/>`;
       let rays = ""; for (let x = -320; x <= 960; x += 80) rays += `<path d="M320 232 L${x} 300" stroke="#ff4fd8" stroke-width="1.5" opacity=".55"/>`;

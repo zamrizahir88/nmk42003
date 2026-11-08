@@ -12,7 +12,12 @@
     { name: "Circuit City", root: 57, bpm: 2, prog: [[0, 3, 7, 10], [-4, 0, 3, 7], [3, 7, 10, 14], [-2, 2, 5, 9]], scale: MIN },
     { name: "Signal Ocean", root: 62, bpm: -2, prog: [[0, 4, 7, 14], [5, 9, 12, 16], [-3, 0, 4, 9], [-5, -1, 2, 7]], scale: MAJ },
     { name: "Data Sky", root: 64, bpm: -4, prog: [[0, 3, 7, 14], [5, 9, 12, 15], [0, 3, 7, 10], [-2, 2, 5, 9]], scale: MIN },
-    { name: "Neon Realm", root: 65, bpm: 6, prog: [[0, 4, 7, 11], [2, 6, 9, 14], [-3, 0, 4, 7], [-7, -3, 0, 4]], scale: MAJ }
+    { name: "Neon Realm", root: 65, bpm: 6, prog: [[0, 4, 7, 11], [2, 6, 9, 14], [-3, 0, 4, 7], [-7, -3, 0, 4]], scale: MAJ },
+    // the four worlds added with ranks 5 to 8 (8 Nov 2026)
+    { name: "Quantum Forge", root: 55, bpm: 4, prog: [[0, 3, 7, 10], [-4, 0, 3, 7], [-2, 2, 5, 9], [-5, -2, 2, 5]], scale: MIN },
+    { name: "Aurora Grid", root: 62, bpm: -3, prog: [[0, 4, 7, 11], [-5, -1, 2, 7], [-3, 0, 4, 9], [5, 9, 12, 16]], scale: MAJ },
+    { name: "Crystal Core", root: 59, bpm: 1, prog: [[0, 3, 7, 14], [-4, 0, 3, 10], [3, 7, 10, 15], [-2, 2, 5, 12]], scale: MIN },
+    { name: "Starlight Observatory", root: 64, bpm: -5, prog: [[0, 4, 7, 14], [-3, 0, 4, 11], [5, 9, 12, 16], [-5, -1, 2, 9]], scale: MAJ }
   ];
   // the hook: [eighth note 0-31 across 4 bars, scale step (5 = an octave up), length in eighths]
   const HOOKS = {
@@ -28,12 +33,14 @@
   const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
   const step = (sc, i) => sc[((i % 5) + 5) % 5] + 12 * Math.floor(i / 5);
   let getCtx = null, ctx = null, out = null, verb = null, echo = null, noiseBuf = null;
-  let on = false, vol = 0.6, mood = 0, style = "lofi", timer = 0, next = 0, bar = 0;
+  let on = false, vol = 0.6, mood = 0, style = "lofi", timer = 0, next = 0, bar = 0, boost = 0, lp = null;
 
   function build() {
     ctx = getCtx();
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 3;
-    out = ctx.createGain(); out.gain.value = 0; out.connect(comp).connect(ctx.destination);
+    out = ctx.createGain(); out.gain.value = 0;
+    lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 20000;   // muffled on the last heart
+    out.connect(lp).connect(comp).connect(ctx.destination);
     const len = Math.floor(ctx.sampleRate * 2.4), imp = ctx.createBuffer(2, len, ctx.sampleRate);
     for (let c = 0; c < 2; c++) { const d = imp.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
     const rev = ctx.createConvolver(); rev.buffer = imp; const wet = ctx.createGain(); wet.gain.value = 0.3;
@@ -67,7 +74,7 @@
     s.connect(f).connect(e); e.connect(out); if (kind === "snare") e.connect(verb); s.start(t); s.stop(t + 0.2);
   }
   function playBar(t) {
-    const M = MOODS[mood], S = STYLES[style], bpm = S.bpm + M.bpm, beat = 60 / bpm, e8 = beat / 2, ch = M.prog[bar % 4];
+    const M = MOODS[mood], S = STYLES[style], bpm = S.bpm + M.bpm + boost, beat = 60 / bpm, e8 = beat / 2, ch = M.prog[bar % 4];
     const at = (i) => t + i * e8 + (i % 2 ? S.swing * beat : 0);   // eighth i of the bar, with swing
     echo.delayTime.setValueAtTime(beat * 0.75, t);
     const root = M.root, hookBar = bar % 8 < 4, hook = HOOKS[style], i0 = (bar % 4) * 8;
@@ -94,7 +101,7 @@
   }
   function tick() {
     if (!on || !ctx) return;
-    while (next < ctx.currentTime + 0.8) { playBar(next); next += (60 / (STYLES[style].bpm + MOODS[mood].bpm)) * 4; bar++; }
+    while (next < ctx.currentTime + 0.8) { playBar(next); next += (60 / (STYLES[style].bpm + MOODS[mood].bpm + boost)) * 4; bar++; }
   }
   const api = {
     STYLES, MOODS,
@@ -116,6 +123,10 @@
     setVolume(v) { vol = Math.max(0, Math.min(1, v)); if (on && ctx) { out.gain.cancelScheduledValues(ctx.currentTime); out.gain.setTargetAtTime(vol, ctx.currentTime, 0.2); } },
     setMood(m) { mood = Math.max(0, Math.min(MOODS.length - 1, m | 0)); },
     setStyle(s) { if (STYLES[s]) style = s; },
+    // faster in the boss's second phase (0 = normal)
+    setBoost(n) { boost = Math.max(0, Math.min(30, +n || 0)); },
+    // muffled (as if underwater) on the last heart
+    muffle(m) { if (!ctx || !lp) return; lp.frequency.setTargetAtTime(m ? 650 : 20000, ctx.currentTime, 0.25); },
     // quieter for a moment under the battle sounds
     duck() { if (!on || !ctx) return; const t = ctx.currentTime; out.gain.cancelScheduledValues(t); out.gain.setValueAtTime(out.gain.value, t); out.gain.linearRampToValueAtTime(vol * 0.35, t + 0.06); out.gain.linearRampToValueAtTime(vol, t + 0.9); }
   };

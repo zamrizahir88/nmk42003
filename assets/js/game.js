@@ -9,7 +9,23 @@
   // every exercise on the site, generated from the chapter and lab pages (id → title)
   const CATALOG = {"c1-ex1": "Exercise 1: Error and Accuracy", "c1-ex2": "Exercise 2: Precision of One Reading", "c1-ex3": "Exercise 3: Statistics of Five Readings", "c1-ex5": "Exercise 4: Limiting Error of a Voltmeter", "c1-ex6": "Exercise 5: Limiting Error of Power", "c1-ex7": "Exercise 6: Precision and Significant Figures", "c2-q1": "Exercise 1: Inside the ESP32", "c2-q2": "Exercise 2: Low Power", "c2-q3": "Exercise 3: Radio and the Module", "c2-q4": "Exercise 4: Power Supply Setup", "c2-q5": "Exercise 5: Programming Modes", "c2-q6": "Exercise 6: Manual Mode and the PC Connection", "c2-q7": "Exercise 7: Input and Output", "c2-q8": "Exercise 8: Types of Connectivity", "c2-q9": "Exercise 9: UART, SPI or I²C?", "c2-q10": "Exercise 10: Bluetooth and Wi-Fi", "c3-q1": "Exercise 1: Which Parameter?", "c3-q2": "Exercise 2: Sensitivity of a Linear Sensor", "c3-q3": "Exercise 3: Dynamic Response", "c3-q4": "Exercise 4: Hysteresis", "c3-q5": "Exercise 5: Potentiometer", "c3-q6": "Exercise 6: Resistance of a Wire", "c3-q7": "Exercise 7: Parallel-Plate Capacitive Sensor", "c3-q8": "Exercise 8: Liquid-Level Sensor", "c3-q9": "Exercise 9: Coil Inductance", "c3-q10": "Exercise 10: Passive, Active or Actuator?", "c3-q11": "Exercise 11: Parking Sensor", "c3-q12": "Exercise 12: Actuators", "c3-q13": "Exercise 13: LDR Voltage Divider", "c3-q14": "Exercise 14: Thermocouple and Amplifier", "c3-q15": "Exercise 15: Strain Gauge in a Bridge", "c3-q16": "Exercise 16: Choose a Sensor", "c3-q17": "Exercise 17: Active or Passive, and Why?", "c4-q1": "Exercise 1: Voltage Divider", "c4-q2": "Exercise 2: Capacitor Divider", "c4-q3": "Exercise 3: LDR Night Light", "c4-q4": "Exercise 4: Unbalanced Bridge", "c4-q5": "Exercise 5: Galvanometer Direction", "c4-q6": "Exercise 6: Finding an Unknown Resistor", "c4-q7": "Exercise 7: Strain Gauge Bridge", "c4-q8": "Exercise 8: 555 Timer", "c4-q9": "Exercise 9: Level Sensor Frequency", "c4-q10": "Exercise 10: LC Resonance", "c4-q11": "Exercise 11: Piezo Circuit", "c4-q12": "Exercise 12: Which Technique?", "ex-a1": "Amplifier Exercise 1: Voltage Follower", "ex-a2": "Amplifier Exercise 2: Inverting Amplifier", "ex-a3": "Amplifier Exercise 3: Non-Inverting Amplifier", "ex-a4": "Amplifier Exercise 4: Differential Amplifier", "ex-f1": "Filter Exercise 1: Passive Low-Pass Filter", "ex-f2": "Filter Exercise 2: Passive High-Pass Filter", "ex-f3": "Filter Exercise 3: Active Low-Pass Filter", "c6-q1": "Exercise 1: Binary, Hex and BCD", "c6-q2": "Exercise 2: Word Length", "c6-q3": "Exercise 3: Binary-Weighted Resistors", "c6-q4": "Exercise 4: Binary-Weighted DAC Output", "c6-q5": "Exercise 5: Choosing R<sub>f</sub>", "c6-q6": "Exercise 6: R-2R Ladder", "c6-q7": "Exercise 7: ADC Resolution", "c6-q8": "Exercise 8: ESP32 Thermometer", "c6-q9": "Exercise 9: Counter vs SAR", "c6-q10": "Exercise 10: How Many Bits?", "c6-q11": "Exercise 11: ESP32 DAC", "c6-q12": "Exercise 12: DAC or ADC?", "c7-q1": "Exercise 1: A Line from Two Points", "c7-q2": "Exercise 2: Using a Calibration Equation", "c7-q3": "Exercise 3: Checking the Accuracy", "c7-q4": "Exercise 4: Least-Squares Line", "c7-q5": "Exercise 5: Keep Enough Significant Figures", "c7-q6": "Exercise 6: Calibration Ideas", "l1-q1": "Exercise 1: Blink Timing", "l1-q2": "Exercise 2: The LED Resistor", "l1-q3": "Exercise 3: Reading the Web Request", "l1-q4": "Exercise 4: The Line Ending", "l2-q1": "Exercise 1: Voltage to Count", "l2-q2": "Exercise 2: The Line Through Two Points", "l2-q3": "Exercise 3: Use the Equation", "l2-q4": "Exercise 4: The Error of a Reading", "l3-q1": "Exercise 1: Reading a UID", "l3-q2": "Exercise 2: How Many Cards?", "l3-q3": "Exercise 3: Plan the Display", "l3-q4": "Exercise 4: Two Buses"};
   const SEM = COURSE.semesterId || COURSE.session;
-  const LEVELS = [[0, "Apprentice"], [400, "Technician"], [1200, "Calibration Engineer"], [2200, "Instrumentation Specialist"]];
+  // L5 to L8 added on 8 Nov 2026 (lecturer's choice): L1 to L4 keep their names and XP, so nobody's level changes
+  const LEVELS = [[0, "Apprentice"], [400, "Technician"], [1200, "Calibration Engineer"], [2200, "Instrumentation Specialist"],
+    [3000, "Senior Instrumentation Specialist"], [3800, "Measurement Expert"], [4600, "Chief Instrumentation Engineer"], [5500, "Master of Instrumentation"]];
+  // INSTRUMENTA's battery (lecturer's choice): how long since the last battle, minus the weeks a lecturer paused it
+  // (meta/missions.bat.p: [{a: fromISO, b: toISO or ""}]; Firestore can't hold lists of lists). Charged up to 7 days, Low from 8 to 13, Flat from 14; it drains over
+  // 14 days. Rank, coins and XP never drop: only the label and the glow change. Used by the game, the bell and the board.
+  function battery(last, pauses, now) {
+    if (!last) return null;
+    now = now || Date.now();
+    const t0 = Date.parse(last); if (!isFinite(t0)) return null;
+    let ms = now - t0;
+    const pp = (pauses || []).map((x) => (Array.isArray(x) ? x : [x && x.a, x && x.b]));
+    pp.forEach(([a, b]) => { const s0 = Math.max(Date.parse(a), t0), e0 = Math.min(b ? Date.parse(b) : now, now); if (isFinite(s0) && isFinite(e0) && e0 > s0) ms -= e0 - s0; });
+    const d = Math.max(0, ms / DAY);
+    return { d, fill: Math.max(0, Math.min(1, 1 - d / 14)), st: d <= 7 ? "charged" : d < 14 ? "low" : "flat", paused: pp.some(([a, b]) => a && !b) };
+  }
+  const BATTERY = { charged: ["⚡", "Charged"], low: ["🔋", "Low-Battery"], flat: ["🪫", "Flat-Battery"] };
   const KIT_TOTAL = { 1: 15, 2: 15, 3: 13 };
   const DAY = 86400000;
 
@@ -169,11 +185,11 @@
   document.addEventListener("nmk:store", (e) => { if (e.detail !== "nmk-game-seen") check(); });
 
   /* ---------- the journey map (home page) and the profile card (progress board page) ---------- */
-  function xpBar(g) {
+  function xpBar(g, mine) {
     const span = g.nextAt ? g.nextAt - g.levelAt : 1, into = g.nextAt ? g.xp - g.levelAt : 1;
     return `<div class="gm-level"><span class="gm-lv">Level ${g.levelNo}</span><strong>${g.level}</strong><span class="gm-xp">${g.xp} XP</span></div>
       <div class="gm-bar" role="img" aria-label="${g.nextAt ? `${g.nextAt - g.xp} XP to ${g.nextLevel}` : "Top level reached"}"><span style="width:${Math.min(100, Math.round((into / span) * 100))}%"></span></div>
-      <p class="gm-next">${g.nextAt ? `${g.nextAt - g.xp} XP to <strong>${g.nextLevel}</strong>` : "You have reached the top level."}</p>`;
+      <p class="gm-next">${g.nextAt ? `${g.nextAt - g.xp} XP to <strong>${g.nextLevel}</strong>` : "You have reached the top level."}${mine ? ` <button type="button" class="gm-all" data-gm-levels="${g.levelNo}">See all levels</button>` : ""}</p>`;
   }
   // o.other: someone else's journey (a classmate's profile): no "pick up where you left off" note
   function journeyHtml(g, o = {}) {
@@ -192,7 +208,7 @@
           ${s.total ? `<span class="gm-mini" aria-hidden="true"><i style="width:${s.pct}%"></i></span>` : ""}</a></li>`;
     }).join("");
     if (o.noHead) return `${nudge}<ol class="gm-path">${stops}</ol>`;
-    return `${nudge}<div class="gm-head">${xpBar(g)}<div class="gm-badges">${g.badges.length ? g.badges.map((b) => `<span class="gm-b" title="${esc(b.desc)}"><span aria-hidden="true">${b.icon}</span>${esc(b.name)}</span>`).join("") : `<span class="gm-none">No badges yet: solve your first exercise to earn one.</span>`}</div>
+    return `${nudge}<div class="gm-head">${xpBar(g, !o.other)}<div class="gm-badges">${g.badges.length ? g.badges.map((b) => `<span class="gm-b" title="${esc(b.desc)}"><span aria-hidden="true">${b.icon}</span>${esc(b.name)}</span>`).join("") : `<span class="gm-none">No badges yet: solve your first exercise to earn one.</span>`}</div>
         <p class="gm-meta">${g.solved} of ${g.total} exercises solved · ${g.streak ? `${g.streak}-week streak` : "no streak yet"}${o.other ? "" : ` · <a href="profile.html">My profile</a> · <a href="board.html">Progress board</a>`}</p></div>
       <ol class="gm-path">${stops}</ol>`;
   }
@@ -265,7 +281,28 @@
       badges: BADGES.filter((x) => (b.badges || []).includes(x.id)), solved: b.solved || 0, total: Object.keys(CATALOG).length, stops, weeks: [], streak: b.streak || 0, lastActive: b.lastActive || null, nowWeek: weekOf(today()) };
   }
 
-  window.NMKGame = { SEM, CATALOG, STOPS, BADGES, LEVELS, compute, local, localKeys, xpBar, journeyHtml, weekOf, today, feed, summaryProg, fromSummary, isLecturer, paint: paintJourney };
+  /* ---------- All Levels: every level, the student's own highlighted, and how XP is earned ---------- */
+  function levelsDialog(mine) {
+    const old = document.querySelector(".gm-lvd"); if (old) old.remove();
+    const d = document.createElement("div");
+    d.className = "gm-lvd"; d.setAttribute("role", "dialog"); d.setAttribute("aria-modal", "true"); d.setAttribute("aria-label", "All levels");
+    d.innerHTML = `<div class="gm-lvc"><button type="button" class="gm-lvx" aria-label="Close">✕</button><h2>All Levels</h2>
+      <ol class="gm-lvl">${LEVELS.map(([at, name], k) => `<li class="${k + 1 === mine ? "me" : k + 1 < mine ? "past" : ""}"><span class="gm-lvn">L${k + 1}</span><strong>${esc(name)}</strong><span class="gm-lvx2">${at.toLocaleString("en")} XP</span>${k + 1 === mine ? `<em>You are here</em>` : ""}</li>`).join("")}</ol>
+      <h3>How to Earn XP</h3><ul class="gm-lvh"><li>✍️ Solve a chapter or lab exercise: 30 XP on the first try, 20 after 1 or 2 wrong tries, 10 after more</li>
+        <li>🏁 Solve every exercise of a chapter or lab: +50 XP</li><li>🧪 Pass a Pre-Lab Check: 50 XP (+20 on the first attempt)</li>
+        <li>❓ A quiz question right: 5 XP</li><li>✅ Attend a lecture or lab: 10 XP</li><li>⚔️ INSTRUMENTA: 1 XP for every 2 coins</li></ul>
+      <p class="gm-lvf">XP never counts towards your grade. It shows how much you have practised.</p></div>`;
+    document.body.appendChild(d);
+    const step = window.NMKBack ? NMKBack.layer(() => close(true)) : null;
+    function close(fromBack) { d.remove(); document.removeEventListener("keydown", key); if (step && !fromBack) step.closed(); }
+    const key = (e) => { if (e.key === "Escape") close(); };
+    document.addEventListener("keydown", key);
+    d.addEventListener("click", (e) => { if (e.target === d || e.target.closest(".gm-lvx")) close(); });
+    d.querySelector(".gm-lvx").focus();
+  }
+  document.addEventListener("click", (e) => { const b = e.target.closest("[data-gm-levels]"); if (b) { e.preventDefault(); levelsDialog(+b.dataset.gmLevels); } });
+
+  window.NMKGame = { SEM, CATALOG, STOPS, BADGES, LEVELS, battery, BATTERY, levelsDialog, compute, local, localKeys, xpBar, journeyHtml, weekOf, today, feed, summaryProg, fromSummary, isLecturer, paint: paintJourney };
   paintJourney();
   check();
 })();

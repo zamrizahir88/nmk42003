@@ -129,6 +129,12 @@
     drop: () => [0, 0.08, 0.16].forEach((t, k) => tone(880 - k * 180, t, 0.12, "square", 0.045)),
     beep: () => { tone(1320, 0, 0.08, "sine", 0.07); tone(1760, 0.09, 0.1, "sine", 0.07); },
     almost: () => tone(880, 0, 0.12, "sine", 0.06, 990),
+    // the cheeky enemy: "ha-ha-ha" (bigger on the last heart), the combo chime, the battery charging, the enemy breaking up
+    laugh: (big) => { duck(); (big ? [0, 0.12, 0.24, 0.36, 0.48] : [0, 0.13, 0.26]).forEach((t, k) => tone((big ? 520 : 640) - k * 34, t, 0.1, "triangle", 0.075, (big ? 400 : 520) - k * 34)); },
+    combo: (n) => [0, 0.06, 0.12].forEach((t, k) => tone(660 * Math.pow(1.26, k) * (1 + Math.min(n, 6) * 0.06), t, 0.09, "square", 0.05)),
+    charge: () => { duck(); tone(160, 0, 0.95, "sine", 0.08, 1300); tone(1760, 0.9, 0.22, "triangle", 0.05); tone(2349, 1.0, 0.32, "triangle", 0.05); },
+    shatter: () => { noise(0, 0.45, 0.16); [1568, 1319, 1047, 1760, 2093].forEach((f, k) => tone(f, 0.04 + k * 0.05, 0.14, "square", 0.03)); },
+    nooo: () => tone(320, 0, 0.9, "sawtooth", 0.05, 110),
     roar: () => { duck(); noise(0, 0.6, 0.14); tone(90, 0, 0.6, "sawtooth", 0.08, 50); },
     win: () => { duck(); [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.12, 0.22, "square", 0.06)); tone(1319, 0.5, 0.5, "square", 0.06); },
     faint: () => tone(400, 0, 0.7, "triangle", 0.08, 80),
@@ -192,6 +198,26 @@
 
   /* ---------- enemies: the named ones in legends-art.js; anything else gets a plain slime ---------- */
   const SLIME = `<path d="M-62 0 Q-74 -86 0 -96 Q74 -86 62 0 Q40 6 20 -2 Q0 6 -20 -2 Q-40 6 -62 0 Z" fill="#8b7cf0" stroke="#3c3489" stroke-width="2.5"/><circle cx="-20" cy="-50" r="11" fill="#fff" stroke="#26215c" stroke-width="2"/><circle cx="20" cy="-50" r="11" fill="#fff" stroke="#26215c" stroke-width="2"/><circle cx="-17" cy="-48" r="5" fill="#26215c"/><circle cx="17" cy="-48" r="5" fill="#26215c"/>`;
+  /* ---------- the battery (lecturer's choice): one battle a week keeps it Charged; rank and coins never drop ---------- */
+  const GM = window.NMKGame || {};
+  let PAUSES = [];   // the lecturer's pauses (meta/missions.bat.p): exam weeks and breaks don't run batteries down
+  const lastPlay = () => { let t = ""; [best(), saves()].forEach((o) => Object.values(o).forEach((r) => { if (r && r.at && r.at > t) t = r.at; })); return t; };
+  const bat = (last) => (GM.battery ? GM.battery(last === undefined ? lastPlay() : last, PAUSES) : null);
+  const BATL = { charged: "Charged", low: "Low battery", flat: "Flat battery" };
+  const batSvg = (fill, st, cls = "") => { const c = fill > 0.5 ? "#22c55e" : fill > 0.15 ? "#f59e0b" : "#ef4444";
+    return `<svg class="lg-bsvg ${cls}" viewBox="0 0 40 20" aria-hidden="true" focusable="false"><rect x="1" y="2" width="34" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><rect x="36" y="7" width="3" height="6" rx="1" fill="currentColor"/><rect class="lg-bfill" x="3.5" y="4.5" width="${(29 * fill).toFixed(1)}" height="11" rx="1.5" fill="${c}" style="--fw:${(29 * fill).toFixed(1)}px"/>${st === "charged" ? `<path d="M20 4 L15 11 H19 L17 16 L23 9 H19 Z" fill="#fff" stroke="#14213d" stroke-width=".8"/>` : ""}</svg>`; };
+  const batNote = (b) => (b.paused ? "Paused by your lecturer" : b.st === "charged" ? `Low in ${Math.max(1, Math.ceil(7 - b.d))} day${Math.ceil(7 - b.d) > 1 ? "s" : ""}` : b.st === "low" ? `Flat in ${Math.max(1, Math.ceil(14 - b.d))} day${Math.ceil(14 - b.d) > 1 ? "s" : ""}` : "Play one battle to recharge");
+  function batBadge() {
+    const b = bat(); if (!b) return "";
+    return `<button type="button" class="lg-bat b-${b.st}" data-guide="battery" aria-label="Battery: ${BATL[b.st]}. ${batNote(b)}. Tap for details.">${batSvg(b.fill, b.st)}<span><b>${b.paused ? "⏸ " : ""}${BATL[b.st]}</b><small>${batNote(b)}</small></span>${b.st === "flat" ? `<i class="lg-zzz" aria-hidden="true">z z z</i>` : ""}</button>`;
+  }
+  // the reminder on the map: from day 8 (Low), stronger from day 12, and when Flat
+  function batReminder() {
+    const b = bat(); if (!b || b.paused || b.st === "charged") return "";
+    const left = Math.max(1, Math.ceil(14 - b.d));
+    return `<div class="lg-brem b-${b.st}" role="status">${b.st === "flat" ? "🪫 Your battery is flat. Play one battle to recharge!" : b.d >= 12 ? `🪫 ${left} day${left > 1 ? "s" : ""} until your battery is flat! Play one battle to recharge.` : "🔋 Your battery is getting low. Play one battle to recharge!"}</div>`;
+  }
+  const TAUNTS0 = ["Hehe! Missed me!", "Is that all you've got?", "Check your working again!", "Too slow, too wrong!", "Try harder, engineer!"];
   const enemyOf = (m) => { const e = ART.ENEMIES[m.monster] || { name: "Fault Slime", weak: "", taunt: "", color: "#534ab7", scale: 1, svg: SLIME }; return Object.assign({}, e, { name: m.monsterName || e.name, boss: !!m.boss || !!e.boss }); };
   const portrait = (e, cls = "") => `<svg class="lg-por ${cls}" viewBox="${e.boss ? "-170 -250 340 262" : "-130 -232 260 244"}" aria-hidden="true" focusable="false">${e.svg}</svg>`;
 
@@ -250,17 +276,18 @@
       <button type="button" class="lg-ic" data-snd aria-pressed="${soundOn}" aria-label="Sound effects" title="Sound effects">${soundOn ? "🔊" : "🔇"}</button></span>`;
   const coinPill = () => `<span class="ms-pill lg-coins"><span class="ms-coin"></span><strong id="msCoins">${totalCoins()}</strong> <small>coins</small></span>`;
   function frame(body, battleView) {
-    const coins = totalCoins(), rk = ART.rankOf(coins), R = ART.RANKS[rk], nx = ART.RANKS[rk + 1];
-    if (MUS) MUS.setMood(rk);
+    const coins = totalCoins(), rk = ART.rankOf(coins), R = ART.RANKS[rk], nx = ART.RANKS[rk + 1], bt = bat();
+    if (MUS) MUS.setMood(R.s);
     const lec = isLec ? `<div class="ms-lec">${A.released ? "Released: students can play." : "<strong>Not released yet:</strong> only lecturers can see this page."} Lecturer plays are saved on this device only and never appear on the board. <a href="admin.html?tab=missions">Release or upload in Lecturer Tools ›</a>
       <label class="ms-asstu"><input type="checkbox" data-asstu${asStudent ? " checked" : ""}> Preview as a student: stations unlock one by one, and chapters open in the week they are lectured</label></div>` : "";
     const stage = battleView ? `<div class="lg-mini"><strong class="lg-mlogo">INSTRUMENTA: <em>Legends</em></strong><span class="lg-mrank">${esc(R.n)}</span><span class="ms-sp"></span>${coinPill()}${sounds()}<button type="button" class="lg-btn lg-save" data-saveexit><span aria-hidden="true" style="font-size:1.2em">💾</span> Save and exit</button></div>`
       : `<div class="lg-stage">${ART.bg(rk)}<div class="lg-hud">
           <div class="lg-brand">${ART.logo()}<small class="lg-by">by Ts. Dr. Zamri Zahir</small></div>
-          <div class="lg-rank"><span class="lg-rk">Rank ${rk + 1} of ${ART.RANKS.length} · ${esc(R.scene)}</span><strong>${esc(R.n)}</strong>
+          <div class="lg-rankw"><div class="lg-rank" data-guide="ranks" role="button" tabindex="0" aria-label="Your rank: ${esc(R.n)}. See all ranks"><span class="lg-rk">Rank ${rk + 1} of ${ART.RANKS.length} · ${esc(R.scene)}</span><strong class="lg-rn${bt ? ` b-${bt.st}` : ""}">${bt ? `<span class="lg-rnb">${GM.BATTERY[bt.st][0]} ${GM.BATTERY[bt.st][1]}</span> ` : ""}${esc(R.n)}</strong>
             <span class="lg-bar" role="progressbar" aria-label="Progress to the next rank" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${nx ? Math.round(((coins - R.min) / (nx.min - R.min)) * 100) : 100}"><i style="width:${nx ? Math.round(((coins - R.min) / (nx.min - R.min)) * 100) : 100}%"></i></span>
             <small>${nx ? `${nx.min - coins} more coins to ${esc(nx.n)}` : "Top rank reached. Legendary!"}</small></div>
-        </div><div class="lg-strip">${coinPill()}<span class="lg-nav"><button type="button" class="lg-btn main" data-go="board">🏆 Leaderboard</button><button type="button" class="lg-btn alt" data-go="room">👤 My Character</button><button type="button" class="lg-btn alt" data-go="about">ⓘ About</button></span>${sounds()}</div></div>`;
+          ${batBadge()}</div>
+        </div><div class="lg-strip">${coinPill()}<span class="lg-nav"><button type="button" class="lg-btn main" data-go="board">🏆 Leaderboard</button><button type="button" class="lg-btn alt" data-go="room">👤 My Character</button><button type="button" class="lg-btn alt" data-guide="play">📖 Guide</button></span>${sounds()}</div></div>`;
     page.innerHTML = `${lec}${stage}<div id="msView">${body}</div><p class="lg-copy">© 2026 Zamm Studio™ · Ts. Dr. Mohd Zamri Bin Zahir Ahmad</p>`;
   }
   function go(v, push = true, w = openWorld) {
@@ -269,18 +296,14 @@
     if (push && window.NMKBack) NMKBack.view({ mview: v, mworld: w ? w.world : null });
     if (v === "room") return room();
     if (v === "board") return boardView();
-    if (v === "about") return aboutView();
+    if (v === "about") { guideTab = "credits"; return guideView(); }
+    if (v === "guide") return guideView();
     if (v === "world" && w) return worldView(w);
     return mapView();
   }
   function mapView() {
     const b = best();
-    frame(`<div class="lg-lead"><p class="lg-lead-h">Play, learn and master each chapter.</p><ul class="lg-rules">
-        <li><span aria-hidden="true">⚔️</span>Three stations per chapter. Beat the first two to face the boss.</li>
-        <li><span aria-hidden="true">✍️</span>Work it out on paper, then key in your answer.</li>
-        <li><span aria-hidden="true">🪙</span>Right: you strike and earn coins. Wrong: the enemy blocks, strikes back, and you lose 2 coins.</li>
-        <li><span aria-hidden="true">❤️</span>Lose all your hearts and the station starts again.</li>
-        <li><span aria-hidden="true">📅</span>A new chapter opens in the week it is lectured.</li></ul></div>
+    frame(`<div class="lg-lead"><p class="lg-lead-h">Play, learn and master each chapter.</p><button type="button" class="lg-howto" data-guide="play">📖 How to play</button></div>${batReminder()}
       <div class="lg-worlds">${WORLDS.map((w) => {
         const open = worldOpen(w), o = opensOn(w), done = w.missions.filter((m) => b[m.id]).length;
         return `<button type="button" class="lg-world${open ? "" : " locked"}" data-world="${w.world}"${open ? "" : ` aria-disabled="true"`}>
@@ -399,7 +422,7 @@
       return `<tr class="${d.uid === me ? "me" : ""}"><td class="lg-pos">${medal(k)}</td><td><span class="lg-who">${avatar(heroIn(g))}<span><b class="lg-hn">${esc(hn || d.nickname || "Player")}</b>
         <a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname || "Student")}</a>${hn && d.nickname ? `<small>${esc(d.nickname)}</small>` : ""}
         ${isLec && hn ? `<button type="button" class="lg-rm" data-rmname="${esc(d.uid)}" data-name="${esc(hn)}">Remove hero name</button>` : ""}</span></span></td>
-        ${isLec ? `<td>${esc(d.matric || "–")}</td>` : ""}<td>${esc(R.n)}</td><td class="lg-num"><strong>${g.coins || 0}</strong></td><td class="lg-num">${g.cleared || 0} / ${total}</td><td class="lg-num">${g.bosses || 0} / ${bossesT}</td><td class="lg-num">${g.stars || 0} ★</td>
+        ${isLec ? `<td>${esc(d.matric || "–")}</td>` : ""}<td>${(() => { const b = bat(g.last || ""); return b ? `<span class="lg-bi b-${b.st}" title="${BATL[b.st]}: last battle ${Math.floor(b.d)} day${Math.floor(b.d) === 1 ? "" : "s"} ago">${GM.BATTERY[b.st][0]}</span> ` : ""; })()}${esc(R.n)}</td><td class="lg-num"><strong>${g.coins || 0}</strong></td><td class="lg-num">${g.cleared || 0} / ${total}</td><td class="lg-num">${g.bosses || 0} / ${bossesT}</td><td class="lg-num">${g.stars || 0} ★</td>
         ${WORLDS.map((w) => `<td class="lg-num">${((g.ch || {})[w.world] || 0)} / ${w.missions.length}</td>`).join("")}${isLec ? `<td class="lg-num${g.ai ? " lg-ai" : ""}" title="Questions asked to Ask Dr. Zamri while a station was unfinished">${g.ai || 0}</td>` : ""}<td>${ago(g.last)}</td></tr>`; };
     const head = `<tr><th scope="col">#</th><th scope="col">Player</th>${isLec ? `<th scope="col">Matric</th>` : ""}<th scope="col">Rank</th><th scope="col">Coins</th><th scope="col">Stations</th><th scope="col">Bosses</th><th scope="col">Stars</th>${WORLDS.map((w) => `<th scope="col">Ch ${w.chapter}</th>`).join("")}${isLec ? `<th scope="col" title="Questions asked to Ask Dr. Zamri while a station was unfinished">🤖 AI asks</th>` : ""}<th scope="col">Last played</th></tr>`;
     const table = (rows) => `<div class="adm-scroll"><table class="adm lg-tab"><thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
@@ -417,6 +440,8 @@
     host.innerHTML = `<div class="adm-tools"><button type="button" class="btn ghost small" data-bcsv>Download CSV</button></div>
       <p class="small-note">${players.length} playing · ${notYet.length} not started yet. Lecturer plays never appear here. 🤖 AI asks: questions a student asked Ask Dr. Zamri while one of their stations was unfinished (only lecturers see this column). A rude hero name? Tap <strong>Remove hero name</strong>: the player's nickname shows instead, and they are asked to choose another one.</p>
       ${players.length ? table(players.map((d, k) => row(d, k)).join("")) : `<p class="adm-empty">Nobody has played yet.</p>`}
+      ${(() => { const flat = players.filter((d) => { const b = bat(d.game.last || ""); return b && b.st === "flat"; });
+        return `<h3 class="h3 lg-nyh">🪫 Flat Battery for 14+ Days (${flat.length})</h3>${flat.length ? `<ul class="lg-ny">${flat.map((d) => `<li><a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname)}</a> <small>${esc(d.matric || "")} · last battle ${ago(d.game.last)}</small></li>`).join("")}</ul>` : `<p class="small-note">Nobody: everyone who started has played in the last two weeks.</p>`}`; })()}
       <h3 class="h3 lg-nyh">Not Started Yet (${notYet.length})</h3>${notYet.length ? `<ul class="lg-ny">${notYet.map((r) => `<li><a href="profile.html?e=${encodeURIComponent(r.id)}">${esc(r.name)}</a> <small>${esc(r.matric)} · ${esc(SECN[r.section] || "–")}</small></li>`).join("")}</ul>` : `<p class="small-note">Everyone has started. 🎉</p>`}`;
     $$("[data-rmname]", host).forEach((b) => b.addEventListener("click", async () => {
       b.disabled = true; b.textContent = "Removing…";
@@ -425,16 +450,57 @@
     }));
     $("[data-bcsv]", host).addEventListener("click", () => {
       const q = (x) => `"${String(x == null ? "" : x).replace(/"/g, '""')}"`;
-      const lines = [["Position", "Name", "Hero name", "Nickname", "Matric", "Section", "Rank", "Coins", "Stations cleared", "Bosses", "Stars", ...WORLDS.map((w) => `Chapter ${w.chapter}`), "AI asks during unfinished stations", "Last played"].map(q).join(",")]
-        .concat(players.map((d, k) => [k + 1, d.name || d.nickname, hname(d), d.nickname || "", d.matric, SECN[d.section] || "", ART.RANKS[ART.rankOf(d.game.coins || 0)].n, d.game.coins || 0, d.game.cleared || 0, d.game.bosses || 0, d.game.stars || 0, ...WORLDS.map((w) => (d.game.ch || {})[w.world] || 0), d.game.ai || 0, d.game.last ? d.game.last.slice(0, 10) : ""].map(q).join(",")))
-        .concat(notYet.map((r) => ["", r.name, "", "", r.matric, SECN[r.section] || "", "Not started", 0, 0, 0, 0, ...WORLDS.map(() => 0), 0, ""].map(q).join(",")));
+      const lines = [["Position", "Name", "Hero name", "Nickname", "Matric", "Section", "Rank", "Battery", "Coins", "Stations cleared", "Bosses", "Stars", ...WORLDS.map((w) => `Chapter ${w.chapter}`), "AI asks during unfinished stations", "Last played"].map(q).join(",")]
+        .concat(players.map((d, k) => [k + 1, d.name || d.nickname, hname(d), d.nickname || "", d.matric, SECN[d.section] || "", ART.RANKS[ART.rankOf(d.game.coins || 0)].n, (bat(d.game.last || "") || {}).st || "", d.game.coins || 0, d.game.cleared || 0, d.game.bosses || 0, d.game.stars || 0, ...WORLDS.map((w) => (d.game.ch || {})[w.world] || 0), d.game.ai || 0, d.game.last ? d.game.last.slice(0, 10) : ""].map(q).join(",")))
+        .concat(notYet.map((r) => ["", r.name, "", "", r.matric, SECN[r.section] || "", "Not started", "", 0, 0, 0, 0, ...WORLDS.map(() => 0), 0, ""].map(q).join(",")));
       const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\n")], { type: "text/csv" })); a.download = `INSTRUMENTA leaderboard ${new Date().toISOString().slice(0, 10)}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     });
   }
 
   /* ---------- Credits (the About button): the logo, the Creator's character, the creator card, Zamm Studio™ ---------- */
-  function aboutView() {
-    frame(`<div class="lg-cr"><div class="lg-crin"><h2 class="vh">About INSTRUMENTA: Legends</h2>${ART.logo()}<span class="lg-tag">THE CREATOR</span>
+  /* ---------- 📖 the Game Guide (lecturer's choice): How to Play, Ranks, Battery and Credits (the old About page, unchanged).
+     It opens by itself once for each student (nmk-mguide, synced), the first time they open the game after this update. ---------- */
+  let guideTab = "play";
+  const GTABS = [["play", "How to Play"], ["ranks", "Ranks"], ["battery", "Battery"], ["credits", "Credits"]];
+  const gtabs = () => `<div class="lg-guide-top"><h2 class="lg-gh">📖 Game Guide</h2><nav class="lg-gtabs" aria-label="Game guide">${GTABS.map(([k, l]) => `<button type="button" class="lg-gtab" data-gtab="${k}" aria-pressed="${guideTab === k}">${l}</button>`).join("")}</nav></div>`;
+  function markGuide() { if (!lsGet("nmk-mguide")) { lsSet("nmk-mguide", "1"); document.dispatchEvent(new CustomEvent("nmk:store", { detail: "nmk-mguide" })); } }
+  function guideView() {
+    view = "guide"; markGuide();
+    if (guideTab === "credits") return aboutView(gtabs());
+    const coins = totalCoins(), rk = ART.rankOf(coins), R = ART.RANKS[rk], b = bat();
+    let body = "";
+    if (guideTab === "play") body = `<p class="lg-lead-h">Play, learn and master each chapter.</p><ul class="lg-rules">
+        <li><span aria-hidden="true">⚔️</span>Three stations per chapter. Beat the first two to face the boss.</li>
+        <li><span aria-hidden="true">✍️</span>Work it out on paper, then key in your answer.</li>
+        <li><span aria-hidden="true">🪙</span>Right: you strike and earn coins. Wrong: the enemy blocks, strikes back, and you lose 2 coins.</li>
+        <li><span aria-hidden="true">❤️</span>Lose all your hearts and the station starts again.</li>
+        <li><span aria-hidden="true">📅</span>A new chapter opens in the week it is lectured.</li></ul>
+      <h3 class="lg-g3">Battle Basics</h3><ul class="lg-rules">
+        <li><span aria-hidden="true">❤️</span>You have 4 hearts, or 5 against a boss.</li>
+        <li><span aria-hidden="true">🪙</span>Right on the first try: +10 coins. After one hint: +6. After that: +3.</li>
+        <li><span aria-hidden="true">🔥</span>Right on the first try again and again builds a combo: bigger and bigger strikes!</li>
+        <li><span aria-hidden="true">⭐</span>Every answer right on the first try: 3 stars and +10 bonus coins. Beat a boss: +50 bonus coins.</li>
+        <li><span aria-hidden="true">🔢</span>“Almost!” means right but rounded too short. It costs nothing: fix the decimal places.</li>
+        <li><span aria-hidden="true">🤖</span>After a wrong answer, tap <b>Volt</b>, your drone, for a hint.</li>
+        <li><span aria-hidden="true">💾</span><b>Save and exit</b> keeps your place: the same numbers come back, on any device.</li>
+        <li><span aria-hidden="true">🔁</span><b>Fight again</b> for new numbers. Your best score at each station counts.</li></ul>`;
+    else if (guideTab === "ranks") body = `<p class="lg-gp">Your rank grows with your <b>coins</b>. Only the <b>best score of each station</b> counts, so playing a station again raises it until you get it perfect. You have <b>${coins} coins</b>.</p>
+      <ol class="lg-ladder">${ART.RANKS.map((x, k) => `<li class="${k === rk ? "me" : k < rk ? "got" : "next"}"><span class="lg-lth">${ART.bg(k).replace('class="lg-bg"', 'class="lg-bg lg-thumb"')}</span>
+        <span class="lg-lt"><b>${k + 1}. ${esc(x.n)}</b><small>${x.min.toLocaleString("en")} coins · ${esc(x.scene)}</small>${k === rk ? "<em>You are here</em>" : k > rk ? `<em class="need">${(x.min - coins).toLocaleString("en")} more coins</em>` : "<em class=\"done\">✓ Reached</em>"}</span></li>`).join("")}</ol>
+      <p class="small-note">A chapter is worth up to 260 coins: 10 for each question right on the first try, +10 for 3 stars at each station, and +50 for beating its boss.</p>`;
+    else body = `<p class="lg-gp">Your battery shows whether you keep playing. <b>Your rank, coins and XP never drop</b>: only the label beside your rank and your character's glow change.</p>
+      <div class="lg-bnow">${b ? `${batSvg(b.fill, b.st, "big")}<span><b>${GM.BATTERY[b.st][0]} ${GM.BATTERY[b.st][1]} ${esc(R.n)}</b><small>${batNote(b)}</small></span>` : "<span>Play your first battle to charge your battery.</span>"}</div>
+      <table class="lg-btab"><thead><tr><th scope="col">Last battle</th><th scope="col">Battery</th><th scope="col">Your rank shows as</th></tr></thead><tbody>
+        <tr><td>Within 7 days</td><td>⚡ Charged</td><td>⚡ Charged ${esc(R.n)}, with a golden glow</td></tr>
+        <tr><td>8 to 13 days ago</td><td>🔋 Low battery</td><td>🔋 Low-Battery ${esc(R.n)}</td></tr>
+        <tr><td>14 days or more</td><td>🪫 Flat battery</td><td>🪫 Flat-Battery ${esc(R.n)}, and your character looks sleepy</td></tr></tbody></table>
+      <ul class="lg-rules"><li><span aria-hidden="true">⚡</span>One battle recharges it fully, whether you win or get knocked out.</li>
+        <li><span aria-hidden="true">🔔</span>You'll get a reminder on day 8 and on day 12.</li>
+        <li><span aria-hidden="true">⏸</span>In exam weeks and breaks your lecturer can pause every battery. Nothing runs down while it's paused.</li></ul>`;
+    frame(`<div class="lg-guide">${gtabs()}<div class="lg-gbody">${body}</div><div class="lg-crbtns"><button type="button" class="lg-btn main" data-guideok>⚔️ Let's play!</button></div></div>`);
+  }
+  function aboutView(top = "") {
+    frame(`${top ? `<div class="lg-guide">${top}</div>` : ""}<div class="lg-cr"><div class="lg-crin"><h2 class="vh">About INSTRUMENTA: Legends</h2>${ART.logo()}<span class="lg-tag">THE CREATOR</span>
       <svg class="lg-crhero" viewBox="-50 -82 168 168" role="img" aria-label="The Creator as a game character">${ART.heroSvg(ART.CREATOR, "", 2)}</svg>
       <div class="lg-crcard"><img src="assets/img/team/zamri.jpg" alt="" width="56" height="56"><div><b>Ts. Dr. Mohd Zamri Bin Zahir Ahmad</b><small>Course coordinator, NMK42003 Instrumentation<br>Faculty of Electronic Engineering &amp; Technology, UniMAP</small></div></div>
       ${ART.zamm(true)}
@@ -508,6 +574,8 @@
     const m = m0, v = m.make(seeded(seed)), steps = m.steps, E = enemyOf(m), boss = E.boss;
     const HEARTS = boss ? 5 : 4, rk0 = ART.rankOf(totalCoins()), sc = (E.scale || 1) * 0.86;
     let i = 0, tries = 0, coins = 0, firstTry = 0, marks = 0, hearts = HEARTS, done = false, busy = false, tipLayer = null;
+    // the battery before this battle (for the charge animation), the combo, the boss's second phase, the last taunt
+    const bat0 = bat(); let combo = 0, phase2 = false, taunted = false, tauntN = Math.floor(Math.random() * 5);
     const got = [], timers = [];
     if (saved) ({ i, tries, coins, firstTry, marks, hearts } = saved), (saved.got || []).forEach((x, k) => { got[k] = x; });
     let unsent = 0;
@@ -542,15 +610,24 @@
           <path d="M-12 12 H12" stroke="#0b6e6e" stroke-width="3" stroke-linecap="round"/><path d="M1 9 L-3 15 L0 15 L-2 20 L4 13 L1 13 Z" fill="#f0a830"/>
           <g class="ms-bang"><circle cx="18" cy="-18" r="9" fill="#f0a830" stroke="#15243a" stroke-width="2"/><text x="18" y="-14" font-size="12" font-weight="700" text-anchor="middle" fill="#15243a" font-family="sans-serif">!</text></g></g>
           <g class="ms-tag"><g class="ms-tagIn"><rect x="-22" y="-62" width="98" height="22" rx="11" fill="#f0a830" stroke="#15243a" stroke-width="2"/><path d="M-4 -41 L2 -33 L8 -41 Z" fill="#f0a830" stroke="#15243a" stroke-width="2" stroke-linejoin="round"/><path d="M-3 -42 H7" stroke="#f0a830" stroke-width="3"/><text x="27" y="-47" font-size="12" font-weight="700" text-anchor="middle" fill="#15243a" font-family="IBM Plex Sans, sans-serif">I have a hint!</text></g></g></g>
+        <circle id="msFlash" cx="470" cy="160" r="70" fill="#fff"/>
+        ${bat0 && bat0.st === "flat" ? `<text id="msZzz" class="ms-zzz" x="186" y="64">z z z</text>` : ""}
         <g id="msSparks"></g></svg>
       <div class="ms-hud"><span class="ms-hearts" id="msHearts" aria-label="Hearts left"></span><span class="ms-sc"><span class="ms-coin"></span><b id="msSC">0</b><span class="vh"> coins this station</span></span></div>
-      <div class="ms-ehud"><strong>${esc(E.name)}</strong><span class="ms-hpbar"><i id="msHp" style="background:${E.color}"></i></span></div>
+      <div class="ms-ehud"><strong>${esc(E.name)}</strong><span class="ms-hpbar"><b id="msHpG"></b><i id="msHp" style="background:${E.color}"></i></span></div>
+      <div class="ms-say" id="msSay" aria-hidden="true"></div><div class="ms-vign" aria-hidden="true"></div>
       <div class="ms-banner" id="msBanner" aria-hidden="true"></div>
       <div class="ms-bubble" id="msBubble" role="dialog" aria-label="Volt's hint" aria-hidden="true"><button type="button" class="ms-x" aria-label="Close the hint">✕</button><div class="ms-bt"></div></div>
       <div class="ms-intro on" id="msIntro" role="button" tabindex="0" aria-label="Start the fight"><div class="ms-wcard${boss ? " boss" : ""}"><span>${boss ? "BOSS" : "WANTED"}</span>${portrait(E, "big")}<strong>${esc(E.name)}</strong>${E.taunt ? `<em>“${esc(E.taunt)}”</em>` : ""}<small>Chapter ${w.chapter} · Station ${mi + 1}${E.weak ? ` · Weakness: ${esc(E.weak)}` : ""}</small><b>Tap to fight</b></div></div>
       <div class="ms-over" id="msOver" hidden></div></div>
       <div class="ms-panel" id="msPanel"></div>`, true);
     const scene = $("#msScene"), panel = $("#msPanel"), H = $("#msHero"), M = $("#msMon"), tip = $("#msBubble"), VOLT = $("#msVolt");
+    if (bat0 && bat0.st === "charged") H.classList.add("charged");
+    teardown.push(() => { if (MUS) { MUS.setBoost(0); MUS.muffle(false); } });
+    // the enemy's health bar, with a white "ghost" that follows a moment later
+    const setHp = (pct) => { $("#msHp").style.width = `${pct}%`; $("#msHpG").style.width = `${pct}%`; };
+    // the enemy speaks (a taunt, "!?", "Nooo…")
+    const say = (t, ms = 2000, cls = "") => { const b = $("#msSay"); b.textContent = t; b.className = `ms-say on ${cls}`; clearTimeout(say.t); say.t = later(() => { b.className = "ms-say"; }, ms); };
     const fit = () => { const s = $(".ms-fg", scene); if (s) s.setAttribute("viewBox", matchMedia("(max-width: 560px)").matches ? "62 4 516 296" : "0 0 640 300"); };
     fit(); addEventListener("resize", fit); teardown.push(() => removeEventListener("resize", fit));
     const replay = (el, cls, ms) => { if (!el) return; el.classList.remove(cls); void el.getBoundingClientRect(); el.classList.add(cls); later(() => el.classList.remove(cls), ms); };
@@ -565,7 +642,7 @@
     const startFight = () => { if (!intro.classList.contains("on")) return; intro.classList.remove("on"); if (boss) { SFX.roar(); replay(M, "laugh", 1000); } const a = $("#msA"); if (a) a.focus({ preventScroll: true }); };
     intro.addEventListener("click", startFight);
     intro.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); startFight(); } });
-    if (saved) { intro.classList.remove("on"); $("#msHp").style.width = `${100 * (steps.length - i) / steps.length}%`; later(() => banner(`Welcome back! Question ${i + 1} of ${steps.length}`), 300); }
+    if (saved) { intro.classList.remove("on"); setHp(100 * (steps.length - i) / steps.length); later(() => banner(`Welcome back! Question ${i + 1} of ${steps.length}`), 300); }
     else later(startFight, boss ? 2600 : 2000);
 
     /* Volt's hint bubble: Volt again, ✕, a tap outside, Esc or the Back button closes it */
@@ -622,7 +699,8 @@
         });
       }
     }
-    function strike() {   // the hero's attack, with the chosen weapon
+    function strike(big) {   // the hero's attack, with the chosen weapon (bigger in a combo)
+      $$(".ms-shot, #msSlash", scene).forEach((x) => x.classList.toggle("big", !!big));
       if (hero.weapon === "sword") { replay(H, "atk", 450); SFX.sword(); later(() => replay($("#msSlash"), "cut", 350), 200); }
       else { replay(H, "recoil", 300); SFX[hero.weapon](); later(() => replay($(`.ms-shot[data-w="${hero.weapon}"]`), "fly", 380), 60); }
     }
@@ -631,26 +709,36 @@
       busy = true; startFight(); closeTip();
       $$("button, input", panel).forEach((b) => { b.disabled = true; });
       const s = steps[i];
-      strike();
+      const zz = $("#msZzz"); if (zz) zz.remove();
+      const comboNow = ok && tries === 0 ? combo + 1 : 0;
+      strike(comboNow >= 2);
       if (ok) {
         const c = tries === 0 ? 10 : tries === 1 ? 6 : 3;
         if (tries === 0) firstTry++;
         if (s.marks) marks += s.marks * (tries === 0 ? 1 : tries === 1 ? 0.5 : 0.25);
-        got[i] = raw; tries = 0; VOLT.classList.remove("alert"); coins += c;
-        const left = steps.length - i - 1;
+        got[i] = raw; tries = 0; VOLT.classList.remove("alert"); coins += c; combo = comboNow;
+        const left = steps.length - i - 1, wasTaunt = taunted; taunted = false;
         later(() => {
-          replay(M, "hit", 400); SFX.hit();
-          $("#msHp").style.width = `${Math.max(0, 100 * left / steps.length)}%`;
+          replay(M, "hit", 400); SFX.hit(); replay($("#msFlash"), "on", 350);
+          setHp(Math.max(0, 100 * left / steps.length));
           pop(c === 10 ? "Critical!" : "Hit!", 73, 28, "#b3261e"); banner(s.choice ? "Correct!" : `Correct: ${fmtAns(s, v)}`);
+          if (combo >= 2) { pop(`COMBO ×${combo}!`, 46, 10, "#ffb300", "combo"); SFX.combo(combo); replay(scene, "shake", 420); VOLT.classList.add("cheer"); later(() => VOLT.classList.remove("cheer"), 1200); }
+          if (wasTaunt && left) { say("!?", 900, "shock"); replay(M, "shock", 520); }
           later(() => { paintCoins(); pop(`+${c}`, 12, 16, "#b86e00", "coin"); SFX.coin(); }, 250);
         }, 470);
         i++;
+        // the boss gets angry at half health: a roar, a flash, new colours and faster music
+        if (boss && !phase2 && left > 0 && left <= steps.length / 2) { phase2 = true; later(() => { SFX.roar(); replay(scene, "flash2", 700); M.classList.add("phase2"); replay(M, "laugh", 1000); banner(`⚠ ${E.name} is enraged!`); if (MUS) MUS.setBoost(14); }, 1150); }
+        // the final blow: slow motion, then the enemy's last word
+        if (!left) { scene.classList.add("finale"); later(() => { say("Nooo…!", 1400, "big"); SFX.nooo(); }, 560); }
         if (i < steps.length) store();
         if (i < steps.length) later(() => { busy = false; draw(s.choice ? "Correct! Next question." : `Correct! ${fmtAns(s, v)}. Next question.`, "ok"); }, 1000);
         else later(victory, 1350);
         return;
       }
-      // wrong: the enemy's shield blocks the strike, then it strikes back
+      // wrong: the enemy's shield blocks the strike, then it strikes back, and laughs
+      if (combo >= 2) later(() => pop("Combo broken!", 46, 10, "#9aa9b8", "combo"), 300);
+      combo = 0;
       tries++; hearts--;
       const lose = Math.min(2, coins); coins -= lose;
       if (hearts > 0) store();
@@ -661,7 +749,14 @@
         paintHearts(); const hb = $(`#msHearts [data-h="${hearts}"]`); if (hb) replay(hb, "break", 700);
         if (lose) { paintCoins(); SFX.drop(); pop(`−${lose}`, 12, 16, "#b23b2e", "coin"); for (let k = 0; k < 3; k++) { const d = document.createElement("span"); d.className = "ms-cdrop"; d.style.left = `${22 + k * 3}%`; d.style.animationDelay = `${k * 0.08}s`; scene.appendChild(d); later(() => d.remove(), 1200); } }
         banner(sign ? "Check the sign!" : lose ? `Ouch! −1 heart, −${lose} coins` : "Ouch! −1 heart");
+        replay(scene, "shake", 380);
       }, 1420);
+      later(() => {
+        if (hearts <= 0) return;
+        const list = E.taunts && E.taunts.length ? E.taunts : TAUNTS0, last = hearts === 1;
+        replay(M, last ? "laugh2" : "laugh", last ? 1300 : 1000); SFX.laugh(last); say(list[tauntN++ % list.length], 2000, last ? "big" : ""); taunted = true;
+        if (last) { scene.classList.add("danger"); replay(scene, "closeup", 1200); VOLT.classList.add("worried"); later(() => pop("Careful, last heart!", 17, 34, "#ff8a80", "volt"), 500); if (MUS) MUS.muffle(true); }
+      }, 1480);
       later(() => {
         if (hearts <= 0) return knockOut();
         busy = false;
@@ -671,10 +766,40 @@
         if (tries <= 2) { VOLT.classList.add("alert"); SFX.beep(); }
       }, 1900);
     }
+    // ⚡ the battery fills up after every battle (win or knocked out), when it wasn't nearly full already
+    function chargeUp() {
+      if (bat0 && bat0.fill >= 0.9) return;
+      const f0 = bat0 ? bat0.fill : 0, d = document.createElement("div");
+      d.className = "ms-charge"; d.setAttribute("role", "status");
+      d.innerHTML = `${batSvg(1, "charged", "charge")}<b>⚡ Fully Charged!</b>`;
+      d.querySelector(".lg-bfill").style.setProperty("--f0", `${(29 * f0).toFixed(1)}px`);
+      scene.appendChild(d); SFX.charge(); H.classList.add("charged"); replay(H, "zap", 900);
+      later(() => d.remove(), 2800);
+    }
+    // the enemy breaks into glowing pixels, then comes back small, calm and calibrated
+    function shatter() {
+      const cols = [E.color, "#38e1c9", "#ffd84d", "#ffffff"];
+      $("#msSparks").innerHTML = Array.from({ length: 28 }, (_, k) => { const a = (k / 28) * Math.PI * 2 + Math.random() * 0.4, r = 60 + Math.random() * 90;
+        return `<rect class="ms-pix" x="${464 + Math.random() * 12}" y="${150 + Math.random() * 30}" width="${6 + Math.random() * 6}" height="${6 + Math.random() * 6}" fill="${cols[k % 4]}" style="--dx:${(Math.cos(a) * r).toFixed(0)}px;--dy:${(Math.sin(a) * r - 30).toFixed(0)}px;animation-delay:${(Math.random() * 0.12).toFixed(2)}s"/>`; }).join("");
+      SFX.shatter();
+    }
+    function repaired() {
+      $("#msSparks").insertAdjacentHTML("beforeend", `<g transform="translate(470 234) scale(${(sc * 0.6).toFixed(2)})"><g class="ms-fixed">${E.svg}</g></g>
+        <g class="ms-fixtag"><rect x="418" y="246" width="104" height="24" rx="12" fill="#1db86a" stroke="#fff" stroke-width="2"/><text x="470" y="263" text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="sans-serif">✓ Calibrated</text></g>`);
+    }
+    // coins fly from the enemy to the coin counter
+    function flyCoins(n) {
+      const sr = scene.getBoundingClientRect(), to = ($("#msSC") || scene).getBoundingClientRect(), x0 = sr.width * 0.73, y0 = sr.height * 0.42;
+      for (let k = 0; k < n; k++) {
+        const c = document.createElement("span"); c.className = "ms-flyc";
+        c.style.left = `${x0}px`; c.style.top = `${y0}px`; c.style.setProperty("--tx", `${(to.left - sr.left + 8 - x0).toFixed(0)}px`); c.style.setProperty("--ty", `${(to.top - sr.top + 6 - y0).toFixed(0)}px`); c.style.animationDelay = `${k * 0.09}s`;
+        scene.appendChild(c); later(() => c.remove(), 1400 + k * 90); if (k % 2 === 0) later(() => SFX.coin(), 700 + k * 90);
+      }
+    }
     function overlay(html) { const o = $("#msOver"); o.innerHTML = html; o.hidden = false; return o; }
     function knockOut() {
       done = true; closeTip(); clearSave(m.id);
-      replay(H, "ko", 4000); SFX.ko();
+      replay(H, "ko", 4000); SFX.ko(); later(() => replay(M, "laugh2", 1300), 300); later(() => say("Hahaha! Come back stronger!", 1800, "big"), 300); later(chargeUp, 2100);
       later(() => {
         const o = overlay(`<div class="ms-ko"><strong>Knocked out!</strong><p>${esc(E.name)} wins this round. Start the station again: every question, with new numbers.</p>
           <div class="ms-row ms-center"><button type="button" class="btn" data-again>Try again</button><button type="button" class="btn ghost" data-back-world>Back to the chapter</button></div></div>`);
@@ -686,9 +811,11 @@
     }
     function victory() {
       done = true; clearSave(m.id);
-      replay(M, "faint", 5000); SFX.faint();
-      $("#msSparks").innerHTML = [0, 1, 2, 3, 4].map((k) => `<circle class="ms-spark" cx="${430 + k * 20}" cy="${150 + (k % 2) * 30}" r="10" fill="#ffd34d" style="animation-delay:${k * 0.1}s"/>`).join("");
-      later(() => { replay(H, "cheer", 2100); SFX.win(); }, 700);
+      replay(M, "faint", 5000); SFX.faint(); shatter(); later(repaired, 1250);
+      scene.classList.remove("danger"); if (MUS) { MUS.muffle(false); MUS.setBoost(0); }
+      later(() => { replay(H, "cheer", 2100); SFX.win(); scene.classList.remove("finale"); }, 700);
+      later(() => flyCoins(Math.max(3, Math.min(10, Math.round(coins / 8)))), 900);
+      later(chargeUp, 2300);
       const st = firstTry === steps.length ? 3 : firstTry >= steps.length - 1 ? 2 : 1;
       const bonus = (st === 3 ? 10 : 0) + (boss ? 50 : 0), total = coins + bonus, mk = Math.round(marks * 2) / 2;
       const before = best()[m.id];
@@ -699,7 +826,7 @@
       later(() => {
         const nb = before && before.c >= total ? `Your best is still ${before.c} coins.` : before ? "A new best!" : "";
         panel.innerHTML = `<div class="ms-win"><p class="ms-step" style="font-size:1.2rem">${boss ? "Boss defeated!" : "Station cleared!"} ${esc(E.name)} is fixed.</p>
-          <div class="ms-big">${stars(st)}</div>
+          <div class="ms-big"><span class="ms-stars rv" aria-label="${st} of 3 stars">${[0, 1, 2].map((k) => `<i class="${k < st ? "on" : ""}" style="animation-delay:${(0.25 + k * 0.38).toFixed(2)}s">${k < st ? "★" : "☆"}</i>`).join("")}</span></div>
           <p>You earned <strong>${total} coins</strong>${bonus ? ` (with a ${bonus}-coin bonus)` : ""}. ${firstTry} of ${steps.length} questions right on the first try. ${nb}</p>
           ${boss ? `<p class="ms-mock">Boss score: <strong>${mk} / ${m.marks || 30}</strong> <span class="small-note">(full marks for a first-try answer, half after one hint, a quarter after that)</span></p>` : ""}</div>
           <div class="ms-working"><p><strong>Full working</strong> (compare with your paper)</p>${steps.map((s, k) => `<p><strong>${esc(asQuestion(val(s.q, v)))}</strong><br>${s.choice ? `Answer: ${esc(val(s.choice, v)[s.correct])}${s.why ? `<br><span class="small-note">${esc(val(s.why, v))}</span>` : ""}` : `${esc(s.formula)}<br>${esc(s.sub(v))} = <strong>${esc(fmtAns(s, v))}</strong>`}${got[k] && !s.choice ? ` <span class="small-note">(you: ${esc(got[k])})</span>` : ""}</p>`).join("")}</div>
@@ -709,6 +836,7 @@
         if (nextM) $("[data-next]", panel).addEventListener("click", () => { SFX.click(); battle(w, mi + 1); });
         $("[data-sharewin]", panel).addEventListener("click", () => { SFX.click(); winShare(); });
         ($("[data-next]", panel) || $("[data-back-world]", panel)).focus({ preventScroll: true });
+        for (let k = 0; k < st; k++) later(() => tone(988 + k * 220, 0, 0.16, "triangle", 0.06), 250 + k * 380);
         const cp = $("#msCoins"); if (cp) cp.textContent = totalCoins();
         if (rk1 > rk0) rankUp(rk1);
       }, 1600);
@@ -724,7 +852,7 @@
     function rankUp(rk) {
       const R = ART.RANKS[rk];
       const old = $(".lg-bg", scene); if (old) old.outerHTML = ART.bg(rk);
-      if (MUS) MUS.setMood(rk);
+      if (MUS) MUS.setMood(R.s);
       SFX.rankup();
       const o = overlay(`<div class="ms-rank"><span>RANK UP!</span><strong>${esc(R.n)}</strong><p>Welcome to ${esc(R.scene)}.</p><div class="ms-row ms-center"><button type="button" class="btn" data-okrank>Continue</button><button type="button" class="btn ghost" data-sharerank>📤 Share</button></div></div>`);
       $("[data-okrank]", o).addEventListener("click", () => { o.hidden = true; });
@@ -744,6 +872,19 @@
   }
 
   /* ---------- clicks and the music volume ---------- */
+  function openGuide(tab) {
+    guideTab = tab;
+    if (view === "room" && roomUnsaved && roomUnsaved()) return roomLeave(() => go("guide"));
+    if (view === "guide") { guideView(); if (window.NMKBack) NMKBack.view({ mview: "guide", mworld: null, mtab: tab }, true); }
+    else { go("guide"); if (window.NMKBack) NMKBack.view({ mview: "guide", mworld: null, mtab: tab }, true); }
+    const t = $(".lg-guide"); if (t) t.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+  page.addEventListener("click", (e) => {
+    const gd = e.target.closest("[data-guide], [data-gtab]");
+    if (gd) { SFX.click(); return openGuide(gd.dataset.guide || gd.dataset.gtab); }
+    if (e.target.closest("[data-guideok]")) { SFX.click(); markGuide(); return go("map"); }
+  });
+  page.addEventListener("keydown", (e) => { const r = e.target.closest && e.target.closest(".lg-rank[data-guide]"); if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openGuide("ranks"); } });
   page.addEventListener("click", (e) => {
     const b = e.target.closest("button");
     if (!b || b.disabled) return;
@@ -765,7 +906,7 @@
   });
 
   /* ---------- start: who may play, and loading the chapter files ---------- */
-  const viewOf = (s, w) => (["room", "board", "about"].includes(s.mview) ? s.mview : w ? "world" : "map");
+  const viewOf = (s, w) => (["room", "board", "about", "guide"].includes(s.mview) ? s.mview : w ? "world" : "map");
   function gate(html) { page.innerHTML = `<div class="ms-gate">${html}</div>`; }
   async function start(st) {
     if (!st.ready) return;
@@ -773,7 +914,7 @@
     isLec = A.isAdmin(st.user.email);
     const db = A.db;
     let released = false;
-    try { const d = await db.collection("meta").doc("missions").get(); released = !!(d.exists && d.data().released); LOCKS = (d.exists && d.data().locks) || {}; } catch (e) { /* rules not published yet */ }
+    try { const d = await db.collection("meta").doc("missions").get(); released = !!(d.exists && d.data().released); LOCKS = (d.exists && d.data().locks) || {}; PAUSES = (d.exists && d.data().bat && d.data().bat.p) || []; } catch (e) { /* rules not published yet */ }
     A.released = released;
     if (!isLec && !released) { gate(`<p><strong>INSTRUMENTA: Legends is coming soon.</strong> Your lecturer will open it when it's ready.</p>`); return; }
     if (!isLec && !(st.profile && st.profile.status === "approved")) { gate(`<p><strong>Your account is waiting for approval.</strong> The game opens once your lecturer approves it.</p>`); return; }
@@ -790,11 +931,13 @@
     }
     const hs = history.state || {};
     const w = hs.mworld ? WORLDS.find((x) => x.world === hs.mworld) : null;
+    if (hs.mtab) guideTab = hs.mtab;
     go(viewOf(hs, w), false, w);
     if (window.NMKBack) NMKBack.view({ mview: view, mworld: openWorld ? openWorld.world : null }, true);
+    if (!lsGet("nmk-mguide") && view === "map") { guideTab = "play"; go("guide"); }
   }
   document.addEventListener("nmk:synced", () => { const h = parse(lsGet("nmk-hero"), null); if (h && String(h.at || "") > String(hero.at || "")) hero = Object.assign({}, HERO0, h); if (WORLDS.length && view !== "battle" && !(view === "room" && roomUnsaved && roomUnsaved())) go(view, false); });
-  if (window.NMKBack) NMKBack.onView((s) => { const w = s.mworld ? WORLDS.find((x) => x.world === s.mworld) : null; go(viewOf(s, w), false, w); });
+  if (window.NMKBack) NMKBack.onView((s) => { if (s.mtab) guideTab = s.mtab; const w = s.mworld ? WORLDS.find((x) => x.world === s.mworld) : null; go(viewOf(s, w), false, w); });
   let booted = false;
   const boot = () => { if (booted) return; booted = true; A = window.NMKAccount; if (!A) { gate(`<p>The game needs the course account system, which didn't load. Please reload the page.</p>`); return; } A.on((st) => { if (st.ready) start(st); }); };
   if (window.NMKAccount) boot(); else window.addEventListener("load", boot);

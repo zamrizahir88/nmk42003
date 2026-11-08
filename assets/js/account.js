@@ -274,9 +274,9 @@
     if (!state.profile || state.profile.status !== "approved") { loadBell(false); return; }   // waiting for approval: checked again on every page
     // is the game released, is a survey round open? (for the menu links)
     const [mi, sv] = await Promise.all([db.collection("meta").doc("missions").get(), db.collection("meta").doc("survey").get()].map((p) => p.catch(() => null)));
-    missionsOpen = !!(mi && mi.exists && mi.data().released); surveyOpen = (sv && sv.exists && sv.data().open) || ""; navMine(); hubPing();
+    missionsOpen = !!(mi && mi.exists && mi.data().released); missionsBat = (mi && mi.exists && mi.data().bat && mi.data().bat.p) || []; surveyOpen = (sv && sv.exists && sv.data().open) || ""; navMine(); hubPing();
     const now = Date.now();
-    vset({ uid: u.uid, start: now, seen: now, profile: state.profile, roster: state.roster, missions: missionsOpen, survey: surveyOpen, bell: null });
+    vset({ uid: u.uid, start: now, seen: now, profile: state.profile, roster: state.roster, missions: missionsOpen, mbat: missionsBat, survey: surveyOpen, bell: null });
     loadBell(true);
     if (canSync()) { pull(); db.collection("users").doc(u.uid).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp(), photo: u.photoURL || "" }).then(() => ls.set(ACTIVE_KEY, String(Date.now()))).catch(() => {}); }
   }
@@ -308,7 +308,7 @@
     // the same visit: what its first page read is still good (no reads)
     const v = visitOf(u.uid);
     if (v) {
-      state.profile = revive(v.profile); state.roster = revive(v.roster) || null; missionsOpen = !!v.missions; surveyOpen = v.survey || "";
+      state.profile = revive(v.profile); state.roster = revive(v.roster) || null; missionsOpen = !!v.missions; missionsBat = v.mbat || []; surveyOpen = v.survey || "";
       paint(); changed();
       if (v.bell) { bellUser = u.email.toLowerCase(); bellAt = v.bell.at; showBell(v.bell.items); } else loadBell(true);
       tick();
@@ -380,7 +380,7 @@
   document.body.appendChild(menu);
 
   const STATUS = { approved: "Approved", pending: "Waiting for approval", rejected: "Not approved" };
-  let missionsOpen = false, surveyOpen = "";
+  let missionsOpen = false, surveyOpen = "", missionsBat = [];
   function paint() {
     const u = state.user, p = state.profile;
     if (!u) { btn.innerHTML = `${ICON}<span class="acc-t">Sign in</span>`; btn.setAttribute("aria-label", "Sign in with Google"); btn.className = "icon-btn acc-btn out"; }
@@ -514,6 +514,13 @@
           else if (x.status === "declined") add({ t: tms(x.updatedAt), href: "attendance.html", text: `<strong>${esc(x.toName)}</strong> declined your swap for ${esc(x.labTitle)}` });
           else if (["rejected", "cancelled", "ended"].includes(x.status) && x.decidedBy) add({ t: tms(x.updatedAt), href: "attendance.html", text: `Your lecturer ${x.status === "rejected" ? "did not approve" : "cancelled"} your swap for ${esc(x.labTitle)}` });
         });
+        // INSTRUMENTA's battery: reminders on day 8 and day 12 (from this browser's own game records, so no reads)
+        if (missionsOpen && window.NMKGame && NMKGame.battery) {
+          let last = ""; ["nmk-missions", "nmk-msave"].forEach((k) => { try { Object.values(JSON.parse(ls.get(k) || "{}") || {}).forEach((r) => { if (r && r.at && r.at > last) last = r.at; }); } catch (e) { /* not played */ } });
+          const b = NMKGame.battery(last, missionsBat);
+          if (b && !b.paused && b.d >= 8) { const left = Math.max(1, Math.ceil(14 - b.d));
+            add({ todo: true, t: Date.parse(last) + (b.d >= 12 ? 12 : 8) * 86400000, href: "missions.html", text: b.st === "flat" ? "🪫 Your <strong>INSTRUMENTA</strong> battery is flat. Play one battle to recharge!" : b.d >= 12 ? `🪫 ${left} day${left > 1 ? "s" : ""} until your <strong>INSTRUMENTA</strong> battery is flat!` : "🔋 Your <strong>INSTRUMENTA</strong> battery is getting low. Play one battle to recharge!" }); }
+        }
         // Kalam Feed: new posts from Dr. Zamri (the last 30 days)
         const kf = await db.collection("kalam").orderBy("at", "desc").limit(5).get().catch(() => ({ docs: [] }));
         kf.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((p) => (!p.semester || p.semester === SEM) && Date.now() - tms(p.at) < 30 * 86400000)

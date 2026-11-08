@@ -178,7 +178,7 @@
   async function loadMissions() {
     try {
       const [m, q] = await Promise.all([db.collection("meta").doc("missions").get(), db.collection("missions").get()]);
-      ms = { released: !!(m.exists && m.data().released), at: m.exists ? m.data().updatedAt : null, locks: (m.exists && m.data().locks) || {},
+      ms = { released: !!(m.exists && m.data().released), at: m.exists ? m.data().updatedAt : null, locks: (m.exists && m.data().locks) || {}, bat: (m.exists && m.data().bat) || { p: [] },
         worlds: q.docs.map((d) => Object.assign({ id: d.id }, d.data())).sort((a, b) => a.world - b.world) };
     } catch (e) { ms = { err: e.code || String(e) }; }
     if (tab === "missions") draw();
@@ -201,6 +201,8 @@
     }).join("");
     return `<div class="adm-sum"><div><strong>${ms.released ? "On" : "Off"}</strong><span>released to students</span></div><div><strong>${ms.worlds.length}</strong><span>chapters uploaded</span></div><div><strong>${nLocked}</strong><span>locked</span></div><div><strong>${played}</strong><span>students have played</span></div></div>
       <div class="ms-adm"><label class="ms-rel"><input type="checkbox" data-mrel${ms.released ? " checked" : ""}> <span><strong>Release INSTRUMENTA: Legends (Missions) to students</strong><br><small>Off: only lecturers can open the Missions page (to test). On: signed-in, approved students can play, and Missions appears in their account menu. Each chapter still opens in the week it is lectured. Upload one file per chapter (three stations each; the third is the boss).</small></span></label>
+        ${(() => { const p = (ms.bat && ms.bat.p) || [], cur = p.length && !p[p.length - 1].b ? p[p.length - 1] : null;
+          return `<label class="ms-rel"><input type="checkbox" data-mbat${cur ? " checked" : ""}> <span><strong>⏸ Pause batteries</strong><br><small>For exam weeks and the semester break: while this is on, nobody's battery runs down, and students see “⏸ Paused”. Turn it off when the game should count again.${cur ? ` Paused since ${esc(fmt(cur.a))}.` : ""}</small></span></label>`; })()}
         <p class="ms-amsg small-note" aria-live="polite">${esc(msMsg)}</p>
         <h3 class="h3">Chapters and Stations</h3>
         <p class="small-note">Lock a whole chapter, or one station. Students see “Locked by your lecturer” the next time they open the game; you can still play everything (tick “Preview as a student” in the game to see their view). A station already defeated keeps its coins and stars while locked, and a fight in progress can be continued once it is open again.</p>
@@ -316,6 +318,15 @@
     if (e.target.matches("[data-stop]")) { stopFilter = e.target.value; draw(); }
     if (e.target.matches("[data-mup]") && e.target.files[0]) uploadMissions(e.target.files[0]);
     if (e.target.matches("[data-mlock]")) setLock(e.target.dataset.mlock, e.target.checked, e.target);
+    if (e.target.matches("[data-mbat]")) {
+      // one write: the list of pauses (the last 12), each {a: from, b: to}; the game and the bell read it with the release switch
+      const on = e.target.checked, now = new Date().toISOString(), p = ((ms.bat && ms.bat.p) || []).map((x) => Object.assign({}, x));
+      if (on) { if (!p.length || p[p.length - 1].b) p.push({ a: now, b: "" }); } else if (p.length && !p[p.length - 1].b) p[p.length - 1].b = now;
+      const keep = p.slice(-12);
+      db.collection("meta").doc("missions").set({ bat: { p: keep }, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), by: A.state.user.email.toLowerCase() }, { merge: true })
+        .then(() => { ms.bat = { p: keep }; msMsg = on ? "Batteries paused: nobody's battery runs down until you turn this off." : "Batteries are running again."; draw(); })
+        .catch((ex) => { e.target.checked = !on; const m = host.querySelector(".ms-amsg"); if (m) m.textContent = `Could not save (${ex.code || ex}).`; });
+    }
     if (e.target.matches("[data-mrel]")) {
       const on = e.target.checked;
       db.collection("meta").doc("missions").set({ released: on, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), by: A.state.user.email.toLowerCase() }, { merge: true })

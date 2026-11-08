@@ -100,3 +100,21 @@ table.dt tr.dt-stop th span { font-weight: 400; color: var(--ink-3); margin-left
 .gm-lecbar { display: flex; flex-wrap: wrap; gap: 8px; }
 .gm-preview { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; background: var(--teal-soft); border: 1px solid var(--teal); border-radius: var(--r-md); padding: 10px 14px; margin: 0 0 14px; font-size: .92rem; }
 .bd-av { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 8px; }
+
+/* All Levels: the dialog behind "See all levels" */
+.gm-all { margin-left: 6px; padding: 0; border: 0; background: none; color: var(--teal); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.gm-lvd { position: fixed; inset: 0; z-index: 105; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; padding: 16px; background: rgba(10, 18, 28, .5); }
+.gm-lvc { position: relative; width: min(480px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; background: var(--surface); color: var(--ink); border-radius: 16px; padding: 20px 20px 16px; box-shadow: 0 20px 50px rgba(0, 0, 0, .3); }
+.gm-lvc h2 { margin: 0 34px 10px 0; font-size: 1.3rem; }
+.gm-lvc h3 { margin: 16px 0 6px; font-size: 1rem; }
+.gm-lvx { position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border: 0; border-radius: 50%; background: transparent; color: var(--ink-2); font-size: 1rem; cursor: pointer; }
+.gm-lvx:hover { background: var(--teal-soft); }
+.gm-lvl { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.gm-lvl li { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 2px 10px; padding: 8px 12px; border: 1px solid var(--rule); border-radius: 10px; }
+.gm-lvl li.past { opacity: .7; }
+.gm-lvl li.me { border: 2px solid var(--teal); background: var(--teal-soft); }
+.gm-lvl em { grid-column: 2 / -1; font-style: normal; font-size: .78rem; font-weight: 700; color: var(--teal); }
+.gm-lvn { font: 700 .85rem var(--sans); color: var(--teal); }
+.gm-lvx2 { font-size: .85rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.gm-lvh { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 4px; font-size: .88rem; color: var(--ink-2); }
+.gm-lvf { margin: 12px 0 0; font-size: .8rem; color: var(--ink-3); }
