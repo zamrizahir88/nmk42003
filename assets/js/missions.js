@@ -254,7 +254,7 @@
   const asQuestion = (q) => { q = String(q).trim(); if (/[?.]$/.test(q)) return q; const w = q.split(/[\s,]/)[0]; return `What is ${w.length > 2 && /^[A-Z][a-z]/.test(w) ? `the ${q[0].toLowerCase()}${q.slice(1)}` : q}?`; };
   const fmtAns = (s, v) => `${s.ans(v).toFixed(s.dp)}${val(s.unit, v) ? ` ${val(s.unit, v)}` : ""}`;
 
-  /* ---------- unlocking: a chapter opens in the week it is lectured; a station after the one before it ---------- */
+  /* ---------- unlocking: a chapter opens in the week it is lectured and after the chapter before it is solved; a station after the one before it ---------- */
   const todayISO = () => { const q = new URLSearchParams(location.search).get("today"); if (q && /^\d{4}-\d{2}-\d{2}$/.test(q)) return q; try { return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur" }).format(new Date()); } catch (e) { return new Date().toISOString().slice(0, 10); } };
   function opensOn(w) {
     const t = COURSE.topics.find((x) => x.no === w.chapter), wk = t ? +((String(t.weeks).match(/\d+/) || [1])[0]) : 1;
@@ -265,7 +265,13 @@
   let LOCKS = {};          // the lecturer's locks (meta/missions.locks): "world1" = a whole chapter, "w1-s3" = one station
   const free = () => isLec && !asStudent;
   const chLocked = (w) => !!LOCKS[`world${w.world}`], stLocked = (m) => !!LOCKS[m.id];
-  const worldOpen = (w) => free() || (!chLocked(w) && opensOn(w).iso <= todayISO());
+  // a chapter opens in the week it is lectured AND once the chapter before it is solved (its boss defeated; lecturer's
+  // choice, 9 Nov 2026). A chapter where the student already defeated a station stays open (nothing is taken away).
+  const prevWorld = (w) => WORLDS.filter((x) => x.chapter < w.chapter).sort((a, b) => b.chapter - a.chapter)[0] || null;
+  const solved = (w) => { const b = best(); return w.missions.every((m) => b[m.id]); };
+  const weekOpen = (w) => !chLocked(w) && opensOn(w).iso <= todayISO();
+  const prevOk = (w) => { const p = prevWorld(w), b = best(); return !p || solved(p) || w.missions.some((m) => b[m.id]); };
+  const worldOpen = (w) => free() || (weekOpen(w) && prevOk(w));
   const missionOpen = (w, i) => { if (free()) return true; if (!worldOpen(w) || stLocked(w.missions[i])) return false; const b = best(); return w.missions.slice(0, i).every((m) => b[m.id]); };
   const LOCKED = "🔒 Locked by your lecturer";
   const fmtDay = (iso) => { const d = new Date(iso + "T00:00:00Z"); return `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getUTCDay()]} ${d.getUTCDate()} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getUTCMonth()]}`; };
@@ -332,7 +338,7 @@
         return `<button type="button" class="lg-world${open ? "" : " locked"}" data-world="${w.world}"${open ? "" : ` aria-disabled="true"`}>
           <span class="lg-wch">Chapter ${w.chapter}</span><strong>${esc(w.title.replace(/^(Station|Chapter) \d+:\s*/, ""))}</strong>
           <span class="lg-trio">${w.missions.slice(0, 3).map((m) => `<span class="lg-tri${b[m.id] ? " won" : ""}">${portrait(enemyOf(m))}</span>`).join("")}</span>
-          <span class="lg-wfoot">${open ? `${done} of ${w.missions.length} defeated${isLec && chLocked(w) ? " · 🔒 locked for students" : ""}` : chLocked(w) ? LOCKED : `🔒 Opens ${fmtDay(o.iso)} (week ${o.week})`}</span></button>`;
+          <span class="lg-wfoot">${open ? `${done} of ${w.missions.length} defeated${isLec && chLocked(w) ? " · 🔒 locked for students" : ""}` : chLocked(w) ? LOCKED : !weekOpen(w) ? `🔒 Opens ${fmtDay(o.iso)} (week ${o.week})` : `🔒 Solve Chapter ${prevWorld(w).chapter} first (defeat ${esc(enemyOf(prevWorld(w).missions[prevWorld(w).missions.length - 1]).name)})`}</span></button>`;
       }).join("") || `<p class="small-note">No chapters yet.${isLec ? " Upload a mission file in Lecturer Tools (INSTRUMENTA Chapters)." : ""}</p>`}</div>`);
   }
   function worldView(w) {
@@ -565,7 +571,7 @@
         ${card("✍️", "Paper first", "Work it out on paper, then key in your answer.", "02")}
         ${card("🪙", "Strike or be blocked", "Right: you strike and earn coins. Wrong: the enemy blocks, strikes back, and you lose 2 coins.", "03")}
         ${card("❤️", "Mind your hearts", "Lose all your hearts and the station starts again.", "04")}
-        ${card("📅", "New chapters", "A new chapter opens in the week it is lectured.", "05")}</ol>
+        ${card("📅", "New chapters", "A chapter opens in the week it is lectured, once you have beaten the boss of the chapter before.", "05")}</ol>
       <h3 class="gg-sub">Battle Basics</h3><ul class="gg-cards basics">
         ${card("❤️", "Hearts", "4 at every station, 5 against a boss.")}
         ${card("🪙", "Coins", "+10 right on the first try, +6 after one hint, +3 after that.")}
@@ -589,7 +595,7 @@
         <div class="gg-crzamm">${ART.zamm(true)}</div></div></div>
       <h3 class="gg-sub">About the Game</h3>
       <p class="gg-p">INSTRUMENTA: Legends is an original game made for NMK42003 Instrumentation. Battle named enemies at every station, chapter by chapter, with Volt your helper drone, and grow from Apprentice to Legend of Measurement as you master each chapter.</p>
-      <ul class="gg-cards basics">${card("🌍", "One world per chapter", "Each chapter opens a new world, in the week it is lectured.")}${card("⚔️", "3 stations each", "Two stations, then the boss.")}${card("👾", "Named enemies and bosses", "Every station has its own enemy to calibrate.")}${card("🎵", "Original art and music", "Drawn and composed for this course.")}</ul>
+      <ul class="gg-cards basics">${card("🌍", "One world per chapter", "Beat a chapter's boss to open the next world.")}${card("⚔️", "3 stations each", "Two stations, then the boss.")}${card("👾", "Named enemies and bosses", "Every station has its own enemy to calibrate.")}${card("🎵", "Original art and music", "Drawn and composed for this course.")}</ul>
       <div class="gg-crbtns"><button type="button" class="lg-btn main" data-sharegame>📤 Share the game</button></div>
       <p class="gg-crcopy">© 2026 Zamm Studio™ · Ts. Dr. Mohd Zamri Bin Zahir Ahmad. All rights reserved. #INSTRUMENTALegends</p>`;
     else body = `<p class="gg-p">Your battery shows whether you keep playing. <strong>Your rank, coins and XP never drop</strong>: only the label beside your rank and your character's glow change.</p>
