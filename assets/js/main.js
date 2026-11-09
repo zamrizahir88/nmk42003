@@ -648,7 +648,7 @@
     let sel = parts[parts.length - 1].kind;
     const draw = () => {
       bar.innerHTML = parts.map((a) =>
-        `<button class="seg ${a.kind}" style="flex:${a.pct}" data-k="${a.kind}" aria-pressed="${a.kind === sel}" aria-label="${esc(a.name)}, ${a.pct} percent">${a.pct >= 20 ? `${short[a.kind]} ` : ""}${a.pct}%</button>`
+        `<button class="seg ${a.kind}" style="flex:${a.pct}" data-k="${a.kind}" aria-pressed="${a.kind === sel}" aria-label="${esc(a.name)}, ${a.pct} percent">${a.pct >= 20 ? `<span class="seg-l">${short[a.kind]} </span><span class="seg-s">${a.kind === "final" ? "Final" : short[a.kind]} </span>` : ""}${a.pct}%</button>`
       ).join("");
       const a = parts.find((p) => p.kind === sel);
       $("#assessDetail").innerHTML = `<strong>${esc(a.name)}, ${a.pct}%</strong><p>${esc(a.detail)}</p>${a.page ? `<p><a href="${esc(a.page)}">Open the ${esc(a.name.toLowerCase())} page →</a></p>` : ""}`;

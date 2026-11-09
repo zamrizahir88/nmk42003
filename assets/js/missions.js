@@ -268,6 +268,25 @@
       <input type="range" class="lg-vol" min="0" max="100" step="5" value="${musicVol}" aria-label="Music volume"${musicOn ? "" : " hidden"}>
       <button type="button" class="lg-ic" data-snd aria-pressed="${soundOn}" aria-label="Sound effects" title="Sound effects">${soundOn ? "🔊" : "🔇"}</button></span>`;
   const coinPill = () => `<span class="ms-pill lg-coins"><span class="ms-coin"></span><strong id="msCoins">${totalCoins()}</strong> <small>coins</small></span>`;
+  // the stage's coin counter (9 Nov 2026): gold, glowing, a ring showing the way to the next rank; a tap opens Ranks.
+  // After a battle the number counts up from what this tab last showed, with a "+N" that floats away.
+  const coinBig = (coins, R, nx) => { const f = nx ? Math.max(0, Math.min(1, (coins - R.min) / (nx.min - R.min))) : 1, C = 2 * Math.PI * 21;
+    return `<button type="button" class="lg-coinb" data-guide="ranks" aria-label="${coins} coins. ${nx ? `${nx.min - coins} more to ${esc(nx.n)}.` : "Top rank."} See the ranks">
+      <span class="lg-cring" aria-hidden="true"><svg viewBox="0 0 50 50"><circle cx="25" cy="25" r="21" class="lg-crt"/><circle cx="25" cy="25" r="21" class="lg-crf" stroke-dasharray="${(C * f).toFixed(1)} ${C.toFixed(1)}"/></svg><span class="lg-cface">🪙</span></span>
+      <span class="lg-ctx"><strong id="msCoins">${coins}</strong><small>${nx ? `${nx.min - coins} to ${esc(nx.n)}` : "Top rank!"}</small></span><span class="lg-cplus" aria-hidden="true"></span></button>`; };
+  let coinSeen = null;
+  try { coinSeen = sessionStorage.getItem("nmkcoinseen"); coinSeen = coinSeen == null ? null : +coinSeen; } catch (e) { coinSeen = null; }
+  function coinCount() {
+    const el = $("#msCoins"), now = totalCoins(), from = coinSeen;
+    coinSeen = now; try { sessionStorage.setItem("nmkcoinseen", String(now)); } catch (e) { /* private mode */ }
+    if (!el || from == null || now <= from || !el.closest(".lg-coinb")) return;
+    const btn = el.closest(".lg-coinb"), plus = $(".lg-cplus", btn);
+    if (plus) { plus.textContent = `+${now - from}`; btn.classList.add("got"); setTimeout(() => btn.classList.remove("got"), 1600); }
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const t0 = performance.now(), D = 900; el.textContent = from;
+    const step = (t) => { const k = Math.min(1, (t - t0) / D); el.textContent = Math.round(from + (now - from) * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  }
   function frame(body, battleView) {
     const coins = totalCoins(), rk = ART.rankOf(coins), R = ART.RANKS[rk], nx = ART.RANKS[rk + 1], bt = bat();
     if (MUS) MUS.setMood(R.s);
@@ -280,8 +299,10 @@
             <span class="lg-bar" role="progressbar" aria-label="Progress to the next rank" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${nx ? Math.round(((coins - R.min) / (nx.min - R.min)) * 100) : 100}"><i style="width:${nx ? Math.round(((coins - R.min) / (nx.min - R.min)) * 100) : 100}%"></i></span>
             <small>${nx ? `${nx.min - coins} more coins to ${esc(nx.n)}` : "Top rank reached. Legendary!"}</small></div>
           ${batBadge()}</div>
-        </div><div class="lg-strip">${coinPill()}<span class="lg-nav"><button type="button" class="lg-btn main" data-go="board">🏆 Leaderboard</button><button type="button" class="lg-btn alt" data-go="room">👤 My Character</button><button type="button" class="lg-btn alt" data-guide="play">📖 Guide</button></span>${sounds()}</div></div>`;
+        </div><div class="lg-strip">${coinBig(coins, R, nx)}<nav class="lg-nav" aria-label="Game menu">${[["map", "⚔️", "Play", `data-go="map"`], ["board", "🏆", "Leaderboard", `data-go="board"`], ["room", "👤", "My Character", `data-go="room"`], ["guide", "📖", "Guide", `data-guide="play"`]]
+          .map(([k, i, l, a]) => { const on = k === "map" ? view === "map" || view === "world" : view === k; return `<button type="button" class="lg-btn lg-mn${k === "map" ? " play" : ""}${on ? " on" : ""}" ${a}${on ? ` aria-current="page"` : ""}><span aria-hidden="true">${i}</span>${l}</button>`; }).join("")}</nav>${sounds()}</div></div>`;
     page.innerHTML = `${lec}${stage}<div id="msView">${body}</div><p class="lg-copy">© 2026 Zamm Studio™ · Ts. Dr. Mohd Zamri Bin Zahir Ahmad</p>`;
+    if (!battleView) coinCount();
   }
   function go(v, push = true, w = openWorld) {
     cleanup();
@@ -331,7 +352,7 @@
     const t = tier(), rk = ART.rankOf(totalCoins());
     let draft = Object.assign({}, hero), layer = null;
     const dirty = () => plain(draft) !== plain(hero);
-    frame(`<p><button type="button" class="btn ghost small" data-go="map">‹ All chapters</button></p><h2 class="h3">My Character</h2><p class="small-note">Try any look, then press <strong>Save my character</strong>. Your saved character appears on every device you sign in to, and on the leaderboard.</p>
+    frame(`<h2 class="h3">My Character</h2><p class="small-note">Try any look, then press <strong>Save my character</strong>. Your saved character appears on every device you sign in to, and on the leaderboard.</p>
       <div class="ms-leave" id="msLeave" role="alertdialog" aria-label="Unsaved changes" hidden></div>
       <div class="ms-mk"><div class="ms-pv"><div class="ms-pvs">${ART.bg(rk)}<svg id="msPv" viewBox="-50 -82 168 168" aria-label="Your character"></svg></div>
           <button type="button" class="btn" data-hsave>Save my character</button><button type="button" class="btn ghost small" data-try>Try the attack</button><button type="button" class="btn ghost small" data-shareme>📤 Share my character</button>
@@ -394,7 +415,7 @@
   const RCOL = ["#9fb3c8", "#38e1c9", "#3fa9ff", "#8b5cf6", "#ff7a45", "#f0567a", "#5ee7ff", "#c4b5fd", "#ffd84d"];
   async function boardView(fresh) {
     frame(`<div class="gg lb"><div class="gg-top"><div class="gg-hero"><div><span class="gg-kick">Hall of Legends</span><h2 class="gg-h">🏆 Leaderboard</h2></div>
-        <div class="lb-acts"><button type="button" class="lg-btn alt" data-go="map">‹ All chapters</button>${isLec ? `<button type="button" class="lg-btn alt" data-lgupd>⟳ Update rankings now</button>` : ""}</div></div></div>
+        ${isLec ? `<div class="lb-acts"><button type="button" class="lg-btn alt" data-lgupd>⟳ Update rankings now</button></div>` : ""}</div></div>
       <div class="gg-body"><p class="lb-note">The whole class, ranked by game coins. <span id="lgWhen"></span> Your own coins and rank are always up to date on your own screen. Tap a name to open the profile. Points never count towards grades.</p><div id="lgBoard"><p class="lb-note">Loading…</p></div></div></div>`);
     const ub = $("[data-lgupd]"); if (ub) ub.addEventListener("click", () => { ub.disabled = true; ub.textContent = "Updating…"; boardView(true); });
     const host = $("#lgBoard");
@@ -420,11 +441,10 @@
     const podium = () => players.length ? `<div class="lb-pod">${[1, 0, 2].map((k) => { const d = players[k]; if (!d) return "<div></div>"; const rk = rkOf(d);
         return `<div class="lb-p p${k + 1}${d.uid === me ? " me" : ""}" style="--rc:${RCOL[rk]}">${k === 0 ? `<i class="lb-light" aria-hidden="true"></i>` : ""}<span class="lb-medal" aria-hidden="true">${medal(k)}</span>
           <a class="lb-ph" href="profile.html?u=${encodeURIComponent(d.uid)}" tabindex="-1" aria-hidden="true"><svg class="lb-hero" viewBox="-46 -76 92 142" focusable="false">${ART.heroSvg(heroIn(d.game), "", k === 0 ? 2 : 0)}</svg></a>
-          <a class="lb-pn" href="profile.html?u=${encodeURIComponent(d.uid)}" title="Open the profile">${esc(label(d))}</a><small>${batI(d.game)} ${esc(ART.RANKS[rk].n)}</small><span class="lb-pc">🪙 ${(d.game.coins || 0).toLocaleString("en")}</span><span class="lb-step">${k + 1}</span></div>`; }).join("")}</div>` : "";
+          <a class="lb-pn" href="profile.html?u=${encodeURIComponent(d.uid)}" title="Open the profile">${esc(label(d))}</a><span class="lb-pr">${batI(d.game)}<span>${esc(ART.RANKS[rk].n)}</span></span><span class="lb-pc">🪙 ${(d.game.coins || 0).toLocaleString("en")}</span><span class="lb-step">${k + 1}</span></div>`; }).join("")}</div>` : "";
     const lrow = (d, k) => { const g = d.game, rk = rkOf(d), hn = hname(d);
       return `<li class="lb-row${d.uid === me ? " me" : ""}" style="--rc:${RCOL[rk]}"><span class="lb-pos">${k + 1}</span><span class="lb-av">${avatar(heroIn(g))}</span>
-        <span class="lb-who"><b>${esc(hn || d.nickname || "Player")}</b><a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname || "Student")}</a></span>
-        <span class="lb-rk">${batI(g)}<span>${esc(ART.RANKS[rk].n)}</span></span>
+        <span class="lb-who"><b>${esc(hn || d.nickname || "Player")}</b><a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname || "Student")}</a><span class="lb-rk">${batI(g)}<span>${esc(ART.RANKS[rk].n)}</span></span></span>
         <span class="lb-coin"><b>${(g.coins || 0).toLocaleString("en")}</b><i class="lb-bar"><b style="width:${Math.max(3, Math.round(((g.coins || 0) / lead) * 100))}%"></b></i></span>
         <span class="lb-st"><span title="Stations cleared">⚔️ ${g.cleared || 0}/${total}</span><span title="Bosses defeated">👑 ${g.bosses || 0}</span><span title="Stars">★ ${g.stars || 0}</span></span>
         <span class="lb-last">${ago(g.last)}</span></li>`; };
@@ -477,7 +497,7 @@
   let guideTab = "play";
   const GTABS = [["play", "🎮", "How to Play"], ["ranks", "🏅", "Ranks"], ["battery", "🔋", "Battery"], ["credits", "⭐", "Credits"]];
   const gtabs = () => `<div class="gg-top"><div class="gg-hero"><div><span class="gg-kick">Game Guide</span><h2 class="gg-h">${guideTab === "credits" ? "About the Game" : guideTab === "ranks" ? "Climb the Ranks" : guideTab === "battery" ? "Stay Charged" : "How to Play"}</h2></div>
-      <button type="button" class="gg-start" data-guideok>⚔️ Start Playing</button></div>
+</div>
     <nav class="gg-tabs" aria-label="Game guide">${GTABS.map(([k, i, l]) => `<button type="button" class="gg-tab" data-gtab="${k}" aria-pressed="${guideTab === k}"><span aria-hidden="true">${i}</span>${l}</button>`).join("")}</nav></div>`;
   function markGuide() { if (!lsGet("nmk-mguide")) { lsSet("nmk-mguide", "1"); document.dispatchEvent(new CustomEvent("nmk:store", { detail: "nmk-mguide" })); } }
   const card = (icon, title, text, n) => `<li class="gg-card">${n ? `<span class="gg-n">${n}</span>` : ""}<span class="gg-ic" aria-hidden="true">${icon}</span><div><strong>${title}</strong><p>${text}</p></div></li>`;
@@ -486,7 +506,7 @@
     const coins = totalCoins(), rk = ART.rankOf(coins), R = ART.RANKS[rk], nx = ART.RANKS[rk + 1], b = bat();
     let body = "";
     if (guideTab === "play") body = `<p class="gg-tag">Play, learn and master each chapter.</p>
-      <h3 class="gg-sub">The Rules</h3><ol class="gg-cards rules">
+      <h3 class="gg-sub">The Rules</h3><ol class="gg-cards gg-rules">
         ${card("⚔️", "Three stations", "Three stations per chapter. Beat the first two to face the boss.", "01")}
         ${card("✍️", "Paper first", "Work it out on paper, then key in your answer.", "02")}
         ${card("🪙", "Strike or be blocked", "Right: you strike and earn coins. Wrong: the enemy blocks, strikes back, and you lose 2 coins.", "03")}
@@ -523,7 +543,7 @@
         .map(([st, f, when, how, look]) => `<div class="gg-bat b-${st}${b && b.st === st ? " me" : ""}">${b && b.st === st ? `<span class="gg-you">You</span>` : ""}${batSvg(f, st, "big")}<strong>${{ charged: "Charged", low: "Low battery", flat: "Flat battery" }[st]}</strong><small>Last battle: ${when}</small><em>${how}</em><span>${look}</span></div>`).join("")}</div>
       ${b ? `<p class="gg-now">${b.paused ? "⏸ Batteries are paused by your lecturer right now." : `Your battery: <strong>${BATL[b.st]}</strong>. ${batNote(b)}.`}</p>` : `<p class="gg-now">Play your first battle to charge your battery.</p>`}
       <ul class="gg-cards basics">${card("⚡", "Recharge", "One battle fills it right up, whether you win or get knocked out.")}${card("🔔", "Reminders", "You'll get a reminder on day 8 and on day 12.")}${card("⏸", "Paused weeks", "In exam weeks and breaks your lecturer can pause every battery.")}</ul>`;
-    frame(`<div class="gg">${gtabs()}<div class="gg-body">${body}</div><div class="gg-foot"><button type="button" class="gg-start big" data-guideok>⚔️ Start Playing</button></div></div>`);
+    frame(`<div class="gg">${gtabs()}<div class="gg-body">${body}</div></div>`);
   }
   /* ---------- share cards (9:16 PNG): the Web Share API with the file (WhatsApp status and more), or Save image ---------- */
   const SHARE_URL = "https://zamrizahir88.github.io/nmk42003/missions.html";

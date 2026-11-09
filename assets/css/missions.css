@@ -711,3 +711,99 @@ label.ms-ol { display: block; }
 .lb-pn:focus-visible { outline: 3px solid #ffd84d; outline-offset: 2px; border-radius: 4px; }
 .lb-ph { display: block; position: relative; z-index: 1; cursor: pointer; }
 .lb-ph:hover .lb-hero { filter: drop-shadow(0 0 14px rgba(255, 216, 77, .8)); }
+
+/* ===== round 3 (9 Nov 2026, lecturer's review) ===== */
+/* the game menu: ⚔️ Play · 🏆 Leaderboard · 👤 My Character · 📖 Guide (the current one lit; Play glows when you are away) */
+.lg-strip { gap: 10px 12px; }
+.lg-nav { display: flex; gap: 8px; margin-left: auto; }
+.lg-mn { min-height: 42px; padding: 6px 14px; gap: 7px; background: rgba(255, 255, 255, .92); color: #14213d; border: 1px solid rgba(20, 33, 61, .25); white-space: normal; text-align: center; line-height: 1.15; }
+.lg-mn > span { flex: none; font-size: 1.05em; }
+.lg-mn.on { background: #38e1c9; border-color: #38e1c9; color: #0b2a2a; box-shadow: 0 0 0 2px rgba(56, 225, 201, .35), 0 0 14px rgba(56, 225, 201, .45); }
+.lg-mn.play { background: linear-gradient(180deg, #ffe680, #ffc21a); border-color: #c98a00; color: #14213d; }
+.lg-mn.play.on { background: linear-gradient(180deg, #7ff3e3, #38e1c9); border-color: #38e1c9; color: #0b2a2a; }
+.lg-mn.play:not(.on) { animation: lgPlayGlow 2.2s ease-in-out infinite; }
+@keyframes lgPlayGlow { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 200, 40, .55); } 50% { box-shadow: 0 0 0 6px rgba(255, 200, 40, 0), 0 0 18px rgba(255, 200, 40, .7); } }
+/* the coin counter */
+.lg-coinb { position: relative; display: inline-flex; align-items: center; gap: 10px; min-height: 52px; padding: 4px 16px 4px 5px; border-radius: 999px; cursor: pointer; text-align: left;
+  border: 1px solid rgba(255, 216, 77, .75); background: linear-gradient(135deg, rgba(255, 216, 77, .28), rgba(20, 33, 61, .55)); color: #fff; box-shadow: 0 0 14px rgba(255, 200, 40, .35), inset 0 0 12px rgba(255, 216, 77, .15); }
+.lg-coinb:hover { box-shadow: 0 0 22px rgba(255, 200, 40, .6), inset 0 0 12px rgba(255, 216, 77, .25); }
+.lg-coinb:focus-visible { outline: 3px solid #ffd84d; outline-offset: 3px; }
+.lg-cring { position: relative; display: grid; place-items: center; width: 44px; height: 44px; flex: none; }
+.lg-cring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.lg-crt { fill: rgba(11, 20, 48, .7); stroke: rgba(255, 255, 255, .18); stroke-width: 4; }
+.lg-crf { fill: none; stroke: #ffd84d; stroke-width: 4; stroke-linecap: round; filter: drop-shadow(0 0 3px rgba(255, 216, 77, .8)); }
+.lg-cface { position: relative; font-size: 1.35rem; line-height: 1; animation: lgCoinSpin 4s ease-in-out infinite; }
+@keyframes lgCoinSpin { 0%, 70%, 100% { transform: rotateY(0); } 80% { transform: rotateY(180deg) scale(1.1); } 90% { transform: rotateY(360deg); } }
+.lg-ctx { display: grid; line-height: 1.1; }
+.lg-ctx strong { font: 900 1.45rem var(--gf1); color: #ffd84d; letter-spacing: .02em; text-shadow: 0 0 10px rgba(255, 216, 77, .6); font-variant-numeric: tabular-nums; }
+.lg-ctx small { font: 700 .78rem var(--gf2); color: #e8eef7; }
+.lg-cplus { position: absolute; left: 40px; top: -6px; font: 900 1rem var(--gf1); color: #ffd84d; text-shadow: 0 0 8px rgba(255, 200, 40, .9); opacity: 0; pointer-events: none; }
+.lg-coinb.got .lg-cplus { animation: lgPlus 1.5s ease-out forwards; }
+.lg-coinb.got { animation: lgCoinPop .6s ease-out; }
+@keyframes lgPlus { 0% { opacity: 0; transform: translateY(8px); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-26px); } }
+@keyframes lgCoinPop { 40% { transform: scale(1.08); } }
+@media (max-width: 640px) {
+  .lg-strip { display: grid; grid-template-columns: minmax(0, 1fr) auto; padding: 10px; }
+  .lg-strip > .lg-coinb { grid-column: 1; justify-self: start; }
+  .lg-strip > .lg-snds { grid-column: 2; grid-row: 1; justify-self: end; }
+  .lg-nav { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; order: 0; }
+  .lg-nav .lg-mn { width: 100%; min-width: 0; padding: 8px 10px; font-size: .9rem; }
+}
+/* the Guide: no Start Playing; the 5 rules as a mission track (5 across on a wide screen, 3 + 2 on a tablet) */
+.gg-hero { padding-bottom: 4px; }
+.gg-cards.gg-rules { max-width: none; padding-left: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 185px), 1fr)); counter-reset: none; }
+.gg-cards.gg-rules .gg-card { border-color: rgba(56, 225, 201, .35); grid-template-columns: 1fr; gap: 8px; padding: 14px; }
+.gg-cards.gg-rules .gg-card li, .gg-cards.gg-rules .gg-card { margin: 0; }
+.gg-card strong { font-size: 1.02rem; }
+.gg-card p { font-size: .92rem; }
+@media (max-width: 560px) { .gg-cards.gg-rules .gg-card { grid-template-columns: 44px minmax(0, 1fr); } }
+/* the podium: names in full, the rank as a readable chip (white on navy, rank-coloured edge) */
+.lb a.lb-pn, .lb-pn { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; font-size: 1.02rem; line-height: 1.2; }
+.lb-pr { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 4px; max-width: 100%; margin: 3px 0 1px; padding: 3px 9px; border-radius: 12px;
+  background: rgba(8, 14, 32, .85); border: 1px solid var(--rc); color: #fff; font: 700 .84rem/1.2 var(--gf2); text-align: center; overflow-wrap: break-word; }
+.lb-pr .lg-bi { font-size: .9rem; }
+/* the rows: hero name, real name and rank stacked in full; coins bar fills the space; stats; last played */
+.lb-row { grid-template-columns: 36px 52px minmax(200px, 340px) minmax(150px, 1fr) auto 100px; grid-template-areas: "pos av who coin st last"; padding: 10px 14px; gap: 12px; }
+.lb-row > .lb-pos { grid-area: pos; } .lb-row > .lb-av { grid-area: av; } .lb-row > .lb-who { grid-area: who; } .lb-row > .lb-coin { grid-area: coin; } .lb-row > .lb-st { grid-area: st; } .lb-row > .lb-last { grid-area: last; }
+.lb-who { gap: 2px; }
+.lb-who b { font-size: 1.05rem; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; line-height: 1.25; }
+.lb-who a { font-size: .88rem; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; line-height: 1.3; }
+.lb-who .lb-rk { font-size: .88rem; margin-top: 1px; }
+.lb-rk > span:last-child { white-space: normal; overflow: visible; text-overflow: clip; }
+.lb-coin { grid-template-columns: 70px minmax(40px, 1fr); align-items: center; gap: 10px; }
+.lb-coin > b { font-size: 1.05rem; }
+.lb-bar { height: 9px; }
+.lb-st { font-size: .86rem; }
+.lb-st span { padding: 3px 8px; }
+.lb-last { font-size: .86rem; }
+.lb-note { font-size: .95rem; }
+@media (max-width: 760px) {
+  .lb-row { grid-template-columns: 26px 46px minmax(0, 1fr) auto; grid-template-areas: "pos av who coin" "pos av st st" "pos av last last"; row-gap: 8px; padding: 10px 12px; }
+  .lb-row > .lb-pos, .lb-row > .lb-av { align-self: start; }
+  .lb-coin { grid-template-columns: 1fr; gap: 5px; min-width: 84px; align-self: start; }
+  .lb-st { justify-content: flex-start; flex-wrap: wrap; gap: 6px; padding: 0; }
+  .lb-last { text-align: left; font-size: .84rem; }
+  .lb-pn, .lb a.lb-pn { font-size: .92rem; }
+  .lb-pr { font-size: .78rem; padding: 3px 7px; }
+}
+@media (prefers-reduced-motion: reduce) { .lg-mn.play, .lg-cface, .lg-coinb.got, .lg-coinb.got .lg-cplus { animation: none !important; } }
+.lg-ctx strong { font-family: var(--gf2); font-style: italic; font-size: 1.55rem; }
+.lg-ctx small { white-space: nowrap; }
+@media (max-width: 640px) {
+  .lg-strip .lg-snds input[type="range"], .lg-strip .lg-snds .lg-vol { display: none; }
+  .lg-coinb { min-height: 48px; padding-right: 14px; }
+}
+.lb-who .lb-rk { grid-column: auto !important; grid-row: auto !important; flex-wrap: wrap; }
+/* podium chip: plain wrapping text (the battery icon flows with the words) */
+.lb-pr { display: block; } .lb-pr > span { display: inline; } .lb-pr .lg-bi { margin-right: 3px; }
+@media (max-width: 760px) {
+  .lb-row { grid-template-columns: 26px 46px minmax(0, 1fr) auto; grid-template-areas: "pos av who who" "pos av coin coin" "pos av st last"; row-gap: 7px; }
+  .lb-coin { grid-template-columns: auto minmax(40px, 1fr); gap: 10px; min-width: 0; align-self: center; }
+  .lb-coin > b { text-align: left; }
+  .lb-last { text-align: right; align-self: center; white-space: nowrap; }
+  .lb-p { padding-left: 4px; padding-right: 4px; }
+  .lb-pr { font-size: .76rem; padding: 3px 6px; }
+}
+@media (max-width: 760px) { .lb-row { grid-template-areas: "pos av who who" "pos av coin last" "pos av st st"; } .lb-st { flex-wrap: wrap; } }
+.lb-coin > b { white-space: nowrap; }
+.gg-cards .gg-card { align-content: start; }

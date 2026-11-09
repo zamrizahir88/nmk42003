@@ -328,3 +328,46 @@ table.dt tr.dt-stop th span { font-weight: 400; color: var(--ink-3); margin-left
 .shc-x:hover { background: var(--teal-soft); }
 @media (max-height: 640px) { .shc-img, .shc-img img { width: 162px; height: 288px; } }
 .pf-ring.lr7, .pf-ring.lr8 { margin-top: 30px; } .pf-ring { margin-bottom: 10px; }
+
+/* ===== round 3 (9 Nov 2026, lecturer's review): nothing is shortened, bigger text, XP bar fills the row, clean rings ===== */
+/* clean rings: no L# on the photo; L5-L6 a soft glow; L7 silver ring and crown; L8 gold */
+.lvr-p { display: none; }
+.lvr.lr5, .lvr.lr6 { box-shadow: 0 0 calc(var(--rs) * .28) color-mix(in srgb, var(--lvc) 70%, transparent); }
+.lvr.lr7 { background: linear-gradient(145deg, #f4f6fa, #aab4c3 55%, #e7ecf3); box-shadow: 0 0 calc(var(--rs) * .22) rgba(170, 180, 195, .7); }
+.lvr.lr8 { box-shadow: 0 0 calc(var(--rs) * .35) rgba(255, 200, 40, .65); }
+@keyframes lvrGlow { 50% { box-shadow: 0 0 calc(var(--rs) * .55) rgba(255, 216, 77, .9); } }
+.pf-ring { margin-bottom: 0; }
+/* the rows: place · photo · name / level · XP number · XP bar (stretches) · badges · last active */
+.bd-row { grid-template-columns: 34px 50px minmax(180px, 300px) 92px minmax(60px, 1fr) 108px 100px; grid-template-areas: "pos av nm xpn bar bs last" "pos av lvl xpn bar bs last"; column-gap: 12px; row-gap: 2px; padding: 10px 14px; }
+.bd-row > .bd-pos { grid-area: pos; font-size: 1rem; }
+.bd-row > .lvr { grid-area: av; }
+.bd-row > .bd-nmw { grid-area: nm; align-self: end; }
+.bd-row > .bd-lvl { grid-area: lvl; align-self: start; }
+.bd-row > .bd-xpn { grid-area: xpn; }
+.bd-row > .bd-xpb { grid-area: bar; }
+.bd-row > .bd-bs { grid-area: bs; }
+.bd-row > .bd-last { grid-area: last; }
+.bd-nmw { flex-wrap: wrap; row-gap: 2px; }
+.bd-nmw .bd-name, .bd-pod .bd-nmw .bd-name, .bd-pad .bd-nmw .bd-name { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: break-word; }
+.bd-row .bd-name { font-size: 1rem; font-weight: 700; line-height: 1.3; }
+.bd-lvl { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; font-size: .84rem; line-height: 1.35; color: var(--ink-2); }
+.bd-lvl .bd-lvc { flex: none; }
+.bd-row .bd-xpn { font: 700 .98rem var(--sans); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bd-row .bd-xpb { height: 10px; }
+.bd-row .bd-last { font-size: .84rem; color: var(--ink-2); }
+/* the podiums: names and levels in full, and when each was last active */
+.bd-pod strong, .bd-pad strong { white-space: normal; overflow: visible; text-overflow: clip; font-size: 1rem; line-height: 1.25; }
+.bd-pod small, .bd-pad small { font-size: .84rem; }
+.bd-plast { color: var(--ink-2); font-size: .8rem !important; }
+@media (max-width: 720px) {
+  .bd-row { grid-template-columns: 24px 44px minmax(0, 1fr) auto; grid-template-areas: "pos av nm xpn" "pos av lvl lvl" "pos av bar bar" "pos av bs last"; column-gap: 10px; row-gap: 5px; padding: 10px 12px; align-items: center; }
+  .bd-row > .bd-pos, .bd-row > .lvr { align-self: start; margin-top: 2px; }
+  .bd-row > .bd-nmw { align-self: center; }
+  .bd-row .bd-name { font-size: 1rem; }
+  .bd-row .bd-xpn { font-size: 1rem; }
+  .bd-row > .bd-bs { justify-self: start; }
+  .bd-row > .bd-last { justify-self: end; text-align: right; }
+  .bd-pod strong { font-size: .9rem; } .bd-pad strong { font-size: .88rem; }
+  .bd-pod small, .bd-pad small { font-size: .78rem; }
+}
+@supports not (color: color-mix(in srgb, red 50%, blue)) { .lvr.lr5, .lvr.lr6 { box-shadow: 0 0 calc(var(--rs) * .25) var(--lvc); } }

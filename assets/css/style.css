@@ -290,6 +290,8 @@ table.sched { width: 100%; border-collapse: collapse; font-size: .93rem; min-wid
   transition: filter .15s; min-width: 0;
 }
 .seg:hover { filter: brightness(1.08); }
+.seg-s { display: none; }
+@media (max-width: 640px) { .seg { justify-content: center; padding: 0 4px; font-size: .82rem; } .seg-l { display: none; } .seg-s { display: inline; margin-right: .25em; } }
 .seg[aria-pressed="true"] { box-shadow: inset 0 -4px 0 var(--ink); }
 .seg.final   { background: #15243a; color: #fff; }
 .seg.lab     { background: #0b6e6e; color: #fff; }

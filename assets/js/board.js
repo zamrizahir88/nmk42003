@@ -41,22 +41,24 @@
   const sorted = () => rows.slice().sort((a, b) => (b.xp || 0) - (a.xp || 0) || String(a.nickname).localeCompare(b.nickname));
   // one player as a row: place, avatar and name, level, an XP bar against the leader, badges, last active
   const line = (r, i, max) => { const k = lvOf(r.xp);
-    return `<li class="bd-row${me && r.uid === me ? " me" : ""}"><span class="bd-pos">${i}</span>${av(r, 40)}<span class="bd-who">${name(r)}<small>${lvChip(r.xp)} ${esc(G.LEVELS[k][1])}</small></span>
-      <span class="bd-xpw"><span class="bd-xpn">${(r.xp || 0).toLocaleString("en")} XP</span><i class="bd-xpb"><b class="l${k + 1}" style="width:${max ? Math.max(3, Math.round(((r.xp || 0) / max) * 100)) : 0}%"></b></i></span>
+    // nothing is shortened (lecturer's choice, 9 Nov 2026): the name and level wrap; on phones the row stacks
+    return `<li class="bd-row${me && r.uid === me ? " me" : ""}"><span class="bd-pos">${i}</span>${av(r, 42)}${name(r)}
+      <span class="bd-lvl">${lvChip(r.xp)} ${esc(G.LEVELS[k][1])}</span>
+      <span class="bd-xpn">${(r.xp || 0).toLocaleString("en")} XP</span><i class="bd-xpb" aria-hidden="true"><b class="l${k + 1}" style="width:${max ? Math.max(3, Math.round(((r.xp || 0) / max) * 100)) : 0}%"></b></i>
       ${badges(r)}<span class="bd-last">${ago(r.lastActive)}</span></li>`; };
   const list = (arr, start, max) => `<ol class="bd-list">${arr.map((r, i) => line(r, start + i, max)).join("")}</ol>`;
 
   function topView(s) {
     if (!s.length) return `<p class="bd-empty">No one is on the board yet this semester.</p>`;
     const max = s[0].xp || 1, pod = [s[1], s[0], s[2]].map((r, k) => r ? `<div class="bd-pod p${[2, 1, 3][k]}${me && r.uid === me ? " me" : ""}">
-        ${k === 1 ? `<i class="bd-spk s1" aria-hidden="true">✦</i><i class="bd-spk s2" aria-hidden="true">✦</i><i class="bd-spk s3" aria-hidden="true">✧</i><i class="bd-spk s4" aria-hidden="true">✦</i>` : ""}<span class="bd-medal" aria-hidden="true">${["🥈", "🥇", "🥉"][k]}</span>${av(r, k === 1 ? 72 : 60)}<strong>${name(r)}</strong><small>${lvChip(r.xp)} ${(r.xp || 0).toLocaleString("en")} XP</small><span class="bd-step">${[2, 1, 3][k]}</span></div>` : "<div></div>").join("");
+        ${k === 1 ? `<i class="bd-spk s1" aria-hidden="true">✦</i><i class="bd-spk s2" aria-hidden="true">✦</i><i class="bd-spk s3" aria-hidden="true">✧</i><i class="bd-spk s4" aria-hidden="true">✦</i>` : ""}<span class="bd-medal" aria-hidden="true">${["🥈", "🥇", "🥉"][k]}</span>${av(r, k === 1 ? 72 : 60)}<strong>${name(r)}</strong><small>${lvChip(r.xp)} ${(r.xp || 0).toLocaleString("en")} XP</small><small class="bd-plast">🕒 ${ago(r.lastActive)}</small><span class="bd-step">${[2, 1, 3][k]}</span></div>` : "<div></div>").join("");
     return `<div class="bd-podium">${pod}</div>${s.length > 3 ? list(s.slice(3, 10), 4, max) : ""}`;
   }
   function bottomView(s) {
     const n = s.length; if (n <= 10) return `<p class="bd-empty">The bottom 10 shows once more than 10 students are on the board.</p>`;
     const start = Math.max(10, n - 10), last3 = s.slice(n - 3), at = me ? s.findIndex((r) => r.uid === me) : -1;
     // the Climb-Out Zone (lecturer's choice): the last 3 as launch pads with arrows pointing up, amber, encouraging
-    const pads = last3.map((r, k) => `<div class="bd-pad${me && r.uid === me ? " me" : ""}"><span class="bd-ppos">#${n - 2 + k}</span><i class="bd-up" aria-hidden="true">⬆</i>${av(r, 54)}<strong>${name(r)}</strong><small>${lvChip(r.xp)} ${(r.xp || 0).toLocaleString("en")} XP</small></div>`).join("");
+    const pads = last3.map((r, k) => `<div class="bd-pad${me && r.uid === me ? " me" : ""}"><span class="bd-ppos">#${n - 2 + k}</span><i class="bd-up" aria-hidden="true">⬆</i>${av(r, 54)}<strong>${name(r)}</strong><small>${lvChip(r.xp)} ${(r.xp || 0).toLocaleString("en")} XP</small><small class="bd-plast">🕒 ${ago(r.lastActive)}</small></div>`).join("");
     const out = s[n - 4], need = at >= n - 3 && out ? Math.max(1, (out.xp || 0) - (s[at].xp || 0) + 1) : 0;
     const cheer = at >= n - 3 ? `<p class="bd-cheer mine">🚀 You need <strong>${need.toLocaleString("en")} XP</strong> to climb out: one or two exercises will do it!</p>` : `<p class="bd-cheer">🚀 One exercise could lift you out!</p>`;
     return `<p class="bd-note">💪 Not a ranking of ability: it shows who has done the least so far. Any exercise you solve moves you up.</p>

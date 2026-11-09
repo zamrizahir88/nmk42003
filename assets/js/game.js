@@ -303,13 +303,14 @@
   document.addEventListener("click", (e) => { const b = e.target.closest("[data-gm-levels]"); if (b) { e.preventDefault(); levelsDialog(+b.dataset.gmLevels); } });
 
   // a student's photo (or first letter) inside a ring in their level's colour (lecturer's idea, 9 Nov 2026):
-  // L1-L2 a plain ring, L3-L4 with a star, L5-L6 a double ring, L7 a silver crown, L8 a gold crown and a glow
+  // clean style (lecturer's choice): L1-L2 a thin ring, L3-L6 with a small star (L5-L6 also a soft glow), L7 a silver ring
+  // and crown, L8 a gold ring, crown and glow. No "L#" on the photo: the level chip sits beside the name.
   const lvIndex = (xp) => { let k = 0; LEVELS.forEach(([t], i) => { if ((xp || 0) >= t) k = i; }); return k; };
   const CROWN = (c, d) => `<svg class="lvr-cr" viewBox="0 0 24 16" aria-hidden="true" focusable="false"><path d="M2 14.5 L3.4 4.5 L8.6 9 L12 1.8 L15.4 9 L20.6 4.5 L22 14.5 Z" fill="${c}" stroke="${d}" stroke-width="1.3" stroke-linejoin="round"/><circle cx="12" cy="10.6" r="1.6" fill="#e5484d"/><circle cx="6.4" cy="11.6" r="1.1" fill="#38e1c9"/><circle cx="17.6" cy="11.6" r="1.1" fill="#38e1c9"/></svg>`;
   function ringAv(photo, label, xp, size, extra) {
     const k = lvIndex(xp), e = (x) => String(x == null ? "" : x).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     const inner = photo ? `<img src="${e(photo)}" alt="" referrerpolicy="no-referrer" loading="lazy">` : `<span class="lvr-n">${e(String(label || "?").trim()[0] || "?").toUpperCase()}</span>`;
-    return `<span class="lvr lr${k + 1}${extra ? " " + extra : ""}" style="--rs:${size || 40}px" title="L${k + 1} ${e(LEVELS[k][1])}">${inner}${k >= 6 ? (k === 7 ? CROWN("#ffd84d", "#a87400") : CROWN("#e7ecf3", "#7d8a9c")) : k >= 2 ? `<i class="lvr-st" aria-hidden="true">★</i>` : ""}<i class="lvr-p" aria-hidden="true">L${k + 1}</i></span>`;
+    return `<span class="lvr lr${k + 1}${extra ? " " + extra : ""}" style="--rs:${size || 40}px" title="L${k + 1} ${e(LEVELS[k][1])}">${inner}${k >= 6 ? (k === 7 ? CROWN("#ffd84d", "#a87400") : CROWN("#e7ecf3", "#7d8a9c")) : k >= 2 ? `<i class="lvr-st" aria-hidden="true">★</i>` : ""}</span>`;
   }
   window.NMKGame = { SEM, CATALOG, STOPS, BADGES, LEVELS, battery, BATTERY, levelsDialog, compute, local, localKeys, xpBar, journeyHtml, weekOf, today, feed, summaryProg, fromSummary, isLecturer, paint: paintJourney, lvIndex, ringAv };
   paintJourney();
