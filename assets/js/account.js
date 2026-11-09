@@ -128,10 +128,11 @@
         const mis = pj(keys["nmk-missions"], {}), msv = pj(keys["nmk-msave"], {}), ids = Object.keys(mis).filter((id) => /^w\d+-s\d+$/.test(id));
         const game = { coins: ids.reduce((a, id) => a + (mis[id].c || 0), 0), cleared: ids.length, bosses: ids.filter((id) => mis[id].boss).length, stars: ids.reduce((a, id) => a + (mis[id].s || 0), 0),
           ch: ids.reduce((o, id) => { const w = id.match(/^w(\d+)/)[1]; o[w] = (o[w] || 0) + 1; return o; }, {}), started: ids.length > 0 || Object.values(msv).some((x) => x && !x.cleared),
-          last: ids.map((id) => mis[id].at).concat(Object.values(msv).map((x) => x && x.at)).filter(Boolean).sort().pop() || null, hero: keys["nmk-hero"] || "" };
+          last: ids.map((id) => mis[id].at).concat(Object.values(msv).map((x) => x && x.at)).filter(Boolean).sort().pop() || null, hero: keys["nmk-hero"] || "",
+          reach: ids.map((id) => mis[id].at).filter(Boolean).sort().pop() || null };   // when the current coins were reached (tie-breaker)
         // the public profile: classmates see the real name, matric and lab section from the class list, and the Google account photo
         const bd = { nickname: p.nickname || "", role: p.role || "student", semester: SEM, xp: g.xp, level: g.level, levelNo: g.levelNo,
-          badges: g.badges.map((b) => b.id), streak: g.streak, solved: g.solved, lastActive: g.lastActive || null,
+          badges: g.badges.map((b) => b.id), streak: g.streak, solved: g.solved, lastActive: g.lastActive || null, xpAt: g.xpAt || null,
           stops: Object.fromEntries(g.stops.filter((s) => s.total).map((s) => [s.label, s.pct])), prog: G.summaryProg ? G.summaryProg(g) : {}, feed: G.feed ? G.feed(g, 20) : [],
           name: r.name || p.name || "", matric: r.matric || "", section: r.section || "", group: r.group || 0, photo: state.user.photoURL || "",
           since: p.createdAt || null, game };
@@ -152,7 +153,7 @@
      now". Opening a board reads that 1 document; students write nothing for it. Each student's own points, level and
      badges are live on their own page (worked out on their device). */
   const sumOf = (b) => ({ nickname: b.nickname || "", role: b.role || "student", xp: b.xp || 0, level: b.level || "", levelNo: b.levelNo || 1, badges: b.badges || [],
-    streak: b.streak || 0, lastActive: b.lastActive || null, stops: b.stops || {}, name: b.name || "", matric: b.matric || "", section: b.section || "", photo: b.photo || "", game: b.game || null });
+    streak: b.streak || 0, lastActive: b.lastActive || null, xpAt: b.xpAt || null, stops: b.stops || {}, name: b.name || "", matric: b.matric || "", section: b.section || "", photo: b.photo || "", game: b.game || null });
   // { rows, at }: the published rankings (at = when they were made); null before the first update
   async function boardRows() {
     const d = await db.collection("boardsum").doc(SCHED_ID).get(), x = d.exists ? d.data() : null;

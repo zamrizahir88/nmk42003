@@ -427,6 +427,8 @@
   const avatar = (h) => `<svg class="lg-av" viewBox="-36 -66 72 76" aria-hidden="true" focusable="false">${ART.heroSvg(h, "", 0)}</svg>`;
   // the leaderboard (fresh look, 9 Nov 2026): the game-menu panel, a podium of the top 3 with their characters, then
   // rows framed in the colour of each player's rank. One list for the whole class; students see no matric numbers.
+  const reachT = (d) => { const t = Date.parse(d.game.reach || d.game.last || ""); return isFinite(t) ? t : Infinity; };
+  const reachCmp = (a, b) => { const x = reachT(a), y = reachT(b); return x === y ? 0 : x < y ? -1 : 1; };
   const RCOL = ["#9fb3c8", "#38e1c9", "#3fa9ff", "#8b5cf6", "#ff7a45", "#f0567a", "#5ee7ff", "#c4b5fd", "#ffd84d"];
   async function boardView(fresh) {
     frame(`<div class="gg lb"><div class="gg-top"><div class="gg-hero"><div><span class="gg-kick">Hall of Legends</span><h2 class="gg-h">🏆 Leaderboard</h2></div>
@@ -444,7 +446,10 @@
     if (view !== "board") return;
     const total = WORLDS.reduce((a, w) => a + w.missions.length, 0), bossesT = WORLDS.reduce((a, w) => a + w.missions.filter((m) => m.boss).length, 0);
     const players = docs.filter((d) => d.role !== "lecturer" && d.game && (d.game.coins || d.game.cleared || d.game.started))
-      .sort((a, b) => (b.game.coins - a.game.coins) || (b.game.cleared - a.game.cleared) || String(b.game.last || "").localeCompare(String(a.game.last || "")));
+      .sort((a, b) => (b.game.coins - a.game.coins) || ((b.game.stars || 0) - (a.game.stars || 0)) || ((b.game.bosses || 0) - (a.game.bosses || 0)) || reachCmp(a, b));
+    // ties (9 Nov 2026): the same coins are placed by stars, then bosses, then who reached the score first; shown as "tied"
+    const coinN = {}; players.forEach((d) => { coinN[d.game.coins || 0] = (coinN[d.game.coins || 0] || 0) + 1; });
+    const tie = (d) => ((d.game.coins || 0) && coinN[d.game.coins || 0] > 1 ? ` <span class="lb-tie" title="Same coins as another player: placed by stars, bosses, then who reached the score first">tied</span>` : "");
     const me = myUid();
     const medal = (k) => (k === 0 ? "🥇" : k === 1 ? "🥈" : k === 2 ? "🥉" : `#${k + 1}`);
     const hname = (d) => { const n = String(heroIn(d.game).name || "").trim(); return n && !isBanned(d.uid, n) ? n : ""; };
@@ -456,12 +461,12 @@
     const podium = () => players.length ? `<div class="lb-pod">${[1, 0, 2].map((k) => { const d = players[k]; if (!d) return "<div></div>"; const rk = rkOf(d);
         return `<div class="lb-p p${k + 1}${d.uid === me ? " me" : ""}" style="--rc:${RCOL[rk]}">${k === 0 ? `<i class="lb-light" aria-hidden="true"></i>` : ""}<span class="lb-medal" aria-hidden="true">${medal(k)}</span>
           <button type="button" class="lb-ph" data-pcard="${esc(d.uid)}" tabindex="-1" aria-hidden="true"><svg class="lb-hero" viewBox="-46 -76 92 142" focusable="false">${ART.heroSvg(heroIn(d.game), "", k === 0 ? 2 : 0)}</svg></button>
-          <button type="button" class="lb-pn" data-pcard="${esc(d.uid)}" aria-label="${esc(label(d))}: open the player card">${esc(label(d))}</button><span class="lb-pr">${batI(d.game)}<span>${esc(ART.RANKS[rk].n)}</span></span><span class="lb-pc">🪙 ${(d.game.coins || 0).toLocaleString("en")}</span><span class="lb-pl" title="Last battle">⚔️ ${ago(d.game.last)}</span><span class="lb-step">${k + 1}</span></div>`; }).join("")}</div>` : "";
+          <button type="button" class="lb-pn" data-pcard="${esc(d.uid)}" aria-label="${esc(label(d))}: open the player card">${esc(label(d))}</button>${tie(d)}<span class="lb-pr">${batI(d.game)}<span>${esc(ART.RANKS[rk].n)}</span></span><span class="lb-pc">🪙 ${(d.game.coins || 0).toLocaleString("en")}</span><span class="lb-pl" title="Last battle">⚔️ ${ago(d.game.last)}</span><span class="lb-step">${k + 1}</span></div>`; }).join("")}</div>` : "";
     // the podium's heading with one small share button (the top 3 as a 9:16 picture)
     const podHead = () => players.length ? `<div class="lb-podh"><span>Top ${Math.min(3, players.length)}</span><button type="button" class="lb-shr" data-podshare aria-label="Share the top ${Math.min(3, players.length)} as a picture" title="Share the top 3">📤</button></div>` : "";
     const lrow = (d, k) => { const g = d.game, rk = rkOf(d), hn = hname(d);
       return `<li class="lb-row${d.uid === me ? " me" : ""}" style="--rc:${RCOL[rk]}"><span class="lb-pos">${k + 1}</span><button type="button" class="lb-av" data-pcard="${esc(d.uid)}" tabindex="-1" aria-hidden="true">${avatar(heroIn(g))}</button>
-        <span class="lb-who"><button type="button" class="lb-hn" data-pcard="${esc(d.uid)}" aria-label="${esc(hn || d.nickname || "Player")}: open the player card">${esc(hn || d.nickname || "Player")}</button><a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname || "Student")}</a><span class="lb-rk">${batI(g)}<span>${esc(ART.RANKS[rk].n)}</span></span></span>
+        <span class="lb-who"><button type="button" class="lb-hn" data-pcard="${esc(d.uid)}" aria-label="${esc(hn || d.nickname || "Player")}: open the player card">${esc(hn || d.nickname || "Player")}</button>${tie(d)}<a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname || "Student")}</a><span class="lb-rk">${batI(g)}<span>${esc(ART.RANKS[rk].n)}</span></span></span>
         <span class="lb-coin"><b>${(g.coins || 0).toLocaleString("en")}</b><i class="lb-bar"><b style="width:${Math.max(3, Math.round(((g.coins || 0) / lead) * 100))}%"></b></i></span>
         <span class="lb-st"><span title="Stations cleared">⚔️ ${g.cleared || 0}/${total}</span><span title="Bosses defeated">👑 ${g.bosses || 0}</span><span title="Stars">★ ${g.stars || 0}</span></span>
         <span class="lb-last" title="Last battle">⚔️ ${ago(g.last)}</span></li>`; };
@@ -510,7 +515,7 @@
       if (e.target.closest("[data-podshare]")) { SFX.click(); sharePodium(); }
     });
     const row = (d, k) => { const g = d.game, R = ART.RANKS[rkOf(d)], hn = hname(d);
-      return `<tr class="${d.uid === me ? "me" : ""}"><td class="lg-pos">${medal(k)}</td><td><span class="lg-who">${avatar(heroIn(g))}<span><b class="lg-hn">${esc(hn || d.nickname || "Player")}</b>
+      return `<tr class="${d.uid === me ? "me" : ""}"><td class="lg-pos">${medal(k)}${tie(d)}</td><td><span class="lg-who">${avatar(heroIn(g))}<span><b class="lg-hn">${esc(hn || d.nickname || "Player")}</b>
         <a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname || "Student")}</a>${hn && d.nickname ? `<small>${esc(d.nickname)}</small>` : ""}
         ${isLec && hn ? `<button type="button" class="lg-rm" data-rmname="${esc(d.uid)}" data-name="${esc(hn)}">Remove hero name</button>` : ""}</span></span></td>
         ${isLec ? `<td>${esc(d.matric || "–")}</td>` : ""}<td>${batI(g)} ${esc(R.n)}</td><td class="lg-num"><strong>${g.coins || 0}</strong></td><td class="lg-num">${g.cleared || 0} / ${total}</td><td class="lg-num">${g.bosses || 0} / ${bossesT}</td><td class="lg-num">${g.stars || 0} ★</td>

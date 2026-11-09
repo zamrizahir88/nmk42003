@@ -21,7 +21,7 @@ function setupRankings() {
 // the same line as account.js sumOf(): what the board and the leaderboard show for each player
 function rankLine_(b) {
   return { nickname: b.nickname || "", role: b.role || "student", xp: b.xp || 0, level: b.level || "", levelNo: b.levelNo || 1, badges: b.badges || [],
-    streak: b.streak || 0, lastActive: b.lastActive || null, stops: b.stops || {}, name: b.name || "", matric: b.matric || "", section: b.section || "",
+    streak: b.streak || 0, lastActive: b.lastActive || null, xpAt: b.xpAt || null, stops: b.stops || {}, name: b.name || "", matric: b.matric || "", section: b.section || "",
     photo: b.photo || "", game: b.game || null };
 }
 

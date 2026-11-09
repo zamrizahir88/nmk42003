@@ -893,3 +893,4 @@ label.ms-ol { display: block; }
 @keyframes ms-vglow { 0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 216, 77, 0)); } 50% { filter: drop-shadow(0 0 8px rgba(255, 216, 77, .95)); } }
 @media (prefers-reduced-motion: reduce) { #msVolt.intro #msVoltIn, #msVolt.alert #msVoltIn, #msVolt .ms-tagIn { animation: none !important; } }
 @media (max-width: 560px) { .ms-over .ms-ko { padding: 8px 12px; } .ms-over .ms-ko p { font-size: .8rem; margin: 2px 0 6px; } .ms-over .ms-ko strong { font-size: 1.1rem; } }
+.lb-tie { display: inline-block; margin-left: 4px; padding: 0 7px; border-radius: 999px; background: rgba(255, 216, 77, .2); border: 1px solid rgba(255, 216, 77, .6); color: #ffd84d; font: 800 .68rem/1.5 var(--gf2); vertical-align: 2px; cursor: help; position: relative; z-index: 1; }

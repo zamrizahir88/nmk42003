@@ -386,3 +386,4 @@ table.dt tr.dt-stop th span { font-weight: 400; color: var(--ink-3); margin-left
 .bd-shr.wide { width: auto; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; border-radius: 999px; min-height: 36px; font: 700 .85rem var(--sans); white-space: nowrap; }
 .bd-shr:hover { border-color: var(--teal); color: var(--teal); }
 .bd-shr:focus-visible { outline: 3px solid var(--focus, #1a73c7); outline-offset: 2px; }
+.bd-tie { flex: none; display: inline-block; padding: 0 7px; border-radius: 999px; background: var(--amber-soft, #fff4dc); color: #8a5a00; font: 700 .7rem/1.6 var(--sans); vertical-align: 1px; cursor: help; }

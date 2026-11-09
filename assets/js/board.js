@@ -37,8 +37,14 @@
     if (!b.length) return `<span class="bd-bs none" title="No badges yet">–</span>`;
     return `<button type="button" class="bd-bs" data-bpop="${esc(r.uid)}" aria-label="${b.length} badge${b.length === 1 ? "" : "s"}: ${esc(b.map((id) => BADGE[id].name).join(", "))}">${b.slice(0, 3).map((id) => `<i aria-hidden="true">${BADGE[id].icon}</i>`).join("")}<b aria-hidden="true">🏅 ${b.length}</b>${b.length > 3 ? `<em aria-hidden="true">+${b.length - 3}</em>` : ""}</button>`; };
   const you = (r) => (me && r.uid === me ? ' <span class="bd-you">you</span>' : "");
-  const name = (r) => `<span class="bd-nmw"><a class="bd-name" href="profile.html?u=${encodeURIComponent(r.uid)}">${esc(r.nickname)}</a>${you(r)}</span>`;
-  const sorted = () => rows.slice().sort((a, b) => (b.xp || 0) - (a.xp || 0) || String(a.nickname).localeCompare(b.nickname));
+  const name = (r) => `<span class="bd-nmw"><a class="bd-name" href="profile.html?u=${encodeURIComponent(r.uid)}">${esc(r.nickname)}</a>${you(r)}${tieMark(r)}</span>`;
+  // ties (9 Nov 2026, lecturer's choice): the same XP is placed by who reached it first (xpAt; lastActive for older lines),
+  // and a small "tied" label shows it honestly
+  const tAt = (r) => { const t = Date.parse(r.xpAt || r.lastActive || ""); return isFinite(t) ? t : Infinity; };
+  const cmpT = (x, y) => (x === y ? 0 : x < y ? -1 : 1);
+  const sorted = () => rows.slice().sort((a, b) => (b.xp || 0) - (a.xp || 0) || cmpT(tAt(a), tAt(b)) || String(a.nickname).localeCompare(b.nickname));
+  let tiedXp = new Set();
+  const tieMark = (r) => (r.xp && tiedXp.has(r.xp) ? ` <span class="bd-tie" title="Same XP as a classmate: placed by who reached it first">tied</span>` : "");
   // one player as a row: place, avatar and name, level, an XP bar against the leader, badges, last active
   const line = (r, i, max) => { const k = lvOf(r.xp);
     // nothing is shortened (lecturer's choice, 9 Nov 2026): the name and level wrap; on phones the row stacks
@@ -91,6 +97,7 @@
 
   function draw() {
     const s = sorted(), myRank = me ? s.findIndex((r) => r.uid === me) + 1 : 0;
+    { const n = {}; s.forEach((r) => { n[r.xp || 0] = (n[r.xp || 0] || 0) + 1; }); tiedXp = new Set(Object.keys(n).filter((k) => n[k] > 1).map(Number)); }
     const body = tab === "levels" ? levelsView() : gate ? gate : tab === "bottom" ? bottomView(s) : tab === "all" ? allView(s) : topView(s);
     host.innerHTML = `<div class="bd-wrap"><nav class="bd-tabs" aria-label="Class board">${TABS.map(([k, i, l]) => `<button type="button" class="bd-tab" data-btab="${k}" aria-pressed="${tab === k}"><span aria-hidden="true">${i}</span>${l}</button>`).join("")}</nav>
       ${tab !== "levels" && !gate && s.length ? `<div class="bd-sumrow"><p class="bd-sum">${s.length} student${s.length === 1 ? "" : "s"} on the board this semester.${myRank ? ` You are <strong>number ${myRank}</strong>.` : ""} <span class="small-note">${note}</span></p>${myRank && window.NMKShare ? `<button type="button" class="bd-shr wide" data-bshare aria-label="Share my rank as a picture">📤 Share my rank</button>` : ""}</div>` : ""}

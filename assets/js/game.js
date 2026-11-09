@@ -123,6 +123,8 @@
     let streak = 0, w = weeks.has(now) ? now : now - 1;
     while (weeks.has(w)) { streak++; w--; }
     const last = dates.length ? dates.reduce((a, b) => (new Date(b) > new Date(a) ? b : a)) : null;
+    // when the current XP total was reached (the newest dated item that earned XP): the class board's tie-breaker
+    const xpT = items.reduce((m, it) => { const t = Date.parse(it.when || ""); return isFinite(t) && t > m ? t : m; }, 0), xpAt = xpT ? new Date(xpT).toISOString() : null;
     // badges
     const earned = new Set();
     if (solved.length) earned.add("first-steps");
@@ -144,7 +146,7 @@
     return {
       xp, items, level: LEVELS[li][1], levelNo: li + 1, levelAt: LEVELS[li][0], nextAt: LEVELS[li + 1] ? LEVELS[li + 1][0] : null, nextLevel: LEVELS[li + 1] ? LEVELS[li + 1][1] : null,
       badges: BADGES.filter((b) => earned.has(b.id)), solved: solved.length, total: Object.keys(CATALOG).length,
-      stops, weeks: [...weeks].sort((a, b) => a - b), streak, lastActive: last, nowWeek: now
+      stops, weeks: [...weeks].sort((a, b) => a - b), streak, lastActive: last, xpAt, nowWeek: now
     };
   }
   function localKeys() { const o = {}; try { Object.keys(localStorage).forEach((k) => { if (k.startsWith("nmk-")) o[k] = localStorage.getItem(k); }); } catch (e) { /* private mode */ } return o; }
