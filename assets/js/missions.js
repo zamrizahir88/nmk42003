@@ -447,7 +447,7 @@
         <span class="lb-who"><b>${esc(hn || d.nickname || "Player")}</b><a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname || "Student")}</a><span class="lb-rk">${batI(g)}<span>${esc(ART.RANKS[rk].n)}</span></span></span>
         <span class="lb-coin"><b>${(g.coins || 0).toLocaleString("en")}</b><i class="lb-bar"><b style="width:${Math.max(3, Math.round(((g.coins || 0) / lead) * 100))}%"></b></i></span>
         <span class="lb-st"><span title="Stations cleared">⚔️ ${g.cleared || 0}/${total}</span><span title="Bosses defeated">👑 ${g.bosses || 0}</span><span title="Stars">★ ${g.stars || 0}</span></span>
-        <span class="lb-last">${ago(g.last)}</span></li>`; };
+        <span class="lb-last" title="Last battle">⚔️ ${ago(g.last)}</span></li>`; };
     const cols = 8 + WORLDS.length + (isLec ? 1 : 0);
     const row = (d, k) => { const g = d.game, R = ART.RANKS[rkOf(d)], hn = hname(d);
       return `<tr class="${d.uid === me ? "me" : ""}"><td class="lg-pos">${medal(k)}</td><td><span class="lg-who">${avatar(heroIn(g))}<span><b class="lg-hn">${esc(hn || d.nickname || "Player")}</b>
@@ -455,7 +455,7 @@
         ${isLec && hn ? `<button type="button" class="lg-rm" data-rmname="${esc(d.uid)}" data-name="${esc(hn)}">Remove hero name</button>` : ""}</span></span></td>
         ${isLec ? `<td>${esc(d.matric || "–")}</td>` : ""}<td>${batI(g)} ${esc(R.n)}</td><td class="lg-num"><strong>${g.coins || 0}</strong></td><td class="lg-num">${g.cleared || 0} / ${total}</td><td class="lg-num">${g.bosses || 0} / ${bossesT}</td><td class="lg-num">${g.stars || 0} ★</td>
         ${WORLDS.map((w) => `<td class="lg-num">${((g.ch || {})[w.world] || 0)} / ${w.missions.length}</td>`).join("")}<td>${ago(g.last)}</td></tr>`; };
-    const head = `<tr><th scope="col">#</th><th scope="col">Player</th>${isLec ? `<th scope="col">Matric</th>` : ""}<th scope="col">Rank</th><th scope="col">Coins</th><th scope="col">Stations</th><th scope="col">Bosses</th><th scope="col">Stars</th>${WORLDS.map((w) => `<th scope="col">Ch ${w.chapter}</th>`).join("")}<th scope="col">Last played</th></tr>`;
+    const head = `<tr><th scope="col">#</th><th scope="col">Player</th>${isLec ? `<th scope="col">Matric</th>` : ""}<th scope="col">Rank</th><th scope="col">Coins</th><th scope="col">Stations</th><th scope="col">Bosses</th><th scope="col">Stars</th>${WORLDS.map((w) => `<th scope="col">Ch ${w.chapter}</th>`).join("")}<th scope="col">Last battle</th></tr>`;
     const table = (rows) => `<div class="adm-scroll"><table class="adm lg-tab"><thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
     if (!isLec) {
       // the top 10 (the first 3 on the podium), the player's own place, and the last 4 (everyone when 14 or fewer)
@@ -483,7 +483,7 @@
     }));
     $("[data-bcsv]", host).addEventListener("click", () => {
       const q = (x) => `"${String(x == null ? "" : x).replace(/"/g, '""')}"`;
-      const lines = [["Position", "Name", "Hero name", "Nickname", "Matric", "Section", "Rank", "Battery", "Coins", "Stations cleared", "Bosses", "Stars", ...WORLDS.map((w) => `Chapter ${w.chapter}`), "Last played"].map(q).join(",")]
+      const lines = [["Position", "Name", "Hero name", "Nickname", "Matric", "Section", "Rank", "Battery", "Coins", "Stations cleared", "Bosses", "Stars", ...WORLDS.map((w) => `Chapter ${w.chapter}`), "Last battle"].map(q).join(",")]
         .concat(players.map((d, k) => [k + 1, d.name || d.nickname, hname(d), d.nickname || "", d.matric, SECN[d.section] || "", ART.RANKS[ART.rankOf(d.game.coins || 0)].n, (bat(d.game.last || "") || {}).st || "", d.game.coins || 0, d.game.cleared || 0, d.game.bosses || 0, d.game.stars || 0, ...WORLDS.map((w) => (d.game.ch || {})[w.world] || 0), d.game.last ? d.game.last.slice(0, 10) : ""].map(q).join(",")))
         .concat(notYet.map((r) => ["", r.name, "", "", r.matric, SECN[r.section] || "", "Not started", "", 0, 0, 0, 0, ...WORLDS.map(() => 0), ""].map(q).join(",")));
       const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\n")], { type: "text/csv" })); a.download = `INSTRUMENTA leaderboard ${new Date().toISOString().slice(0, 10)}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);

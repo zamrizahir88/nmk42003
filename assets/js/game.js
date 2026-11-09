@@ -111,6 +111,9 @@
 
     // Missions: the best result of each mission; 2 coins make 1 XP
     const mis = parse(k["nmk-missions"], {}) || {};
+    // every battle counts as activity (9 Nov 2026): knock-outs, unimproved scores and a battle in progress (nmk-msave),
+    // so the Class Board's "last active" is never older than the game's "Last battle"
+    Object.values(parse(k["nmk-msave"], {}) || {}).forEach((x) => { if (x && x.at) dates.push(x.at); });
     Object.values(mis).forEach((r) => { if (r && r.c) add(Math.floor(r.c / 2), `Mission: ${r.t || "a mission"}${r.boss ? " (boss)" : ""}`, r.at); });
     const xp = items.reduce((s, i) => s + i.xp, 0);
     let li = 0; LEVELS.forEach(([t], i) => { if (xp >= t) li = i; });
