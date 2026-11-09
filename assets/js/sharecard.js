@@ -65,6 +65,64 @@
     </svg>`;
   }
 
+
+  // one student's photo (or first letter) in the ring of their level: star from L3, glow from L5, crowns at L7 / L8
+  function ringAt(cx, cy, r, k, photo, name, id) {
+    const c = LVC[k], gold = "#ffd84d", ring = k >= 7 ? "url(#gGold)" : k === 6 ? "#c9d2de" : c, sw = Math.max(10, r * 0.13);
+    const crown = (fill, dark) => `<g transform="translate(${cx - r * 0.55} ${cy - r * 1.62}) scale(${(r * 1.1) / 24}) rotate(-6 12 8)"><path d="M2 14.5 L3.4 4.5 L8.6 9 L12 1.8 L15.4 9 L20.6 4.5 L22 14.5 Z" fill="${fill}" stroke="${dark}" stroke-width=".9" stroke-linejoin="round"/><circle cx="12" cy="10.6" r="1.6" fill="#e5484d"/><circle cx="6.4" cy="11.6" r="1.1" fill="#38e1c9"/><circle cx="17.6" cy="11.6" r="1.1" fill="#38e1c9"/></g>`;
+    const face = photo ? `<image href="${photo}" x="${cx - r}" y="${cy - r}" width="${r * 2}" height="${r * 2}" preserveAspectRatio="xMidYMid slice" clip-path="url(#cl${id})"/>`
+      : `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#gFace)"/><text x="${cx}" y="${cy + r * 0.34}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="${r}" fill="#fff">${esc(String(name || "?").trim()[0] || "?").toUpperCase()}</text>`;
+    return `<defs><clipPath id="cl${id}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath></defs>
+      ${k >= 4 ? `<circle cx="${cx}" cy="${cy}" r="${r + sw * 1.4}" fill="${c}" opacity=".28"/>` : ""}
+      <circle cx="${cx}" cy="${cy}" r="${r + sw / 2 + 4}" fill="none" stroke="${ring}" stroke-width="${sw}"/><circle cx="${cx}" cy="${cy}" r="${r + 4}" fill="#fff"/>${face}
+      ${k >= 6 ? crown(k === 7 ? gold : "#e7ecf3", k === 7 ? "#a87400" : "#7d8a9c") : k >= 2 ? `<circle cx="${cx + r * 0.78}" cy="${cy - r * 0.78}" r="${r * 0.24}" fill="${c}" stroke="#fff" stroke-width="5"/><text x="${cx + r * 0.78}" y="${cy - r * 0.68}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="${r * 0.3}" fill="#fff">★</text>` : ""}`;
+  }
+  const defsBase = (glow) => `<linearGradient id="gGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff3b0"/><stop offset=".45" stop-color="#ffd84d"/><stop offset="1" stop-color="#c98a00"/></linearGradient>
+    <linearGradient id="gFace" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a8fb3"/><stop offset="1" stop-color="#0b6e6e"/></linearGradient>
+    <radialGradient id="gGlow" cx=".5" cy=".45" r=".5"><stop offset="0" stop-color="${glow}" stop-opacity=".45"/><stop offset="1" stop-color="${glow}" stop-opacity="0"/></radialGradient>
+    <pattern id="pGrid" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M60 0 H0 V60" fill="none" stroke="#fff" stroke-opacity=".06" stroke-width="2"/></pattern>`;
+  const T = (x, y, size, t, o = {}) => `<text x="${x}" y="${y}" text-anchor="${o.a || "middle"}" font-family="Arial, Helvetica, sans-serif" font-weight="${o.w || 700}" font-size="${size}"${o.ls ? ` letter-spacing="${o.ls}"` : ""} fill="${o.fill || "#fff"}">${t}</text>`;
+  const head = (sem, pill, pillFill, pillText) => `${T(540, 150, 34, "NMK42003 INSTRUMENTATION", { ls: 10, fill: "#7ff3e3" })}${T(540, 250, 104, "CLASS BOARD", { w: 900, ls: 6 })}${T(540, 312, 34, esc(sem || "UniMAP"), { w: 400, fill: "#cfe3ee" })}
+    <rect x="150" y="346" width="780" height="96" rx="48" fill="${pillFill}" stroke="#fff" stroke-opacity=".5" stroke-width="4"/>${T(540, 410, 46, pill, { w: 900, fill: pillText })}`;
+  const foot = `<rect x="0" y="1830" width="1080" height="90" fill="#0b1430" fill-opacity=".85"/>${T(540, 1888, 32, `UniMAP · ${SITE}`, { fill: "#7ff3e3" })}`;
+
+  // 🏆 the top 3 on a podium. d: { sem, date, top: [{ name, k, level, xp, photo }] } (nicknames only)
+  function podiumCard(d) {
+    const P = [{ i: 1, x: 220, cy: 905, r: 112, top: 1210, fill: "#dfe6ef", dk: "#8a9bb0" }, { i: 0, x: 540, cy: 790, r: 140, top: 1110, fill: "url(#gGold)", dk: "#a87400" }, { i: 2, x: 860, cy: 965, r: 104, top: 1270, fill: "#e5a26a", dk: "#a8622a" }];
+    const pods = P.map((p) => { const t = d.top[p.i]; if (!t) return "";
+      const ns = fit(t.name, 54, 270), h = 1760 - p.top;
+      return `${ringAt(p.x, p.cy, p.r, t.k, t.photo, t.name, `p${p.i}`)}
+        <rect x="${p.x - 150}" y="${p.top}" width="300" height="${h}" rx="24" fill="${p.fill}" stroke="#0d2a3f" stroke-width="6"/>
+        <rect x="${p.x - 138}" y="${p.top + 12}" width="276" height="12" rx="6" fill="#fff" opacity=".5"/>
+        ${T(p.x, p.top + 112, 96, p.i + 1, { w: 900, fill: "#0d2a3f" })}
+        ${T(p.x, p.top + 132 + ns, ns, esc(t.name), { w: 900, fill: "#0d2a3f" })}
+        ${T(p.x, p.top + 190 + ns, 34, `L${t.k + 1} · ${Number(t.xp || 0).toLocaleString("en")} XP`, { w: 800, fill: "#0d2a3f" })}`; }).join("");
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920"><defs>${defsBase("#ffd84d")}<linearGradient id="gBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b6e6e"/><stop offset=".5" stop-color="#0e4f74"/><stop offset="1" stop-color="#14213d"/></linearGradient></defs>
+      <rect width="1080" height="1920" fill="url(#gBg)"/><rect width="1080" height="1920" fill="url(#pGrid)"/><rect width="1080" height="1920" fill="url(#gGlow)"/>
+      ${head(d.sem, `🏆 TOP 3 · ${esc(d.date)}`, "url(#gGold)", "#0d2a3f")}
+      ${["#ffd84d", "#fff", "#7ff3e3"].map((c, j) => `<path d="M${180 + j * 330} ${540 + (j % 2) * 40} l8 20 l20 8 l-20 8 l-8 20 l-8 -20 l-20 -8 l20 -8 Z" fill="${c}" opacity=".8"/>`).join("")}
+      ${pods}${foot}</svg>`;
+  }
+
+  // 🚀 the Climb-Out Zone (the last 3), encouraging, never "last place". d: { sem, date, low: [{ name, k, xp, photo }] }
+  function climbCard(d) {
+    const X = [200, 540, 880];
+    const pads = d.low.map((t, j) => { const x = X[j], ns = fit(t.name, 48, 280);
+      return `<path d="M${x - 34} 760 l34 -46 l34 46 h-20 v40 h-28 v-40 Z" fill="#ffc94d" stroke="#0d2a3f" stroke-width="5" stroke-linejoin="round"/>
+        ${ringAt(x, 960, 108, t.k, t.photo, t.name, `c${j}`)}
+        <rect x="${x - 155}" y="1130" width="310" height="300" rx="28" fill="#fff" fill-opacity=".14" stroke="#ffc94d" stroke-width="4"/>
+        ${T(x, 1200 + ns / 2, ns, esc(t.name), { w: 900 })}
+        ${T(x, 1300, 36, `L${t.k + 1} · ${Number(t.xp || 0).toLocaleString("en")} XP`, { w: 700, fill: "#ffe9b0" })}
+        ${T(x, 1380, 34, "Climbing up 🚀", { w: 700, fill: "#7ff3e3" })}`; }).join("");
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920"><defs>${defsBase("#ffc94d")}<linearGradient id="gBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7a4a00"/><stop offset=".45" stop-color="#3d3a6e"/><stop offset="1" stop-color="#14213d"/></linearGradient></defs>
+      <rect width="1080" height="1920" fill="url(#gBg)"/><rect width="1080" height="1920" fill="url(#pGrid)"/><rect width="1080" height="1920" fill="url(#gGlow)"/>
+      ${head(d.sem, "🚀 CLIMB-OUT CHALLENGE", "#ffc94d", "#3a2400")}
+      ${T(540, 560, 52, "Who climbs out first?", { w: 900 })}${T(540, 630, 36, esc(d.date), { w: 400, fill: "#ffe9b0" })}
+      ${pads}
+      <rect x="140" y="1500" width="800" height="210" rx="34" fill="#000" fill-opacity=".22" stroke="#fff" stroke-opacity=".2" stroke-width="3"/>
+      ${T(540, 1585, 40, "One exercise could lift you out!", { w: 800, fill: "#ffd84d" })}${T(540, 1650, 34, "Solve · practise · come to class · level up", { w: 600, fill: "#e8f3f8" })}
+      ${foot}</svg>`;
+  }
   function png(svg) {
     return new Promise((res, rej) => {
       const img = new Image();
@@ -109,5 +167,5 @@
     return { close };
   }
 
-  window.NMKShare = { open, png, classCard, photoData, SITE };
+  window.NMKShare = { open, png, classCard, podiumCard, climbCard, photoData, SITE };
 })();

@@ -377,3 +377,12 @@ table.dt tr.dt-stop th span { font-weight: 400; color: var(--ink-3); margin-left
 @keyframes lvrFade { 50% { opacity: 1; } }
 .bd-pod.p1 .bd-step::after { animation-iteration-count: 3; }
 @media (prefers-reduced-motion: reduce) { .lvr.lr8::after { animation: none !important; } }
+/* the Class Board's small share buttons (9 Nov 2026): 📤 beside "Top 3", in the Climb-Out Zone, and "Share my rank" */
+.bd-podh { display: flex; align-items: center; gap: 10px; margin: 4px 0 4px; font: 700 .8rem var(--sans); letter-spacing: .18em; text-transform: uppercase; color: var(--teal); }
+.bd-podh::after { content: ""; flex: 1; height: 1px; background: var(--rule); order: 1; }
+.bd-podh .bd-shr { order: 2; }
+.bd-climbh { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.bd-shr { display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; flex: none; border-radius: 50%; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); font-size: 1rem; cursor: pointer; }
+.bd-shr.wide { width: auto; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; border-radius: 999px; min-height: 36px; font: 700 .85rem var(--sans); white-space: nowrap; }
+.bd-shr:hover { border-color: var(--teal); color: var(--teal); }
+.bd-shr:focus-visible { outline: 3px solid var(--focus, #1a73c7); outline-offset: 2px; }

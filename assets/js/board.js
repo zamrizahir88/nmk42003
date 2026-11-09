@@ -52,7 +52,7 @@
     if (!s.length) return `<p class="bd-empty">No one is on the board yet this semester.</p>`;
     const max = s[0].xp || 1, pod = [s[1], s[0], s[2]].map((r, k) => r ? `<div class="bd-pod p${[2, 1, 3][k]}${me && r.uid === me ? " me" : ""}">
         ${k === 1 ? `<i class="bd-spk s1" aria-hidden="true">✦</i><i class="bd-spk s2" aria-hidden="true">✦</i><i class="bd-spk s3" aria-hidden="true">✧</i><i class="bd-spk s4" aria-hidden="true">✦</i>` : ""}<span class="bd-medal" aria-hidden="true">${["🥈", "🥇", "🥉"][k]}</span>${av(r, k === 1 ? 72 : 60)}<strong>${name(r)}</strong><small>${lvChip(r.xp)} ${(r.xp || 0).toLocaleString("en")} XP</small><small class="bd-plast">🕒 ${ago(r.lastActive)}</small><span class="bd-step">${[2, 1, 3][k]}</span></div>` : "<div></div>").join("");
-    return `<div class="bd-podium">${pod}</div>${s.length > 3 ? list(s.slice(3, 10), 4, max) : ""}`;
+    return `<div class="bd-podh"><span>Top ${Math.min(3, s.length)}</span>${window.NMKShare ? `<button type="button" class="bd-shr" data-bshtop aria-label="Share the top 3 as a picture" title="Share the top 3">📤</button>` : ""}</div><div class="bd-podium">${pod}</div>${s.length > 3 ? list(s.slice(3, 10), 4, max) : ""}`;
   }
   function bottomView(s) {
     const n = s.length; if (n <= 10) return `<p class="bd-empty">The bottom 10 shows once more than 10 students are on the board.</p>`;
@@ -62,7 +62,7 @@
     const out = s[n - 4], need = at >= n - 3 && out ? Math.max(1, (out.xp || 0) - (s[at].xp || 0) + 1) : 0;
     const cheer = at >= n - 3 ? `<p class="bd-cheer mine">🚀 You need <strong>${need.toLocaleString("en")} XP</strong> to climb out: one or two exercises will do it!</p>` : `<p class="bd-cheer">🚀 One exercise could lift you out!</p>`;
     return `<p class="bd-note">💪 Not a ranking of ability: it shows who has done the least so far. Any exercise you solve moves you up.</p>
-      <section class="bd-climb" aria-label="Climb-Out Zone"><h3>🚀 Climb-Out Zone</h3><p>The last three places. Solve an exercise, pass a Pre-Lab Check or come to class, and you're out.</p><div class="bd-pads">${pads}</div>${cheer}</section>
+      <section class="bd-climb" aria-label="Climb-Out Zone"><div class="bd-climbh"><h3>🚀 Climb-Out Zone</h3>${window.NMKShare ? `<button type="button" class="bd-shr" data-bshlow aria-label="Share the Climb-Out Zone as a picture" title="Share the Climb-Out Zone">📤</button>` : ""}</div><p>The last three places. Solve an exercise, pass a Pre-Lab Check or come to class, and you're out.</p><div class="bd-pads">${pads}</div>${cheer}</section>
       ${n - 3 > start ? `<h3 class="bd-h3">Almost There (#${start + 1} to #${n - 3})</h3>${list(s.slice(start, n - 3), start + 1, s[0].xp || 1)}` : ""}`;
   }
   function allView(s) {
@@ -93,7 +93,7 @@
     const s = sorted(), myRank = me ? s.findIndex((r) => r.uid === me) + 1 : 0;
     const body = tab === "levels" ? levelsView() : gate ? gate : tab === "bottom" ? bottomView(s) : tab === "all" ? allView(s) : topView(s);
     host.innerHTML = `<div class="bd-wrap"><nav class="bd-tabs" aria-label="Class board">${TABS.map(([k, i, l]) => `<button type="button" class="bd-tab" data-btab="${k}" aria-pressed="${tab === k}"><span aria-hidden="true">${i}</span>${l}</button>`).join("")}</nav>
-      ${tab !== "levels" && !gate && s.length ? `<div class="bd-sumrow"><p class="bd-sum">${s.length} student${s.length === 1 ? "" : "s"} on the board this semester.${myRank ? ` You are <strong>number ${myRank}</strong>.` : ""} <span class="small-note">${note}</span></p>${myRank && window.NMKShare ? `<button type="button" class="bd-share" data-bshare>📤 Share my rank</button>` : ""}</div>` : ""}
+      ${tab !== "levels" && !gate && s.length ? `<div class="bd-sumrow"><p class="bd-sum">${s.length} student${s.length === 1 ? "" : "s"} on the board this semester.${myRank ? ` You are <strong>number ${myRank}</strong>.` : ""} <span class="small-note">${note}</span></p>${myRank && window.NMKShare ? `<button type="button" class="bd-shr wide" data-bshare aria-label="Share my rank as a picture">📤 Share my rank</button>` : ""}</div>` : ""}
       <div class="bd-body">${body}</div></div>`;
     if (focusQ) { const i = host.querySelector("[data-bq]"); if (i) { i.focus(); i.setSelectionRange(q.length, q.length); } focusQ = false; }
   }
@@ -114,6 +114,20 @@
     pop = { el, back: btn }; document.addEventListener("keydown", popKey);
     el.querySelector("[data-popx]").focus({ preventScroll: true });
   }
+  // 📤 the top 3 (podium) or the Climb-Out Zone (the last 3) as one picture: nicknames only, never real names
+  function shareGroup(btn, which) {
+    const s = sorted(), pick = which === "top" ? s.slice(0, 3) : s.slice(-3);
+    if (!pick.length) return;
+    const sem = String((typeof COURSE !== "undefined" && COURSE.semesterId) || ""), m = sem.match(/^(\d{4}\/\d{4}) Semester (\d)$/);
+    const date = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    const people = pick.map((r) => { const k = lvOf(r.xp); return { name: r.nickname || "Student", k, level: G.LEVELS[k][1], xp: r.xp || 0, photo: r.photo }; });
+    const names = people.map((x) => x.name).join(", ");
+    NMKShare.open({ title: which === "top" ? "Share the top 3" : "Share the Climb-Out Zone", back: btn, file: `NMK42003-class-board-${which === "top" ? "top-3" : "climb-out"}.png`,
+      text: which === "top" ? `The NMK42003 Instrumentation class board top 3: ${names}! #NMK42003 #UniMAP https://${NMKShare.SITE}/board.html` : `Climb-Out Challenge on the NMK42003 class board: ${names}, who climbs out first? 🚀 #NMK42003 #UniMAP https://${NMKShare.SITE}/board.html`,
+      svg: () => Promise.all(people.map((x) => NMKShare.photoData(x.photo))).then((ph) => { const d = { sem: `UniMAP · ${m ? `Semester ${m[2]} ${m[1]}` : sem}`, date };
+        const list = people.map((x, j) => Object.assign({}, x, { photo: ph[j] }));
+        return which === "top" ? NMKShare.podiumCard(Object.assign(d, { top: list })) : NMKShare.climbCard(Object.assign(d, { low: list })); }) });
+  }
   // 📤 Share my rank: a 9:16 picture of my level, XP and badges; the place is named in the top 10 (or the top half)
   function shareMine(btn) {
     const s = sorted(), at = s.findIndex((r) => r.uid === me); if (at < 0) return;
@@ -131,6 +145,8 @@
     const bp = e.target.closest("[data-bpop]"); if (bp) { popBadges(bp); return; }
     if (e.target.closest("[data-popx]") || (pop && !e.target.closest(".bd-pop"))) closePop();
     const sb = e.target.closest("[data-bshare]"); if (sb) { shareMine(sb); return; }
+    const st = e.target.closest("[data-bshtop]"); if (st) { shareGroup(st, "top"); return; }
+    const sl = e.target.closest("[data-bshlow]"); if (sl) { shareGroup(sl, "low"); return; }
     const u = e.target.closest("[data-bupd]"); if (u) { u.disabled = true; u.textContent = "Updating…"; load(true); }
   });
   host.addEventListener("input", (e) => { if (e.target.matches("[data-bq]")) { q = e.target.value; focusQ = true; draw(); } });
