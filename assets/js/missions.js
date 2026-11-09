@@ -663,6 +663,8 @@
   }
 
   /* ---------- a station: the battle ---------- */
+  // phones and tablets: never open the keyboard by itself (it scrolls the battle scene away); the student taps the box
+  const autoFocus = () => !matchMedia("(max-width: 640px), (pointer: coarse)").matches;
   const heartSvg = (full, k) => `<svg class="lg-heart${full ? "" : " gone"}" viewBox="0 0 24 22" aria-hidden="true" data-h="${k}"><path d="M12 21 L3 12 A5.5 5.5 0 0 1 12 4.5 A5.5 5.5 0 0 1 21 12 Z" fill="${full ? "#e5484d" : "#d7dce3"}" stroke="#1b2a4a" stroke-width="2" stroke-linejoin="round"/>${full ? `<path d="M7 9 q1.5 -2.5 4 -2" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" opacity=".7"/>` : ""}</svg>`;
   function battle(w, mi, cont) {
     cleanup();
@@ -718,6 +720,8 @@
       <div class="ms-over" id="msOver" hidden></div></div>
       <div class="ms-panel" id="msPanel"></div>`, true);
     const scene = $("#msScene"), panel = $("#msPanel"), H = $("#msHero"), M = $("#msMon"), tip = $("#msBubble"), VOLT = $("#msVolt");
+    // start at the top of the battle (the chapter page was scrolled down to the station's Fight button)
+    { const bar = $(".lg-mini") || scene, y = scrollY + bar.getBoundingClientRect().top - 66; if (Math.abs(bar.getBoundingClientRect().top - 66) > 4) scrollTo({ top: Math.max(0, y), behavior: "instant" }); }
     let skipTo = null;
     scene.addEventListener("click", (e) => { if (skipTo && !VOLT.contains(e.target) && !tip.contains(e.target)) { const f = skipTo; skipTo = null; f(); } });
     if (bat0 && bat0.st === "charged") H.classList.add("charged");
@@ -737,7 +741,7 @@
 
     // the enemy's card first; tap (or wait) to start
     const intro = $("#msIntro");
-    const startFight = () => { if (!intro.classList.contains("on")) return; intro.classList.remove("on"); if (boss) { SFX.roar(); replay(M, "laugh", 1000); } const a = $("#msA"); if (a) a.focus({ preventScroll: true }); };
+    const startFight = () => { if (!intro.classList.contains("on")) return; intro.classList.remove("on"); if (boss) { SFX.roar(); replay(M, "laugh", 1000); } const a = $("#msA"); if (a && autoFocus()) a.focus({ preventScroll: true }); };
     intro.addEventListener("click", startFight);
     intro.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); startFight(); } });
     if (saved) { intro.classList.remove("on"); setHp(100 * (steps.length - i) / steps.length); later(() => banner(`Welcome back! Question ${i + 1} of ${steps.length}`), 300); }
@@ -788,7 +792,7 @@
         <p class="small-note">${s.choice ? "Choose one." : `Give ${s.dp} decimal place${s.dp === 1 ? "" : "s"}.`} Right: +10 coins first try, +6 after one hint, +3 after that. Wrong: blocked, −1 heart and −2 coins.</p>`;
       if (s.choice) $$("[data-c]", panel).forEach((b) => b.addEventListener("click", () => answer(+b.dataset.c === s.correct, b.textContent)));
       else {
-        const a = $("#msA"); if (!intro.classList.contains("on")) a.focus({ preventScroll: true });
+        const a = $("#msA"); if (!intro.classList.contains("on") && autoFocus()) a.focus({ preventScroll: true });
         a.addEventListener("input", () => { $("#msMsg").textContent = ""; });
         $("#msF").addEventListener("submit", (e) => {
           e.preventDefault();
