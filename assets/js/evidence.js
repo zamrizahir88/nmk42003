@@ -225,14 +225,14 @@
     const clears = pl.reduce((a, s) => a + s.stations.length, 0), bosses = pl.reduce((a, s) => a + s.stations.filter((id) => s.mis[id].boss).length, 0);
     const worlds = [...new Set(pl.flatMap((s) => s.stations.map((id) => +id.match(/^w(\d+)/)[1])))].sort((a, b) => a - b);
     const rows = worlds.map((w) => {
-      const st = (k) => pl.filter((s) => s.mis[`w${w}-s${k}`]).length, mk = pl.flatMap((s) => s.stations.filter((id) => id.startsWith(`w${w}-`)).map((id) => s.mis[id])).filter((x) => x && x.boss && x.mk != null).map((x) => (x.mk / (x.of || 20)) * 100);
+      const st = (k) => pl.filter((s) => s.mis[`w${w}-s${k}`]).length, bs = pl.map((s) => s.mis[`w${w}-s3`]).filter((x) => x && x.boss).map((x) => x.s || 0);
       const t = COURSE.topics.find((x) => x.no === w);
-      return [`Chapter ${w}<small>${esc(t ? t.title : "")}</small>`, `<span class="ex-co">${esc(CO.of(`w${w}-s1`))}</span>`, st(1), st(2), st(3), pct(mean(mk))];
+      return [`Chapter ${w}<small>${esc(t ? t.title : "")}</small>`, `<span class="ex-co">${esc(CO.of(`w${w}-s1`))}</span>`, st(1), st(2), st(3), bs.length ? `${num(mean(bs))} ★` : "–"];
     });
     return `<section id="game" class="ev-sec"><h2 class="h3">INSTRUMENTA: Legends</h2>
-      <p class="small-note">Game-based practice: three stations per chapter, the third a boss with step marks. Coins and ranks never count towards grades.</p>
+      <p class="small-note">Game-based practice: three stations per chapter, the third a boss. Coins, stars and hearts are the score (no marks). Coins and ranks never count towards grades.</p>
       ${pl.length ? `<div class="ev-tiles">${tile(pl.length, "students have played")}${tile(clears, "stations cleared")}${tile(bosses, "bosses defeated")}${tile(num(mean(pl.flatMap((s) => s.stations.map((id) => s.mis[id].s || 0)))), "average stars per station")}</div>
-        ${table(["Chapter", "CO", "Cleared station 1", "Cleared station 2", "Defeated the boss", "Average boss marks"], rows)}` : `<p class="adm-empty">No one has played yet.</p>`}</section>`;
+        ${table(["Chapter", "CO", "Cleared station 1", "Cleared station 2", "Defeated the boss", "Average boss stars"], rows)}` : `<p class="adm-empty">No one has played yet.</p>`}</section>`;
   }
 
   function attendance() {

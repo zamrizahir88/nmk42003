@@ -873,3 +873,23 @@ label.ms-ol { display: block; }
 .lvr.lr8::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; box-shadow: 0 0 calc(var(--rs) * .5) rgba(255, 216, 77, .9); opacity: .4; pointer-events: none; animation: lgFade 2.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .lg-mn.play::after, .lvr.lr8::after { animation: none !important; } }
 @supports not (color: color-mix(in srgb, red 50%, blue)) { .lb-cbox { background: linear-gradient(160deg, #0b1430, #14213d 60%, #101a36); box-shadow: 0 20px 50px rgba(0, 0, 0, .55); } .lb-chero { filter: none; } }
+/* ===== battle, round 5 (9 Nov 2026) ===== */
+/* the enemy's words sit ABOVE its head (tail pointing down at it); the hero's and Volt's words stay on the left */
+.ms-say { top: auto; bottom: 63%; right: 3%; max-width: 42%; border-radius: 14px; transform-origin: 70% 100%; }
+.ms-say::after { content: ""; position: absolute; bottom: -9px; right: 30%; border: 9px solid transparent; border-top-color: inherit; border-bottom: 0; }
+.ms-say { border-color: #fff; } .ms-say.big { border-color: #ffe680; }
+.ms-say::after { border-top-color: #fff; } .ms-say.big::after { border-top-color: #ffe680; }
+@media (max-width: 560px) { .ms-say { bottom: 54%; right: 2%; max-width: 50%; font-size: .78rem; padding: 4px 9px; } .ms-say.big { font-size: .86rem; } .ms-say.shock { font-size: 1.1rem; } }
+/* the knock-out (and win) card waits for the laugh; on phones it sits low so the laughing enemy stays visible */
+@media (max-width: 560px) {
+  .ms-over { place-items: end center; padding-bottom: 6px; background: linear-gradient(180deg, transparent 35%, rgba(6, 10, 30, .82)); }
+  .ms-over .ms-ko { max-width: 94%; }
+}
+/* Volt: glows and says "Tap me for a hint!" until the student has tapped it once, and after every wrong answer */
+#msVolt.intro .ms-tag, #msVolt.alert .ms-tag { opacity: 1; }
+#msVolt.intro .ms-tagIn, #msVolt.alert .ms-tagIn { animation: ms-tagbob .9s ease-in-out infinite; }
+#msVolt.intro #msVoltIn, #msVolt.alert #msVoltIn { animation: ms-hover 1.8s ease-in-out infinite, ms-vglow 1.4s ease-in-out infinite; }
+#msVolt.alert .ms-bang { opacity: 1; }
+@keyframes ms-vglow { 0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 216, 77, 0)); } 50% { filter: drop-shadow(0 0 8px rgba(255, 216, 77, .95)); } }
+@media (prefers-reduced-motion: reduce) { #msVolt.intro #msVoltIn, #msVolt.alert #msVoltIn, #msVolt .ms-tagIn { animation: none !important; } }
+@media (max-width: 560px) { .ms-over .ms-ko { padding: 8px 12px; } .ms-over .ms-ko p { font-size: .8rem; margin: 2px 0 6px; } .ms-over .ms-ko strong { font-size: 1.1rem; } }

@@ -1,5 +1,5 @@
 /* INSTRUMENTA: Legends (missions.html): a battle game for practising each chapter. Each chapter has three stations,
-   each guarded by a named enemy; the third is the boss (the tough level, scored in marks like an exam question).
+   each guarded by a named enemy; the third is the boss (the tough level, with 5 hearts and +50 coins). No marks: coins and hearts are the score.
    The questions are not in this file. A lecturer uploads each chapter's file on the dashboard (admin.html); it is kept
    in Firestore missions/{world N} and only lecturers, or signed-in students after the lecturer releases the game
    (meta/missions.released), can read it. This file is the engine: map, My Character, battle, Volt the helper drone,
@@ -8,7 +8,7 @@
    back (one heart lost) and 2 coins drop (never below 0). No hearts left: the station starts again with new numbers.
    Saved in this browser (and synced with the account, so a student can carry on on another device): nmk-missions
    (best result of each station), nmk-msave (a station in progress: its seed, so the same numbers come back, the
-   question reached, hearts, coins, marks; "cleared" once it is won or lost), nmk-hero (the character and its hero name).
+   question reached, hearts, coins; "cleared" once it is won or lost), nmk-hero (the character and its hero name).
    Also here: the splash screen (5 s, each time the page opens), the Credits (About) view and the 9:16 share cards. nmk-msnd (sound), nmk-mus and nmk-musv (music on/off and volume) stay on this device. */
 (function () {
   "use strict";
@@ -48,14 +48,23 @@
   function saveBest(w, m, r) {
     const all = best(), old = all[m.id] || {};
     all[m.id] = { t: m.title, w: w.world, c: Math.max(old.c || 0, r.c), s: Math.max(old.s || 0, r.s), at: old.c >= r.c ? old.at : new Date().toISOString(),
-      ...(m.boss ? { mk: Math.max(old.mk || 0, r.mk || 0), of: m.marks || 30, boss: 1 } : {}), n: (old.n || 0) + 1 };
+      ...(m.boss ? { boss: 1 } : {}), n: (old.n || 0) + 1 };
     lsSet("nmk-missions", JSON.stringify(all));
     if (!isLec) document.dispatchEvent(new CustomEvent("nmk:store", { detail: "nmk-missions" }));
   }
 
   /* ---------- a station in progress: saved after every answer, so it can be continued later (on any device) ---------- */
   const saves = () => parse(lsGet("nmk-msave"), {}) || {};
-  const saveOf = (m) => { const s = saves()[m.id]; return s && !s.cleared && s.n === m.steps.length && s.i < s.n ? s : null; };
+  // question pools (9 Nov 2026): a mission with \`ask: n\` asks n of its steps in each battle, picked from the battle's seed
+  // (so Continue brings the same ones back); steps marked \`core: true\` are always asked; the file's order is kept
+  const askN = (m) => (m.ask && m.ask < m.steps.length ? m.ask : m.steps.length);
+  function stepsOf(m, seed) {
+    if (askN(m) === m.steps.length) return m.steps;
+    const r = seeded(seed + 104729), idx = m.steps.map((x, k) => k), core = idx.filter((k) => m.steps[k].core), rest = idx.filter((k) => !m.steps[k].core);
+    for (let k = rest.length - 1; k > 0; k--) { const j = Math.floor(r() * (k + 1)); [rest[k], rest[j]] = [rest[j], rest[k]]; }
+    return core.concat(rest.slice(0, Math.max(0, askN(m) - core.length))).sort((a, b) => a - b).map((k) => m.steps[k]);
+  }
+  const saveOf = (m) => { const s = saves()[m.id]; return s && !s.cleared && s.n === askN(m) && s.i < s.n ? s : null; };
   // Every answer is saved on this device. To save Firestore writes it goes to the account only now and then:
   // push "soon" (every 3rd answer, a win or a knock-out) or true (Save and exit, at once); leaving the tab sends it too.
   function putSave(id, rec, push) {
@@ -78,7 +87,7 @@
   }
   (window.NMKAIGuards = window.NMKAIGuards || []).push(() => unfinished().flatMap(({ m, seed }) => {
     let v; try { v = m.make(seeded(seed)); } catch (e) { return []; }
-    return m.steps.map((st) => {
+    return stepsOf(m, seed).map((st) => {
       const q = asQuestion(val(st.q, v));
       if (st.choice) { const ch = val(st.choice, v) || []; return { q, opt: ch[st.correct], others: ch.filter((o, k) => k !== st.correct) }; }
       const a = st.ans(v); return { q, v: a, tol: st.fixed ? st.tol : Math.max(Math.abs(a) * 0.01, st.tol || 0), u: val(st.unit, v) || "" };
@@ -332,11 +341,11 @@
       <div class="lg-cards">${w.missions.map((m, i) => {
         const open = missionOpen(w, i), r = b[m.id], e = enemyOf(m), prev = w.missions[i - 1];
         return `<div class="lg-card${e.boss ? " boss" : ""}${open ? "" : " locked"}"><div class="lg-wanted">${e.boss ? "BOSS" : "WANTED"}</div>
-          ${portrait(e)}<div class="lg-nm">${esc(e.name)}</div><div class="lg-where">Station ${i + 1}${e.boss ? ` · tough level · ${m.marks || 30} marks` : ""}</div>
+          ${portrait(e)}<div class="lg-nm">${esc(e.name)}</div><div class="lg-where">Station ${i + 1}${e.boss ? " · boss · 5 hearts" : ""}</div>
           <div class="lg-diff" aria-label="Difficulty ${e.boss ? 3 : i + 1} of 3">${"★".repeat(e.boss ? 3 : i + 1)}${"☆".repeat(3 - (e.boss ? 3 : i + 1))}</div>
           <div class="lg-weak"><b>Weakness:</b> ${esc(e.weak || m.title)}</div>${e.taunt ? `<div class="lg-taunt">“${esc(e.taunt)}”</div>` : ""}
-          <div class="lg-res">${r ? `Defeated · ${stars(r.s)} · best ${r.c} coins${r.boss ? ` · ${r.mk}/${r.of} marks` : ""}` : `${m.steps.length} questions`}</div>
-          ${open && saveOf(m) ? `<button type="button" class="btn" data-cont="${i}">Continue · Question ${saveOf(m).i + 1} of ${m.steps.length} · ${saveOf(m).hearts} ♥ · ${saveOf(m).coins} coins</button><button type="button" class="btn ghost small" data-fresh="${i}">Start over</button>`
+          <div class="lg-res">${r ? `Defeated · ${stars(r.s)} · best ${r.c} coins` : `${askN(m)} questions${m.ask ? " (new ones each time)" : ""}`}</div>
+          ${open && saveOf(m) ? `<button type="button" class="btn" data-cont="${i}">Continue · Question ${saveOf(m).i + 1} of ${askN(m)} · ${saveOf(m).hearts} ♥ · ${saveOf(m).coins} coins</button><button type="button" class="btn ghost small" data-fresh="${i}">Start over</button>`
             : open ? `<button type="button" class="btn${r ? " ghost" : ""}" data-play="${i}">${r ? "Fight again" : "Fight"}</button>` : `<span class="lg-lock">${chLocked(w) || stLocked(m) ? LOCKED : `🔒 ${worldOpen(w) ? `Defeat ${esc(enemyOf(prev).name)} first` : `Opens ${fmtDay(opensOn(w).iso)}`}`}</span>`}
           ${isLec && open && (chLocked(w) || stLocked(m)) ? `<span class="lg-lock">🔒 Locked for students</span>` : ""}
           ${r ? `<button type="button" class="btn ghost small" data-sharest="${i}">📤 Share my win</button>` : ""}</div>`;
@@ -607,7 +616,7 @@
     const m = w.missions[i], r = best()[m.id], E = enemyOf(m), rk = ART.rankOf(totalCoins());
     if (!r) return;
     share({ kind: "win", hero, tier: tier(), name: heroLabel(), rank: rk, rankName: ART.RANKS[rk].n, coins: r.c, where: `CHAPTER ${w.chapter} · STATION ${i + 1}${E.boss ? " · BOSS" : ""}`,
-      title: `I defeated ${E.name}!`, enemySvg: E.svg, enemyScale: E.scale || 1, stars: "★".repeat(r.s || 0) + "☆".repeat(3 - (r.s || 0)), extra: r.boss ? `${r.mk}/${r.of} marks` : "Defeated ✓" },
+      title: `I defeated ${E.name}!`, enemySvg: E.svg, enemyScale: E.scale || 1, stars: "★".repeat(r.s || 0) + "☆".repeat(3 - (r.s || 0)), extra: r.boss ? "Boss defeated" : "Defeated ✓" },
       `I defeated ${E.name} in INSTRUMENTA: Legends, ${BY} Can you beat my score? #INSTRUMENTALegends #UniMAP ${SHARE_URL}`, "win");
   }
   // 📤 Share my rank (leaderboard): the place is named in the top 10 or the top half, otherwise the rank and coins only
@@ -658,20 +667,20 @@
   function battle(w, mi, cont) {
     cleanup();
     const m0 = w.missions[mi], saved = cont ? saveOf(m0) : null, seed = saved ? saved.seed : Math.floor(Math.random() * 2147483646) + 1;
-    const m = m0, v = m.make(seeded(seed)), steps = m.steps, E = enemyOf(m), boss = E.boss;
+    const m = m0, v = m.make(seeded(seed)), steps = stepsOf(m, seed), E = enemyOf(m), boss = E.boss;
     const HEARTS = boss ? 5 : 4, rk0 = ART.rankOf(totalCoins()), sc = (E.scale || 1) * 0.86;
-    let i = 0, tries = 0, coins = 0, firstTry = 0, marks = 0, hearts = HEARTS, done = false, busy = false, tipLayer = null;
+    let i = 0, tries = 0, coins = 0, firstTry = 0, hearts = HEARTS, done = false, busy = false, tipLayer = null;
     // the battery before this battle (for the charge animation), the combo, the boss's second phase, the last taunt
     const bat0 = bat(); let combo = 0, phase2 = false, taunted = false, tauntN = Math.floor(Math.random() * 5);
     const got = [], timers = [];
-    if (saved) ({ i, tries, coins, firstTry, marks, hearts } = saved), (saved.got || []).forEach((x, k) => { got[k] = x; });
+    if (saved) ({ i, tries, coins, firstTry, hearts } = saved), (saved.got || []).forEach((x, k) => { got[k] = x; });
     let unsent = 0;
     const store = (push) => {
       if (done) return;
       unsent++;
       const send = push ? true : unsent >= 3 ? "soon" : false;
       if (send) unsent = 0;
-      putSave(m.id, { w: w.world, seed, n: steps.length, i, tries, coins, firstTry, marks, hearts, got }, send);
+      putSave(m.id, { w: w.world, seed, n: steps.length, i, tries, coins, firstTry, hearts, got }, send);
     };
     const later = (f, ms) => { const t = setTimeout(f, ms); timers.push(t); return t; };
     teardown.push(() => timers.forEach(clearTimeout));
@@ -696,7 +705,7 @@
           <circle r="20" fill="#f6f8fa" stroke="#15243a" stroke-width="2.5"/><rect x="-13" y="-9" width="26" height="16" rx="7" fill="#15243a"/><circle cx="-5" cy="-1" r="3" fill="#5ad1ff"/><circle cx="5" cy="-1" r="3" fill="#5ad1ff"/>
           <path d="M-12 12 H12" stroke="#0b6e6e" stroke-width="3" stroke-linecap="round"/><path d="M1 9 L-3 15 L0 15 L-2 20 L4 13 L1 13 Z" fill="#f0a830"/>
           <g class="ms-bang"><circle cx="18" cy="-18" r="9" fill="#f0a830" stroke="#15243a" stroke-width="2"/><text x="18" y="-14" font-size="12" font-weight="700" text-anchor="middle" fill="#15243a" font-family="sans-serif">!</text></g></g>
-          <g class="ms-tag"><g class="ms-tagIn"><rect x="-22" y="-62" width="98" height="22" rx="11" fill="#f0a830" stroke="#15243a" stroke-width="2"/><path d="M-4 -41 L2 -33 L8 -41 Z" fill="#f0a830" stroke="#15243a" stroke-width="2" stroke-linejoin="round"/><path d="M-3 -42 H7" stroke="#f0a830" stroke-width="3"/><text x="27" y="-47" font-size="12" font-weight="700" text-anchor="middle" fill="#15243a" font-family="IBM Plex Sans, sans-serif">I have a hint!</text></g></g></g>
+          <g class="ms-tag"><g class="ms-tagIn"><rect x="-22" y="-62" width="126" height="22" rx="11" fill="#f0a830" stroke="#15243a" stroke-width="2"/><path d="M-4 -41 L2 -33 L8 -41 Z" fill="#f0a830" stroke="#15243a" stroke-width="2" stroke-linejoin="round"/><path d="M-3 -42 H7" stroke="#f0a830" stroke-width="3"/><text x="41" y="-47" font-size="12" font-weight="700" text-anchor="middle" fill="#15243a" font-family="IBM Plex Sans, sans-serif">Tap me for a hint!</text></g></g></g>
         <circle id="msFlash" cx="470" cy="160" r="70" fill="#fff"/>
         ${bat0 && bat0.st === "flat" ? `<text id="msZzz" class="ms-zzz" x="186" y="64">z z z</text>` : ""}
         <g id="msSparks"></g></svg>
@@ -709,6 +718,8 @@
       <div class="ms-over" id="msOver" hidden></div></div>
       <div class="ms-panel" id="msPanel"></div>`, true);
     const scene = $("#msScene"), panel = $("#msPanel"), H = $("#msHero"), M = $("#msMon"), tip = $("#msBubble"), VOLT = $("#msVolt");
+    let skipTo = null;
+    scene.addEventListener("click", (e) => { if (skipTo && !VOLT.contains(e.target) && !tip.contains(e.target)) { const f = skipTo; skipTo = null; f(); } });
     if (bat0 && bat0.st === "charged") H.classList.add("charged");
     teardown.push(() => { if (MUS) { MUS.setBoost(0); MUS.muffle(false); } });
     // the enemy's health bar, with a white "ghost" that follows a moment later
@@ -731,6 +742,8 @@
     intro.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); startFight(); } });
     if (saved) { intro.classList.remove("on"); setHp(100 * (steps.length - i) / steps.length); later(() => banner(`Welcome back! Question ${i + 1} of ${steps.length}`), 300); }
     else later(startFight, boss ? 2600 : 2000);
+    // Volt introduces itself until the student has tapped it once (local only)
+    if (!lsGet("nmk-mvolt")) { VOLT.classList.add("intro"); later(() => pop("Stuck? Tap me!", 9, 6, "#ffd84d", "volt"), saved ? 900 : 3000); }
 
     /* Volt's hint bubble: Volt again, ✕, a tap outside, Esc or the Back button closes it */
     const hideTip = () => { tip.classList.remove("on"); tip.setAttribute("aria-hidden", "true"); };
@@ -742,7 +755,8 @@
     teardown.push(() => { if (tipLayer) { tipLayer.drop(); tipLayer = null; } });
     const hintOf = (s, k) => esc(val(s.hints[k], v));
     const tapVolt = () => {
-      SFX.beep(); VOLT.classList.remove("alert");
+      SFX.beep(); VOLT.classList.remove("alert", "intro");
+      if (!lsGet("nmk-mvolt")) lsSet("nmk-mvolt", "1");
       if (tip.classList.contains("on")) return closeTip();
       if (done) return openTip("Great work, engineer! That enemy is fixed for good.");
       const open = Math.min(tries, 2), s = steps[i];
@@ -766,7 +780,7 @@
       const s = steps[i], q = esc(asQuestion(val(s.q, v))), u = val(s.unit, v);
       panel.innerHTML = `<div class="ms-track">${steps.map((_, k) => `<i class="${k < i ? "done" : k === i ? "now" : ""}"></i>`).join("")}</div>
         <div class="ms-sit"><p class="ms-sitl">The situation</p><p class="ms-story">${esc(val(m.story, v))}</p>${data ? `<div class="ms-data">${data.map((d) => `<span>${esc(d)}</span>`).join("")}</div>` : ""}</div>
-        <p class="ms-ql">Question ${i + 1} of ${steps.length}${s.marks ? ` · ${s.marks} marks` : ""}</p><p class="ms-step">${q}</p>
+        <p class="ms-ql">Question ${i + 1} of ${steps.length}</p><p class="ms-step">${q}</p>
         ${s.choice ? `<div class="ms-choices" role="group" aria-label="${q}">${order[i].map((k) => `<button type="button" class="btn ghost" data-c="${k}">${esc(val(s.choice, v)[k])}</button>`).join("")}</div>`
           : `<form class="ms-row" id="msF" novalidate><input type="text" id="msA" inputmode="decimal" autocomplete="off" aria-label="${q}" placeholder="Your answer"><span>${esc(u)}</span><button class="btn">Attack</button></form>`}
         <p class="ms-msg ${cls}" id="msMsg" aria-live="polite">${msg}</p>
@@ -794,6 +808,10 @@
     function answer(ok, raw, sign) {
       if (busy || done) return;
       busy = true; startFight(); closeTip();
+      if (matchMedia("(max-width: 640px)").matches) {
+        if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+        const top = scene.getBoundingClientRect().top; if (top < 50 || top > innerHeight * 0.4) scrollTo({ top: Math.max(0, scrollY + top - 64), behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      }
       $$("button, input", panel).forEach((b) => { b.disabled = true; });
       const s = steps[i];
       const zz = $("#msZzz"); if (zz) zz.remove();
@@ -802,7 +820,6 @@
       if (ok) {
         const c = tries === 0 ? 10 : tries === 1 ? 6 : 3;
         if (tries === 0) firstTry++;
-        if (s.marks) marks += s.marks * (tries === 0 ? 1 : tries === 1 ? 0.5 : 0.25);
         got[i] = raw; tries = 0; VOLT.classList.remove("alert"); coins += c; combo = comboNow;
         const left = steps.length - i - 1, wasTaunt = taunted; taunted = false;
         later(() => {
@@ -829,29 +846,35 @@
       tries++; hearts--;
       const lose = Math.min(2, coins); coins -= lose;
       if (hearts > 0) store();
-      later(() => { replay($("#msShield"), "on", 900); SFX.clang(); pop("Blocked!", 73, 22, "#0f766e"); }, 380);
-      later(() => { replay(M, "atk", 600); SFX.strike(); replay($("#msOrb"), "fire", 520); }, 950);
+      // one thing at a time (9 Nov 2026): blocked → strike back → heart and coins drop → the enemy laughs → the message.
+      // A tap on the scene skips to the message once the heart has dropped.
+      later(() => { replay($("#msShield"), "on", 900); SFX.clang(); pop("Blocked!", 73, 22, "#0f766e"); }, 450);
+      later(() => { replay(M, "atk", 600); SFX.strike(); replay($("#msOrb"), "fire", 520); }, 1150);
       later(() => {
         replay(H, "hurt", 600); SFX.hurt();
         paintHearts(); const hb = $(`#msHearts [data-h="${hearts}"]`); if (hb) replay(hb, "break", 700);
         if (lose) { paintCoins(); SFX.drop(); pop(`−${lose}`, 12, 16, "#b23b2e", "coin"); for (let k = 0; k < 3; k++) { const d = document.createElement("span"); d.className = "ms-cdrop"; d.style.left = `${22 + k * 3}%`; d.style.animationDelay = `${k * 0.08}s`; scene.appendChild(d); later(() => d.remove(), 1200); } }
         banner(sign ? "Check the sign!" : lose ? `Ouch! −1 heart, −${lose} coins` : "Ouch! −1 heart");
         replay(scene, "shake", 380);
-      }, 1420);
-      later(() => {
-        if (hearts <= 0) return;
-        const list = E.taunts && E.taunts.length ? E.taunts : TAUNTS0, last = hearts === 1;
-        replay(M, last ? "laugh2" : "laugh", last ? 1300 : 1000); SFX.laugh(last); say(list[tauntN++ % list.length], 2000, last ? "big" : ""); taunted = true;
-        if (last) { scene.classList.add("danger"); replay(scene, "closeup", 1200); VOLT.classList.add("worried"); later(() => pop("Careful, last heart!", 17, 34, "#ff8a80", "volt"), 500); if (MUS) MUS.muffle(true); }
-      }, 1480);
-      later(() => {
+        if (hearts > 0) skipTo = finish;
+      }, 1700);
+      const tauntT = later(() => {
         if (hearts <= 0) return knockOut();
+        const list = E.taunts && E.taunts.length ? E.taunts : TAUNTS0, last = hearts === 1;
+        replay(M, last ? "laugh2" : "laugh", last ? 1500 : 1200); SFX.laugh(last); say(list[tauntN++ % list.length], last ? 2200 : 1800, last ? "big" : ""); taunted = true;
+        if (last) { scene.classList.add("danger"); replay(scene, "closeup", 1400); VOLT.classList.add("worried"); later(() => pop("Careful, last heart!", 17, 34, "#ff8a80", "volt"), 700); if (MUS) MUS.muffle(true); }
+      }, 2350);
+      let finished = false;
+      function finish() {
+        if (finished) return; finished = true; skipTo = null; clearTimeout(finishT);
         busy = false;
         const why = sign ? "Right size, wrong sign. Is it above or below?" : "Not quite.";
         draw(`${why} ${tries <= 2 ? "Tap Volt, your drone, for a hint." : "Check your working with Volt's hints and try again."}`, "no");
         if (!s.choice) $("#msA").value = raw;
-        if (tries <= 2) { VOLT.classList.add("alert"); SFX.beep(); }
-      }, 1900);
+        VOLT.classList.add("alert"); if (tries <= 2) SFX.beep();
+      }
+      const finishT = later(() => { if (hearts > 0) finish(); }, hearts === 1 ? 4500 : 4100);
+      void tauntT;
     }
     // ⚡ the battery fills up after every battle (win or knocked out), when it wasn't nearly full already
     function chargeUp() {
@@ -886,7 +909,8 @@
     function overlay(html) { const o = $("#msOver"); o.innerHTML = html; o.hidden = false; return o; }
     function knockOut() {
       done = true; closeTip(); clearSave(m.id);
-      replay(H, "ko", 4000); SFX.ko(); later(() => replay(M, "laugh2", 1300), 300); later(() => say("Hahaha! Come back stronger!", 1800, "big"), 300); later(chargeUp, 2100);
+      replay(H, "ko", 4000); SFX.ko(); later(() => { replay(M, "laugh2", 1600); SFX.laugh(true); }, 350); later(() => say("Hahaha! Come back stronger!", 2600, "big"), 400);
+      later(() => replay(scene, "closeup", 1400), 500); later(chargeUp, 2600);
       later(() => {
         const o = overlay(`<div class="ms-ko"><strong>Knocked out!</strong><p>${esc(E.name)} wins this round. Start the station again: every question, with new numbers.</p>
           <div class="ms-row ms-center"><button type="button" class="btn" data-again>Try again</button><button type="button" class="btn ghost" data-back-world>Back to the chapter</button></div></div>`);
@@ -894,7 +918,7 @@
         $("[data-back-world]", o).addEventListener("click", () => { SFX.click(); go("world", true, w); });
         $("[data-again]", o).focus({ preventScroll: true });
         panel.innerHTML = `<p class="ms-msg no">Knocked out: no hearts left. Try the station again with new numbers.</p>`;
-      }, 900);
+      }, 3200);
     }
     function victory() {
       done = true; clearSave(m.id);
@@ -904,19 +928,18 @@
       later(() => flyCoins(Math.max(3, Math.min(10, Math.round(coins / 8)))), 900);
       later(chargeUp, 2300);
       const st = firstTry === steps.length ? 3 : firstTry >= steps.length - 1 ? 2 : 1;
-      const bonus = (st === 3 ? 10 : 0) + (boss ? 50 : 0), total = coins + bonus, mk = Math.round(marks * 2) / 2;
+      const bonus = (st === 3 ? 10 : 0) + (boss ? 50 : 0), total = coins + bonus;
       const before = best()[m.id];
       saveBest(w, m, { c: total, s: st, mk });
       winData = { kind: "win", coins: total, where: `CHAPTER ${w.chapter} · STATION ${mi + 1}${boss ? " · BOSS" : ""}`, title: `I defeated ${E.name}!`, enemySvg: E.svg, enemyScale: E.scale || 1,
-        stars: "★".repeat(st) + "☆".repeat(3 - st), extra: boss ? `${mk}/${m.marks || 30} marks` : `${firstTry}/${steps.length} first try` };
+        stars: "★".repeat(st) + "☆".repeat(3 - st), extra: boss ? "Boss defeated" : `${firstTry}/${steps.length} first try` };
       const rk1 = ART.rankOf(totalCoins()), nextM = w.missions[mi + 1] && missionOpen(w, mi + 1) ? w.missions[mi + 1] : null;
       later(() => {
         const nb = before && before.c >= total ? `Your best is still ${before.c} coins.` : before ? "A new best!" : "";
         panel.innerHTML = `<div class="ms-win"><p class="ms-step" style="font-size:1.2rem">${boss ? "Boss defeated!" : "Station cleared!"} ${esc(E.name)} is fixed.</p>
           <div class="ms-big"><span class="ms-stars rv" aria-label="${st} of 3 stars">${[0, 1, 2].map((k) => `<i class="${k < st ? "on" : ""}" style="animation-delay:${(0.25 + k * 0.38).toFixed(2)}s">${k < st ? "★" : "☆"}</i>`).join("")}</span></div>
-          <p>You earned <strong>${total} coins</strong>${bonus ? ` (with a ${bonus}-coin bonus)` : ""}. ${firstTry} of ${steps.length} questions right on the first try. ${nb}</p>
-          ${boss ? `<p class="ms-mock">Boss score: <strong>${mk} / ${m.marks || 30}</strong> <span class="small-note">(full marks for a first-try answer, half after one hint, a quarter after that)</span></p>` : ""}</div>
-          <div class="ms-working"><p><strong>Full working</strong> (compare with your paper)</p>${steps.map((s, k) => `<p><strong>${esc(asQuestion(val(s.q, v)))}</strong><br>${s.choice ? `Answer: ${esc(val(s.choice, v)[s.correct])}${s.why ? `<br><span class="small-note">${esc(val(s.why, v))}</span>` : ""}` : `${esc(s.formula)}<br>${esc(s.sub(v))} = <strong>${esc(fmtAns(s, v))}</strong>`}${got[k] && !s.choice ? ` <span class="small-note">(you: ${esc(got[k])})</span>` : ""}</p>`).join("")}</div>
+          <p>You earned <strong>${total} coins</strong>${bonus ? ` (with a ${bonus}-coin bonus)` : ""}. ${firstTry} of ${steps.length} questions right on the first try. ${nb}</p></div>
+          <div class="ms-working"><p><strong>Full working</strong> (compare with your paper)</p>${steps.map((s, k) => `<p><strong>${esc(asQuestion(val(s.q, v)))}</strong><br>${s.choice ? `Answer: ${esc(val(s.choice, v)[s.correct])}${s.why ? `<br><span class="small-note">${esc(val(s.why, v))}</span>` : ""}` : `${esc(val(s.formula, v))}<br>${esc(val(s.sub, v))} = <strong>${esc(fmtAns(s, v))}</strong>`}${got[k] && !s.choice ? ` <span class="small-note">(you: ${esc(got[k])})</span>` : ""}</p>`).join("")}</div>
           <div class="ms-row ms-center">${nextM ? `<button type="button" class="btn" data-next>Next: face ${esc(enemyOf(nextM).name)} ›</button><button type="button" class="btn ghost" data-back-world>Back to the chapter</button>` : `<button type="button" class="btn" data-back-world>Back to the chapter</button>`}<button type="button" class="btn ghost" data-again>Fight again (new numbers)</button><button type="button" class="btn ghost" data-sharewin>📤 Share my win</button></div>`;
         $("[data-again]", panel).addEventListener("click", () => { SFX.click(); battle(w, mi); });
         $("[data-back-world]", panel).addEventListener("click", () => { SFX.click(); go("world", true, w); });
