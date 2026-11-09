@@ -945,7 +945,7 @@
       const st = firstTry === steps.length ? 3 : firstTry >= steps.length - 1 ? 2 : 1;
       const bonus = (st === 3 ? 10 : 0) + (boss ? 50 : 0), total = coins + bonus;
       const before = best()[m.id];
-      saveBest(w, m, { c: total, s: st, mk });
+      saveBest(w, m, { c: total, s: st });
       winData = { kind: "win", coins: total, where: `CHAPTER ${w.chapter} · STATION ${mi + 1}${boss ? " · BOSS" : ""}`, title: `I defeated ${E.name}!`, enemySvg: E.svg, enemyScale: E.scale || 1,
         stars: "★".repeat(st) + "☆".repeat(3 - st), extra: boss ? "Boss defeated" : `${firstTry}/${steps.length} first try` };
       const rk1 = ART.rankOf(totalCoins()), nextM = w.missions[mi + 1] && missionOpen(w, mi + 1) ? w.missions[mi + 1] : null;
