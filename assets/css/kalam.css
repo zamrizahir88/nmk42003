@@ -110,3 +110,12 @@
 .kf-reply .kf-err { position: absolute; top: 100%; left: 42px; }
 .kf-reply { margin-bottom: 4px; }
 @media (max-width: 560px) { .kf-post { padding: 14px 14px 10px; border-radius: 14px; } .kf-kids { margin-left: 30px; } .kf-ab, .kf-lb { font-size: .84rem; } }
+/* who reacted (lecturers only, 9 Nov 2026): the count is a button; hover shows the names, a tap lists them under the post */
+.kf-who { font: inherit; color: inherit; background: none; border: 0; padding: 2px 6px; margin-left: -6px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.kf-who:hover, .kf-who[aria-expanded="true"] { background: var(--teal-soft); color: var(--teal); }
+.kf-who:focus-visible { outline: 3px solid var(--focus, #1a73c7); outline-offset: 2px; }
+.kf-whol { margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: var(--teal-soft); border: 1px solid var(--rule); font-size: .88rem; color: var(--ink); }
+.kf-whol p { margin: 0 0 4px; line-height: 1.45; }
+.kf-whol p:last-child { margin-bottom: 0; }
+.kf-whoh { font-weight: 700; } .kf-whoh small { font-weight: 400; color: var(--ink-2); }
+.kf-whoe { font-weight: 700; margin-right: 4px; white-space: nowrap; }

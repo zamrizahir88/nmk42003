@@ -95,6 +95,23 @@
   }
   const nRep = (p) => (replies[p.id] ? replies[p.id].length : p.rc || 0);
 
+  /* ---------- who reacted (lecturers only): names from the class rankings (one document, read once, only when needed) ---------- */
+  let whoMap = null, whoLoading = null;
+  const loadWho = () => whoLoading || (whoLoading = A.boardRows().then((r) => { whoMap = {}; ((r && r.rows) || []).forEach((x) => { whoMap[x.uid] = x.role === "lecturer" ? `${x.nickname || x.name || "A lecturer"} (lecturer)` : `${x.nickname || "?"}${x.name ? ` (${x.name})` : ""}`; }); }).catch(() => { whoMap = {}; }));
+  const whoName = (uid) => (uid === (me && me.uid) ? "You" : (whoMap && whoMap[uid]) || "A student not on the rankings yet");
+  const whoGroups = (p) => { const g = {}; Object.entries(p.reacts || {}).forEach(([uid, e]) => { (g[e] = g[e] || []).push(whoName(uid)); }); return Object.entries(g).sort((a, b) => b[1].length - a[1].length); };
+  const whoTitle = (p) => (whoMap ? whoGroups(p).map(([e, l]) => `${e} ${l.join(", ")}`).join("\n") : "Tap to see who reacted");
+  async function showWho(btn) {
+    const art = btn.closest("article") || btn.parentNode, old = art.querySelector(".kf-whol");
+    if (old) { old.remove(); btn.setAttribute("aria-expanded", "false"); return; }
+    await loadWho();
+    const p = posts.find((x) => x.id === btn.dataset.who); if (!p) return;
+    btn.title = whoTitle(p);
+    const box = document.createElement("div"); box.className = "kf-whol"; box.setAttribute("role", "region"); box.setAttribute("aria-label", "Who reacted (only lecturers see this)");
+    box.innerHTML = `<p class="kf-whoh">Who reacted <small>· only lecturers see this</small></p>${whoGroups(p).map(([e, l]) => `<p><span class="kf-whoe">${e} ${NAMES[e] || ""} (${l.length})</span> ${l.map((n) => esc(n)).join(", ")}</p>`).join("")}`;
+    btn.closest(".kf-sum").insertAdjacentElement("afterend", box); btn.setAttribute("aria-expanded", "true");
+  }
+
   /* ---------- drawing: social-media style posts ---------- */
   const NAMES = { "👍": "Like", "❤️": "Love", "😂": "Haha", "😮": "Wow", "👏": "Clap" };
   const tally = (r) => { const c = {}; Object.values(r || {}).forEach((e) => { c[e] = (c[e] || 0) + 1; }); return c; };
@@ -103,7 +120,9 @@
     const c = tally(p.reacts), n = Object.values(c).reduce((a, b) => a + b, 0), top = Object.keys(c).sort((a, b) => c[b] - c[a]).slice(0, 3);
     if (p.rc === undefined && !replies[p.id]) nRep = 0;
     if (!n && !nRep) return p.rc === undefined && !replies[p.id] ? `<div class="kf-sum"><span></span><button type="button" class="kf-lnk kf-sumc" data-comments="${p.id}">View comments</button></div>` : "";
-    return `<div class="kf-sum">${n ? `<span class="kf-sumr" title="${Object.entries(c).map(([e, k]) => `${NAMES[e]} ${k}`).join(", ")}"><span class="kf-emos">${top.join("")}</span> ${n}</span>` : "<span></span>"}
+    // lecturers only (9 Nov 2026): hover (or tap, on a phone) to see WHO reacted; students see the counts only
+    const inner = `<span class="kf-emos">${top.join("")}</span> ${n}`;
+    return `<div class="kf-sum">${n ? (lec ? `<button type="button" class="kf-sumr kf-who" data-who="${p.id}" title="${esc(whoTitle(p))}" aria-expanded="false">${inner}</button>` : `<span class="kf-sumr" title="${Object.entries(c).map(([e, k]) => `${NAMES[e]} ${k}`).join(", ")}">${inner}</span>`) : "<span></span>"}
       ${nRep ? `<button type="button" class="kf-lnk kf-sumc" data-comments="${p.id}">${nRep} comment${nRep === 1 ? "" : "s"}</button>` : ""}</div>`;
   }
   // the Like button: a tap likes (or removes your reaction); hold it, or hover on a computer, for the other reactions
@@ -175,9 +194,11 @@
   ["pointerup", "pointerleave", "pointercancel"].forEach((t) => box.addEventListener(t, () => clearTimeout(holdT)));
   box.addEventListener("contextmenu", (e) => { if (e.target.closest("[data-like]")) e.preventDefault(); });
   document.addEventListener("click", (e) => { if (!e.target.closest(".kf-like")) $$(".kf-like.open").forEach((x) => x.classList.remove("open")); });
+  box.addEventListener("mouseover", (e) => { const w = lec && e.target.closest("[data-who]"); if (w && !whoMap) loadWho().then(() => { const p = posts.find((x) => x.id === w.dataset.who); if (p) w.title = whoTitle(p); }); });
   box.addEventListener("click", (e) => {
     const b = e.target.closest("button");
     if (!b || !me) return;
+    if (b.hasAttribute("data-who")) { if (lec) showWho(b); return; }
     if (b.hasAttribute("data-like")) {
       if (held) { held = false; return; }
       const w = b.closest(".kf-like"), mine = b.getAttribute("aria-pressed") === "true";
