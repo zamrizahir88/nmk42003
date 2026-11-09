@@ -416,7 +416,7 @@
   async function boardView(fresh) {
     frame(`<div class="gg lb"><div class="gg-top"><div class="gg-hero"><div><span class="gg-kick">Hall of Legends</span><h2 class="gg-h">🏆 Leaderboard</h2></div>
         ${isLec ? `<div class="lb-acts"><button type="button" class="lg-btn alt" data-lgupd>⟳ Update rankings now</button></div>` : ""}</div></div>
-      <div class="gg-body"><p class="lb-note">The whole class, ranked by game coins. <span id="lgWhen"></span> Your own coins and rank are always up to date on your own screen. Tap a name to open the profile. Points never count towards grades.</p><div id="lgBoard"><p class="lb-note">Loading…</p></div></div></div>`);
+      <div class="gg-body"><p class="lb-note">The whole class, ranked by game coins. <span id="lgWhen"></span> Your own coins and rank are always up to date on your own screen. Tap a character or hero name to see the player card. Points never count towards grades.</p><div id="lgBoard"><p class="lb-note">Loading…</p></div></div></div>`);
     const ub = $("[data-lgupd]"); if (ub) ub.addEventListener("click", () => { ub.disabled = true; ub.textContent = "Updating…"; boardView(true); });
     const host = $("#lgBoard");
     let docs = [], roster = [];
@@ -440,15 +440,60 @@
     // the podium: the top 3 with their own characters, the leader under a gold spotlight
     const podium = () => players.length ? `<div class="lb-pod">${[1, 0, 2].map((k) => { const d = players[k]; if (!d) return "<div></div>"; const rk = rkOf(d);
         return `<div class="lb-p p${k + 1}${d.uid === me ? " me" : ""}" style="--rc:${RCOL[rk]}">${k === 0 ? `<i class="lb-light" aria-hidden="true"></i>` : ""}<span class="lb-medal" aria-hidden="true">${medal(k)}</span>
-          <a class="lb-ph" href="profile.html?u=${encodeURIComponent(d.uid)}" tabindex="-1" aria-hidden="true"><svg class="lb-hero" viewBox="-46 -76 92 142" focusable="false">${ART.heroSvg(heroIn(d.game), "", k === 0 ? 2 : 0)}</svg></a>
-          <a class="lb-pn" href="profile.html?u=${encodeURIComponent(d.uid)}" title="Open the profile">${esc(label(d))}</a><span class="lb-pr">${batI(d.game)}<span>${esc(ART.RANKS[rk].n)}</span></span><span class="lb-pc">🪙 ${(d.game.coins || 0).toLocaleString("en")}</span><span class="lb-step">${k + 1}</span></div>`; }).join("")}</div>` : "";
+          <button type="button" class="lb-ph" data-pcard="${esc(d.uid)}" tabindex="-1" aria-hidden="true"><svg class="lb-hero" viewBox="-46 -76 92 142" focusable="false">${ART.heroSvg(heroIn(d.game), "", k === 0 ? 2 : 0)}</svg></button>
+          <button type="button" class="lb-pn" data-pcard="${esc(d.uid)}" aria-label="${esc(label(d))}: open the player card">${esc(label(d))}</button><span class="lb-pr">${batI(d.game)}<span>${esc(ART.RANKS[rk].n)}</span></span><span class="lb-pc">🪙 ${(d.game.coins || 0).toLocaleString("en")}</span><span class="lb-pl" title="Last battle">⚔️ ${ago(d.game.last)}</span><span class="lb-step">${k + 1}</span></div>`; }).join("")}</div>` : "";
+    // the podium's heading with one small share button (the top 3 as a 9:16 picture)
+    const podHead = () => players.length ? `<div class="lb-podh"><span>Top ${Math.min(3, players.length)}</span><button type="button" class="lb-shr" data-podshare aria-label="Share the top ${Math.min(3, players.length)} as a picture" title="Share the top 3">📤</button></div>` : "";
     const lrow = (d, k) => { const g = d.game, rk = rkOf(d), hn = hname(d);
-      return `<li class="lb-row${d.uid === me ? " me" : ""}" style="--rc:${RCOL[rk]}"><span class="lb-pos">${k + 1}</span><span class="lb-av">${avatar(heroIn(g))}</span>
-        <span class="lb-who"><b>${esc(hn || d.nickname || "Player")}</b><a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname || "Student")}</a><span class="lb-rk">${batI(g)}<span>${esc(ART.RANKS[rk].n)}</span></span></span>
+      return `<li class="lb-row${d.uid === me ? " me" : ""}" style="--rc:${RCOL[rk]}"><span class="lb-pos">${k + 1}</span><button type="button" class="lb-av" data-pcard="${esc(d.uid)}" tabindex="-1" aria-hidden="true">${avatar(heroIn(g))}</button>
+        <span class="lb-who"><button type="button" class="lb-hn" data-pcard="${esc(d.uid)}" aria-label="${esc(hn || d.nickname || "Player")}: open the player card">${esc(hn || d.nickname || "Player")}</button><a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname || "Student")}</a><span class="lb-rk">${batI(g)}<span>${esc(ART.RANKS[rk].n)}</span></span></span>
         <span class="lb-coin"><b>${(g.coins || 0).toLocaleString("en")}</b><i class="lb-bar"><b style="width:${Math.max(3, Math.round(((g.coins || 0) / lead) * 100))}%"></b></i></span>
         <span class="lb-st"><span title="Stations cleared">⚔️ ${g.cleared || 0}/${total}</span><span title="Bosses defeated">👑 ${g.bosses || 0}</span><span title="Stars">★ ${g.stars || 0}</span></span>
         <span class="lb-last" title="Last battle">⚔️ ${ago(g.last)}</span></li>`; };
     const cols = 8 + WORLDS.length + (isLec ? 1 : 0);
+    // 🃏 the player card (9 Nov 2026): everything the table has, for the podium and every row; Open profile › for the rest
+    function openCard(uid, back) {
+      const k = players.findIndex((x) => x.uid === uid); if (k < 0) return;
+      const d = players[k], g = d.game, rk = rkOf(d), R = ART.RANKS[rk], nx = ART.RANKS[rk + 1], hn = hname(d), b = bat(g.last || "");
+      const pct = nx ? Math.round(((g.coins - R.min) / (nx.min - R.min)) * 100) : 100;
+      const box = document.createElement("div");
+      box.className = "lb-card"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true"); box.setAttribute("aria-label", `Player card: ${label(d)}`);
+      box.innerHTML = `<div class="lb-cbox" style="--rc:${RCOL[rk]}"><button type="button" class="ms-x lb-cx" aria-label="Close">✕</button>
+        <div class="lb-chead"><span class="lb-cpos">${medal(k)}</span><svg class="lb-chero" viewBox="-46 -76 92 142" aria-hidden="true" focusable="false">${ART.heroSvg(heroIn(g), "", 0)}</svg>
+          <div class="lb-cwho"><b>${esc(hn || d.nickname || "Player")}</b><span>${esc(d.name || d.nickname || "Student")}</span>${hn && d.nickname ? `<small>Nickname: ${esc(d.nickname)}</small>` : ""}
+            <span class="lb-pr">${batI(g)}<span>${esc(R.n)}</span></span></div></div>
+        <div class="lb-ctiles"><div><span>🪙 Coins</span><strong>${(g.coins || 0).toLocaleString("en")}</strong></div><div><span>⚔️ Stations</span><strong>${g.cleared || 0}<small> / ${total}</small></strong></div>
+          <div><span>👑 Bosses</span><strong>${g.bosses || 0}<small> / ${bossesT}</small></strong></div><div><span>★ Stars</span><strong>${g.stars || 0}</strong></div></div>
+        <div class="lb-cnext"><span>${nx ? `${nx.min - g.coins} more coin${nx.min - g.coins === 1 ? "" : "s"} to ${esc(nx.n)}` : "Top rank: Legend of Measurement"}</span><i class="lb-bar"><b style="width:${Math.max(3, pct)}%"></b></i></div>
+        <h3 class="lb-csub">Chapters</h3><ul class="lb-cch">${WORLDS.map((w) => { const c = (g.ch || {})[w.world] || 0; return `<li><span>Ch ${w.chapter}</span><i class="lb-bar"><b style="width:${Math.round((c / w.missions.length) * 100)}%"></b></i><em>${c} / ${w.missions.length}</em></li>`; }).join("")}</ul>
+        <p class="lb-clast">⚔️ Last battle: <strong>${ago(g.last)}</strong>${b ? ` · ${GM.BATTERY[b.st][0]} ${BATL[b.st]}` : ""}</p>
+        ${isLec ? `<p class="lb-clec">Matric ${esc(d.matric || "–")} · ${esc(SECN[d.section] || "no section")}${hn ? ` · <button type="button" class="lg-rm" data-crm>Remove hero name</button>` : ""}</p>` : ""}
+        <div class="lb-cbtns"><a class="lg-btn main" href="profile.html?u=${encodeURIComponent(d.uid)}">Open profile ›</a></div></div>`;
+      document.body.appendChild(box);
+      let layer = null;
+      const close = () => { box.remove(); document.removeEventListener("keydown", key); if (layer) { const l = layer; layer = null; l.closed(); } if (back && back.isConnected) back.focus({ preventScroll: true }); };
+      const key = (e) => { if (e.key === "Escape") close(); };
+      document.addEventListener("keydown", key);
+      if (window.NMKBack) layer = NMKBack.layer(() => { layer = null; close(); });
+      teardown.push(() => { if (box.isConnected) { if (layer) { layer.drop(); layer = null; } close(); } });
+      box.addEventListener("click", (e) => { if (e.target === box) close(); });
+      $(".lb-cx", box).addEventListener("click", close);
+      const rm = $("[data-crm]", box);
+      if (rm) rm.addEventListener("click", async () => { rm.disabled = true; rm.textContent = "Removing…";
+        try { await A.db.collection("meta").doc("heronames").set({ bans: { [d.uid]: hn } }, { merge: true }); BANS[d.uid] = hn; close(); boardView(); }
+        catch (e) { rm.disabled = false; rm.textContent = `Could not remove (${e.code || e})`; } });
+      $(".lb-cx", box).focus({ preventScroll: true });
+    }
+    // 📤 the top 3 as one picture (anyone can share it; hero names or nicknames only, never real names)
+    function sharePodium() {
+      const top = players.slice(0, 3).map((d) => ({ hero: heroIn(d.game), name: label(d), rank: rkOf(d), rankName: ART.RANKS[rkOf(d)].n, coins: d.game.coins || 0 }));
+      share({ kind: "podium", top, rank: top[0].rank, name: "Top 3", date: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) },
+        `The top ${top.length} of INSTRUMENTA: Legends: ${top.map((t, i) => `${i + 1}. ${t.name}`).join(", ")}. ${BY} #INSTRUMENTALegends #UniMAP ${SHARE_URL}`, "top3");
+    }
+    host.addEventListener("click", (e) => {
+      const c = e.target.closest("[data-pcard]"); if (c) { SFX.click(); openCard(c.dataset.pcard, c); return; }
+      if (e.target.closest("[data-podshare]")) { SFX.click(); sharePodium(); }
+    });
     const row = (d, k) => { const g = d.game, R = ART.RANKS[rkOf(d)], hn = hname(d);
       return `<tr class="${d.uid === me ? "me" : ""}"><td class="lg-pos">${medal(k)}</td><td><span class="lg-who">${avatar(heroIn(g))}<span><b class="lg-hn">${esc(hn || d.nickname || "Player")}</b>
         <a href="profile.html?u=${encodeURIComponent(d.uid)}">${esc(d.name || d.nickname || "Student")}</a>${hn && d.nickname ? `<small>${esc(d.nickname)}</small>` : ""}
@@ -462,15 +507,15 @@
       const at = players.findIndex((d) => d.uid === me), n = players.length;
       const show = (n <= 14 ? players.map((d, k) => [d, k]) : players.slice(0, 10).map((d, k) => [d, k]).concat(at >= 10 && at < n - 4 ? [[null, -1], [players[at], at]] : [], [[null, -1]], players.slice(n - 4).map((d, k) => [d, n - 4 + k]))).filter(([, k]) => k < 0 || k >= 3);
       const above = at > 0 ? players[at - 1].game.coins - players[at].game.coins : 0;
-      host.innerHTML = `<div class="lb-mine">${at >= 0 ? `<span class="lb-you">You</span><span><strong>${medal(at)} of ${n}</strong> · 🪙 ${players[at].game.coins} coins${at > 0 ? ` · ${above + 1} more to pass ${esc(label(players[at - 1]))}` : " · you're leading!"}</span><button type="button" class="lg-btn main" data-lbshare>📤 Share my rank</button>` : "Play a station to join the leaderboard."}</div>
-        ${n ? `${podium()}${show.length ? `<ol class="lb-list">${show.map(([d, k]) => (d ? lrow(d, k) : `<li class="lb-gap" aria-hidden="true">⋯</li>`)).join("")}</ol>` : ""}` : `<p class="lb-note">Nobody has played yet. Be the first!</p>`}`;
+      host.innerHTML = `<div class="lb-mine">${at >= 0 ? `<span class="lb-you">You</span><span><strong>${medal(at)} of ${n}</strong> · 🪙 ${players[at].game.coins} coins${at > 0 ? ` · ${above + 1} more to pass ${esc(label(players[at - 1]))}` : " · you're leading!"}</span><button type="button" class="lb-shr wide" data-lbshare aria-label="Share my rank as a picture">📤 Share</button>` : "Play a station to join the leaderboard."}</div>
+        ${n ? `${podHead()}${podium()}${show.length ? `<ol class="lb-list">${show.map(([d, k]) => (d ? lrow(d, k) : `<li class="lb-gap" aria-hidden="true">⋯</li>`)).join("")}</ol>` : ""}` : `<p class="lb-note">Nobody has played yet. Be the first!</p>`}`;
       const sb = $("[data-lbshare]", host);
       if (sb) sb.addEventListener("click", () => { SFX.click(); shareRank(players[at], at, n, total); });
       return;
     }
     const played = new Set(players.map((d) => String(d.matric)));
     const notYet = roster.filter((r) => !played.has(String(r.matric))).sort((a, b) => (a.name < b.name ? -1 : 1));
-    host.innerHTML = `${podium()}<div class="adm-tools"><button type="button" class="lg-btn alt" data-bcsv>⬇ Download CSV</button></div>
+    host.innerHTML = `${podHead()}${podium()}<div class="adm-tools"><button type="button" class="lg-btn alt" data-bcsv>⬇ Download CSV</button></div>
       <p class="lb-note">${players.length} playing · ${notYet.length} not started yet. Lecturer plays never appear here. A rude hero name? Tap <strong>Remove hero name</strong>: the player's nickname shows instead, and they are asked to choose another one.</p>
       ${players.length ? table(players.map((d, k) => row(d, k)).join("")) : `<p class="adm-empty">Nobody has played yet.</p>`}
       ${(() => { const flat = players.filter((d) => { const b = bat(d.game.last || ""); return b && b.st === "flat"; });

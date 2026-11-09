@@ -807,3 +807,69 @@ label.ms-ol { display: block; }
 @media (max-width: 760px) { .lb-row { grid-template-areas: "pos av who who" "pos av coin last" "pos av st st"; } .lb-st { flex-wrap: wrap; } }
 .lb-coin > b { white-space: nowrap; }
 .gg-cards .gg-card { align-content: start; }
+
+/* ===== round 4 (9 Nov 2026): the player card, sharing the top 3, small share buttons, lighter animations ===== */
+/* the podium heading and the small share buttons */
+.lb-podh { display: flex; align-items: center; gap: 10px; margin: 4px 0 6px; font: 800 .8rem var(--gf1); letter-spacing: .24em; text-transform: uppercase; color: #38e1c9; }
+.lb-podh::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(56, 225, 201, .6), transparent); order: 1; }
+.lb-podh .lb-shr { order: 2; }
+.lb-shr { display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: 50%; border: 1px solid rgba(56, 225, 201, .55); background: rgba(56, 225, 201, .12); color: #fff; font-size: 1rem; cursor: pointer; flex: none; }
+.lb-shr.wide { width: auto; padding: 0 14px; border-radius: 999px; gap: 6px; font: 800 .85rem var(--gf2); letter-spacing: .02em; display: inline-flex; align-items: center; min-height: 34px; height: auto; }
+.lb-shr:hover { background: rgba(56, 225, 201, .25); }
+.lb-shr:focus-visible { outline: 3px solid #ffd84d; outline-offset: 2px; }
+.lb-mine .lb-shr { margin-left: auto; }
+/* podium: buttons that look like the names and characters; content stacked and aligned, the step at the bottom */
+.lb-p { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.lb-ph, .lb-pn, .lb-av, .lb-hn { font: inherit; border: 0; padding: 0; background: none; cursor: pointer; }
+.lb-ph { position: relative; z-index: 1; display: block; border-radius: 12px; }
+.lb .lb-pn { position: relative; z-index: 1; color: #fff; font: 800 1.02rem/1.2 var(--gf2); text-align: center; text-decoration: underline dotted rgba(255, 255, 255, .45); text-underline-offset: 4px; overflow-wrap: break-word; max-width: 100%; }
+.lb .lb-pn:hover, .lb .lb-pn:focus-visible { color: #ffd84d; }
+.lb-ph:focus-visible, .lb-pn:focus-visible, .lb-av:focus-visible, .lb-hn:focus-visible { outline: 3px solid #ffd84d; outline-offset: 2px; border-radius: 8px; }
+.lb-pl { position: relative; z-index: 1; font: 700 .8rem var(--gf2); color: #c9d4e3; }
+.lb-p .lb-step { margin-top: auto; }
+.lb-p .lb-pc { margin-top: 2px; }
+/* rows: the character and hero name open the card */
+.lb-av { display: grid; place-items: center; }
+.lb .lb-hn { color: #fff; font: 800 1.05rem/1.25 var(--gf2); text-align: left; overflow-wrap: break-word; }
+.lb .lb-hn:hover { color: #ffd84d; text-decoration: underline; text-underline-offset: 3px; }
+/* the player card */
+.lb-card { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 16px; background: rgba(4, 8, 22, .72); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
+.lb-cbox { position: relative; width: min(440px, 100%); max-height: calc(100vh - 32px); overflow: auto; box-sizing: border-box; padding: 18px; border-radius: 18px; color: #e8eef7;
+  background: linear-gradient(rgba(56, 225, 201, .05) 1px, transparent 1px) 0 0 / 24px 24px, linear-gradient(90deg, rgba(56, 225, 201, .05) 1px, transparent 1px) 0 0 / 24px 24px, radial-gradient(120% 70% at 100% 0, color-mix(in srgb, var(--rc) 35%, transparent), transparent 60%), linear-gradient(160deg, #0b1430, #14213d 60%, #101a36);
+  border: 1px solid var(--rc); box-shadow: 0 0 0 1px rgba(255, 255, 255, .06), 0 20px 50px rgba(0, 0, 0, .55), 0 0 30px color-mix(in srgb, var(--rc) 35%, transparent); }
+.lb-cx { position: absolute; right: 10px; top: 10px; }
+.lb-chead { display: grid; grid-template-columns: auto 92px minmax(0, 1fr); gap: 10px; align-items: center; padding-right: 30px; }
+.lb-cpos { font: 900 1.4rem var(--gf1); color: #ffd84d; align-self: start; margin-top: 6px; }
+.lb-chero { width: 92px; height: 142px; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--rc) 60%, transparent)); }
+.lb-cwho { display: grid; gap: 3px; min-width: 0; justify-items: start; }
+.lb-cwho b { font: 900 1.25rem/1.15 var(--gf2); color: #fff; overflow-wrap: break-word; max-width: 100%; }
+.lb-cwho > span:not(.lb-pr) { font-size: .92rem; color: #c9d4e3; overflow-wrap: break-word; max-width: 100%; }
+.lb-cwho small { color: #9fb3c8; font-size: .82rem; }
+.lb-cwho .lb-pr { margin-top: 4px; }
+.lb-ctiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 14px 0 10px; }
+.lb-ctiles div { display: grid; gap: 2px; justify-items: center; padding: 9px 4px; border-radius: 12px; background: rgba(0, 0, 0, .25); border: 1px solid rgba(255, 255, 255, .1); text-align: center; }
+.lb-ctiles span { font: 700 .72rem var(--gf2); color: #9fb3c8; white-space: nowrap; }
+.lb-ctiles strong { font: 900 1.15rem var(--gf2); color: #ffd84d; font-variant-numeric: tabular-nums; }
+.lb-ctiles small { font-size: .78rem; color: #c9d4e3; font-weight: 700; }
+.lb-cnext { display: grid; gap: 5px; font-size: .86rem; color: #d6deea; }
+.lb-csub { margin: 14px 0 8px; font: 800 .74rem var(--gf1); letter-spacing: .22em; text-transform: uppercase; color: #38e1c9; }
+.lb-cch { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.lb-cch li { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 10px; align-items: center; font: 700 .86rem var(--gf2); }
+.lb-cch em { font-style: normal; text-align: right; color: #c9d4e3; font-variant-numeric: tabular-nums; }
+.lb-clast { margin: 12px 0 0; font-size: .9rem; color: #d6deea; }
+.lb-clast strong { color: #fff; }
+.lb-clec { margin: 8px 0 0; font-size: .85rem; color: #9fb3c8; }
+.lb-clec .lg-rm { background: transparent; color: #ff9b8f; border-color: #ff9b8f; }
+.lb-cbtns { display: flex; justify-content: center; margin-top: 14px; }
+@media (max-width: 400px) { .lb-ctiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .lb-chead { grid-template-columns: auto 74px minmax(0, 1fr); } .lb-chero { width: 74px; height: 114px; } }
+/* lighter animations (they redraw the page all the time, which can stutter the music on slower devices):
+   glows now fade a layer in and out instead of repainting a shadow; the coin spins 3 times; the shine runs 3 times */
+.lg-mn.play:not(.on) { animation: none; position: relative; }
+.lg-mn.play:not(.on)::after { content: ""; position: absolute; inset: -4px; border-radius: inherit; box-shadow: 0 0 16px 3px rgba(255, 200, 40, .75); opacity: 0; pointer-events: none; animation: lgFade 2.2s ease-in-out infinite; }
+@keyframes lgFade { 50% { opacity: 1; } }
+.lg-cface { animation-iteration-count: 3; }
+.lb-p.p1 .lb-step::after, .bd-pod.p1 .bd-step::after { animation-iteration-count: 3; }
+.lvr.lr8 { animation: none; position: relative; }
+.lvr.lr8::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; box-shadow: 0 0 calc(var(--rs) * .5) rgba(255, 216, 77, .9); opacity: .4; pointer-events: none; animation: lgFade 2.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .lg-mn.play::after, .lvr.lr8::after { animation: none !important; } }
+@supports not (color: color-mix(in srgb, red 50%, blue)) { .lb-cbox { background: linear-gradient(160deg, #0b1430, #14213d 60%, #101a36); box-shadow: 0 20px 50px rgba(0, 0, 0, .55); } .lb-chero { filter: none; } }

@@ -371,3 +371,9 @@ table.dt tr.dt-stop th span { font-weight: 400; color: var(--ink-3); margin-left
   .bd-pod small, .bd-pad small { font-size: .78rem; }
 }
 @supports not (color: color-mix(in srgb, red 50%, blue)) { .lvr.lr5, .lvr.lr6 { box-shadow: 0 0 calc(var(--rs) * .25) var(--lvc); } }
+/* lighter animations (9 Nov 2026): the L8 glow fades a layer instead of repainting a shadow; the podium shine runs 3 times */
+.lvr.lr8 { animation: none; }
+.lvr.lr8::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; box-shadow: 0 0 calc(var(--rs) * .5) rgba(255, 216, 77, .9); opacity: .4; pointer-events: none; animation: lvrFade 2.6s ease-in-out infinite; }
+@keyframes lvrFade { 50% { opacity: 1; } }
+.bd-pod.p1 .bd-step::after { animation-iteration-count: 3; }
+@media (prefers-reduced-motion: reduce) { .lvr.lr8::after { animation: none !important; } }

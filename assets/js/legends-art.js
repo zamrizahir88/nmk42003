@@ -273,6 +273,22 @@
         ${tx(1440, nameSize, esc(d.name), { serif: true, w: 900, sw: 12 })}${tx(1505, 42, esc(d.rankName), { fill: C.gold, sw: 8 })}
         ${chip(110, esc(d.stars))}${chip(410, `+${d.coins} coins`)}${chip(710, esc(d.extra))}
         ${tx(1702, 34, "Can you beat my score?", { sw: 7 })}`;
+    } else if (d.kind === "podium") {
+      // the top 3 on a podium (9 Nov 2026): hero names or nicknames only, never real names
+      const fitN = (t, w, max) => { const e = [...String(t)].reduce((a, c) => a + (/[WM]/.test(c) ? 1.2 : /[A-Z0-9]/.test(c) ? 0.8 : c === " " ? 0.3 : /[mw]/.test(c) ? 0.95 : 0.6), 0); return Math.min(max, Math.floor(w / Math.max(e, 1))); };
+      const P = [{ i: 1, x: 215, top: 1340, sc: 3.4, fill: "#c9d4e3", dk: "#8a9bb0" }, { i: 0, x: 540, top: 1250, sc: 4.1, fill: C.gold, dk: "#c98a00" }, { i: 2, x: 865, top: 1410, sc: 3.2, fill: "#e5a26a", dk: "#a8622a" }];
+      const pods = P.map((p) => { const t = d.top[p.i]; if (!t) return "";
+        const x0 = p.x - 150, h = 1690 - p.top, ns = fitN(t.name, 270, 46), rs = fitN(t.rankName, 270, 28);
+        return `<g transform="translate(${p.x} ${p.top - 59 * p.sc}) scale(${p.sc})">${heroSvg(t.hero, "", p.i === 0 ? 2 : 0)}</g>
+          <rect x="${x0}" y="${p.top}" width="300" height="${h}" rx="22" fill="${p.fill}" stroke="${N}" stroke-width="6"/>
+          <rect x="${x0 + 10}" y="${p.top + 10}" width="280" height="12" rx="6" fill="#fff" opacity=".45"/>
+          <text x="${p.x}" y="${p.top + 92}" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="78" fill="${N}">${p.i + 1}</text>
+          <text x="${p.x}" y="${p.top + 92 + 18 + ns}" text-anchor="middle" font-family="Georgia, serif" font-weight="900" font-size="${ns}" fill="${N}">${esc(t.name)}</text>
+          <text x="${p.x}" y="${p.top + 92 + 34 + ns + rs}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="${rs}" fill="${N}">${esc(t.rankName)}</text>
+          ${h > 250 ? `<text x="${p.x}" y="${p.top + 92 + 60 + ns + rs + 30}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="32" fill="${N}">${t.coins} coins</text>` : ""}`; }).join("");
+      mid = `<rect x="160" y="430" width="760" height="130" rx="65" fill="${C.gold}" stroke="${N}" stroke-width="6"/>${tx(517, 56, "🏆 TOP 3 LEGENDS", { w: 900, fill: N, sw: 0 })}
+        ${tx(630, 38, `HALL OF LEGENDS · ${esc(d.date || "")}`, { fill: "#fff", st: N, sw: 9 })}
+        <ellipse cx="540" cy="1000" rx="480" ry="330" fill="${C.gold}" opacity=".16"/>${pods}`;
     } else if (d.kind === "rank") {
       const ht = d.top10 ? `🏆 #${d.pos} OF ${d.of}` : d.half ? `TOP HALF · #${d.pos} OF ${d.of}` : "LEADERBOARD";
       mid = `<rect x="140" y="430" width="800" height="130" rx="65" fill="${d.top10 ? C.gold : N}" stroke="${d.top10 ? N : C.gold}" stroke-width="6" opacity=".95"/>${tx(517, ht.length > 18 ? 46 : 58, ht, { w: 900, fill: d.top10 ? N : C.gold, sw: 0 })}

@@ -99,10 +99,24 @@
       else hook.filter(([p]) => p >= i0 && p < i0 + 8 && p % 2 === 0).forEach(([p, d]) => note(hz(root - 12 + step(M.scale, d)), at(p - i0), e8, { osc: ["triangle"], g: 0.04, d: e8 }));
     }
   }
+  // the random "tick tick" (9 Nov 2026): when the browser slowed the timer (tab in the background, screen off, a busy
+  // page), the bars it missed were all played at once, late. Now missed bars are skipped, and the look-ahead is longer.
+  let hidden = false;
   function tick() {
-    if (!on || !ctx) return;
-    while (next < ctx.currentTime + 0.8) { playBar(next); next += (60 / (STYLES[style].bpm + MOODS[mood].bpm + boost)) * 4; bar++; }
+    if (!on || !ctx || hidden) return;
+    if (next < ctx.currentTime + 0.02) next = ctx.currentTime + 0.08;
+    while (next < ctx.currentTime + 1.2) { playBar(next); next += (60 / (STYLES[style].bpm + MOODS[mood].bpm + boost)) * 4; bar++; }
   }
+  // while the tab is hidden the music fades out and stops scheduling; it comes back in time when the tab returns
+  document.addEventListener("visibilitychange", () => {
+    if (!ctx || !out) return;
+    hidden = document.hidden;
+    try {
+      const t = ctx.currentTime; out.gain.cancelScheduledValues(t); out.gain.setValueAtTime(out.gain.value, t);
+      if (hidden) out.gain.linearRampToValueAtTime(0, t + 0.3);
+      else if (on) { next = t + 0.15; out.gain.linearRampToValueAtTime(vol, t + 1); tick(); }
+    } catch (e) { /* closed */ }
+  });
   const api = {
     STYLES, MOODS,
     init(fn) { getCtx = fn; },
@@ -113,7 +127,7 @@
       try { if (!ctx) build(); if (ctx.state === "suspended") ctx.resume(); } catch (e) { return; }
       on = true; next = ctx.currentTime + 0.12; bar = 0;
       out.gain.cancelScheduledValues(ctx.currentTime); out.gain.setValueAtTime(out.gain.value, ctx.currentTime); out.gain.linearRampToValueAtTime(vol, ctx.currentTime + 1.5);
-      tick(); clearInterval(timer); timer = setInterval(tick, 200);
+      tick(); clearInterval(timer); timer = setInterval(tick, 250);
     },
     stop() {
       if (!on) return;
