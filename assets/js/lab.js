@@ -474,15 +474,15 @@
         <p class="ex-status" aria-live="polite">Work it out, then check. The full working unlocks when all your answers are correct${hints.length ? `, and each wrong try unlocks a hint` : ""}.</p>
       </form>
       <div class="ex-hints"></div>
-      <div class="ex-working" id="${ex.id}-w" hidden></div>
-      ${ex.note ? `<div class="callout note">${ex.note}</div>` : ""}`;
+      <div class="ex-working" id="${ex.id}-w" hidden></div>`;
 
     const status = el.querySelector(".ex-status"), hintBox = el.querySelector(".ex-hints"), w = el.querySelector(".ex-working");
     const reveal = el.querySelector("[data-reveal]"), badge = el.querySelector(".ex-badge");
     let tries = 0;
 
     const unlock = (fresh) => {
-      if (!w.innerHTML) w.innerHTML = exerciseWorking(ex);
+      // the note can name the answer (e.g. the ideal Vo before clipping), so it opens with the working, never before
+      if (!w.innerHTML) w.innerHTML = exerciseWorking(ex) + (ex.note ? `<div class="callout note">${ex.note}</div>` : "");
       el.classList.add("solved");
       badge.hidden = false;
       el.querySelectorAll("[data-load]").forEach((b) => { b.disabled = false; });
