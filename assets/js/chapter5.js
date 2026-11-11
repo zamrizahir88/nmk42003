@@ -631,7 +631,7 @@
         <div class="c5-root">Electronic Filters</div><div class="c5-split" aria-hidden="true"></div>
         <div class="c5-brs">${branch("p", "Passive filters", "R, C and L only")}${branch("a", "Active filters", "with an op-amp")}</div></div>
       <div class="c5-card" id="ftCard" aria-live="polite"><p class="small-note">Tap a filter type to see what it passes, what it blocks and where it is used. Tap <strong>Passive</strong> or <strong>Active</strong> to compare them.</p></div>
-      <h4 class="sub-h">Quick Check: Which Filter Would You Use?</h4><div class="c5-quiz"></div>`;
+`;
     const card = el.querySelector("#ftCard");
     el.addEventListener("click", (e) => {
       const bh = e.target.closest("[data-bh]"), lf = e.target.closest("[data-k]");
@@ -652,14 +652,6 @@
         ${link ? `<p><a class="btn ghost small" href="#${link}" data-go="${link}">Try it in the calculator ›</a></p>` : `<p class="small-note">For information: the all-pass filter is not calculated in this chapter.</p>`}</div></div>`;
     });
     el.addEventListener("click", (e) => { const g = e.target.closest("[data-go]"); if (g && Lab.BY_ID[g.dataset.go]) { e.preventDefault(); Lab.scrollToSection(Lab.BY_ID[g.dataset.go]); } });
-    quiz(el.querySelector(".c5-quiz"), [
-      { q: "You need to remove 50 Hz mains hum from an ECG signal without losing the heartbeat.", opts: ["Band reject (notch)", "Low pass", "High pass", "All pass"], a: 0, why: "A notch (band-reject) filter at 50 Hz removes just the hum and lets the rest of the signal through." },
-      { q: "A slow temperature signal has hiss at a few kilohertz on top.", opts: ["Low pass", "High pass", "Band reject", "All pass"], a: 0, why: "The wanted signal is slow (low frequency) and the hiss is fast, so a low-pass filter keeps the temperature and removes the hiss." },
-      { q: "A vibration sensor's output slowly drifts up and down, but you only want the fast vibration.", opts: ["High pass", "Low pass", "Band reject", "All pass"], a: 0, why: "The drift is very low frequency. A high-pass filter blocks it (and any DC offset) and keeps the fast vibration." },
-      { q: "You want only the heart-rate band (about 0.5 to 40 Hz) from a signal that has both slow drift and fast hiss.", opts: ["Band pass", "Low pass", "High pass", "Band reject"], a: 0, why: "A band-pass filter blocks both the slow drift below 0.5 Hz and the hiss above 40 Hz." },
-      { q: "You must change a signal's timing (phase) without changing its size at any frequency.", opts: ["All pass", "Low pass", "Band pass", "High pass"], a: 0, why: "An all-pass filter keeps every frequency at the same size and only shifts the phase." },
-      { q: "A tiny thermocouple signal needs amplifying AND its hum removed, in one stage.", opts: ["An active low-pass filter", "A passive low-pass filter", "A passive band-reject filter", "A passive high-pass filter"], a: 0, why: "An active filter can amplify while it filters. A passive filter can never give an output bigger than its input." }
-    ]);
   }
 
   /* ---------- Filter Lab: a noisy signal goes in, you move the cut-off, the scope and the Bode plot show what comes out ---------- */
@@ -737,6 +729,33 @@
     el.innerHTML = `<div class="c5-real">${C.map(([i, t, c, d, go]) => `<article class="c5-rc"><span class="c5-ri" aria-hidden="true">${i}</span><div><h4>${t}</h4><p class="c5-rcc">${c}</p><p>${d}</p><a class="btn ghost small" href="#${go}" data-go="${go}">See the circuit ›</a></div></article>`).join("")}</div>`;
     el.addEventListener("click", (e) => { const g = e.target.closest("[data-go]"); if (g && Lab.BY_ID[g.dataset.go]) { e.preventDefault(); Lab.scrollToSection(Lab.BY_ID[g.dataset.go]); } });
   }
+  function mountFiltQuiz(el) {
+    el.innerHTML = `<div class="c5-quiz"></div>`;
+    quiz(el.querySelector(".c5-quiz"), [
+      { q: "You need to remove 50 Hz mains hum from an ECG signal without losing the heartbeat.", opts: ["Band reject (notch)", "Low pass", "High pass", "All pass"], a: 0, why: "A notch (band-reject) filter at 50 Hz removes just the hum and lets the rest of the signal through." },
+      { q: "A slow temperature signal has hiss at a few kilohertz on top.", opts: ["Low pass", "High pass", "Band reject", "All pass"], a: 0, why: "The wanted signal is slow (low frequency) and the hiss is fast, so a low-pass filter keeps the temperature and removes the hiss." },
+      { q: "A vibration sensor's output slowly drifts up and down, but you only want the fast vibration.", opts: ["High pass", "Low pass", "Band reject", "All pass"], a: 0, why: "The drift is very low frequency. A high-pass filter blocks it (and any DC offset) and keeps the fast vibration." },
+      { q: "You want only the heart-rate band (about 0.5 to 40 Hz) from a signal that has both slow drift and fast hiss.", opts: ["Band pass", "Low pass", "High pass", "Band reject"], a: 0, why: "A band-pass filter blocks both the slow drift below 0.5 Hz and the hiss above 40 Hz." },
+      { q: "You must change a signal's timing (phase) without changing its size at any frequency.", opts: ["All pass", "Low pass", "Band pass", "High pass"], a: 0, why: "An all-pass filter keeps every frequency at the same size and only shifts the phase." },
+      { q: "A tiny thermocouple signal needs amplifying AND its hum removed, in one stage.", opts: ["An active low-pass filter", "A passive low-pass filter", "A passive band-reject filter", "A passive high-pass filter"], a: 0, why: "An active filter can amplify while it filters. A passive filter can never give an output bigger than its input." }
+    ]);
+  }
+  function mountCompare(el) {
+    el.innerHTML = `<div class="table-wrap">
+            <table class="cmp">
+              <thead><tr><th scope="col"></th><th scope="col">Passive</th><th scope="col">Active</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Components</th><td>Resistors, capacitors and inductors only</td><td>Op-amps, transistors or FETs, plus resistors and capacitors. Usually no inductors.</td></tr>
+                <tr><th scope="row">Power supply</th><td>None needed</td><td>Needs a DC supply</td></tr>
+                <tr><th scope="row">Gain</th><td>At most 1 for RC and RL filters: the output is never larger than the input</td><td>Can be greater than 1, set accurately by the feedback resistors</td></tr>
+                <tr><th scope="row">Effect of the load</th><td>The load changes the filter's characteristics</td><td>The op-amp buffers the output, so the load has little effect</td></tr>
+                <tr><th scope="row">Frequency range</th><td>Works to very high frequencies, around 500 MHz</td><td>Limited by the op-amp, often to about 500 kHz</td></tr>
+                <tr><th scope="row">Size and practicality</th><td>Inductors are bulky, dissipate power and create stray magnetic fields</td><td>Small, light and easy to integrate. Used for Butterworth, Chebyshev and Cauer designs.</td></tr>
+                <tr><th scope="row">Drawbacks</th><td>No gain, and sensitive to loading</td><td>More sensitive to component and environmental changes</td></tr>
+              </tbody>
+            </table>
+          </div>`;
+  }
   function mountAmpQuiz(el) {
     el.innerHTML = `<div class="c5-quiz"></div>`;
     quiz(el.querySelector(".c5-quiz"), [
@@ -803,17 +822,23 @@
     ftypes: { id: "ftypes", group: "filt", toc: "Types of Filters", title: "Types of Filters", mount: mountFilterTypes,
       intro: `<p>Electronic filters are grouped two ways: by what they are <strong>built from</strong> (passive or active) and by <strong>which frequencies they pass</strong>. Each family has the same five types.</p>` },
     flab: { id: "flab", group: "filt", toc: "Filter Lab", title: "Filter Lab: Clean Up a Noisy Signal", mount: mountFilterLab,
-      intro: `<p>A real sensor signal arrives with noise on it. Pick a situation, then move the cut-off frequency and watch the noise disappear on the oscilloscope while the signal you want stays.</p>` },
+      intro: `<p>Put the filters to work. A real sensor signal arrives with noise on it. Pick a situation, then move the cut-off frequency and watch the noise disappear on the oscilloscope while the signal you want stays.</p>` },
     real: { id: "real", group: "more", toc: "Real Situations", title: "Real Situations", mount: mountReal, intro: `<p>Where these circuits are used in real instruments.</p>` },
-    ampquiz: { id: "ampquiz", group: "more", toc: "Quick Check", title: "Quick Check: Which Amplifier?", mount: mountAmpQuiz },
+    ampquiz: { id: "ampquiz", group: "amp", toc: "Quick Check: Amplifiers", title: "Quick Check: Which Amplifier?", mount: mountAmpQuiz,
+      intro: `<p>You have now seen all the amplifier circuits. Six quick questions to check you can tell them apart. The filters come next.</p>` },
+    compare: { id: "compare", group: "filt", toc: "Passive vs Active", title: "Passive vs Active Filters", mount: mountCompare },
+    fquiz: { id: "fquiz", group: "filt", toc: "Quick Check: Filters", title: "Quick Check: Which Filter Would You Use?", mount: mountFiltQuiz,
+      intro: `<p>You have now seen every filter type. Six quick questions: pick the filter for each situation. When you are ready, the exercises for both parts are in the last section.</p>` },
     design: { id: "design", group: "more", toc: "Design Challenge", title: "Design Challenge: Real Component Values", mount: mountDesign, intro: `<p>Engineers can't buy any value they like. Pick standard values to hit the target.</p>` },
     chain: { id: "chain", group: "more", toc: "The Signal Chain", title: "The Whole Signal Chain", mount: mountChain },
     sheet: { id: "sheet", group: "more", toc: "Formula Sheet", title: "Formula Sheet", mount: mountSheet }
   };
   { const at = (id) => SECTIONS.findIndex((s) => s.id === id);
     SECTIONS.splice(at("follower") + 1, 0, NEW_SECS.loading);
-    SECTIONS.splice(at("rclpf"), 0, NEW_SECS.ftypes, NEW_SECS.flab);
-    SECTIONS.push(NEW_SECS.real, NEW_SECS.ampquiz, NEW_SECS.design, NEW_SECS.chain, NEW_SECS.sheet); }
+    SECTIONS.splice(at("diff") + 1, 0, NEW_SECS.ampquiz);
+    SECTIONS.splice(at("rclpf"), 0, NEW_SECS.ftypes);
+    SECTIONS.splice(at("bandstop") + 1, 0, NEW_SECS.compare, NEW_SECS.flab, NEW_SECS.fquiz);
+    SECTIONS.push(NEW_SECS.real, NEW_SECS.design, NEW_SECS.chain, NEW_SECS.sheet); }
 
   // the differential amplifier's noise test: one tap loads matched or mismatched resistors with 50 Hz hum
   document.addEventListener("click", (e) => {
@@ -885,7 +910,7 @@
     groups: [
       { key: "why", list: "#whyList" },
       { key: "amp", list: "#ampList", toc: "#ampToc" },
-      { key: "filt", list: "#filtList", toc: "#filtToc", extraToc: `<li><a href="#compare">Passive vs active</a></li>` },
+      { key: "filt", list: "#filtList", toc: "#filtToc" },
       { key: "more", list: "#moreList", toc: "#moreToc" }
     ],
     exercises: EXERCISES
