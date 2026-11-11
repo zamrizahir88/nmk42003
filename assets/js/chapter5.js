@@ -119,7 +119,8 @@
     d.traces.forEach((tr) => { for (let i = 0; i <= 60; i++) ymax = Math.max(ymax, Math.abs(tr.fn((i / 60) * T0))); });
     if (d.rails && d.rails < ymax * 1.6) ymax = Math.max(ymax, d.rails); // show the rails only when the signal gets near them
     ymax = ymax > 0 ? ymax * 1.15 : 1;
-    const A = axes({ x: [0, span], y: [-ymax, ymax], xt: [0, T0, span], fx: (q) => eng(q, "s", 3), yt: [-ymax / 1.15, 0, ymax / 1.15], fy: (q) => eng(q, "V", 3), l: 62, xl: "Time", yl: "", H: 220 });
+    const wide = box.clientWidth > 640;
+    const A = axes({ x: [0, span], y: [-ymax, ymax], xt: wide ? [0, T0 / 2, T0, 1.5 * T0, span] : [0, T0, span], fx: (q) => eng(q, "s", 3), yt: [-ymax / 1.15, 0, ymax / 1.15], fy: (q) => eng(q, "V", 3), l: 62, r: 24, xl: "Time", yl: "", W: wide ? 760 : 360, H: wide ? 240 : 220 });
     let g = A.s + `<line class="gl" x1="${A.l}" x2="${A.l + A.pw}" y1="${A.Y(0)}" y2="${A.Y(0)}"/>`;
     if (d.rails && d.rails < ymax) [d.rails, -d.rails].forEach((r) => { g += `<line class="ref" x1="${A.l}" x2="${A.l + A.pw}" y1="${A.Y(r)}" y2="${A.Y(r)}"/>`; });
     d.traces.forEach((tr) => { const pts = []; for (let i = 0; i <= N; i++) { const x = (i / N) * span; pts.push([A.X(x), A.Y(tr.fn(x + off))]); } g += poly(pts, tr.cls); });
@@ -132,7 +133,7 @@
      Overview animation: why signals need conditioning
      ===================================================================== */
   function mountWhy(el) {
-    el.innerHTML = `<div class="pv"><figure class="scene-box"><div class="scene-scroll"><svg class="scene cond" viewBox="0 0 640 230" role="img" aria-label="A thermocouple gives a few millivolts with 50 hertz hum; an amplifier multiplies it by 500; a low-pass filter removes the hum; the ESP32 reads a clean 0 to 3 volt signal."></svg></div></figure><div class="pv-pl"></div><p class="pv-read"></p></div>`;
+    el.innerHTML = `<div class="pv"><figure class="scene-box"><div class="scene-scroll"><svg class="scene cond" viewBox="0 0 664 230" role="img" aria-label="A thermocouple gives a few millivolts with 50 hertz hum; an amplifier multiplies it by 500; a low-pass filter removes the hum; the ESP32 reads a clean 0 to 3 volt signal."></svg></div></figure><div class="pv-pl"></div><p class="pv-read"></p></div>`;
     const sv = el.querySelector("svg"), read = el.querySelector(".pv-read");
     const scopeAt = (x0, title, sub, fn, amp) => {
       let s = `<rect class="scope" x="${x0}" y="60" width="120" height="90" rx="6"/>`;
@@ -149,8 +150,8 @@
       s += scopeAt(276, "Amplified", "0 to 3 V, hum too", (u) => (slow(u) + hum(u)) * 0.5, 3.3);
       s += `<line class="flow-l" x1="396" y1="105" x2="408" y2="105"/><rect class="bx" x="408" y="84" width="54" height="42" rx="6"/>${T(435, 102, "low-", "middle", "small")}${T(435, 116, "pass", "middle", "small")}<line class="flow-l" x1="462" y1="105" x2="476" y2="105"/>`;
       s += scopeAt(476, "Filtered", "clean, ready for the ADC", (u) => slow(u) * 0.5, 3.3);
-      s += `<rect class="espbig" x="600" y="80" width="36" height="50" rx="6"/>${T(618, 110, "ESP32", "middle", "small inv")}<line class="flow-l" x1="596" y1="105" x2="600" y2="105"/>`;
-      s += T(320, 214, `now: sensor ${mV} mV → amplified ${(mV * 0.5).toFixed(2)} V → ADC code ${Math.round((mV * 0.5 * 4095) / 3.3)}`, "middle", "small");
+      s += `<rect class="espbig" x="606" y="80" width="54" height="50" rx="6"/>${T(633, 110, "ESP32", "middle", "small inv")}<line class="flow-l" x1="596" y1="105" x2="606" y2="105"/>`;
+      s += T(332, 214, `now: sensor ${mV} mV → amplified ${(mV * 0.5).toFixed(2)} V → ADC code ${Math.round((mV * 0.5 * 4095) / 3.3)}`, "middle", "small");
       sv.innerHTML = s;
     };
     read.innerHTML = "A thermocouple gives only a few millivolts, with 50 Hz mains hum on top. The ESP32 needs a clean signal between 0 and 3.3 V. <strong>Signal conditioning</strong> fixes both: an <strong>amplifier</strong> makes the signal big enough, and a <strong>filter</strong> removes the noise. This chapter covers both.";
@@ -415,7 +416,7 @@
         <p>The cut-off is still f<sub>c</sub> = 1 / (2πRC). Choose low-pass or high-pass below: the positions of R and C swap, and the amplifier stays the same. Because the op-amp can add gain, check the output against the supply rails.</p>`,
       inputs: [
         F("type", "sel", "lp", null, { label: "Filter type", options: [["lp", "Low-pass"], ["hp", "High-pass"]] }),
-        F("mode", "sel", "noninv", null, { label: "Amplifier", options: [["noninv", "Non-inverting, gain 1 + Rf/Rg"], ["unity", "Unity gain (voltage follower)"]] }),
+        F("mode", "sel", "noninv", null, { label: "Amplifier", options: [["noninv", "Non-inverting (adds gain)"], ["unity", "Unity gain (follower)"]] }),
         F("R", "R", 3.3e3), F("C", "C", 470e-9),
         F("Rg", "R", 10e3, "to ground", { show: (v) => v.mode === "noninv" }),
         F("Rf", "R", 10e3, "feedback", { show: (v) => v.mode === "noninv" }),
@@ -426,7 +427,7 @@
         const fb = v.mode === "unity"
           ? D.wire([310, 100], [285, 100], [285, 150], [420, 150], [420, 80])
           : D.wire([310, 100], [285, 100], [285, 150], [300, 150]) + D.dot(285, 150) + D.res(285, 150, 285, 210) + D.dot(285, 210) + T(297, 198, "Rg", "start") +
-            D.res(300, 150, 370, 150) + T(335, 141, "Rf") + D.wire([370, 150], [420, 150], [420, 80]);
+            D.res(300, 150, 370, 150) + T(348, 168, "Rf") + D.wire([370, 150], [420, 150], [420, 80]);
         return D.opamp(310, 80, true) +
           D.term(90, 60) + T(82, 64, "Vin", "end") + D.term(90, 210) + T(82, 214, "f", "end") + D.wire([94, 210], [466, 210]) + D.term(470, 210) +
           D.wire([94, 60], [130, 60]) + series + T(165, 86, lp ? "R" : "C") + D.wire([200, 60], [310, 60]) +
@@ -566,14 +567,16 @@
   function mountLoading(el) {
     el.innerHTML = `<div class="c5-fd">
       ${chips("Circuit", [["off", "Without follower"], ["on", "With voltage follower"]], "off")}
-      <figure class="scene-box c5-fdfig"><div class="scene-scroll"><svg class="ckt c5-fdsvg" viewBox="0 0 560 200" role="img" aria-label="A sensor modelled as a voltage source with internal resistance, driving a load, with or without a voltage follower in between"></svg></div></figure>
+      <div class="c5-bench">
+        <figure class="scene-box c5-fdfig"><div class="scene-scroll"><svg class="ckt c5-fdsvg" viewBox="0 0 560 200" role="img" aria-label="A sensor modelled as a voltage source with internal resistance, driving a load, with or without a voltage follower in between"></svg></div></figure>
+        <div class="c5-ctl"><p class="c5-ctlh">Change the values</p>${linSlider("fdVs", "Sensor voltage V<sub>s</sub>", 1, 10, 0.5, 5)}${linSlider("fdRs", "Sensor's internal resistance R<sub>s</sub>", 0, RS_VALS.length - 1, 1, RS_VALS.indexOf(9e3))}${linSlider("fdRL", "Load R<sub>L</sub>", 0, RL_VALS.length - 1, 1, RL_VALS.indexOf(1e3))}</div>
+      </div>
       <div class="c5-meters">
         <div class="c5-m"><span>Voltage across R<sub>L</sub></span><strong id="fdV"></strong></div>
         <div class="c5-m"><span>Current in R<sub>L</sub></span><strong id="fdI"></strong></div>
         <div class="c5-m"><span>Current from the sensor</span><strong id="fdS"></strong></div>
       </div>
       <div class="c5-bar"><span>Signal reaching the load</span><i><b id="fdBar"></b></i><strong id="fdPct"></strong></div>
-      <div class="c5-sls">${linSlider("fdVs", "Sensor voltage V<sub>s</sub>", 1, 10, 0.5, 5)}${linSlider("fdRs", "Sensor's internal resistance R<sub>s</sub>", 0, RS_VALS.length - 1, 1, RS_VALS.indexOf(9e3))}${linSlider("fdRL", "Load R<sub>L</sub>", 0, RL_VALS.length - 1, 1, RL_VALS.indexOf(1e3))}</div>
       <p class="pv-read c5-read" id="fdRead" aria-live="polite"></p></div>`;
     let mode = "off";
     const $ = (s) => el.querySelector(s);
@@ -583,9 +586,9 @@
       $("#fdVs-v").textContent = `${Vs} V`; $("#fdRs-v").textContent = eng(Rs, "Ω"); $("#fdRL-v").textContent = eng(RL, "Ω");
       const VL = on ? Vs : (Vs * RL) / (Rs + RL), IL = VL / RL, Is = on ? 0 : IL, pct = (VL / Vs) * 100;
       // the circuit
-      let s = `<rect class="c5-dash" x="8" y="22" width="166" height="176" rx="10"/>${T(91, 16, "Sensor (V<tspan dy='3' font-size='10'>s</tspan><tspan dy='-3'> with R</tspan><tspan dy='3' font-size='10'>s</tspan><tspan dy='-3'> inside)</tspan>", "middle", "small")}`;
-      s += `<circle class="w c5-src" cx="46" cy="118" r="17"/>${T(46, 114, "+", "middle", "small")}${T(46, 130, "−", "middle", "small")}${T(22, 122, `${Vs} V`, "end", "small")}`;
-      s += D.wire([46, 101], [46, 60], [70, 60]) + D.res(70, 60, 140, 60) + T(105, 48, `R<tspan dy='3' font-size='10'>s</tspan><tspan dy='-3'> = ${eng(Rs, "Ω")}</tspan>`, "middle", "small") + D.wire([140, 60], [174, 60]) + D.wire([46, 135], [46, 186], [174, 186]);
+      let s = `<rect class="c5-dash" x="8" y="22" width="166" height="176" rx="10"/>${T(91, 16, "Sensor", "middle", "small")}`;
+      s += `<circle class="w c5-src" cx="46" cy="118" r="17"/>${T(46, 114, "+", "middle", "small")}${T(46, 130, "−", "middle", "small")}${T(38, 160, `${Vs} V`, "end", "small val")}`;
+      s += D.wire([46, 101], [46, 60], [70, 60]) + D.res(70, 60, 140, 60) + T(105, 48, `R<tspan dy='3' font-size='0.75em'>s</tspan><tspan dy='-3'> = ${eng(Rs, "Ω")}</tspan>`, "middle", "small") + D.wire([140, 60], [174, 60]) + D.wire([46, 135], [46, 186], [174, 186]);
       if (!on) {
         s += D.wire([174, 60], [470, 60], [470, 82]) + D.res(470, 82, 470, 150) + D.wire([470, 150], [470, 186], [174, 186]);
         s += `<path class="c5-arr" d="M250,50h60l-8,-5M310,50l-8,5"/>${T(280, 40, `I = ${kfmt(IL, "A")}`, "middle", "small c5-red")}`;
@@ -594,7 +597,7 @@
         s += D.wire([342, 92], [470, 92], [470, 100]) + D.res(470, 100, 470, 160) + D.wire([470, 160], [470, 186], [174, 186]);
         s += T(205, 48, "I ≈ 0", "middle", "small c5-green") + `<path class="c5-arr" d="M385,82h50l-8,-5M435,82l-8,5"/>${T(410, 72, `I = ${kfmt(IL, "A")}`, "middle", "small c5-green")}`;
       }
-      s += T(482, 126, `R<tspan dy='3' font-size='10'>L</tspan><tspan dy='-3'> = ${eng(RL, "Ω")}</tspan>`, "start", "small") + T(482, 144, `V = ${kfmt(VL, "V")}`, "start", "small val");
+      s += T(458, 126, `R<tspan dy='3' font-size='0.75em'>L</tspan><tspan dy='-3'> = ${eng(RL, "Ω")}</tspan>`, "end", "small") + T(458, 146, `V = ${kfmt(VL, "V")}`, "end", "small val");
       $("#fdV").textContent = kfmt(VL, "V"); $("#fdI").textContent = kfmt(IL, "A"); $("#fdS").textContent = on ? "≈ 0 (the op-amp supplies the load)" : kfmt(Is, "A");
       $("#fdBar").style.width = `${Math.max(1, pct)}%`; $("#fdBar").className = pct > 95 ? "ok" : pct > 60 ? "mid" : "low"; $("#fdPct").textContent = `${num(pct, 3)} %`;
       el.querySelector(".c5-fdsvg").innerHTML = s;
@@ -673,11 +676,10 @@
   const Hof = (type, f, fc, fc2) => type === "lp" ? LPr(f / fc) : type === "hp" ? HPr(f / fc) : type === "bp" ? cmul(HPr(f / fc), LPr(f / fc2)) : (() => { const x = f / fc; return cdiv(cx(1 - x * x, 0), cx(1 - x * x, 4 * x)); })();
   function mountFilterLab(el) {
     el.innerHTML = `<div class="c5-fl">${chips("Situation", Object.entries(LABS).map(([k, o]) => [k, o.label]), "lp")}
-      <p class="small-note c5-tip" id="flTip"></p>
-      <div class="c5-sls" id="flSl"></div>
+      <div class="c5-ctl c5-flctl"><p class="c5-tip" id="flTip"></p><div class="c5-sls" id="flSl"></div></div>
       <div class="c5-flres" aria-live="polite"><div class="c5-m"><span>Signal kept</span><strong id="flSig"></strong></div><div class="c5-m"><span>Noise left</span><strong id="flNoise"></strong></div><div class="c5-m c5-verdict"><strong id="flOk"></strong></div></div>
-      <h4 class="sub-h">Oscilloscope</h4><div class="scope-box" id="flScope"></div>
-      <h4 class="sub-h">Where Each Part Sits on the Bode Plot</h4><div class="scope-box" id="flBode"></div>
+      <div class="c5-pair"><div><h4 class="sub-h">Oscilloscope</h4><div class="scope-box" id="flScope"></div></div>
+      <div><h4 class="sub-h">Where Each Part Sits on the Bode Plot</h4><div class="scope-box" id="flBode"></div></div></div>
       <p class="small-note">Green dot: the signal you want. Red dots: the noise. Dashed line: your cut-off (−3 dB). A part in the pass band gets through; a part in the stop band is attenuated.</p></div>`;
     let key = "lp", fc, fc2;
     const $ = (s) => el.querySelector(s);
@@ -709,7 +711,7 @@
         `<p class="legend"><span><span class="key input"></span>noisy input</span> <span><span class="key"></span>filtered output</span></p>`;
       // Bode with the parts as dots
       const d0 = Math.floor(Math.log10(L.range[0])), d1 = Math.ceil(Math.log10(L.range[1])), M = 240;
-      const B = axes({ x: [d0, d1], y: [-60, 6], xt: Array.from({ length: d1 - d0 + 1 }, (_, i) => d0 + i), fx: (q) => eng(10 ** q, "Hz", 2), yt: [-60, -40, -20, -3, 0], fy: (q) => `${q} dB`, l: 58, xl: "Frequency", yl: "", H: 200 });
+      const B = axes({ x: [d0, d1], y: [-60, 6], xt: Array.from({ length: d1 - d0 + 1 }, (_, i) => d0 + i), fx: (q) => eng(10 ** q, "Hz", 2), yt: [-60, -40, -20, 0], fy: (q) => `${q} dB`, l: 58, r: 30, xl: "Frequency", yl: "", H: 210 });
       const gdb = (f) => Math.max(-60, dB(cmag(Hof(L.type, f, fc, fc2))));
       const curve = []; for (let i = 0; i <= M; i++) { const q = d0 + ((d1 - d0) * i) / M; curve.push([B.X(q), B.Y(gdb(10 ** q))]); }
       let g = B.s + poly(curve, "trace-a") + `<line class="ref" x1="${B.l}" x2="${B.l + B.pw}" y1="${B.Y(-3)}" y2="${B.Y(-3)}"/>`;
@@ -750,14 +752,14 @@
   function mountDesign(el) {
     const opts = (decs, unit) => decs.flatMap((d) => E12.map((m) => m * d)).map((v) => `<option value="${v}">${eng(v, unit, 2)}</option>`).join("");
     el.innerHTML = `<div class="c5-dz">${chips("Challenge", [["gain", "Make a gain"], ["fc", "Make a cut-off frequency"]], "gain")}
-      <p class="c5-target" id="dzT"></p><div class="c5-dzin" id="dzIn"></div><p class="c5-dzout" id="dzOut" aria-live="polite"></p>
-      <p><button type="button" class="btn ghost small" data-new>New target</button></p>
+      <div class="c5-ctl c5-dzcard"><p class="c5-target" id="dzT"></p><div class="c5-dzin" id="dzIn"></div><p class="c5-dzout" id="dzOut" aria-live="polite"></p>
+      <p class="c5-dznew"><button type="button" class="btn ghost small" data-new>New target</button></p></div>
       <p class="small-note">Real resistors and capacitors only come in standard values. These are the E12 values (1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2, times a power of 10). Get within 5 % of the target.</p></div>`;
     let mode = "gain", target = 10;
     const $ = (s) => el.querySelector(s), G = [5, 10, 22, 47, 101], FCS = [50, 100, 159, 500, 1000];
     const setup = () => {
-      if (mode === "gain") { $("#dzT").innerHTML = `🎯 Design a <strong>non-inverting amplifier</strong> with a gain of <strong>${target}</strong>.`; $("#dzIn").innerHTML = `<label>R<sub>1</sub> <select id="dzA">${opts([1e3, 10e3], "Ω")}</select></label><label>R<sub>f</sub> <select id="dzB">${opts([1e3, 10e3, 100e3], "Ω")}</select></label>`; }
-      else { $("#dzT").innerHTML = `🎯 Design an <strong>RC low-pass filter</strong> with f<sub>c</sub> ≈ <strong>${eng(target, "Hz")}</strong>.`; $("#dzIn").innerHTML = `<label>R <select id="dzA">${opts([1e3, 10e3, 100e3], "Ω")}</select></label><label>C <select id="dzB">${opts([1e-9, 10e-9, 100e-9, 1e-6], "F")}</select></label>`; }
+      if (mode === "gain") { $("#dzT").innerHTML = `🎯 Design a <strong>non-inverting amplifier</strong> with a gain of <strong>${target}</strong>.`; $("#dzIn").innerHTML = `<label><span>R<sub>1</sub></span> <select id="dzA">${opts([1e3, 10e3], "Ω")}</select></label><label><span>R<sub>f</sub></span> <select id="dzB">${opts([1e3, 10e3, 100e3], "Ω")}</select></label>`; }
+      else { $("#dzT").innerHTML = `🎯 Design an <strong>RC low-pass filter</strong> with f<sub>c</sub> ≈ <strong>${eng(target, "Hz")}</strong>.`; $("#dzIn").innerHTML = `<label><span>R</span> <select id="dzA">${opts([1e3, 10e3, 100e3], "Ω")}</select></label><label><span>C</span> <select id="dzB">${opts([1e-9, 10e-9, 100e-9, 1e-6], "F")}</select></label>`; }
       calc();
     };
     const calc = () => {
@@ -785,17 +787,19 @@
       ["Active 1st-order", "gain = 1 + R<sub>f</sub>/R<sub>g</sub>; V<sub>out</sub> = V<sub>in</sub> × (RC ratio) × gain"], ["Band-pass", "f<sub>L</sub> = 1/(2πR<sub>1</sub>C<sub>1</sub>); f<sub>H</sub> = 1/(2πR<sub>2</sub>C<sub>2</sub>); BW = f<sub>H</sub> − f<sub>L</sub>; f<sub>c</sub> = √(f<sub>L</sub>f<sub>H</sub>)"],
       ["Band-stop (twin-T)", "f<sub>notch</sub> = 1/(2πRC)"], ["Decibels", "gain (dB) = 20 log<sub>10</sub>(V<sub>out</sub>/V<sub>in</sub>); f<sub>c</sub> is at −3 dB (0.707)"]];
     el.innerHTML = `<div class="table-wrap"><table class="cmp c5-sheet"><thead><tr><th scope="col">Circuit</th><th scope="col">Formulas</th></tr></thead><tbody>${R.map(([a, b]) => `<tr><th scope="row">${a}</th><td>${b}</td></tr>`).join("")}</tbody></table></div>
-      <p><button type="button" class="btn ghost small" data-print>🖨 Print or save as PDF</button></p>`;
+      <p class="c5-printp"><button type="button" class="btn ghost small" data-print>🖨 Print or save as PDF</button></p>`;
     el.querySelector("[data-print]").addEventListener("click", () => { document.body.classList.add("c5-printing"); el.closest(".circuit").classList.add("c5-printme"); window.print(); setTimeout(() => { document.body.classList.remove("c5-printing"); el.closest(".circuit").classList.remove("c5-printme"); }, 500); });
   }
 
   const NEW_SECS = {
     loading: { id: "loading", group: "amp", toc: "Loading Effect", title: "Why Use a Voltage Follower? The Loading Effect", mount: mountLoading,
       intro: `<p>A real sensor is not a perfect voltage source: it has its own <strong>internal resistance R<sub>s</sub></strong> inside. When it drives a load R<sub>L</sub> directly, R<sub>s</sub> and R<sub>L</sub> share the voltage like a divider, so the load sees less than the real signal and the sensor has to supply the load current. A voltage follower in between fixes this.</p>`,
-      after: `<div class="callout info"><strong>Worked example: 5 V sensor, R<sub>s</sub> = 9 kΩ, R<sub>L</sub> = 1 kΩ</strong>
-        <p><strong>Without a follower:</strong> I<sub>L</sub> = 5 V / (9 kΩ + 1 kΩ) = <strong>500 µA</strong>, so V<sub>L</sub> = 500 µA × 1 kΩ = 0.5 V. Only 10 % of the signal reaches the load.</p>
-        <p><strong>With a follower:</strong> V<sub>L</sub> = 5 V, so I<sub>L</sub> = 5 V / 1 kΩ = <strong>5 mA</strong>, supplied by the op-amp. The sensor supplies almost nothing.</p>
-        <p>The follower doesn't amplify the voltage. It <strong>isolates</strong> the sensor from the load: high input impedance (it takes almost no current) and low output impedance (it can supply the load).</p></div>` },
+      after: `<h4 class="sub-h">Worked Example: 5 V Sensor, R<sub>s</sub> = 9 kΩ, R<sub>L</sub> = 1 kΩ</h4>
+        <div class="c5-vs">
+          <div class="c5-vsc bad"><p class="c5-vsh">✗ Without a follower</p><p>I<sub>L</sub> = 5 V / (9 kΩ + 1 kΩ)</p><p class="c5-vsr">I<sub>L</sub> = 500 µA</p><p>V<sub>L</sub> = 500 µA × 1 kΩ = 0.5 V: only 10 % of the signal reaches the load.</p></div>
+          <div class="c5-vsc good"><p class="c5-vsh">✓ With a follower</p><p>V<sub>L</sub> = V<sub>s</sub> = 5 V</p><p class="c5-vsr">I<sub>L</sub> = 5 V / 1 kΩ = 5 mA</p><p>supplied by the op-amp. The sensor supplies almost nothing.</p></div>
+        </div>
+        <div class="callout info"><strong>Key idea</strong><p>The follower doesn't amplify the voltage. It <b>isolates</b> the sensor from the load: high input impedance (it takes almost no current) and low output impedance (it can supply the load).</p></div>` },
     ftypes: { id: "ftypes", group: "filt", toc: "Types of Filters", title: "Types of Filters", mount: mountFilterTypes,
       intro: `<p>Electronic filters are grouped two ways: by what they are <strong>built from</strong> (passive or active) and by <strong>which frequencies they pass</strong>. Each family has the same five types.</p>` },
     flab: { id: "flab", group: "filt", toc: "Filter Lab", title: "Filter Lab: Clean Up a Noisy Signal", mount: mountFilterLab,

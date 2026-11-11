@@ -103,3 +103,40 @@
   body.c5-printing [data-print], body.c5-printing .chat-fab, body.c5-printing .ink-fab { display: none !important; }
 }
 .c5-fdsvg { max-width: 640px; margin: 0 auto; } .c5-fdsvg text { font-size: 13px; } .c5-fdsvg text.val { font-weight: 700; fill: var(--teal); }
+
+/* Round 2 layout (11 Nov 2026): a bench for the loading demo, wide oscilloscopes, the Filter Lab side by side */
+.scope-box { max-width: none; }
+.c5-bench { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(240px, 1fr); gap: 14px; align-items: stretch; margin: 12px 0; }
+.c5-bench .c5-fdfig { margin: 0; display: grid; align-items: center; }
+.c5-ctl { display: grid; gap: 14px; align-content: start; padding: 14px 16px; border-radius: var(--r-md, 12px); background: var(--surface); border: 1px solid var(--rule); }
+.c5-ctlh { margin: 0; font-weight: 700; font-size: .92rem; color: var(--ink); }
+.c5-fd .c5-meters { margin-top: 0; }
+.c5-read { max-width: var(--measure, 68ch); }
+.c5-vs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 8px 0 12px; }
+.c5-vsc { padding: 12px 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--rule); border-top: 4px solid #e5484d; }
+.c5-vsc.good { border-top-color: #2bb673; }
+.c5-vsc p { margin: 0 0 4px; }
+.c5-vsh { font-weight: 700; color: var(--ink); }
+.c5-vsr { font-size: 1.15rem; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.c5-flctl { margin: 10px 0 12px; }
+.c5-flctl .c5-tip { margin: 0; font-size: .92rem; color: var(--ink-2); }
+.c5-flctl .c5-sls { margin: 0; }
+.c5-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.c5-pair .sub-h { margin-top: 4px; }
+.c5-dzin label { display: grid; gap: 4px; }
+.c5-dzin label > span { font-weight: 600; }
+.c5-printp { margin-top: 12px; }
+@media (max-width: 900px) { .c5-pair { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .c5-bench, .c5-vs { grid-template-columns: 1fr; } }
+.c5-dzcard { max-width: 640px; margin: 10px 0; gap: 10px; }
+.c5-dzcard p { margin: 0; }
+.c5-chain { gap: 18px; }
+.c5-chain li:not(:last-child)::after { right: -16px; font-size: 1.15rem; }
+@media (max-width: 760px) { .c5-chain li:not(:last-child)::after { right: auto; bottom: -19px; } }
+/* phones: the loading-effect drawing fits the screen (no sideways scrolling), with larger text */
+@media (max-width: 640px) {
+  .c5-fdsvg { min-width: 0 !important; }
+  .c5-fdsvg text { font-size: 20px; }
+  .c5-meters { grid-template-columns: 1fr 1fr; }
+  .c5-meters .c5-m:last-child { grid-column: 1 / -1; }
+}
