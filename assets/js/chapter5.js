@@ -793,9 +793,10 @@
     setup();
   }
   function mountChain(el) {
-    const B = [["Sensor", "Chapter 3", "a thermistor, strain gauge or thermocouple turns the quantity into R, V or charge"], ["Transduction circuit", "Chapter 4", "a divider or bridge turns the change into a voltage"], ["Amplifier", "Chapter 5", "makes millivolts into volts (differential amp for a bridge)"], ["Filter", "Chapter 5", "removes hum and hiss"], ["ADC and ESP32", "Chapter 6", "turns the clean voltage into numbers"]];
+    const B = [["Sensor", "Chapter 3", "a thermistor, strain gauge or thermocouple turns the quantity into R, V or charge"], ["Transduction circuit", "Chapter 4", "a divider or bridge turns the change into a voltage"], ["Signal conditioning: amplify and filter", "Chapter 5", "an amplifier makes millivolts into volts (a differential amp for a bridge), and a filter removes hum and hiss"], ["ADC and ESP32", "Chapter 6", "turns the clean voltage into numbers"]];
     el.innerHTML = `<ol class="c5-chain">${B.map(([t, c, d], i) => `<li><span class="c5-cn">${i + 1}</span><strong>${t}</strong><small>${c}</small><p>${d}</p></li>`).join("")}</ol>
-      <p class="small-note">Every instrument you build follows this chain. Chapter 5 sits in the middle: it takes the small, noisy voltage from the transduction circuit and makes it big and clean enough for the ADC.</p>`;
+      <p class="small-note">Every instrument you build follows this chain. Chapter 5 sits in the middle: it takes the small, noisy voltage from the transduction circuit and makes it big and clean enough for the ADC.</p>
+      <div class="callout info"><strong>The order can change</strong><p>Usually amplify first (so the signal stays above the noise) and filter last (the low-pass before the ADC). Filter first when big noise or an offset would saturate the amplifier. An active filter does both in one stage.</p></div>`;
   }
   function mountSheet(el) {
     const R = [["Voltage follower", "A<sub>v</sub> = 1, V<sub>out</sub> = V<sub>in</sub>"], ["Inverting amplifier", "A<sub>v</sub> = −R<sub>f</sub> / R<sub>1</sub>"], ["Non-inverting amplifier", "A<sub>v</sub> = 1 + R<sub>f</sub> / R<sub>1</sub>; I<sub>L</sub> = V<sub>out</sub> / R<sub>L</sub>"],

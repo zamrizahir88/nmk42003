@@ -87,10 +87,10 @@
 .c5-dzin label { display: grid; gap: 4px; font-weight: 600; }
 .c5-dzin select { min-height: 40px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); font: inherit; }
 .c5-dzout { margin: 8px 0; }
-.c5-chain { list-style: none; margin: 0 0 10px; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; counter-reset: none; }
+.c5-chain { list-style: none; margin: 0 0 10px; padding: 0; display: grid; grid-template-columns: 1fr 1fr 1.6fr 1fr; gap: 8px; counter-reset: none; }
 .c5-chain li { position: relative; display: grid; gap: 2px; align-content: start; padding: 12px 10px; border-radius: 14px; background: var(--surface); border: 1px solid var(--rule); }
 .c5-chain li:not(:last-child)::after { content: "→"; position: absolute; right: -11px; top: 50%; transform: translateY(-50%); color: var(--teal); font-weight: 700; z-index: 1; }
-.c5-chain li:nth-child(3), .c5-chain li:nth-child(4) { border-color: var(--teal); background: var(--teal-soft); }
+.c5-chain li:nth-child(3) { border-color: var(--teal); background: var(--teal-soft); }
 .c5-cn { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--teal); color: #fff; font-weight: 700; font-size: .85rem; }
 .c5-chain small { color: var(--ink-2); font-size: .78rem; }
 .c5-chain p { margin: 4px 0 0; font-size: .86rem; }

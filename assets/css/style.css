@@ -19,7 +19,7 @@
   --serif: "IBM Plex Serif", Georgia, "Times New Roman", serif;
   --sans: "IBM Plex Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
-  --measure: 68ch;
+  --measure: 82ch; /* reading width: was 68ch, widened on 12 Nov 2026 so text fills more of a desktop row */
   --wrap: 1120px;
   --r-sm: 6px;
   --r-md: 10px;
