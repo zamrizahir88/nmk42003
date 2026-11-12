@@ -343,30 +343,37 @@
     const W = Math.max(300, Math.round(host.clientWidth || 640)), narrow = W < 520;
     const H = narrow ? 280 : 330, l = narrow ? 44 : 54, r = 14, t = 46, bt = 36;
     const pw = W - l - r, ph = H - t - bt;
-    // the range follows the filter's own cut-off frequencies only (never the chosen f), so the whole response always shows:
-    // about 2.5 decades either side of the lowest and highest cut-off
-    const mk = b.marks.map((m) => Math.log10(m.f));
-    const d0 = Math.floor(Math.min(...mk) - 2.5), d1 = Math.ceil(Math.max(...mk) + 2.5);
+    // FULL response (lecturer's choice): the dB axis has a fixed bottom (−60 dB) and the frequency axis is wide enough for the
+    // curve to fall all the way to that bottom on every stop-band side, plus about 2 decades of flat pass band on the others.
+    // The range follows only the filter's own frequencies (never the chosen f), so it does not move when f changes.
+    const BOT = -60, gdb = (q) => dB(b.mag(10 ** q));
+    const mk = b.marks.map((m) => Math.log10(m.f)), mLo = Math.min(...mk), mHi = Math.max(...mk);
+    const edge = (from, dir) => {
+      for (let i = 1; i <= 350; i++) { const q = from + dir * i * 0.02; if (gdb(q) <= BOT) return q + dir * 0.3; }
+      return from + dir * 2; // never reaches the bottom on this side: it is a pass band, show 2 decades of it
+    };
+    let d0 = edge(mLo, -1), d1 = edge(mHi, 1);
+    if (d1 - d0 > 9) { const c = (mLo + mHi) / 2; d0 = Math.max(d0, c - 4.5); d1 = Math.min(d1, c + 4.5); }
     Object.assign(b, { W, l, r, d0, d1 });
     const X = (f) => l + ((Math.log10(f) - d0) / (d1 - d0)) * pw;
 
-    const N = 360, pts = [];
-    let maxDb = -Infinity, minDb = Infinity;
-    for (let i = 0; i < N; i++) {
-      const f = 10 ** (d0 + (i / (N - 1)) * (d1 - d0)), g = dB(b.mag(f));
-      pts.push([f, g]); if (g > maxDb) maxDb = g; if (g < minDb) minDb = g;
-    }
-    // the whole curve fits: the bottom follows the lowest point (down to 120 dB below the top), so nothing is cut flat
-    let top = Math.ceil((maxDb + 4) / 10) * 10, bot = Math.max(top - 120, Math.min(top - 40, Math.floor((minDb - 5) / 10) * 10));
-    const step = top - bot > 80 ? 20 : 10;
-    if (step === 20) { top = Math.ceil(top / 20) * 20; bot = Math.floor(bot / 20) * 20; } // labels on 0, −20, −40 …
-    const Y = (g) => t + ((top - Math.max(bot, Math.min(top, g))) / (top - bot)) * ph;
-
+    const N = 480, qs = [];
+    for (let i = 0; i < N; i++) qs.push(d0 + (i / (N - 1)) * (d1 - d0));
+    mk.forEach((q) => { if (q > d0 && q < d1) qs.push(q); }); // a notch is drawn right down to its point
+    qs.sort((a, c) => a - c);
+    const pts = qs.map((q) => [10 ** q, gdb(q)]);
+    let maxDb = -Infinity; pts.forEach(([, g]) => { if (g > maxDb) maxDb = g; });
+    const top = Math.max(10, Math.ceil((maxDb + 4) / 10) * 10), bot = BOT, step = 10;
+    const Yr = (g) => t + ((top - g) / (top - bot)) * ph; // unclamped: the curve leaves through the bottom edge
+    const Y = (g) => Yr(Math.max(bot, Math.min(top, g)));
     let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(bodeLabel(b))}">`;
-    for (let k = d0; k <= d1; k++) {
-      s += `<line class="gl" x1="${X(10 ** k)}" x2="${X(10 ** k)}" y1="${t}" y2="${t + ph}"/>`;
-      if (!narrow || (k - d0) % (d1 - d0 > 7 ? 3 : 2) === 0 || d1 - d0 <= 3) s += `<text class="axis" x="${X(10 ** k)}" y="${H - bt + 18}" text-anchor="${k === d1 ? "end" : "middle"}">${eng(10 ** k, "Hz", 3)}</text>`;
-      if (k < d1) for (let m = 2; m <= 9; m++) s += `<line class="gl minor" x1="${X(m * 10 ** k)}" x2="${X(m * 10 ** k)}" y1="${t}" y2="${t + ph}"/>`;
+    const every = narrow ? (d1 - d0 > 7 ? 3 : d1 - d0 > 4 ? 2 : 1) : (d1 - d0 > 9 ? 2 : 1);
+    for (let k = Math.floor(d0); k <= Math.ceil(d1); k++) {
+      for (let m = 2; m <= 9; m++) { const q = Math.log10(m) + k; if (q > d0 && q < d1) s += `<line class="gl minor" x1="${X(m * 10 ** k)}" x2="${X(m * 10 ** k)}" y1="${t}" y2="${t + ph}"/>`; }
+      if (k < d0 || k > d1) continue;
+      const x = X(10 ** k);
+      s += `<line class="gl" x1="${x}" x2="${x}" y1="${t}" y2="${t + ph}"/>`;
+      if (((k % every) + every) % every === 0) s += `<text class="axis" x="${x}" y="${H - bt + 18}" text-anchor="${x > W - r - 24 ? "end" : x < l + 24 ? "start" : "middle"}">${eng(10 ** k, "Hz", 3)}</text>`;
     }
     for (let g = top; g >= bot; g -= step) {
       s += `<line class="gl" x1="${l}" x2="${W - r}" y1="${Y(g)}" y2="${Y(g)}"/>`;
@@ -376,7 +383,9 @@
       s += `<line class="ref" x1="${l}" x2="${W - r}" y1="${Y(b.ref)}" y2="${Y(b.ref)}"/>`;
       s += `<text class="reflab" x="${l + 6}" y="${Y(b.ref) + 15}" text-anchor="start">${fmtDb(b.ref)}</text>`;
     }
-    s += `<polyline class="curve" points="${pts.map(([f, g]) => `${X(f).toFixed(1)},${Y(g).toFixed(1)}`).join(" ")}"/>`;
+    const cid = `bclip-${sec.id}`;
+    s += `<defs><clipPath id="${cid}"><rect x="${l}" y="${t - 2}" width="${pw}" height="${ph + 2}"/></clipPath></defs>`;
+    s += `<polyline class="curve" clip-path="url(#${cid})" points="${pts.map(([f, g]) => `${X(f).toFixed(1)},${Yr(Math.max(bot - 30, Math.min(top + 30, isFinite(g) ? g : bot - 30))).toFixed(1)}`).join(" ")}"/>`;
     b.marks.forEach((m, i) => {
       if (m.f < 10 ** d0 || m.f > 10 ** d1) return;
       const x = X(m.f), right = x > W - r - 110, gm = dB(b.mag(m.f));
