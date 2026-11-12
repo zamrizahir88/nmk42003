@@ -343,17 +343,10 @@
     const W = Math.max(300, Math.round(host.clientWidth || 640)), narrow = W < 520;
     const H = narrow ? 280 : 330, l = narrow ? 44 : 54, r = 14, t = 46, bt = 36;
     const pw = W - l - r, ph = H - t - bt;
-    const keys = b.marks.map((m) => m.f).concat(b.f);
-    let d0 = Math.floor(Math.log10(Math.min(...keys))) - 1, d1 = Math.ceil(Math.log10(Math.max(...keys))) + 1;
-    while (d1 - d0 < 4) { d0--; d1++; }
-    const maxDec = narrow ? 7 : 10;
-    if (d1 - d0 > maxDec) { // too wide: centre on the filter's own frequencies, but keep the chosen f in view
-      const mk = b.marks.map((m) => Math.log10(m.f)), mid = (Math.min(...mk) + Math.max(...mk)) / 2;
-      d0 = Math.floor(mid - maxDec / 2); d1 = d0 + maxDec;
-      const lf = Math.log10(b.f);
-      if (lf < d0 + 0.3) { d0 = Math.floor(lf - 0.3); d1 = d0 + maxDec; }
-      if (lf > d1 - 0.3) { d1 = Math.ceil(lf + 0.3); d0 = d1 - maxDec; }
-    }
+    // the range follows the filter's own cut-off frequencies only (never the chosen f), so the whole response always shows:
+    // about 2.5 decades either side of the lowest and highest cut-off
+    const mk = b.marks.map((m) => Math.log10(m.f));
+    const d0 = Math.floor(Math.min(...mk) - 2.5), d1 = Math.ceil(Math.max(...mk) + 2.5);
     Object.assign(b, { W, l, r, d0, d1 });
     const X = (f) => l + ((Math.log10(f) - d0) / (d1 - d0)) * pw;
 
@@ -372,7 +365,7 @@
     let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(bodeLabel(b))}">`;
     for (let k = d0; k <= d1; k++) {
       s += `<line class="gl" x1="${X(10 ** k)}" x2="${X(10 ** k)}" y1="${t}" y2="${t + ph}"/>`;
-      if (!narrow || (k - d0) % 2 === 0 || d1 - d0 <= 3) s += `<text class="axis" x="${X(10 ** k)}" y="${H - bt + 18}" text-anchor="${k === d1 ? "end" : "middle"}">${eng(10 ** k, "Hz", 3)}</text>`;
+      if (!narrow || (k - d0) % (d1 - d0 > 7 ? 3 : 2) === 0 || d1 - d0 <= 3) s += `<text class="axis" x="${X(10 ** k)}" y="${H - bt + 18}" text-anchor="${k === d1 ? "end" : "middle"}">${eng(10 ** k, "Hz", 3)}</text>`;
       if (k < d1) for (let m = 2; m <= 9; m++) s += `<line class="gl minor" x1="${X(m * 10 ** k)}" x2="${X(m * 10 ** k)}" y1="${t}" y2="${t + ph}"/>`;
     }
     for (let g = top; g >= bot; g -= step) {
@@ -397,6 +390,9 @@
       s += `<circle class="pt" cx="${x}" cy="${y}" r="5"/>`;
       const above = y - 10, nearRef = b.ref != null && Math.abs(above - 4 - Y(b.ref)) < 12;
       s += `<text class="ptlab" x="${right ? x - 10 : x + 10}" y="${y < t + 30 || nearRef ? y + 20 : above}" text-anchor="${right ? "end" : "start"}">${eng(b.f, "Hz")}: ${fmtDb(g)}</text>`;
+    } else { // f is outside the picture: say so at the edge
+      const lo = b.f < 10 ** d0;
+      s += `<text class="ptlab" x="${lo ? l + 6 : W - r - 6}" y="${t + ph - 8}" text-anchor="${lo ? "start" : "end"}">${lo ? "← " : ""}f = ${eng(b.f, "Hz")}: ${fmtDb(dB(b.mag(b.f)))}${lo ? "" : " →"}</text>`;
     }
     s += `</svg>`;
     host.innerHTML = s;
