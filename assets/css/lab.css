@@ -122,7 +122,7 @@ sub, sup { line-height: 0; }
 /* ---------- Bode plot ---------- */
 .bode { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 16px 16px 12px; margin: 14px 0; }
 .bode-plot { min-height: 200px; }
-.bode-plot svg { display: block; max-width: 100%; height: auto; cursor: crosshair; touch-action: manipulation; }
+.bode-plot svg { display: block; max-width: 100%; height: auto; }
 .bode .gl { stroke: var(--grid); stroke-width: 1; }
 .bode .gl.minor { opacity: .55; }
 .bode .axis { fill: var(--ink-3); font-family: var(--sans); font-size: 11px; }

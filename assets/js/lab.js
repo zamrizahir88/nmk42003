@@ -287,7 +287,7 @@
       <div class="warnings"></div>
       ${sec.render && !(sec.side && sec.diagram) ? `<div class="extra"></div>` : ""}
       ${sec.bode ? `<div class="bode"><h4>Frequency Response (Bode Magnitude Plot)</h4><div class="bode-plot"></div>
-        <p class="bode-cap">Gain in dB against frequency on a log scale. Dashed lines mark the cut-off frequencies and the −3 dB level, and the red dot is your chosen f. Click or tap the graph to move f.</p></div>` : ""}
+        <p class="bode-cap">Gain in dB against frequency on a log scale. Dashed lines mark the cut-off frequencies and the −3 dB level, and the red dot is the frequency f you entered. Change f in the inputs above to move it.</p></div>` : ""}
       ${sec.after || ""}`;
 
     el.querySelector("form").addEventListener("submit", (e) => e.preventDefault());
@@ -301,17 +301,6 @@
       }
       update(sec);
     });
-    if (sec.bode) {
-      el.querySelector(".bode-plot").addEventListener("click", (e) => {
-        const b = sec.lastBode, svg = e.currentTarget.querySelector("svg");
-        if (!b || !svg) return;
-        const box = svg.getBoundingClientRect(), x = ((e.clientX - box.left) / box.width) * b.W;
-        if (x < b.l || x > b.W - b.r) return;
-        const f = 10 ** (b.d0 + ((x - b.l) / (b.W - b.l - b.r)) * (b.d1 - b.d0));
-        setField(sec, sec.inputs.find((i) => i.k === "f"), Number(f.toPrecision(3)));
-        update(sec);
-      });
-    }
     sec.inputs.forEach((f) => setField(sec, f, f.d));
     return el;
   }
