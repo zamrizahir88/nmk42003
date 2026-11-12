@@ -287,7 +287,7 @@
       <div class="warnings"></div>
       ${sec.render && !(sec.side && sec.diagram) ? `<div class="extra"></div>` : ""}
       ${sec.bode ? `<div class="bode"><h4>Frequency Response (Bode Magnitude Plot)</h4><div class="bode-plot"></div>
-        <p class="bode-cap">Gain in dB against frequency on a log scale. Dashed lines mark the cut-off frequencies and the −3 dB level, and the red dot is the frequency f you entered. Change f in the inputs above to move it.</p></div>` : ""}
+        <p class="bode-cap">Gain in dB against frequency on a log scale. Dashed lines mark the cut-off frequencies and the −3 dB level, and the red dot is your chosen f. Click or tap the graph to move f.</p></div>` : ""}
       ${sec.after || ""}`;
 
     el.querySelector("form").addEventListener("submit", (e) => e.preventDefault());
@@ -301,6 +301,17 @@
       }
       update(sec);
     });
+    if (sec.bode) {
+      el.querySelector(".bode-plot").addEventListener("click", (e) => {
+        const b = sec.lastBode, svg = e.currentTarget.querySelector("svg");
+        if (!b || !svg) return;
+        const box = svg.getBoundingClientRect(), x = ((e.clientX - box.left) / box.width) * b.W;
+        if (x < b.l || x > b.W - b.r) return;
+        const f = 10 ** (b.d0 + ((x - b.l) / (b.W - b.l - b.r)) * (b.d1 - b.d0));
+        setField(sec, sec.inputs.find((i) => i.k === "f"), Number(f.toPrecision(3)));
+        update(sec);
+      });
+    }
     sec.inputs.forEach((f) => setField(sec, f, f.d));
     return el;
   }
@@ -330,26 +341,32 @@
     const b = sec.lastBode, host = sec.el.querySelector(".bode-plot");
     if (!b) return;
     const W = Math.max(300, Math.round(host.clientWidth || 640)), narrow = W < 520;
-    const H = narrow ? 250 : 300, l = narrow ? 44 : 54, r = 14, t = 26, bt = 36;
+    const H = narrow ? 280 : 330, l = narrow ? 44 : 54, r = 14, t = 46, bt = 36;
     const pw = W - l - r, ph = H - t - bt;
     const keys = b.marks.map((m) => m.f).concat(b.f);
     let d0 = Math.floor(Math.log10(Math.min(...keys))) - 1, d1 = Math.ceil(Math.log10(Math.max(...keys))) + 1;
     while (d1 - d0 < 4) { d0--; d1++; }
-    const maxDec = narrow ? 6 : 9;
-    if (d1 - d0 > maxDec) { // too wide: centre on the filter's own frequencies
+    const maxDec = narrow ? 7 : 10;
+    if (d1 - d0 > maxDec) { // too wide: centre on the filter's own frequencies, but keep the chosen f in view
       const mk = b.marks.map((m) => Math.log10(m.f)), mid = (Math.min(...mk) + Math.max(...mk)) / 2;
       d0 = Math.floor(mid - maxDec / 2); d1 = d0 + maxDec;
+      const lf = Math.log10(b.f);
+      if (lf < d0 + 0.3) { d0 = Math.floor(lf - 0.3); d1 = d0 + maxDec; }
+      if (lf > d1 - 0.3) { d1 = Math.ceil(lf + 0.3); d0 = d1 - maxDec; }
     }
     Object.assign(b, { W, l, r, d0, d1 });
     const X = (f) => l + ((Math.log10(f) - d0) / (d1 - d0)) * pw;
 
     const N = 360, pts = [];
-    let maxDb = -Infinity;
+    let maxDb = -Infinity, minDb = Infinity;
     for (let i = 0; i < N; i++) {
       const f = 10 ** (d0 + (i / (N - 1)) * (d1 - d0)), g = dB(b.mag(f));
-      pts.push([f, g]); if (g > maxDb) maxDb = g;
+      pts.push([f, g]); if (g > maxDb) maxDb = g; if (g < minDb) minDb = g;
     }
-    const top = Math.ceil((maxDb + 4) / 10) * 10, bot = top - 70;
+    // the whole curve fits: the bottom follows the lowest point (down to 120 dB below the top), so nothing is cut flat
+    let top = Math.ceil((maxDb + 4) / 10) * 10, bot = Math.max(top - 120, Math.min(top - 40, Math.floor((minDb - 5) / 10) * 10));
+    const step = top - bot > 80 ? 20 : 10;
+    if (step === 20) { top = Math.ceil(top / 20) * 20; bot = Math.floor(bot / 20) * 20; } // labels on 0, −20, −40 …
     const Y = (g) => t + ((top - Math.max(bot, Math.min(top, g))) / (top - bot)) * ph;
 
     let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(bodeLabel(b))}">`;
@@ -358,20 +375,22 @@
       if (!narrow || (k - d0) % 2 === 0 || d1 - d0 <= 3) s += `<text class="axis" x="${X(10 ** k)}" y="${H - bt + 18}" text-anchor="${k === d1 ? "end" : "middle"}">${eng(10 ** k, "Hz", 3)}</text>`;
       if (k < d1) for (let m = 2; m <= 9; m++) s += `<line class="gl minor" x1="${X(m * 10 ** k)}" x2="${X(m * 10 ** k)}" y1="${t}" y2="${t + ph}"/>`;
     }
-    for (let g = top; g >= bot; g -= 10) {
+    for (let g = top; g >= bot; g -= step) {
       s += `<line class="gl" x1="${l}" x2="${W - r}" y1="${Y(g)}" y2="${Y(g)}"/>`;
       s += `<text class="axis" x="${l - 6}" y="${Y(g) + 4}" text-anchor="end">${num(g)}${g === top ? " dB" : ""}</text>`;
     }
     if (b.ref != null) {
       s += `<line class="ref" x1="${l}" x2="${W - r}" y1="${Y(b.ref)}" y2="${Y(b.ref)}"/>`;
-      s += `<text class="reflab" x="${W - r - 4}" y="${Y(b.ref) - 5}" text-anchor="end">${fmtDb(b.ref)}</text>`;
+      s += `<text class="reflab" x="${l + 6}" y="${Y(b.ref) + 15}" text-anchor="start">${fmtDb(b.ref)}</text>`;
     }
     s += `<polyline class="curve" points="${pts.map(([f, g]) => `${X(f).toFixed(1)},${Y(g).toFixed(1)}`).join(" ")}"/>`;
     b.marks.forEach((m, i) => {
       if (m.f < 10 ** d0 || m.f > 10 ** d1) return;
-      const x = X(m.f), right = x > W - r - 70;
+      const x = X(m.f), right = x > W - r - 110, gm = dB(b.mag(m.f));
       s += `<line class="mk" x1="${x}" x2="${x}" y1="${t}" y2="${t + ph}"/>`;
-      s += `<text class="mklab" x="${right ? x - 4 : x + 4}" y="${t - 8 + (i % 2) * 18}" text-anchor="${right ? "end" : "start"}">${svgMark(m.label)}</text>`;
+      // each cut-off is labelled with its value, and a ring marks where the curve crosses it
+      s += `<text class="mklab" x="${right ? x - 4 : x + 4}" y="${t - 26 + (i % 2) * 16}" text-anchor="${right ? "end" : "start"}">${svgMark(m.label)} = ${eng(m.f, "Hz")}</text>`;
+      if (isFinite(gm) && gm > bot) s += `<circle class="mkpt" cx="${x}" cy="${Y(gm)}" r="4.5"/>`;
     });
     if (b.f >= 10 ** d0 && b.f <= 10 ** d1) {
       const g = dB(b.mag(b.f)), x = X(b.f), y = Y(g), right = x > l + pw * 0.62;
