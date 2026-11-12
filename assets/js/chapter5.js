@@ -564,8 +564,30 @@
   /* ---------- The loading effect: a sensor with internal resistance Rs driving a load RL, with and without a follower ---------- */
   // tidy values for the sliders (9 kΩ and 1 kΩ give the 500 µA / 5 mA example; megaohms for a pH probe)
   const RS_VALS = [100, 220, 470, 1e3, 2.2e3, 4.7e3, 9e3, 10e3, 22e3, 47e3, 100e3, 470e3, 1e6], RL_VALS = [100, 220, 470, 1e3, 2.2e3, 4.7e3, 10e3, 22e3, 47e3, 100e3];
+  // "What's inside the dashed box?": an LDR divider and the same thing as Vs with Rs inside
+  function eqvFigure() {
+    const T = (x, y, t, a = "middle", c = "small") => `<text x="${x}" y="${y}" text-anchor="${a}" class="${c}">${t}</text>`;
+    const sub = (b, s) => `${b}<tspan dy='3' font-size='0.75em'>${s}</tspan><tspan dy='-3'></tspan>`;
+    const ldr = D.term(70, 22) + T(84, 26, "+10 V", "start") + D.wire([70, 26], [70, 42]) + D.res(70, 42, 70, 98) +
+      `<circle class="w c5-nofill" cx="70" cy="70" r="22"/><path class="c5-arr" d="M28,34l18,14m0,0l-7,-1m7,1l-2,-7M20,46l18,14m0,0l-7,-1m7,1l-2,-7"/>` +
+      T(100, 66, "LDR", "start") + T(100, 82, "18 kΩ", "start", "small val") +
+      D.wire([70, 98], [70, 132]) + D.dot(70, 115) + D.wire([70, 115], [214, 115]) + D.term(218, 115) + T(218, 103, "output") +
+      D.res(70, 132, 70, 188) + T(86, 164, "18 kΩ", "start", "small val") + D.gnd(70, 188) + T(100, 202, "0 V", "start");
+    const box = `<rect class="c5-dash" x="10" y="30" width="170" height="160" rx="10"/>` + T(95, 22, "Sensor (the dashed box)") +
+      `<circle class="w c5-src" cx="50" cy="118" r="17"/>` + T(50, 114, "+") + T(50, 130, "−") + T(76, 123, sub("V", "s") + " = 5 V", "start", "small val") +
+      D.wire([50, 101], [50, 70], [72, 70]) + D.res(72, 70, 140, 70) + T(106, 56, sub("R", "s") + " = 9 kΩ", "middle", "small val") +
+      D.wire([140, 70], [250, 70]) + D.term(254, 70) + T(254, 58, "output") + D.wire([50, 135], [50, 176], [250, 176]) + D.term(254, 176) + T(254, 200, "0 V");
+    return `<h4 class="sub-h">What's Inside the Sensor? An Example</h4><div class="c5-eqv">
+      <figure class="c5-eqf"><svg class="ckt c5-eqsvg" viewBox="0 0 260 214" role="img" aria-label="A light-dependent resistor of 18 kilohms and a fixed 18 kilohm resistor in series across 10 volts, with the output taken from the middle">${ldr}</svg><figcaption>Real sensor circuit: an LDR voltage divider</figcaption></figure>
+      <div class="c5-eqeq" aria-hidden="true">=</div>
+      <figure class="c5-eqf"><svg class="ckt c5-eqsvg" viewBox="0 0 280 214" role="img" aria-label="The same circuit seen from the output: a 5 volt source with 9 kilohms in series, inside a dashed box">${box}</svg><figcaption>What the output "sees": V<sub>s</sub> with R<sub>s</sub> inside</figcaption></figure>
+    </div>
+    <div class="c5-eqmath"><p>V<sub>s</sub> = 10 V × 18 kΩ / (18 kΩ + 18 kΩ) = <strong>5 V</strong> <span>(the output voltage with nothing connected)</span></p>
+      <p>R<sub>s</sub> = 18 kΩ × 18 kΩ / (18 kΩ + 18 kΩ) = <strong>9 kΩ</strong> <span>(the two resistors in parallel)</span></p></div>
+    <p class="small-note">Any sensor in a divider can be replaced by its open-circuit voltage V<sub>s</sub> and its internal resistance R<sub>s</sub>. The demo below uses this 5 V, 9 kΩ sensor. R<sub>L</sub> is whatever the output drives next: a meter, a filter, a relay driver or a long cable.</p>`;
+  }
   function mountLoading(el) {
-    el.innerHTML = `<div class="c5-fd">
+    el.innerHTML = `${eqvFigure()}<h4 class="sub-h">Try It: With and Without a Follower</h4><div class="c5-fd">
       ${chips("Circuit", [["off", "Without follower"], ["on", "With voltage follower"]], "off")}
       <div class="c5-bench">
         <figure class="scene-box c5-fdfig"><div class="scene-scroll"><svg class="ckt c5-fdsvg" viewBox="0 0 560 200" role="img" aria-label="A sensor modelled as a voltage source with internal resistance, driving a load, with or without a voltage follower in between"></svg></div></figure>

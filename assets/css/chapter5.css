@@ -140,3 +140,16 @@
   .c5-meters { grid-template-columns: 1fr 1fr; }
   .c5-meters .c5-m:last-child { grid-column: 1 / -1; }
 }
+/* "What's inside the dashed box?" (LDR divider = Vs with Rs inside) */
+.c5-eqv { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; align-items: center; margin: 10px 0 6px; }
+.c5-eqf { margin: 0; padding: 10px; border-radius: var(--r-md, 12px); background: var(--surface); border: 1px solid var(--rule); }
+.c5-eqf figcaption { text-align: center; font-size: .86rem; color: var(--ink-2); margin-top: 4px; }
+.c5-eqsvg { width: 100%; height: auto; min-width: 0 !important; max-width: 320px; display: block; margin: 0 auto; }
+.c5-eqsvg text { font-size: 13px; }
+.c5-eqsvg text.val { font-weight: 700; fill: var(--teal); }
+.c5-nofill { fill: none; }
+.c5-eqeq { font: 700 2.2rem var(--serif); color: var(--teal); }
+.c5-eqmath { display: grid; gap: 2px; margin: 8px 0 4px; }
+.c5-eqmath p { margin: 0; }
+.c5-eqmath span { color: var(--ink-2); font-size: .9rem; }
+@media (max-width: 640px) { .c5-eqv { grid-template-columns: 1fr; justify-items: stretch; } .c5-eqeq { text-align: center; line-height: 1; } .c5-eqsvg text { font-size: 15px; } }
