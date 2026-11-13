@@ -78,7 +78,7 @@
   /* ---------- the whole calculation, from a set of progress records ---------- */
   function compute(k) {
     k = k || {};
-    const solved = parse(k["nmk-solved"], []).filter((id) => CATALOG[id]), log = parse(k["nmk-ex-log"], {}), quiz = parse(k["nmk-quiz-log"], {});
+    const solved = [].concat(parse(k["nmk-solved"], []) || []).filter((id) => typeof id === "string" && CATALOG[id]), log = parse(k["nmk-ex-log"], {}), quiz = parse(k["nmk-quiz-log"], {});
     const items = [], dates = [];
     const add = (xp, what, when) => { items.push({ xp, what, when: when || null }); if (when) dates.push(when); };
     solved.forEach((id) => {
