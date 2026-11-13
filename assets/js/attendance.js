@@ -689,6 +689,9 @@
     if (h1) h1.textContent = "Lecturer Tools";
     if (lead) lead.textContent = "Attendance, students, lab marks and the course, in one menu. Lecturers only.";
     host.addEventListener("toggle", (e) => { const d = e.target; if (d.matches && d.matches(".at-wk")) L.wkOpen[d.dataset.wkgrp] = d.open; }, true);
+    // the left menu (lecmenu.js) and the Warnings tab (warnings.js) load after this file: draw again once the page has
+    // loaded, in case the first draw came before them (a direct link such as attendance.html?tab=warnings)
+    if (document.readyState !== "complete") addEventListener("load", () => draw(), { once: true });
     host.innerHTML = `<div class="lt"><div class="lt-nav"></div><div class="lt-main"><div class="at-body"></div></div></div><div class="at-savebar" hidden></div>`;
     // the tab and session shown before (after Back from a profile), and Back between them
     const hs = history.state || {};
@@ -1648,7 +1651,8 @@
   }
   // Lab Marks (lecturers only): the marking itself is in labmarks.js
   function drawWarnings(body) {
-    if (!window.NMKWarnings) { body.innerHTML = `<p class="small-note">Warnings didn't load. Reload the page.</p>`; return; }
+    // warnings.js loads after this file: on a direct link (attendance.html?tab=warnings) the first draw can come first
+    if (!window.NMKWarnings) { body.innerHTML = document.readyState === "complete" ? `<p class="small-note">Warnings didn't load. Reload the page.</p>` : `<p class="small-note">Loading…</p>`; return; }
     NMKWarnings.draw(body, { L, db, FV, A, SEM, semSlug, esc, fmtStamp, profileLink });
   }
   function drawMarks(body, view) {
