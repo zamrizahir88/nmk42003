@@ -180,6 +180,8 @@ service cloud.firestore {
     match /notices/{nid} {
       allow read: if isLecturer() || (signedIn() && resource.data.email == email());
       allow create: if onRoster() && nid == request.resource.data.session + '_' + email() && request.resource.data.email == email() && request.resource.data.status == 'pending';
+      // a lecturer adds a notice for a student's Excused mark (the supporting document the student sent by email)
+      allow create: if isLecturer() && nid == request.resource.data.session + '_' + request.resource.data.email;
       allow update: if isLecturer() || (signedIn() && resource.data.email == email() && resource.data.status == 'pending'
           && request.resource.data.status == 'pending' && request.resource.data.email == email() && request.resource.data.session == resource.data.session);
       // a notice sent before its document was ready: the student adds the document later, whatever the decision
@@ -220,10 +222,14 @@ service cloud.firestore {
     match /uploads/{id} {
       allow create: if onRoster() && request.resource.data.email == email()
         && request.resource.data.notice == request.resource.data.session + '_' + email() && request.resource.data.parts is int && request.resource.data.parts <= 8;
+      // a lecturer uploads a student's document for them (📎 Attach document on an Excused mark)
+      allow create: if isLecturer() && request.resource.data.notice == request.resource.data.session + '_' + request.resource.data.email
+        && request.resource.data.parts is int && request.resource.data.parts <= 8;
       allow read: if isLecturer() || (signedIn() && resource.data.email == email());
       allow delete: if isLecturer();
       match /parts/{pid} {
         allow create: if onRoster() && request.resource.data.email == email() && request.resource.data.data is string && request.resource.data.data.size() <= 900000;
+        allow create: if isLecturer() && request.resource.data.data is string && request.resource.data.data.size() <= 900000;
         allow read, delete: if isLecturer();
       }
     }

@@ -67,7 +67,7 @@
       const info = {
         nickname: (board && board.nickname) || (user && user.nickname) || "", name: (roster && roster.name) || (board && board.name) || (user && user.name) || "",
         matric: (roster && roster.matric) || (board && board.matric) || "", section: (roster && roster.section) || (board && board.section) || "", group: (roster && roster.group) || (board && board.group) || 0,
-        photo: (board && board.photo) || (user && user.photo) || (own && d.st.user.photoURL) || "", since: (user && user.createdAt) || (board && board.since) || null, last: (board && board.lastActive) || (user && user.lastActive) || null
+        photo: (board && board.photo) || (user && user.photo) || (own && st && st.user && st.user.photoURL) || "", since: (user && user.createdAt) || (board && board.since) || null, last: (board && board.lastActive) || (user && user.lastActive) || null
       };
       let mates = [];
       try { const m = await db.collection("meta").doc("classmates").get(); mates = m.exists ? m.data().list || [] : []; } catch (e) { /* not on the class list */ }
@@ -114,6 +114,10 @@
       notices = n.docs.map((x) => x.data()).filter((x) => x.semester === SEM);
       swaps = s1.docs.concat(s2 ? s2.docs : []).map((x) => x.data()).filter((x) => x.semester === SEM);
     } catch (e) { /* shown as empty */ }
+    // lecturers: an Excused mark's supporting document, or a link that opens the session with "Attach document" ready
+    const docOf = (r) => { const nt = notices.find((x) => x.session === r.session);
+      return nt && nt.doc ? (nt.doc.url ? `<a href="${esc(nt.doc.url)}" target="_blank" rel="noopener">📎 Document on file</a>` : `<small>📎 Document on file (moving to your Drive)</small>`)
+        : `<a class="btn ghost small" href="attendance.html?tab=sessions&sid=${encodeURIComponent(r.session)}&attach=${encodeURIComponent(r.email)}">📎 Attach document</a>`; };
     const block = (kind, label) => {
       const l = att.filter((r) => r.kind === kind);
       if (!l.length) return `<p class="small-note">${label}: nothing recorded yet.</p>`;
@@ -121,7 +125,7 @@
       const pct = Math.round((l.reduce((s, r) => s + POINTS[r.status], 0) / (2 * l.length)) * 100);
       return `<h3 class="pf-h3">${label} <small class="pf-sub">${pct}% · ${n.P} present · ${n.L} late · ${n.E} excused · <span class="${n.A ? "pf-warn" : ""}">${n.A} absent</span></small></h3>
         <div class="adm-scroll"><table class="adm"><thead><tr><th scope="col">Date</th><th scope="col">Session</th><th scope="col">Status</th><th scope="col">Remark</th></tr></thead>
-        <tbody>${l.map((r) => `<tr><td>${iso(r.date)}</td><td>${esc(r.title)}</td><td>${chip(r.status)}</td><td>${esc(r.remark || "")}</td></tr>`).join("")}</tbody></table></div>`;
+        <tbody>${l.map((r) => `<tr><td>${iso(r.date)}</td><td>${esc(r.title)}</td><td>${chip(r.status)}</td><td>${esc(r.remark || "")}${d.lec && r.status === "E" ? `<br>${docOf(r)}` : ""}</td></tr>`).join("")}</tbody></table></div>`;
     };
     const r = d.roster;
     let html = card(`Attendance <small class="pf-sub">only you${d.own ? "" : " (the student)"} and your lecturers see this</small>`,

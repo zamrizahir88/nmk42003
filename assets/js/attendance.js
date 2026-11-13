@@ -655,8 +655,10 @@
     function warnCard() {
       const h = ((warned && warned.history) || []).filter((x) => x.mailed).slice().reverse();
       if (!h.length) return "";
-      return `<div class="at-card warn"><h3>Attendance Warnings</h3><ul class="at-list">${h.map((x) => `<li><strong>${WLV[x.level]} (${x.kind === "lab" ? "Labs" : "Lectures"})${x.type === "withdraw" ? ": withdrawn" : ""}</strong> · emailed to you and your RPS, ${fmtStamp(x.at)}</li>`).join("")}</ul>
-        <p class="small-note">If you had a valid reason for an absence, send an absence notice with your supporting document. Once your lecturer approves it, the absence changes to Excused and no longer counts.</p></div>`;
+      const adv = h.some((x) => x.type === "advise"), warn = h.some((x) => x.type !== "advise");
+      return `<div class="at-card warn"><h3>${warn && adv ? "Attendance Warnings and Advisories" : adv ? "Attendance Advisories" : "Attendance Warnings"}</h3><ul class="at-list">${h.map((x) => `<li><strong>${x.type === "advise" ? `Attendance Advisory ${x.level}` : WLV[x.level]} (${x.kind === "lab" ? "Labs" : "Lectures"})${x.type === "withdraw" ? ": withdrawn" : ""}</strong> · emailed to you and your RPS, ${fmtStamp(x.at)}</li>`).join("")}</ul>
+        ${warn ? `<p class="small-note">If you had a valid reason for an absence, send an absence notice with your supporting document. Once your lecturer approves it, the absence changes to Excused and no longer counts.</p>` : ""}
+        ${adv ? `<p class="small-note">An advisory is about absences with valid reasons (Excused). It does not lead to barring; it asks you to catch up on the sessions you missed.</p>` : ""}</div>`;
     }
     function paintMine() {
       if (!full) return;
@@ -692,7 +694,8 @@
     const hs = history.state || {};
     if (hs.view) { L.tab = hs.tab || "sessions"; L.sid = hs.sid || null; }
     // a card on the hub opens a tab straight away (attendance.html?tab=marks)
-    else { const qp = new URLSearchParams(location.search), qt = qp.get("lm") === "analysis" ? "analysis" : qp.get("tab"); if (TABS.includes(qt)) L.tab = qt; }
+    else { const qp = new URLSearchParams(location.search), qt = qp.get("lm") === "analysis" ? "analysis" : qp.get("tab"); if (TABS.includes(qt)) L.tab = qt;
+      if (qp.get("sid")) { L.sid = qp.get("sid"); if (qp.get("attach")) L.pendAttach = qp.get("attach").toLowerCase(); } }
     if (window.NMKBack) {
       NMKBack.view({ tab: L.tab, sid: L.sid }, true);
       NMKBack.onView((st) => {
@@ -788,6 +791,52 @@
   const movedOut = (s) => { const slot = s.kind === "lab" ? slotOf(s) : ""; return !slot ? [] : L.roster.filter((r) => r.status === "active" && r.section === s.section && moveOf(slot, r.id) && moveOf(slot, r.id).section !== s.section); };
   const recOf = (sid, email) => L.att.find((x) => x.session === sid && x.email === email);
   const noticeOf = (sid, email) => L.notices.find((x) => x.session === sid && x.email === email);
+  // an Excused mark's supporting document: open it, or attach one (from an email the student sent you)
+  const docCell = (nt, email) => (nt && nt.doc
+    ? (nt.doc.url ? docLink(nt.doc, "Document on file") : nt.doc.upload ? `<button type="button" class="btn ghost small" data-upview="${esc(nt.doc.upload)}">📎 Document on file</button>` : "")
+    : `<button type="button" class="btn ghost small" data-attach="${esc(email)}">📎 Attach document</button>`);
+  const reasonGuess = (t) => (/\b(mc|medical|sick|fever|clinic|hospital|demam)\b/i.test(t || "") ? "mc" : /official|university|universiti|sport|sukan|competition|pertandingan|program/i.test(t || "") ? "official" : /family|keluarga|death|kematian|emergency/i.test(t || "") ? "family" : "other");
+  // the lecturer attaches the supporting document of an Excused mark: saved like a student's document (uploads → the
+  // Drive script → notice.doc), on an approved notice, so the warning and advisory emails attach it like the others
+  function attachForm(sid, email) {
+    const s = L.sessions.find((x) => x.id === sid), r = L.roster.find((x) => x.id === email);
+    if (!s || !r) { say("Not Found", "That session or student is not on this page any more."); return; }
+    const x = recOf(sid, email), nt = noticeOf(sid, email), hint = (nt && nt.detail) || (x && x.remark) || "";
+    const rs = nt ? nt.reason : reasonGuess(hint);
+    const p = panel(`<h3>Attach a Supporting Document</h3>
+      <p><strong>${esc(r.name)}</strong> (${esc(r.matric)}) · ${fmtDate(s.date)} · ${esc(s.title)}</p>
+      <form class="at-dform" novalidate>
+        ${nt ? `<p class="small-note">Absence notice: <strong>${REASONS[nt.reason] || nt.reason}</strong>: ${esc(nt.detail || "")} (${esc(nt.status)}). The document is added to it.</p>`
+          : `<label>Reason<select name="reason">${Object.entries(REASONS).map(([v, l]) => `<option value="${v}"${v === rs ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+        <label>Explain briefly<textarea name="detail" rows="2" maxlength="500" placeholder="e.g. MC from Pusat Kesihatan UniMAP, sent by email on 5 Oct">${esc(hint)}</textarea></label>`}
+        <label>Supporting document<input type="file" name="doc" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required>
+          <small class="at-sub">PDF, JPG or PNG, up to 5 MB (save it from the student's email first). It goes to your Drive folder within 5 minutes, and the warning and advisory emails attach it.</small></label>
+        <p class="at-err" aria-live="polite"></p>
+        <div class="acc-row"><button type="submit" class="btn">Attach the document</button><button type="button" class="btn ghost" data-x>Cancel</button></div></form>`);
+    $(".at-dform", p).addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = e.target, err = $(".at-err", p), btn = f.querySelector("[type=submit]"), file = f.doc.files[0];
+      const reason = nt ? nt.reason : f.reason.value, detail = nt ? nt.detail : String(f.detail.value || "").trim();
+      if (!nt && detail.length < 3) { err.textContent = "Please explain in a few words (the reason the student was excused)."; return; }
+      if (!file) { err.textContent = "Choose the document (PDF, JPG or PNG)."; return; }
+      if (!DOC_TYPES[file.type]) { err.textContent = "Use a PDF, JPG or PNG file."; return; }
+      if (file.size > DOC_MAX) { err.textContent = "The file is larger than 5 MB. Save it as a smaller PDF or photo."; return; }
+      btn.disabled = true; err.textContent = "Uploading the document…";
+      try {
+        const doc = await sendDoc(file, { email, notice: `${sid}_${email}`, session: sid, title: s.title, date: s.date, reason: REASONS[reason] || reason, studentName: r.name, matric: String(r.matric), byLecturer: true });
+        const ref = db.collection("notices").doc(`${sid}_${email}`);
+        if (nt) await ref.update({ doc, docAddedAt: FV.serverTimestamp(), docBy: A.state.user.email.toLowerCase() });
+        else await ref.set({ semester: SEM, session: sid, email, name: r.name, matric: String(r.matric), kind: s.kind, date: s.date, title: s.title,
+          reason, detail: detail.slice(0, 500), status: "approved", byLecturer: true, note: "Added by the lecturer", doc,
+          at: FV.serverTimestamp(), decidedAt: FV.serverTimestamp(), decidedBy: A.state.user.email.toLowerCase() });
+        // the reason also goes in the Excused mark's remark when it has none (and you have no unsaved change for that row)
+        if (x && !x.remark && !L.edits[`${sid}|${email}`]) await db.collection("attendance").doc(x.id).update({ remark: `${REASONS[reason] || reason}: ${detail}`.slice(0, 200) }).catch(() => {});
+        // the message takes the form's place (and its Back step): closing the form first and opening another panel
+        // straight after would make the message's OK step back one page too far
+        say("Document Attached", `${esc(r.name)}: the document is saved. It moves to your Drive folder within 5 minutes, and the warning and advisory emails will attach it.`);
+      } catch (ex) { btn.disabled = false; err.textContent = `Could not save (${ex.code || ex.message || ex}).${String(ex.code || "").includes("permission") ? " Publish the latest firebase/firestore.rules in the Firebase console first." : " Please try again."}`; }
+    });
+  }
   const counts = (s) => { const n = { P: 0, L: 0, E: 0, A: 0 }; L.att.forEach((x) => { if (x.session === s.id && n[x.status] !== undefined) n[x.status]++; }); return n; };
   const edit = (sid, email, patch) => { const k = `${sid}|${email}`; L.edits[k] = Object.assign(L.edits[k] || {}, patch); };
   const editsFor = (sid) => Object.entries(L.edits).filter(([k]) => k.startsWith(sid + "|"));
@@ -1138,7 +1187,7 @@
         ${s.closesAt ? `<button type="button" class="btn ghost" data-more>+3 minutes</button>` : ""}<button type="button" class="btn" data-close>Close attendance…</button></div></div>`;
     const rows = studs.map((r, i) => {
       const x = recOf(s.id, r.id), e = L.edits[`${s.id}|${r.id}`] || {}, st = e.status || (x && x.status), rm = e.remark !== undefined ? e.remark : (x && x.remark) || "", nt = noticeOf(s.id, r.id);
-      return `<tr data-em="${esc(r.id)}" class="${L.edits[`${s.id}|${r.id}`] ? "changed" : ""}"><td>${i + 1}</td><td>${profileLink(r.id, r.name)}<br><small>${esc(r.matric)}</small>${r.moved ? `<br><small class="at-swn">⇄ from ${SECTION[r.moved.from] ? SEC_SHORT[r.moved.from] : "–"}${r.moved.swap ? " (swap)" : ""}</small>` : ""}${nt ? `<br><small class="at-ntc ${nt.status}" title="${esc(nt.detail)}">✉ ${REASONS[nt.reason] || nt.reason}: ${nt.status}</small>` : ""}</td>
+      return `<tr data-em="${esc(r.id)}" class="${L.edits[`${s.id}|${r.id}`] ? "changed" : ""}"><td>${i + 1}</td><td>${profileLink(r.id, r.name)}<br><small>${esc(r.matric)}</small>${r.moved ? `<br><small class="at-swn">⇄ from ${SECTION[r.moved.from] ? SEC_SHORT[r.moved.from] : "–"}${r.moved.swap ? " (swap)" : ""}</small>` : ""}${nt ? `<br><small class="at-ntc ${nt.status}" title="${esc(nt.detail)}">✉ ${REASONS[nt.reason] || nt.reason}: ${nt.status}</small>` : ""}${x && x.status === "E" ? `<br>${docCell(nt, r.id)}` : ""}</td>
         <td>${s.section === "all" ? `${(r.esec || "–").toUpperCase()} ` : ""}${r.egroup || "–"}</td>
         <td><div class="at-pick" role="group" aria-label="Status of ${esc(r.name)}">${["P", "L", "E", "A"].map((k) => `<button type="button" class="at-b ${k.toLowerCase()}" data-st="${k}" aria-pressed="${st === k}" title="${ST[k]}">${k}</button>`).join("")}</div></td>
         <td><input class="at-rm" value="${esc(rm)}" placeholder="${st === "E" ? "Reason, e.g. MC" : ""}" aria-label="Remark for ${esc(r.name)}"></td>
@@ -1155,6 +1204,7 @@
       `<div class="adm-scroll"><table class="adm at-take"><thead><tr><th scope="col">#</th><th scope="col">Student</th><th scope="col">Group</th><th scope="col">Status</th><th scope="col">Remark</th><th scope="col">Marked</th></tr></thead><tbody>${rows}</tbody></table></div>`}
       ${out.length ? `<p class="small-note">Swapped out of this lab: ${out.map((r) => `${esc(r.name)} (to ${SEC_SHORT[moveOf(slot, r.id).section] || "–"})`).join(", ")}.</p>` : ""}
       <p class="small-note">Your marks are saved only when you press <strong>Save</strong> in the bar at the bottom.</p>`;
+    if (L.pendAttach && L.got.roster && L.got.notices && L.got.att) { const em = L.pendAttach; L.pendAttach = null; attachForm(s.id, em); }
     if (s.state === "open") {
       paintKey($(".at-keyarea"), s.id, false);
       // keep changing this session's key while this page is open, and draw it only while its own page is shown
@@ -1699,6 +1749,7 @@
     if (b("[data-addstu]")) return studentForm(null);
     if (b("[data-editstu]")) return studentForm(L.roster.find((r) => r.id === b("[data-editstu]").dataset.editstu));
     if (b("[data-wk]")) return weekForm(+b("[data-wk]").dataset.wk);
+    if (b("[data-attach]")) return attachForm(L.sid, b("[data-attach]").dataset.attach);
     if (b("[data-lswap]")) return lecturerSwap(b("[data-lswap]").dataset.lswap || "");
     if (b("[data-swok]")) return decideSwap(b("[data-swid]").dataset.swid, true);
     if (b("[data-swno]")) return decideSwap(b("[data-swid]").dataset.swid, false);

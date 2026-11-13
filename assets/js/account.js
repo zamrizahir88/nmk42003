@@ -484,7 +484,7 @@
         // attendance warnings waiting for you to send (Manual mode)
         const [wm, wd] = await Promise.all([db.collection("meta").doc("warnings").get(), db.collection("warnings").where("hasDue", "==", true).get()].map((p) => p.catch(() => null)));
         const due = wd ? wd.docs.map((d) => d.data()).filter((w) => w.semester === SEM) : [];
-        if (wm && wm.exists && wm.data().mode !== "auto" && due.length) add({ todo: true, t: Math.max(...due.map((w) => tms(w.updatedAt))), href: "attendance.html?tab=warnings", text: `<strong>${due.length}</strong> student${due.length === 1 ? " has" : "s have"} attendance warnings waiting to be sent (Attendance > Warnings)` });
+        if (wm && wm.exists && wm.data().mode !== "auto" && due.length) add({ todo: true, t: Math.max(...due.map((w) => tms(w.updatedAt))), href: "attendance.html?tab=warnings", text: `<strong>${due.length}</strong> student${due.length === 1 ? " has" : "s have"} attendance warnings or advisories waiting to be sent (Attendance > Warnings)` });
         // mini project proposals waiting for review
         const pg = await db.collection("pgroups").where("status", "==", "submitted").get().catch(() => ({ docs: [] }));
         pg.docs.map((d) => d.data()).filter((g) => g.semester === SEM).forEach((g) => add({ todo: true, t: tms(g.submittedAt), href: "project.html", text: `Mini project proposal to review: <strong>${esc((g.proposal && g.proposal.title) || "untitled")}</strong>${g.version > 1 ? " (resubmitted)" : ""}` }));
@@ -555,7 +555,9 @@
         // attendance warnings emailed to me and my RPS
         const wslug = String(SEM).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), WLV = { 1: "Attendance Warning 1", 2: "Attendance Warning 2", 3: "Barring Notification" };
         const wdoc = await db.collection("warnings").doc(`${wslug}_${em}`).get().catch(() => null);
-        ((wdoc && wdoc.exists && wdoc.data().history) || []).filter((x) => x.mailed).forEach((x) => add({ t: tms(x.at), href: "attendance.html#records", text: x.type === "withdraw"
+        ((wdoc && wdoc.exists && wdoc.data().history) || []).filter((x) => x.mailed).forEach((x) => add({ t: tms(x.at), href: "attendance.html#records", text: x.type === "advise"
+          ? `<strong>Attendance Advisory ${x.level} (${x.kind === "lab" ? "Labs" : "Lectures"})</strong> was emailed to you and your RPS: please catch up on the sessions you missed.`
+          : x.type === "withdraw"
           ? `Your ${WLV[x.level]} (${x.kind === "lab" ? "Labs" : "Lectures"}) is <strong>withdrawn</strong>: your absence notice was approved`
           : `<strong>${WLV[x.level]} (${x.kind === "lab" ? "Labs" : "Lectures"})</strong> was emailed to you and your RPS. Check your attendance.` }));
         mine(nts).filter((n) => n.docLater && !n.doc && n.status !== "rejected").forEach((n) => add({ todo: true, t: tms(n.at), href: "attendance.html#records", text: `Add your supporting document for <strong>${esc(n.title)}</strong> by ${esc(n.docDue)}` }));

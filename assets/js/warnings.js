@@ -8,13 +8,18 @@
   "use strict";
   const KT = { lecture: "Lectures", lab: "Labs" };
   const LV = { 1: "Attendance Warning 1", 2: "Attendance Warning 2", 3: "Barring Notification" };
+  const AV = { 1: "Attendance Advisory 1", 2: "Attendance Advisory 2" };   // excused absences (valid reasons): never barring
   let C = null, W = [], meta = null, unsub = null, unsubM = null, wroteMeta = false;
   const st = { view: "due", sel: new Set(), prev: null, msg: "" };
   const esc = (s) => C.esc(s);
   const ms = (t) => (t && t.toMillis ? t.toMillis() : t ? Date.parse(t) : 0);
-  const itemName = (it) => (it.type === "withdraw" ? `${LV[it.level]} (${KT[it.kind]}) withdrawn` : `${LV[it.level]} (${KT[it.kind]})`);
-  const pill = (it) => `<span class="wn-pill ${it.type === "withdraw" ? "w" : `l${it.level}`}">${esc(itemName(it))}</span>`;
+  const itemName = (it) => (it.type === "advise" ? `${AV[it.level]} (${KT[it.kind]})` : it.type === "withdraw" ? `${LV[it.level]} (${KT[it.kind]}) withdrawn` : `${LV[it.level]} (${KT[it.kind]})`);
+  const pill = (it) => `<span class="wn-pill ${it.type === "advise" ? `a${it.level}` : it.type === "withdraw" ? "w" : `l${it.level}`}">${esc(itemName(it))}</span>`;
   const levelText = (w, k) => { const s = ((w && w.sent) || {})[k] || {}; return s.level ? LV[s.level].replace("Attendance ", "") : "–"; };
+  const advText = (w, k) => { const s = ((w && w.adv) || {})[k] || {}; return s.level ? AV[s.level].replace("Attendance ", "") : "–"; };
+  // the teaching team copied on every email (meta/warnings.cc), as typed in the box
+  const ccOf = () => (Array.isArray(meta && meta.cc) ? meta.cc : String((meta && meta.cc) || "").split(/[,;\s]+/)).filter(Boolean);
+  const okMail = (e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);
 
   function render(body) {
     const root = body.querySelector(".wn-root") || Object.assign(document.createElement("div"), { className: "wn-root" });
@@ -25,13 +30,21 @@
     const roster = C.L.roster.filter((r) => r.status === "active").sort((a, b) => (a.name < b.name ? -1 : 1)), byEmail = Object.fromEntries(W.map((w) => [w.email, w]));
     const hist = W.flatMap((w) => (w.history || []).map((h) => Object.assign({ w }, h))).sort((a, b) => ms(b.at) - ms(a.at));
     const prevIt = st.prev && (W.find((w) => w.id === st.prev.id) || { due: [] }).due.find((i) => i.key === st.prev.key);
+    // keep what the lecturer is typing in the Cc box if the list refreshes meanwhile
+    const typing = root.querySelector("#wnCc"), keepCc = typing && document.activeElement === typing ? typing.value : null;
     root.innerHTML = `<p class="widget-lead">Emails to the student and their RPS when absences without an approved reason add up, with a copy to you.
         <strong>Lectures:</strong> 2 absences → Warning 1, 3 → Warning 2, more than 3 → barred from the final exam.
         <strong>Labs:</strong> 1 → Warning 1, 2 → Warning 2, 3 → barred. An absence counts 1 hour after its session ends; one with an absence notice waiting for your decision is held.</p>
+      <p class="widget-lead"><strong>Attendance Advisory</strong> (excused absences, with valid reasons; never leads to barring): <strong>Lectures:</strong> 2 excused → Advisory 1, 4 → Advisory 2.
+        <strong>Labs:</strong> 2 excused → Advisory 1, 3 → Advisory 2. Every email carries the supporting documents of the sessions it lists.</p>
       <div class="at-card wn-set"><h3>How Warnings Are Sent</h3>
         <div class="at-fs at-radios" role="radiogroup" aria-label="Sending mode">
           <label><input type="radio" name="wnmode" value="manual"${auto ? "" : " checked"}><span><strong>Manual.</strong> Due emails wait below until you send them.</span></label>
           <label><input type="radio" name="wnmode" value="auto"${auto ? " checked" : ""}><span><strong>Automatic.</strong> The script checks once a day and sends due emails by itself.</span></label></div>
+        <form class="wn-cc" novalidate><label for="wnCc"><strong>Cc the teaching team</strong> <span class="small-note">on every warning and advisory email (the RPS is always copied too)</span></label>
+          <div class="acc-row"><input id="wnCc" name="cc" type="text" value="${esc(st.ccDraft != null ? st.ccDraft : ccOf().join(", "))}" placeholder="e.g. colleague@unimap.edu.my" autocomplete="off" spellcheck="false">
+          <button type="submit" class="btn ghost small">Save</button></div>
+          <p class="small-note">Separate several addresses with commas.${ccOf().length ? ` Copied now: ${ccOf().map(esc).join(", ")}.` : " Nobody else is copied yet."}</p></form>
         <p class="small-note">${last ? `Your script last checked ${C.fmtStamp(meta.lastRun)}${meta.lastSent ? ` and sent ${meta.lastSent} email${meta.lastSent === 1 ? "" : "s"}` : ""}.` : `Your script hasn't checked yet. Set it up once with the steps at the top of <a href="apps-script/warnings.gs" target="_blank" rel="noopener">apps-script/warnings.gs</a>.`}
           ${meta.lastError ? `<br><span class="at-warn">Last error: ${esc(meta.lastError)}</span>` : ""}</p>
         <div class="acc-row"><button type="button" class="btn small" data-wrun${asked > last ? " disabled" : ""}>${asked > last ? "Check requested…" : "Run check now"}</button>
@@ -43,33 +56,34 @@
       <div class="adm-tools">${[["due", `Due (${due.length})`], ["all", "All students"], ["log", `Sent (${hist.length})`]].map(([v, l]) => `<button type="button" class="chip-btn" data-wview="${v}" aria-pressed="${st.view === v}">${l}</button>`).join("")}</div>
       ${st.view === "due" ? dueView(due, auto) : st.view === "all" ? allView(roster, byEmail) : logView(hist)}
       <p class="small-note wn-msg" aria-live="polite">${esc(st.msg)}</p>`;
+    if (keepCc !== null) { const i = root.querySelector("#wnCc"); i.value = keepCc; i.focus(); }
     if (prevIt) root.querySelector(".wn-frame").srcdoc = prevIt.html || `<pre>${esc(prevIt.text || "")}</pre>`;
   }
 
   function dueView(due, auto) {
-    if (!due.length) return `<p class="adm-empty">No warnings due right now.</p>`;
+    if (!due.length) return `<p class="adm-empty">No warnings or advisories due right now.</p>`;
     return `${auto ? `<p class="small-note">Automatic mode: these go out at the next check.</p>` : ""}
       <div class="adm-tools"><label class="wn-all"><input type="checkbox" data-wall${due.every((w) => st.sel.has(w.id)) ? " checked" : ""}> Select all</label>
         <button type="button" class="btn small" data-wsend>Send selected</button><button type="button" class="btn ghost small" data-wsendall>Send all (${due.length})</button>
         <button type="button" class="btn ghost small" data-wskip>Mark selected as sent</button></div>
-      <div class="adm-scroll"><table class="adm wn-due"><thead><tr><th scope="col"><span class="vh">Select</span></th><th scope="col">Student</th><th scope="col">Absences</th><th scope="col">Due</th><th scope="col">RPS</th></tr></thead><tbody>
+      <div class="adm-scroll"><table class="adm wn-due"><thead><tr><th scope="col"><span class="vh">Select</span></th><th scope="col">Student</th><th scope="col">Absent / excused</th><th scope="col">Due</th><th scope="col">RPS</th></tr></thead><tbody>
       ${due.map((w) => { const q = (w.due || []).every((i) => (w.go || []).includes(i.key));
         return `<tr data-wid="${esc(w.id)}"><td><input type="checkbox" data-wsel aria-label="Select ${esc(w.name)}"${st.sel.has(w.id) ? " checked" : ""}></td>
           <td>${C.profileLink(w.email, w.name)}<br><small>${esc(w.matric)}</small></td>
-          <td><small>Lectures ${(w.counts || {}).lecture || 0} · Labs ${(w.counts || {}).lab || 0}</small></td>
+          <td><small>Absent: lectures ${(w.counts || {}).lecture || 0} · labs ${(w.counts || {}).lab || 0}<br>Excused: lectures ${(w.ecounts || {}).lecture || 0} · labs ${(w.ecounts || {}).lab || 0}</small></td>
           <td>${(w.due || []).map((i) => `<div class="wn-item">${pill(i)} <button type="button" class="btn ghost small" data-wprev="${esc(i.key)}">Preview</button></div>`).join("")}${q ? `<small class="wn-q">Queued: sends within 5 minutes</small>` : ""}</td>
           <td><small>${esc(w.rps || "–")}<br>${w.rpsEmail ? esc(w.rpsEmail) : `<span class="at-warn">No RPS email</span>`}</small></td></tr>`; }).join("")}</tbody></table></div>`;
   }
   function allView(roster, byEmail) {
-    return `<div class="adm-scroll"><table class="adm wn-allt"><thead><tr><th scope="col">Student</th><th scope="col">Lecture absences</th><th scope="col">Lab absences</th><th scope="col">Lectures: sent</th><th scope="col">Labs: sent</th></tr></thead><tbody>
-      ${roster.map((r) => { const w = byEmail[r.id], c = (w && w.counts) || {};
-        return `<tr><td>${C.profileLink(r.id, r.name)}<br><small>${esc(r.matric)}</small></td><td>${c.lecture || 0}</td><td>${c.lab || 0}</td><td>${levelText(w, "lecture")}</td><td>${levelText(w, "lab")}</td></tr>`; }).join("")}</tbody></table></div>
-      <p class="small-note">Counted by your script at its last check: absences without an approved reason, from sessions that ended over an hour ago.</p>`;
+    return `<div class="adm-scroll"><table class="adm wn-allt"><thead><tr><th scope="col">Student</th><th scope="col">Lectures: absent / excused</th><th scope="col">Labs: absent / excused</th><th scope="col">Lectures: sent</th><th scope="col">Labs: sent</th></tr></thead><tbody>
+      ${roster.map((r) => { const w = byEmail[r.id], c = (w && w.counts) || {}, e = (w && w.ecounts) || {};
+        return `<tr><td>${C.profileLink(r.id, r.name)}<br><small>${esc(r.matric)}</small></td><td>${c.lecture || 0} / ${e.lecture || 0}</td><td>${c.lab || 0} / ${e.lab || 0}</td><td>${levelText(w, "lecture")}<br><small>${advText(w, "lecture")}</small></td><td>${levelText(w, "lab")}<br><small>${advText(w, "lab")}</small></td></tr>`; }).join("")}</tbody></table></div>
+      <p class="small-note">Counted by your script at its last check, from sessions that ended over an hour ago: absences without an approved reason, and excused absences (for the advisories).</p>`;
   }
   function logView(hist) {
-    if (!hist.length) return `<p class="adm-empty">No warnings sent yet.</p>`;
+    if (!hist.length) return `<p class="adm-empty">No warnings or advisories sent yet.</p>`;
     return `<div class="adm-scroll"><table class="adm"><thead><tr><th scope="col">When</th><th scope="col">Student</th><th scope="col">Email</th><th scope="col">To</th></tr></thead><tbody>
-      ${hist.map((h) => `<tr><td><small>${C.fmtStamp(h.at)}</small></td><td>${C.profileLink(h.w.email, h.w.name)}</td><td>${pill(h)}${h.mailed ? "" : ` <small>(marked as sent, no email)</small>`}</td><td><small>${h.mailed ? `Student, RPS${h.rpsEmail ? ` (${esc(h.rpsEmail)})` : ""}, you` : "–"}</small></td></tr>`).join("")}</tbody></table></div>`;
+      ${hist.map((h) => `<tr><td><small>${C.fmtStamp(h.at)}</small></td><td>${C.profileLink(h.w.email, h.w.name)}</td><td>${pill(h)}${h.mailed ? "" : ` <small>(marked as sent, no email)</small>`}</td><td><small>${h.mailed ? (h.cc !== undefined ? `Student; Cc ${esc(h.cc || "nobody")}; you` : `Student, RPS${h.rpsEmail ? ` (${esc(h.rpsEmail)})` : ""}, you`) : "–"}</small></td></tr>`).join("")}</tbody></table></div>`;
   }
 
   // send (or mark as sent) every due email of these students
@@ -114,6 +128,17 @@
         catch (ex) { st.msg = `Could not save (${ex.code || ex}).`; }
         rerender();
       }
+    });
+    body.addEventListener("submit", async (e) => {
+      const f = e.target.closest(".wn-cc");
+      if (!f) return;
+      e.preventDefault();
+      const list = String(f.cc.value || "").split(/[,;\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean);
+      const bad = list.filter((x) => !okMail(x));
+      if (bad.length) { st.ccDraft = f.cc.value; st.msg = `Not an email address: ${bad.join(", ")}. Nothing was saved: correct it and press Save again.`; rerender(); return; }
+      try { await C.db.collection("meta").doc("warnings").set({ cc: [...new Set(list)] }, { merge: true }); st.ccDraft = null; if (document.activeElement) document.activeElement.blur(); st.msg = list.length ? `Saved. Every email is now copied to ${list.join(", ")}.` : "Saved. Nobody else is copied."; }
+      catch (ex) { st.msg = `Could not save (${ex.code || ex}).`; }
+      rerender();
     });
     body.addEventListener("change", async (e) => {
       const t = e.target;

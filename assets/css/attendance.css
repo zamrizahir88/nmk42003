@@ -144,6 +144,14 @@ body.at-show .page-hero, body.at-show .site-footer, body.at-show .chat-fab, body
 .wn-pill.l2 { background: color-mix(in srgb, #e07a2e 16%, var(--surface)); color: color-mix(in srgb, #c2410c 85%, var(--ink)); border-color: color-mix(in srgb, #e07a2e 50%, transparent); }
 .wn-pill.l3 { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
 .wn-pill.w { background: var(--teal-soft); color: var(--teal); border-color: color-mix(in srgb, var(--teal) 45%, transparent); }
+/* Attendance Advisory (excused absences): calm blues, not the warning colours */
+.wn-pill.a1, .wn-pill.a2 { background: color-mix(in srgb, #2f6fbf 14%, var(--surface)); color: color-mix(in srgb, #1d4f8f 80%, var(--ink)); border-color: color-mix(in srgb, #2f6fbf 45%, transparent); }
+.wn-pill.a2 { background: color-mix(in srgb, #4f5fc4 16%, var(--surface)); color: color-mix(in srgb, #28367f 80%, var(--ink)); border-color: color-mix(in srgb, #4f5fc4 50%, transparent); }
+:root[data-theme="dark"] .wn-pill.a1, :root[data-theme="dark"] .wn-pill.a2 { color: #a9c7f0; }
+.wn-cc { display: grid; gap: 6px; margin: 12px 0 4px; }
+.wn-cc .acc-row { flex-wrap: nowrap; }
+.wn-cc input[type="text"] { flex: 1 1 auto; width: 100%; max-width: 560px; min-width: 0; min-height: 38px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); font: inherit; }
+.wn-cc .small-note { margin: 0; }
 .wn-item { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0 6px; }
 .wn-q { display: block; color: var(--teal); font-weight: 600; }
 .wn-all { display: inline-flex; align-items: center; gap: 6px; font-size: .9rem; flex: 0 0 auto; }
