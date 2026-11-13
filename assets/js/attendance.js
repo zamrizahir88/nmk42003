@@ -686,7 +686,7 @@
     const h1 = document.querySelector(".page-hero h1"), lead = document.querySelector(".page-hero .page-lead");
     if (h1) h1.textContent = "Lecturer Tools";
     if (lead) lead.textContent = "Attendance, students, lab marks and the course, in one menu. Lecturers only.";
-    host.addEventListener("toggle", (e) => { const d = e.target; if (d.matches && d.matches(".at-wk")) L.wkOpen[d.dataset.wk] = d.open; }, true);
+    host.addEventListener("toggle", (e) => { const d = e.target; if (d.matches && d.matches(".at-wk")) L.wkOpen[d.dataset.wkgrp] = d.open; }, true);
     host.innerHTML = `<div class="lt"><div class="lt-nav"></div><div class="lt-main"><div class="at-body"></div></div></div><div class="at-savebar" hidden></div>`;
     // the tab and session shown before (after Back from a profile), and Back between them
     const hs = history.state || {};
@@ -871,7 +871,7 @@
       const tag = w === cur ? "This week" : w === cur + 1 ? "Next week" : w < cur ? `${s.length} session${s.length === 1 ? "" : "s"}${tot.m ? ` · ${Math.round((tot.p / tot.m) * 100)}% present` : ""}` : `${s.length} session${s.length === 1 ? "" : "s"}`;
       const open = L.wkOpen[w] !== undefined ? L.wkOpen[w] : w === cur || w === cur + 1 || s.some((x) => x.state === "open");
       const range = s[0].date !== s[s.length - 1].date ? `${fmtDate(s[0].date)} to ${fmtDate(s[s.length - 1].date)}` : fmtDate(s[0].date);
-      return `<details class="at-wk" data-wk="${w}"${open ? " open" : ""}><summary><strong>Week ${w}</strong> · ${range} <span>${tag}</span></summary>
+      return `<details class="at-wk" data-wkgrp="${w}"${open ? " open" : ""}><summary><strong>Week ${w}</strong> · ${range} <span>${tag}</span></summary>
         <div class="adm-scroll"><table class="adm at-ses"><thead><tr><th scope="col"><span class="vh">Select</span></th><th scope="col">Date</th><th scope="col">Session</th><th scope="col">For</th><th scope="col">State</th><th scope="col">P / L / E / A</th><th scope="col"><span class="vh">Manage</span></th></tr></thead>
         <tbody>${s.map(row).join("")}</tbody></table></div></details>`;
     };
