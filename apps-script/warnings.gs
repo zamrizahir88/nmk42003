@@ -205,7 +205,52 @@ const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], MONTHS = ["Jan",
 const day_ = (iso) => { const d = new Date(iso + "T00:00:00Z"); return DAYS[d.getUTCDay()] + " " + d.getUTCDate() + " " + MONTHS[d.getUTCMonth()] + " " + d.getUTCFullYear(); };
 const COLORS = { 1: ["#fdf1d8", "#7a4b00", "#e8b04b"], 2: ["#fde4cf", "#8a3b00", "#f0995a"], 3: ["#fbe0e0", "#8f1d1d", "#e26d6d"], w: ["#dff3ef", "#0b5d55", "#5fb3a8"],
   a1: ["#e3eefb", "#1d4f8f", "#7fa8dc"], a2: ["#dfe5f7", "#28367f", "#7f8fd6"] };
-const pill_ = (c, text) => '<span style="display:inline-block;background:' + c[0] + ";color:" + c[1] + ";border:1px solid " + c[2] + ';font-size:12px;font-weight:bold;padding:3px 10px;border-radius:999px;">' + esc_(text) + "</span>";
+const pill_ = (c, text) => '<span style="font-family:Arial,Helvetica,sans-serif;display:inline-block;background:' + c[0] + ";color:" + c[1] + ";border:1px solid " + c[2] + ';font-size:12px;font-weight:bold;padding:4px 10px;border-radius:999px;">' + esc_(text) + "</span>";
+
+/* ---------- the email layout (phone-first, 13 Nov 2026): one centred column up to 600 px, nothing side by side, so it fits a
+   320 px phone without sideways scrolling; inline styles and tables only (what Gmail and Outlook keep) ---------- */
+const MF = "font-family:Arial,Helvetica,sans-serif;";
+const MC = { navy: "#14213d", teal: "#0f766e", ink: "#1b2a4a", ink2: "#4a5568", mute: "#6b7686", rule: "#e3e7ee", page: "#eef1f5" };
+const MT = { w1: ["#fdf1d8", "#7a4b00", "#e8b04b"], w2: ["#fde4cf", "#8a3b00", "#f0995a"], w3: ["#fbe0e0", "#8f1d1d", "#e26d6d"], ok: ["#dff3ef", "#0b5d55", "#5fb3a8"],
+  a1: ["#e3eefb", "#1d4f8f", "#7fa8dc"], a2: ["#dfe5f7", "#28367f", "#7f8fd6"], off: ["#f6f7f9", "#8a94a3", "#e3e7ee"] };
+const mailP_ = (html, extra) => '<p style="' + MF + "margin:14px 0 0;font-size:15px;line-height:1.6;color:" + MC.ink2 + ";" + (extra || "") + '">' + html + "</p>";
+const mailRole_ = (who, html) => mailP_('<b style="color:' + MC.ink + ';">' + who + ":</b> " + html);
+const mailCircled_ = (k) => ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"][k - 1] || k + ".";
+const mailLabel_ = (t, top) => '<div style="' + MF + "font-size:12px;letter-spacing:1px;text-transform:uppercase;color:" + MC.mute + ";font-weight:bold;margin:" + (top || 18) + 'px 0 6px;">' + esc_(t) + "</div>";
+function mailCard_(k, s, lines, edge) {
+  return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;border:1px solid ' + MC.rule + ";border-left:4px solid " + edge + ';border-radius:8px;border-collapse:separate;"><tr><td style="padding:10px 12px;">'
+    + '<div style="' + MF + "font-size:13px;color:" + MC.mute + ';font-weight:bold;">' + mailCircled_(k) + " " + day_(s.date) + "</div>"
+    + '<div style="' + MF + "font-size:15px;color:" + MC.ink + ';font-weight:bold;margin-top:2px;line-height:1.4;word-break:break-word;">' + esc_(s.title) + "</div>"
+    + lines.map((x) => '<div style="' + MF + "font-size:14px;color:" + MC.ink2 + ';margin-top:4px;line-height:1.5;word-break:break-word;"><span style="color:' + MC.mute + ';">' + esc_(x[0]) + ":</span> " + x[1] + "</div>").join("")
+    + "</td></tr></table>";
+}
+function mailLadder_(steps, now, title) {
+  return mailLabel_(title, 20) + steps.map((st, i) => {
+    const L = i + 1, t = L <= now ? MT[st[2]] : MT.off;
+    return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 6px;background:' + t[0] + ";border:1px solid " + t[2] + ';border-radius:8px;border-collapse:separate;"><tr>'
+      + '<td width="28" style="padding:10px 0 10px 12px;vertical-align:middle;"><div style="width:14px;height:14px;border-radius:50%;background:' + (L <= now ? t[1] : "#ffffff") + ";border:2px solid " + t[1] + ';"></div></td>'
+      + '<td style="padding:10px 12px 10px 6px;' + MF + "font-size:14px;color:" + t[1] + ";" + (L <= now ? "font-weight:bold;" : "") + '">' + esc_(st[0]) + ' <span style="font-weight:normal;">· ' + esc_(st[1]) + "</span>"
+      + (L === now ? ' <span style="display:inline-block;background:' + t[1] + ';color:#ffffff;font-size:11px;font-weight:bold;padding:2px 8px;border-radius:999px;margin-left:4px;">NOW</span>' : "") + "</td></tr></table>";
+  }).join("");
+}
+const mailButton_ = (href, text) => '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 0;"><tr><td style="background:' + MC.teal + ';border-radius:8px;text-align:center;">'
+  + '<a href="' + href + '" style="' + MF + 'display:block;padding:14px 16px;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;">' + esc_(text) + "</a></td></tr></table>";
+const mailFacts_ = (list) => '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 0;border-top:1px solid ' + MC.rule + ';">' + list.map((x) =>
+  '<tr><td style="padding:8px 0;border-bottom:1px solid ' + MC.rule + ';"><div style="' + MF + "font-size:12px;color:" + MC.mute + ';">' + esc_(x[0]) + '</div><div style="' + MF + "font-size:15px;color:" + MC.ink + ';margin-top:2px;word-break:break-word;">' + esc_(x[1]) + "</div></td></tr>").join("") + "</table>";
+function mailShell_(o) {
+  return '<div style="margin:0;padding:0;background:' + MC.page + ';"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:' + MC.page + ';"><tr><td align="center" style="padding:12px 8px;">'
+    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid #d6dbe3;border-radius:12px;border-collapse:separate;">'
+    + '<tr><td style="background:' + MC.navy + ';padding:18px 18px 16px;border-radius:12px 12px 0 0;">'
+    + '<div style="' + MF + 'font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#9fd6cf;font-weight:bold;">' + esc_(o.kicker) + "</div>"
+    + '<div style="font-family:Georgia,\'Times New Roman\',serif;font-size:20px;color:#ffffff;margin-top:4px;">NMK42003 Instrumentation</div>'
+    + '<div style="' + MF + 'font-size:12px;color:#c9d6e8;margin-top:2px;">Faculty of Electronic Engineering &amp; Technology, UniMAP</div></td></tr>'
+    + '<tr><td style="height:4px;line-height:4px;font-size:0;background:' + o.accent + ';">&nbsp;</td></tr>'
+    + '<tr><td style="padding:20px 18px 6px;">' + o.badge
+    + '<div style="font-family:Georgia,\'Times New Roman\',serif;font-size:23px;line-height:1.25;color:' + MC.ink + ';margin:12px 0 0;">' + esc_(o.title) + "</div>"
+    + mailP_(o.lead, "margin-top:8px;") + mailFacts_(o.facts) + (o.sessionsTitle ? mailLabel_(o.sessionsTitle) : "") + o.sessions + (o.after || "") + o.ladder + o.student + o.rps + "</td></tr>"
+    + '<tr><td style="padding:16px 18px 18px;background:#f3f6f9;border-top:1px solid ' + MC.rule + ';border-radius:0 0 12px 12px;"><div style="' + MF + "font-size:12px;line-height:1.6;color:" + MC.mute + ';">This is an automated message from the NMK42003 Instrumentation course website: <a href="' + SITE + '" style="color:' + MC.teal + ';word-break:break-all;">' + SITE.replace(/^https:\/\//, "").replace(/\/$/, "") + "</a><br>Course coordinator: " + COORDINATOR + "</div></td></tr>"
+    + "</table></td></tr></table></div>";
+}
 
 function build_(r, it, sessions, notices, counts, marks) {
   marks = marks || {};
@@ -232,30 +277,25 @@ function build_(r, it, sessions, notices, counts, marks) {
   }
   const sec = r.section ? SECTION[r.section] + (r.group ? ", Group " + r.group : "") : "";
   const facts = [["Student", name], ["Matric", matric], ["Programme", r.programme || ""], ["Lab section", sec], ["RPS", r.rps || ""]].filter((x) => x[1]);
-  const td = 'style="padding:8px;border-top:1px solid #e3e7ee;vertical-align:top;"', th = 'style="padding:8px;text-align:left;font-weight:bold;"';
-  const rows = withdraw
-    ? list.map((s) => { const nt = notices[s.id + "_" + r.id] || {}; return "<tr><td " + td + ">" + day_(s.date) + "</td><td " + td + ">" + esc_(s.title) + "</td><td " + td + ">" + (["P", "L"].indexOf(marks[s.id + "_" + r.id]) >= 0 ? "Checked in (" + (marks[s.id + "_" + r.id] === "L" ? "Late" : "Present") + ")" : nt.status === "approved" ? "<b>" + esc_(REASON[nt.reason] || nt.reason || "") + "</b>: " + esc_(nt.detail || "") : "Changed to Excused by the lecturer") + "</td></tr>"; }).join("")
-    : list.map((s, i) => "<tr><td " + td + ">" + (i + 1) + "</td><td " + td + ">" + day_(s.date) + "</td><td " + td + ">" + esc_(s.title) + "</td></tr>").join("");
-  const table = '<table role="presentation" style="width:100%;font-size:13px;border-collapse:collapse;border:1px solid #e3e7ee;margin:4px 0 0;"><tr style="background:#f3f6f9;">'
-    + (withdraw ? "<td " + th + ">Date</td><td " + th + ">Session</td><td " + th + ">Reason and explanation</td>" : "<td " + th + ">#</td><td " + th + ">Date</td><td " + th + ">Session</td>") + "</tr>" + rows + "</table>";
+  // phone-first layout (13 Nov 2026): one column, cards for the sessions, the levels stacked (mailShell_ and friends)
+  const tone = withdraw ? "ok" : "w" + it.level;
+  const cards = list.map((s, i) => {
+    if (!withdraw) return mailCard_(i + 1, s, [], MT[tone][2]);
+    const nt = notices[s.id + "_" + r.id] || {}, m = marks[s.id + "_" + r.id];
+    const why = ["P", "L"].indexOf(m) >= 0 ? "Checked in (" + (m === "L" ? "Late" : "Present") + ")"
+      : nt.status === "approved" ? "<b>" + esc_(REASON[nt.reason] || nt.reason || "") + "</b>: " + esc_(nt.detail || "") : "Changed to Excused by the lecturer";
+    return mailCard_(i + 1, s, [["Reason and explanation", why]], MT[tone][2]);
+  }).join("");
   const now = withdraw ? it.to : it.level;
-  const ladder = '<table role="presentation" style="width:100%;border-collapse:separate;border-spacing:6px 0;margin:18px 0 6px;font-size:12px;"><tr>' + [1, 2, 3].map((L) => {
-    const c = L <= now ? COLORS[L] : ["#f6f7f9", "#6b7686", "#e3e7ee"];
-    return '<td style="text-align:center;padding:8px 4px;border-radius:6px;background:' + c[0] + ";color:" + c[1] + ";border:1px solid " + c[2] + ";" + (L <= now ? "font-weight:bold;" : "") + '">' + (L === 3 ? "Barred from final exam" : L === 1 ? "1st warning" : "2nd warning") + "<br>" + LADDER[it.kind][L - 1] + "</td>";
-  }).join("") + "</tr></table>";
-  const P = (html) => '<p style="font-size:14px;color:#4a5568;line-height:1.6;margin:14px 0 0;">' + html + "</p>";
-  const student = withdraw ? P("<b style=\"color:#1b2a4a;\">Student:</b> no action is needed for this absence.")
-    : P("<b style=\"color:#1b2a4a;\">Student:</b> if you have a valid reason for an absence (medical, family emergency or an official university activity), send an absence notice with your supporting document on the course website. Once your lecturer approves it, the absence changes to Excused and no longer counts. Without an approved notice, the absence stands.")
-      + '<p style="margin:14px 0 0;"><a href="' + SITE + 'attendance.html" style="display:inline-block;background:#0f766e;color:#ffffff;font-size:14px;padding:10px 18px;border-radius:6px;text-decoration:none;">Student: open your attendance</a></p>';
-  const rps = P("<b style=\"color:#1b2a4a;\">RPS:</b> you are receiving this as the student's Rakan Pendamping Siswa (RPS). " + (withdraw ? "This is for your information." : it.level === 3 ? "Kindly advise the student, and contact the course coordinator if you have any questions." : "Kindly advise the student."));
-  const after = withdraw ? P(K.abs + " now: <b>" + n + "</b>. " + (it.to ? esc_(LEVELS[it.to]) + " (" + K.title + ") still stands." : "No attendance warning stands now.")) : "";
-  const html = '<div style="background:#eef1f5;padding:16px 8px;font-family:Arial,Helvetica,sans-serif;"><div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #d6dbe3;color:#1b2a4a;">'
-    + '<table role="presentation" style="width:100%;background:#14213d;border-collapse:collapse;"><tr><td style="padding:18px 24px;"><div style="color:#ffffff;font-size:18px;font-family:Georgia,serif;">NMK42003 Instrumentation</div><div style="color:#9fd6cf;font-size:12px;">Faculty of Electronic Engineering &amp; Technology, UniMAP</div></td><td style="padding:18px 24px;color:#9fd6cf;font-size:12px;text-align:right;">Attendance<br>notification</td></tr></table>'
-    + '<div style="height:4px;background:#0f766e;"></div><div style="padding:20px 24px;">' + badge
-    + '<div style="font-size:20px;margin:12px 0 4px;font-family:Georgia,serif;">' + head + "</div>" + P(lead).replace("margin:14px 0 0", "margin:0")
-    + '<table role="presentation" style="width:100%;font-size:13px;margin:16px 0;border-collapse:collapse;">' + facts.map((x) => '<tr><td style="color:#6b7686;padding:4px 0;width:120px;">' + x[0] + '</td><td style="padding:4px 0;">' + esc_(x[1]) + "</td></tr>").join("") + "</table>"
-    + table + after + ladder + student + rps + "</div>"
-    + '<div style="background:#f3f6f9;padding:14px 24px;font-size:12px;color:#6b7686;line-height:1.6;">This is an automated message from the NMK42003 Instrumentation course website: <a href="' + SITE + '" style="color:#0f766e;">' + SITE.replace(/^https:\/\//, "").replace(/\/$/, "") + "</a><br>Course coordinator: " + COORDINATOR + "</div></div></div>";
+  const steps = [1, 2, 3].map((L) => [L === 3 ? "Barred from final exam" : L === 1 ? "1st warning" : "2nd warning", LADDER[it.kind][L - 1], "w" + L]);
+  const student = withdraw ? mailRole_("Student", "no action is needed for this absence.")
+    : mailRole_("Student", "if you have a valid reason for an absence (medical, family emergency or an official university activity), send an absence notice with your supporting document on the course website. Once your lecturer approves it, the absence changes to Excused and no longer counts. Without an approved notice, the absence stands.")
+      + mailButton_(SITE + "attendance.html", "Student: open your attendance");
+  const rps = mailRole_("RPS", "you are receiving this as the student's Rakan Pendamping Siswa (RPS). " + (withdraw ? "This is for your information." : it.level === 3 ? "Kindly advise the student, and contact the course coordinator if you have any questions." : "Kindly advise the student."));
+  const after = withdraw ? mailP_(K.abs + " now: <b>" + n + "</b>. " + (it.to ? esc_(LEVELS[it.to]) + " (" + K.title + ") still stands." : "No attendance warning stands now.")) : "";
+  const html = mailShell_({ kicker: "Attendance notification", accent: withdraw ? "#0f766e" : MT[tone][2], title: head, badge: badge, lead: lead, facts: facts,
+    sessionsTitle: withdraw ? (list.length === 1 ? "Changed session" : "Changed sessions") : "Absent sessions", sessions: cards, after: after,
+    ladder: mailLadder_(steps, now, (it.kind === "lab" ? "Lab" : "Lecture") + " attendance levels"), student: student, rps: rps });
   const lines = withdraw
     ? list.map((s) => { const nt = notices[s.id + "_" + r.id] || {}; return "  - " + day_(s.date) + ": " + s.title + " (" + (["P", "L"].indexOf(marks[s.id + "_" + r.id]) >= 0 ? "checked in, " + (marks[s.id + "_" + r.id] === "L" ? "Late" : "Present") : nt.status === "approved" ? (REASON[nt.reason] || nt.reason || "") + ": " + (nt.detail || "") : "changed to Excused by the lecturer") + ")"; })
     : list.map((s, i) => "  " + (i + 1) + ". " + day_(s.date) + ": " + s.title);
@@ -293,25 +333,15 @@ function buildAdv_(r, it, sessions, notices, remarks) {
     : "";
   const sec = r.section ? SECTION[r.section] + (r.group ? ", Group " + r.group : "") : "";
   const facts = [["Student", name], ["Matric", matric], ["Programme", r.programme || ""], ["Lab section", sec], ["RPS", r.rps || ""]].filter((x) => x[1]);
-  const td = 'style="padding:8px;border-top:1px solid #e3e7ee;vertical-align:top;"', th = 'style="padding:8px;text-align:left;font-weight:bold;"';
-  const table = '<table role="presentation" style="width:100%;font-size:13px;border-collapse:collapse;border:1px solid #e3e7ee;margin:4px 0 0;"><tr style="background:#f3f6f9;">'
-    + "<td " + th + ">#</td><td " + th + ">Date</td><td " + th + ">Session</td><td " + th + ">Reason</td><td " + th + ">Supporting document</td></tr>"
-    + info.map((x, i) => "<tr><td " + td + ">" + (i + 1) + "</td><td " + td + ">" + day_(x.s.date) + "</td><td " + td + ">" + esc_(x.s.title) + "</td><td " + td + ">" + esc_(x.reason) + "</td><td " + td + ">" + esc_(x.doc) + "</td></tr>").join("") + "</table>";
-  const ladder = '<table role="presentation" style="width:100%;border-collapse:separate;border-spacing:6px 0;margin:18px 0 6px;font-size:12px;"><tr>' + [1, 2].map((L) => {
-    const c = L <= it.level ? COLORS["a" + L] : ["#f6f7f9", "#6b7686", "#e3e7ee"];
-    return '<td style="text-align:center;padding:8px 4px;border-radius:6px;background:' + c[0] + ";color:" + c[1] + ";border:1px solid " + c[2] + ";" + (L <= it.level ? "font-weight:bold;" : "") + '">' + ADV_LEVELS[L] + "<br>" + ADV_LADDER[it.kind][L - 1] + "</td>";
-  }).join("") + "</tr></table>";
-  const P = (html) => '<p style="font-size:14px;color:#4a5568;line-height:1.6;margin:14px 0 0;">' + html + "</p>";
-  const student = P("<b style=\"color:#1b2a4a;\">Student:</b> please catch up on what you missed. The lecture notes, interactive chapters and lab guides are on the course website, and you can ask your lecturer if anything is unclear.")
-    + '<p style="margin:14px 0 0;"><a href="' + SITE + 'chapters.html" style="display:inline-block;background:#0f766e;color:#ffffff;font-size:14px;padding:10px 18px;border-radius:6px;text-decoration:none;">Student: open the course chapters</a></p>';
-  const rps = P("<b style=\"color:#1b2a4a;\">RPS:</b> you are receiving this as the student's Rakan Pendamping Siswa (RPS). This is for your information. Kindly advise the student on balancing university activities with their studies.");
-  const html = '<div style="background:#eef1f5;padding:16px 8px;font-family:Arial,Helvetica,sans-serif;"><div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #d6dbe3;color:#1b2a4a;">'
-    + '<table role="presentation" style="width:100%;background:#14213d;border-collapse:collapse;"><tr><td style="padding:18px 24px;"><div style="color:#ffffff;font-size:18px;font-family:Georgia,serif;">NMK42003 Instrumentation</div><div style="color:#9fd6cf;font-size:12px;">Faculty of Electronic Engineering &amp; Technology, UniMAP</div></td><td style="padding:18px 24px;color:#9fd6cf;font-size:12px;text-align:right;">Attendance<br>advisory</td></tr></table>'
-    + '<div style="height:4px;background:#1d4f8f;"></div><div style="padding:20px 24px;">' + badge
-    + '<div style="font-size:20px;margin:12px 0 4px;font-family:Georgia,serif;">' + head + "</div>" + P(lead).replace("margin:14px 0 0", "margin:0")
-    + '<table role="presentation" style="width:100%;font-size:13px;margin:16px 0;border-collapse:collapse;">' + facts.map((x) => '<tr><td style="color:#6b7686;padding:4px 0;width:120px;">' + x[0] + '</td><td style="padding:4px 0;">' + esc_(x[1]) + "</td></tr>").join("") + "</table>"
-    + table + P(esc_(concern)) + (busy ? P(esc_(busy)) : "") + ladder + student + rps + "</div>"
-    + '<div style="background:#f3f6f9;padding:14px 24px;font-size:12px;color:#6b7686;line-height:1.6;">This is an automated message from the NMK42003 Instrumentation course website: <a href="' + SITE + '" style="color:#0f766e;">' + SITE.replace(/^https:\/\//, "").replace(/\/$/, "") + "</a><br>Course coordinator: " + COORDINATOR + "</div></div></div>";
+  // phone-first layout (13 Nov 2026): one column, a card per excused session, the advisory levels stacked
+  const cards = info.map((x, i) => mailCard_(i + 1, x.s, [["Reason", esc_(x.reason)], ["Supporting document", esc_(x.doc === "Attached" ? "📎 Attached" : x.doc)]], MT["a" + it.level][2])).join("");
+  const steps = [1, 2].map((L) => [ADV_LEVELS[L], ADV_LADDER[it.kind][L - 1], "a" + L]);
+  const student = mailRole_("Student", "please catch up on what you missed. The lecture notes, interactive chapters and lab guides are on the course website, and you can ask your lecturer if anything is unclear.")
+    + mailButton_(SITE + "chapters.html", "Student: open the course chapters");
+  const rps = mailRole_("RPS", "you are receiving this as the student's Rakan Pendamping Siswa (RPS). This is for your information. Kindly advise the student on balancing university activities with their studies.");
+  const html = mailShell_({ kicker: "Attendance advisory", accent: "#1d4f8f", title: head, badge: badge, lead: lead, facts: facts,
+    sessionsTitle: n === 1 ? "Excused session" : "Excused sessions", sessions: cards, after: mailP_(esc_(concern)) + (busy ? mailP_(esc_(busy)) : ""),
+    ladder: mailLadder_(steps, it.level, "Advisory levels (" + K.title.toLowerCase() + ")"), student: student, rps: rps });
   const text = [head + " (" + K.title + ")", "NMK42003 Instrumentation", "", leadT, ""].concat(facts.map((x) => x[0] + ": " + x[1]), [""],
     info.map((x, i) => "  " + (i + 1) + ". " + day_(x.s.date) + ": " + x.s.title + " (" + x.reason + "; document: " + x.doc + ")"),
     ["", concern], busy ? ["", busy] : [],
