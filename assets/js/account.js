@@ -667,7 +667,8 @@
      asked again. The card can't be skipped (lecturer's choice): only its two buttons close it. Not on the showcase page, the projector screen, or for a browser a lecturer uses. */
   const WHO_KEY = "nmk-who", XP_KEY = "nmk-sync-xp";
   const page = (location.pathname.split("/").pop() || "index.html").toLowerCase();
-  const quiet = () => page === "showcase.html" || /[?&]show=/.test(location.search) || ls.get("nmk-role") === "lecturer";
+  // a lecturer's browser is never nagged: after their first sign-in (nmk-role), or once they tapped "I'm a lecturer" (nmk-who)
+  const quiet = () => page === "showcase.html" || /[?&]show=/.test(location.search) || ls.get("nmk-role") === "lecturer" || ls.get(WHO_KEY) === "lecturer";
   const localXp = () => { try { return window.NMKGame ? window.NMKGame.local().xp || 0 : 0; } catch (e) { return 0; } };
   const keptXp = () => (ls.get(UID_KEY) ? +ls.get(XP_KEY) || 0 : 0);
   const unsaved = () => Math.max(0, localXp() - keptXp());
@@ -699,10 +700,12 @@
   function welcome() {
     const g = glass(`<img class="acc-plogo" src="assets/img/unimap-logo.png" alt="" width="640" height="299">
       <h2 id="accPopT">Welcome to NMK42003 Instrumentation</h2>
-      <p>Are you taking this course? Sign in with your studentmail account so your XP, badges and progress are kept on your account, on every device.</p>
-      <div class="acc-pbtns"><button type="button" class="btn" data-gin>🎓 I'm an NMK42003 student<small>Sign in with my studentmail</small></button>
+      <p>Are you teaching or taking this course? Sign in so your work is kept on your account, on every device: lecturers with their UniMAP account, students with their studentmail.</p>
+      <div class="acc-pbtns"><button type="button" class="btn" data-glec>🧑‍🏫 I'm a lecturer<small>Teaching team: sign in with my UniMAP account</small></button>
+        <button type="button" class="btn" data-gin>🎓 I'm an NMK42003 student<small>Sign in with my studentmail</small></button>
         <button type="button" class="btn ghost" data-gvis>👀 Just looking around<small>Everything is open to read</small></button></div>`,
     null);
+    g.querySelector("[data-glec]").addEventListener("click", () => { ls.set(WHO_KEY, "lecturer"); closeGlass(); signIn(); });
     g.querySelector("[data-gin]").addEventListener("click", () => { ls.set(WHO_KEY, "student"); closeGlass(); signIn(); });
     g.querySelector("[data-gvis]").addEventListener("click", () => { ls.set(WHO_KEY, "visitor"); closeGlass(); chip(); });
   }
