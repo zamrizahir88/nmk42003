@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Midterm Examination | NMK42003 Instrumentation</title>
+  <meta name="description" content="NMK42003 Instrumentation midterm examination timer, with the INSTRUMENTA: Legends characters racing the clock.">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0b6e6e">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b6e6e'/%3E%3Cpath d='M4 20h6l3-10 4 14 3-8h8' fill='none' stroke='white' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Exo+2:ital,wght@0,600;0,700;0,800;1,800;1,900&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* MIDTERM EXAM TIMER (19 Nov 2026): a projector page. The INSTRUMENTA: Legends heroes race across the screen in waves;
+       calm at first, then faster and more frantic as time runs out, with a boss chasing them near the end. */
+    :root { --accent: #45c4ba; --glow: rgba(69, 196, 186, .45); --ink: #1b2a4a; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    body { background: #06252a; color: #eef6f6; font-family: "IBM Plex Sans", system-ui, sans-serif; transition: background-color 3s; }
+    body[data-stage="focus"] { background: #071c33; --accent: #5ad1ff; --glow: rgba(90, 209, 255, .45); }
+    body[data-stage="hurry"] { background: #2a1404; --accent: #ffb347; --glow: rgba(255, 179, 71, .5); }
+    body[data-stage="panic"], body[data-stage="end"] { background: #2a0406; --accent: #ff5252; --glow: rgba(255, 82, 82, .6); }
+    body[data-stage="panic"] { animation: bgpulse 3s ease-in-out infinite; }
+    @keyframes bgpulse { 50% { background-color: #36080b; } }
+
+    #app { height: 100%; display: grid; grid-template-rows: auto auto 1fr; }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 1.2vh 2.5vw; padding: 2.2vh 3vw 1vh; flex-wrap: wrap; }
+    .course { display: flex; align-items: center; gap: 1vw; }
+    .code { font-family: Orbitron, sans-serif; font-weight: 800; background: var(--accent); color: #04141a; padding: .3em .7em; border-radius: .4em; font-size: clamp(14px, 1.9vw, 32px); transition: background 2s; }
+    .cname { font-family: "Exo 2", sans-serif; font-weight: 800; font-size: clamp(16px, 2.3vw, 40px); }
+    .title { font-family: Orbitron, sans-serif; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; font-size: clamp(18px, 2.7vw, 48px); color: var(--accent); text-shadow: 0 0 18px var(--glow); transition: color 2s; }
+    .meta { width: 100%; display: flex; justify-content: center; gap: .6vh 2.4vw; flex-wrap: wrap; font-size: clamp(13px, 1.5vw, 28px); color: #cfe3e3; }
+    .meta b { color: #fff; }
+
+    .clock { text-align: center; padding: 0 3vw; }
+    .tlabel { font-family: Orbitron, sans-serif; font-weight: 700; letter-spacing: .3em; font-size: clamp(11px, 1.1vw, 20px); opacity: .75; }
+    .timer { font-family: Orbitron, sans-serif; font-weight: 900; font-size: min(15vw, 19vh); line-height: 1.02; font-variant-numeric: tabular-nums; text-shadow: 0 0 30px var(--glow); transition: color 1s; }
+    .timer.warn { color: #ffd2d2; }
+    .timer.hot { color: #ff7a7a; }
+    .timer.hot.last { animation: tshake .3s linear infinite; }
+    @keyframes tshake { 25% { transform: translate(1.5px, -1px); } 50% { transform: translate(-1.5px, .5px); } 75% { transform: translate(1px, 1px); } }
+    .bar { height: clamp(8px, 1.2vh, 16px); background: rgba(255, 255, 255, .13); border-radius: 99px; overflow: hidden; max-width: 1000px; margin: 1vh auto 0; }
+    .bar i { display: block; height: 100%; width: 100%; background: var(--accent); transition: width .9s linear, background 2s; }
+    .sub { margin-top: 1.1vh; font-family: "Exo 2", sans-serif; font-weight: 800; font-size: clamp(15px, 2.1vw, 36px); min-height: 1.3em; }
+    .sub span { display: inline-block; animation: fadeup .6s ease both; }
+    @keyframes fadeup { from { opacity: 0; transform: translateY(8px); } }
+    .clockrow { display: flex; justify-content: center; gap: 3vw; font-size: clamp(12px, 1.25vw, 22px); opacity: .85; margin-top: .5vh; }
+
+    .stage { position: relative; overflow: hidden; margin-top: 1.4vh; border-top: 4px solid var(--accent); transition: border-color 2s; min-height: 160px; }
+    #scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .scene { opacity: 0; transition: opacity 2.5s; }
+    body[data-stage="idle"] .scene[data-i="0"], body[data-stage="calm"] .scene[data-i="0"], body[data-stage="focus"] .scene[data-i="1"],
+    body[data-stage="hurry"] .scene[data-i="2"], body[data-stage="panic"] .scene[data-i="2"], body[data-stage="end"] .scene[data-i="2"] { opacity: 1; }
+    .redwash { opacity: 0; transition: opacity 2s; pointer-events: none; }
+    body[data-stage="panic"] .redwash { animation: wash 3s ease-in-out infinite; }
+    body[data-stage="end"] .redwash { opacity: .45; }
+    @keyframes wash { 0%, 100% { opacity: .08; } 50% { opacity: .2; } }
+    .vign { position: absolute; inset: 0; pointer-events: none; }
+    body[data-stage="panic"] .vign { animation: vig 3s ease-in-out infinite; }
+    @keyframes vig { 50% { box-shadow: inset 0 0 120px 20px rgba(255, 0, 0, .28); } }
+
+    /* runners */
+    .rn .tag rect { fill: rgba(4, 20, 26, .8); stroke: var(--accent); stroke-width: 2.5; transition: stroke 2s; }
+    .rn .tag text { fill: #fff; font: 700 23px "Exo 2", sans-serif; text-anchor: middle; }
+    .rn .emo { font-size: 44px; text-anchor: middle; opacity: 0; transition: opacity .3s; }
+    .rn .emo.on { opacity: 1; }
+    .sweat, .dust { display: none; }
+    body[data-stage="hurry"] .sweat, body[data-stage="panic"] .sweat, body[data-stage="panic"] .dust, body[data-stage="hurry"] .dust { display: inline; }
+    .sweat path { fill: #8fdcff; stroke: var(--ink); stroke-width: 1.5; transform-box: fill-box; animation: drip .7s linear infinite; }
+    .sweat path + path { animation-delay: -.35s; }
+    @keyframes drip { from { transform: translate(0, 0); opacity: 1; } to { transform: translate(-8px, 26px); opacity: 0; } }
+    .dust circle { fill: #f1e2c2; transform-box: fill-box; transform-origin: center; animation: puff .45s linear infinite; }
+    .dust circle + circle { animation-delay: -.22s; }
+    @keyframes puff { from { transform: scale(.4); opacity: .75; } to { transform: translate(-24px, -8px) scale(1.5); opacity: 0; } }
+    #bossG { opacity: 0; transition: opacity 1.5s; }
+    body.boss #bossG { opacity: 1; }
+    .bubble { position: absolute; transform: translate(-20%, -100%); background: #fff; color: var(--ink); font: 800 clamp(13px, 1.6vw, 28px) "Exo 2", sans-serif;
+      padding: .45em .8em; border-radius: 16px; border: 3px solid var(--ink); white-space: nowrap; opacity: 0; transition: opacity .3s; pointer-events: none; }
+    .bubble::after { content: ""; position: absolute; left: 18%; bottom: -14px; border: 8px solid transparent; border-top: 10px solid var(--ink); }
+    .bubble.on { opacity: 1; animation: wob .35s ease; }
+    @keyframes wob { 0% { transform: translate(-20%, -100%) scale(.6); } 70% { transform: translate(-20%, -100%) scale(1.08); } }
+
+    /* announcements, the last ten seconds, and the finale */
+    #banner { position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%); font: 900 clamp(28px, 6vw, 110px) Orbitron, sans-serif; padding: .3em .8em;
+      background: rgba(0, 0, 0, .78); border: 5px solid var(--accent); border-radius: 22px; color: #fff; opacity: 0; pointer-events: none; text-align: center; z-index: 30; white-space: nowrap; }
+    #banner.on { animation: ban 4.5s ease forwards; }
+    @keyframes ban { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.4); } 9% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); } 15% { transform: translate(-50%, -50%) scale(1); }
+      85% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.05); } }
+    #big10 { position: fixed; inset: 0; display: grid; place-items: center; font: 900 min(62vh, 52vw) Orbitron, sans-serif; color: rgba(255, 70, 70, .38); pointer-events: none; z-index: 20; opacity: 0; }
+    #big10.on { animation: b10 1s ease-out; }
+    @keyframes b10 { 0% { opacity: 0; transform: scale(1.7); } 18% { opacity: 1; } 100% { opacity: 0; transform: scale(.8); } }
+
+    #fin { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; overflow: hidden;
+      background: radial-gradient(circle at 50% 40%, rgba(170, 14, 14, .94), rgba(28, 0, 0, .98) 70%); padding: 2vh 3vw; }
+    #fin[hidden] { display: none; }
+    .fin-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+    #fin.go .fin-flash { animation: flash 1s ease-out; }
+    @keyframes flash { from { opacity: 1; } to { opacity: 0; } }
+    .fin-rays { position: absolute; left: 50%; top: 40%; width: 220vmax; height: 220vmax; margin: -110vmax 0 0 -110vmax; pointer-events: none; opacity: .16;
+      background: repeating-conic-gradient(#ffd34d 0 8deg, transparent 8deg 22deg); animation: spin 30s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .fin-bosswrap { position: relative; }
+    .fin-boss { width: min(38vw, 34vh); height: auto; display: block; margin: 0 auto -1vh; overflow: visible; }
+    #fin.go .fin-boss { animation: bossIn 1s cubic-bezier(.2, 1.5, .4, 1) both, roar .45s ease-in-out 1.1s infinite alternate; }
+    @keyframes bossIn { from { transform: translateY(-70vh) scale(.4) rotate(-20deg); } }
+    @keyframes roar { to { transform: scale(1.06) rotate(-2deg); } }
+    .fin-say { position: absolute; left: 92%; top: 6%; background: #fff; color: var(--ink); font: 900 clamp(14px, 2vw, 34px) "Exo 2", sans-serif; padding: .4em .8em; border-radius: 18px;
+      border: 4px solid var(--ink); white-space: nowrap; transform-origin: 0 100%; }
+    .fin-say::after { content: ""; position: absolute; left: -16px; bottom: 12px; border: 9px solid transparent; border-right: 14px solid var(--ink); }
+    #fin.go .fin-say { animation: pop .4s 1.1s both; }
+    .fin-t { position: relative; font: 900 clamp(56px, 12.5vw, 240px)/1 Orbitron, sans-serif; color: #fff; text-shadow: 0 0 40px #ff2a2a, 0 .07em 0 #5a0000; letter-spacing: .03em; white-space: nowrap; }
+    .fin-t span { display: inline-block; }
+    #fin.go .fin-t span { animation: drop .6s cubic-bezier(.3, 1.6, .5, 1) both; animation-delay: calc(var(--i) * 70ms + .45s); }
+    @keyframes drop { from { transform: translateY(-120vh) rotate(-25deg); } }
+    .fin-s { position: relative; font: 900 clamp(28px, 5.2vw, 96px) "Exo 2", sans-serif; color: #ffd34d; margin-top: 1vh; text-shadow: 0 4px 0 #5a0000; }
+    #fin.go .fin-s { animation: pop .5s 1.3s both, beat 1s 2s ease-in-out infinite; }
+    @keyframes pop { from { opacity: 0; transform: scale(.3); } 70% { transform: scale(1.12); } }
+    @keyframes beat { 50% { transform: scale(1.07); } }
+    .fin-p { position: relative; font-size: clamp(14px, 1.9vw, 32px); max-width: 60ch; margin: 1.2vh auto; opacity: .92; }
+    #fin.go .fin-p { animation: fadeup .6s 1.8s both; }
+    .fin-pack { position: relative; width: min(92vw, 1400px); height: auto; margin-top: .5vh; }
+    #finX { position: relative; margin-top: 1.5vh; font: 700 clamp(14px, 1.3vw, 20px) "IBM Plex Sans", sans-serif; background: rgba(255, 255, 255, .15); color: #fff; border: 1px solid rgba(255, 255, 255, .4);
+      border-radius: 12px; padding: .7em 1.4em; cursor: pointer; }
+    body.shake #app, body.shake #fin { animation: bigshake .1s linear 10; }
+    @keyframes bigshake { 25% { transform: translate(10px, -6px); } 50% { transform: translate(-9px, 5px); } 75% { transform: translate(6px, 8px); } }
+    #confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 45; }
+
+    /* controls: they fade away while the timer runs; move the mouse or tap to bring them back */
+    .ctrl { position: fixed; right: 1.4vw; bottom: 1.6vh; display: flex; gap: 8px; z-index: 50; background: rgba(0, 0, 0, .6); padding: 8px; border-radius: 16px; backdrop-filter: blur(6px); transition: opacity .5s; }
+    .ctrl.hide { opacity: 0; pointer-events: none; }
+    .ctrl button, .dlg button { font: 700 15px "IBM Plex Sans", sans-serif; color: #fff; background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .22); border-radius: 11px;
+      padding: 10px 14px; cursor: pointer; min-width: 46px; min-height: 46px; }
+    .ctrl button:hover, .dlg button:hover { background: rgba(255, 255, 255, .22); }
+    .ctrl .primary, .dlg .primary { background: var(--accent); color: #04141a; border-color: transparent; min-width: 110px; }
+    .ctrl .armed { background: #c62828; }
+    .who { position: fixed; left: 1.4vw; bottom: 1.6vh; font-size: 13px; background: rgba(0, 0, 0, .55); padding: 7px 12px; border-radius: 99px; z-index: 50; transition: opacity 1s; max-width: 60vw; }
+    .who.fade { opacity: 0; }
+    .dlg { border: 0; border-radius: 18px; padding: 0; background: #0f2229; color: #eef6f6; width: min(560px, 94vw); box-shadow: 0 30px 80px rgba(0, 0, 0, .6); }
+    .dlg::backdrop { background: rgba(0, 0, 0, .6); }
+    .dlg form { padding: 20px 22px; max-height: 88vh; overflow: auto; }
+    .dlg h2 { font: 800 20px Orbitron, sans-serif; margin: 0 0 12px; color: var(--accent); }
+    .dlg h3 { font: 700 13px "IBM Plex Sans", sans-serif; letter-spacing: .12em; text-transform: uppercase; opacity: .7; margin: 16px 0 8px; }
+    .dlg .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .dlg label { display: grid; gap: 4px; font-size: 13px; opacity: .95; }
+    .dlg input, .dlg select { font: 500 16px "IBM Plex Sans", sans-serif; padding: 9px 10px; border-radius: 9px; border: 1px solid #2c4a52; background: #08171b; color: #fff; width: 100%; }
+    .dlg .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .dlg .chips button { min-height: 36px; padding: 6px 12px; font-size: 14px; }
+    .dlg .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 16px; justify-content: flex-end; }
+    .dlg .note { font-size: 13px; opacity: .75; margin: 6px 0 0; }
+    .dlg .check { display: flex; align-items: center; gap: 8px; grid-template-columns: none; }
+    .dlg .check input { width: auto; }
+    .dlg a { color: var(--accent); }
+    @media (max-width: 720px) {
+      .ctrl { left: 8px; right: 8px; justify-content: center; flex-wrap: wrap; }
+      .ctrl button { padding: 8px 10px; min-width: 42px; }
+      .who { bottom: 130px; left: 8px; }
+      .top { justify-content: center; text-align: center; }
+      .dlg .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body data-stage="idle">
+  <div id="app">
+    <header class="top">
+      <div class="course"><span class="code" id="vCode">NMK42003</span><span class="cname" id="vName">Instrumentation</span></div>
+      <div class="title" id="vTitle">Midterm Examination</div>
+      <div class="meta">
+        <span>📍 Venue: <b id="vVenue">DK7</b></span>
+        <span>📅 <b id="vDate"></b></span>
+        <span>🕗 <b id="vTime"></b></span>
+        <span>⏱ Duration: <b id="vDur"></b></span>
+      </div>
+    </header>
+    <section class="clock" aria-live="polite">
+      <div class="tlabel" id="tLabel">TIME REMAINING</div>
+      <div class="timer" id="timer">1:00:00</div>
+      <div class="bar"><i id="barFill"></i></div>
+      <div class="sub" id="msg"></div>
+      <div class="clockrow"><span>Time now <b id="now">–</b></span><span>Ends at <b id="ends">–</b></span></div>
+    </section>
+    <section class="stage" id="stage" aria-hidden="true">
+      <svg id="scene" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 300" preserveAspectRatio="xMidYMid slice">
+        <g id="bgs"></g>
+        <rect class="redwash" id="redwash" x="0" y="0" width="4000" height="300" fill="#ff1a1a"/>
+        <g id="bossG"><g id="bossBody"></g></g>
+        <g id="lane0"></g><g id="lane1"></g><g id="lane2"></g>
+      </svg>
+      <div class="bubble" id="bossBubble"></div>
+      <div class="vign"></div>
+    </section>
+  </div>
+
+  <div id="banner"></div>
+  <div id="big10"></div>
+  <div id="fin" hidden>
+    <div class="fin-rays"></div>
+    <div class="fin-flash"></div>
+    <div class="fin-bosswrap"><svg class="fin-boss" viewBox="-180 -190 360 200" xmlns="http://www.w3.org/2000/svg"><g id="finBoss"></g></svg><div class="fin-say" id="finSay"></div></div>
+    <div class="fin-t" id="finT"></div>
+    <div class="fin-s">✋ PENS DOWN!</div>
+    <p class="fin-p">Stop writing now. Remain seated until your answer scripts are collected.</p>
+    <svg class="fin-pack" id="finPack" viewBox="0 0 1400 120" xmlns="http://www.w3.org/2000/svg"></svg>
+    <button type="button" id="finX">Close</button>
+  </div>
+  <canvas id="confetti"></canvas>
+
+  <div class="ctrl" id="ctrl">
+    <button type="button" id="bStart" class="primary">▶ Start</button>
+    <button type="button" id="bMinus" title="Take away 1 minute">−1 min</button>
+    <button type="button" id="bPlus" title="Add 1 minute">+1 min</button>
+    <button type="button" id="bReset" title="Reset the timer">↺ Reset</button>
+    <button type="button" id="bSet" title="Settings" aria-label="Settings">⚙️</button>
+    <button type="button" id="bFull" title="Full screen" aria-label="Full screen">⛶</button>
+    <button type="button" id="bSnd" title="Sound on or off" aria-label="Sound">🔊</button>
+  </div>
+  <div class="who" id="who"></div>
+
+  <dialog class="dlg" id="dlg">
+    <form method="dialog" id="setForm">
+      <h2>⚙️ Exam settings</h2>
+      <h3>Exam details</h3>
+      <div class="grid">
+        <label>Course code<input name="code" maxlength="12"></label>
+        <label>Course name<input name="name" maxlength="40"></label>
+        <label>Exam title<input name="title" maxlength="40"></label>
+        <label>Venue<input name="venue" maxlength="30"></label>
+        <label>Date<input name="date" type="date"></label>
+        <label>Start time<input name="time" type="time"></label>
+      </div>
+      <h3>Duration</h3>
+      <div class="grid">
+        <label>Hours<input name="h" type="number" min="0" max="9" step="1"></label>
+        <label>Minutes<input name="m" type="number" min="0" max="59" step="1"></label>
+      </div>
+      <div class="chips" id="quick">
+        <button type="button" data-q="30">30 min</button><button type="button" data-q="60">1 hour</button><button type="button" data-q="90">1 h 30</button>
+        <button type="button" data-q="120">2 hours</button><button type="button" data-q="180">3 hours</button>
+      </div>
+      <p class="note" id="durNote">Changing the duration resets the timer.</p>
+      <h3>Animation</h3>
+      <div class="grid">
+        <label>Boss that chases near the end<select name="boss" id="bossSel"></select></label>
+        <label>Runners on screen at once<select name="wave"><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option><option value="30">30</option></select></label>
+        <label>Sound<select name="sound"><option value="off">🔇 Off (quiet exam hall)</option><option value="alarm">⏰ Final alarm only</option><option value="all">🔊 All: chimes, last-10-seconds tick, final alarm</option></select></label>
+      </div>
+      <h3>Characters</h3>
+      <p class="note" id="charNote">–</p>
+      <div class="chips"><button type="button" id="bSignIn">🔑 Sign in as lecturer</button><button type="button" id="bReload">↻ Reload class</button><button type="button" id="bDemo">🎲 Use demo characters</button></div>
+      <h3>Try it</h3>
+      <div class="chips"><button type="button" id="bTest">🎬 Test run (90 seconds, every stage)</button></div>
+      <p class="note">A quick run through calm → focus → hurry → panic → time's up. Press Reset afterwards to go back to the real duration.</p>
+      <div class="row"><a href="index.html" style="margin-right:auto">← Course site</a><button value="cancel" formnovalidate>Cancel</button><button value="ok" class="primary" id="bSave">Save</button></div>
+    </form>
+  </dialog>
+
+  <script src="assets/js/data.js?v=2611137"></script>
+  <script src="assets/js/legends-art.js?v=2611137"></script>
+  <!--FIREBASE-->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <!--/FIREBASE-->
+  <script>
+  (function () {
+    "use strict";
+    const ART = window.NMKLegendsArt;
+    const NS = "http://www.w3.org/2000/svg", $ = (s) => document.querySelector(s);
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const pad = (n) => String(n).padStart(2, "0");
+    const pick = (a) => a[Math.floor(Math.random() * a.length)];
+    const rng = (seed) => { let s = (seed >>> 0) || 1; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; };
+    const hash = (str) => { let h = 2166136261; for (const c of String(str)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+    const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+    /* ---------- settings and timer state (kept in this browser, so a refresh never loses the time) ---------- */
+    const KEY = "nmk-midterm";
+    // sound: "off" (default: a quiet exam hall), "alarm" (only the final alarm) or "all" (chimes, the last-ten-seconds tick and the alarm)
+    const DEF = { code: "NMK42003", name: "Instrumentation", title: "Midterm Examination", venue: "DK7", date: "2026-11-19", time: "20:00", h: 1, m: 0, boss: "warlord", wave: 20, sound: "off" };
+    const SOUNDS = ["off", "alarm", "all"], SND_ICON = { off: "🔇", alarm: "⏰", all: "🔊" }, SND_NAME = { off: "Sound off", alarm: "Final alarm only", all: "All sounds" };
+    const durOf = (c) => ((+c.h || 0) * 60 + (+c.m || 0)) * 60000;
+    let S;
+    try { const o = JSON.parse(localStorage.getItem(KEY)) || {}; S = { cfg: Object.assign({}, DEF, o.cfg || {}), dur: o.dur || 0, endAt: o.endAt || 0, rem: o.rem == null ? null : o.rem, running: !!o.running, finished: !!o.finished, test: !!o.test }; }
+    catch (e) { S = null; }
+    if (!S) S = { cfg: Object.assign({}, DEF), dur: 0, endAt: 0, rem: null, running: false, finished: false, test: false };
+    if (SOUNDS.indexOf(S.cfg.sound) < 0) S.cfg.sound = "off";   // an older saved on/off setting starts quiet
+    if (!S.dur) S.dur = durOf(S.cfg);
+    if (S.rem == null) S.rem = S.dur;
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+    const remaining = () => (S.running ? Math.max(0, S.endAt - Date.now()) : Math.max(0, S.rem));
+
+    /* ---------- the header ---------- */
+    const fmtDate = (iso) => { const d = new Date(iso + "T00:00:00"); return isNaN(d) ? iso : d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); };
+    const fmtHM = (hm) => { const [h, m] = String(hm || "0:0").split(":").map(Number); return `${(h % 12) || 12}:${pad(m || 0)} ${h >= 12 ? "PM" : "AM"}`; };
+    const fmtDur = (ms) => { const t = Math.round(ms / 60000), h = Math.floor(t / 60), m = t % 60; return [h ? `${h} hour${h > 1 ? "s" : ""}` : "", m ? `${m} minute${m > 1 ? "s" : ""}` : ""].filter(Boolean).join(" ") || "0 minutes"; };
+    const clockOf = (ts) => new Date(ts).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    const fmtLeft = (ms) => { const s = Math.ceil(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return h ? `${h}:${pad(m)}:${pad(x)}` : `${pad(m)}:${pad(x)}`; };
+    function paintHeader() {
+      const c = S.cfg;
+      $("#vCode").textContent = c.code; $("#vName").textContent = c.name; $("#vTitle").textContent = c.title; $("#vVenue").textContent = c.venue;
+      $("#vDate").textContent = fmtDate(c.date); $("#vTime").textContent = fmtHM(c.time); $("#vDur").textContent = S.test ? "Test run (90 s)" : fmtDur(durOf(c));
+      document.title = `${c.title} | ${c.code} ${c.name}`;
+      $("#bSnd").textContent = SND_ICON[c.sound] || "🔇"; $("#bSnd").title = `${SND_NAME[c.sound] || "Sound off"} (tap to change)`;
+    }
+
+    /* ---------- the characters ---------- */
+    const SKINS = ["#f6d5b5", "#e3ad80", "#b07650"], HAIRS = ["#1f1a17", "#4a2c1a", "#7a4a26", "#a8a8a8"];
+    const COLORS = ["#0b6e6e", "#1e3a5f", "#b3412e", "#6b4bb8", "#2f7d32", "#c2185b"], TUDUNG = ["#e8d6c0", "#f4c6d4", "#cfe0f2", "#2b2b2b", "#1e3a5f", "#7a2338", "#1f7a55", "#f7f7f2"];
+    const HERO0 = { look: "m", hairM: "spiky", hairF: "long", face: "none", head: "none", eyes: "none", hair: HAIRS[0], skin: SKINS[0], color: COLORS[0], tud: TUDUNG[0], tudS: "bawal", brooch: "none", badge: "none", weapon: "sword", name: "" };
+    function rndHero(r) {
+      const p = (a) => a[Math.floor(r() * a.length)], look = p(["m", "m", "f", "t", "t", "t"]);
+      return Object.assign({}, HERO0, { look, hairM: p(["spiky", "neat", "buzz"]), hairF: p(["long", "pony", "bob"]), face: look === "m" ? p(["none", "none", "mous", "goatee", "beard"]) : "none",
+        head: p(["none", "none", "cap", "hardhat", look === "m" ? "kopiah" : "none"]), eyes: p(["none", "none", "round", "goggles"]), hair: p(HAIRS), skin: p(SKINS), color: p(COLORS),
+        tud: p(TUDUNG), tudS: p(["bawal", "sarung", "shawl"]), brooch: p(["none", "gold", "pearl", "flower"]), badge: p(["none", "id"]), weapon: p(["sword", "blaster", "bow", "staff"]) });
+    }
+    const DEMO_NAMES = ["Aiman", "SitiProbe", "Hafiz", "NurulAin", "SineWave", "Danish", "Amirah", "OhmMaster", "Irfan", "Balqis", "Haziq", "Farah", "Syafiq", "Aisyah", "VoltRider",
+      "Izzat", "Qistina", "Luqman", "Hannah", "Zikri", "Adam", "Iman", "Wheatstone", "Firdaus", "Alya", "Harith", "Damia", "Arif", "Sofea", "Ammar", "Nadhirah", "Rayyan",
+      "Dhia", "Khairul", "Insyirah", "Akmal", "Mira", "Azfar", "Hana", "SensorBoy"];
+    const demoPool = () => { const r = rng(42); return DEMO_NAMES.map((n) => ({ label: n, hero: rndHero(r), tier: r() < 0.2 ? 2 : r() < 0.45 ? 1 : 0 })); };
+    let pool = shuffle(demoPool()), poolI = 0, source = "demo";
+
+    /* ---------- the bosses ---------- */
+    const BOSSES = Object.keys(ART.ENEMIES).filter((k) => ART.ENEMIES[k].boss);
+    const EXAM_TAUNTS = ["Tick tock, engineer!", "Can you beat the clock?", "Check your units!", "Show your working!", "Keep going, engineers!", "Answer what you know first!"];
+    const FIN_SAY = ["PENS DOWN, ENGINEERS!", "TIME'S UP! Mwahaha!", "Stop writing, humans!", "Your time is MINE now!"];
+    let bossKey = null;
+    const bossOf = () => (S.cfg.boss === "random" || !ART.ENEMIES[S.cfg.boss] ? pick(BOSSES) : S.cfg.boss);
+    function setBoss(k) {
+      bossKey = k; const e = ART.ENEMIES[k];
+      $("#bossBody").innerHTML = `<g transform="scale(-1 1)">${e.svg}</g>`;
+    }
+
+    /* ---------- the stage ---------- */
+    const stageEl = $("#stage"), svg = $("#scene");
+    const H = 300, LANE_Y = [250, 266, 284], LANE_S = [0.5, 0.56, 0.62];
+    let W = 1000;
+    function buildBg() {
+      const n = Math.ceil(W / 640) + 1;
+      // each scene is the game's 640-wide background repeated across the screen; its rects are drawn a hair wider so the tiles meet without a seam
+      const tile = (rank) => {
+        const inner = ART.bg(rank).replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "").replace(/<rect (?![^>]*\bx=)([^>]*?)width="640"/g, '<rect x="-1" $1width="642"');
+        let s = ""; for (let k = 0; k < n; k++) s += `<g transform="translate(${k * 640} 0)" clip-path="url(#mtTile)">${inner}</g>`; return s;
+      };
+      $("#bgs").innerHTML = `<defs><clipPath id="mtTile"><rect x="-0.5" y="0" width="641" height="300"/></clipPath></defs>` + [0, 2, 1].map((rank, i) => `<g class="scene" data-i="${i}">${tile(rank)}</g>`).join("");
+      bgRate = -1;
+    }
+    function fit() {
+      const w = stageEl.clientWidth || 1000, h = stageEl.clientHeight || 300;
+      const nW = Math.max(400, Math.round((H * w) / h));
+      if (nW !== W) { W = nW; svg.setAttribute("viewBox", `0 0 ${W} ${H}`); buildBg(); }
+    }
+    let fitT = 0; addEventListener("resize", () => { clearTimeout(fitT); fitT = setTimeout(fit, 150); });
+
+    /* the runners, in waves: up to S.cfg.wave on screen, then the next group */
+    let wave = [];
+    let tagFlip = 0;
+    function mkRunner(p) {
+      const g = document.createElementNS(NS, "g"), w = Math.max(70, p.label.length * 14 + 28), ty = (tagFlip++ % 2) ? -96 : -132;
+      g.setAttribute("class", "rn");
+      g.innerHTML = `<g class="dust"><circle cx="-24" cy="54" r="8"/><circle cx="-38" cy="50" r="6"/></g><g class="body">${ART.heroSvg(p.hero, "", p.tier || 0)}<g class="sweat"><path d="M-36 -46 q-5 8 0 11 q5 -3 0 -11z"/><path d="M30 -56 q-5 8 0 11 q5 -3 0 -11z"/></g></g>
+        <g class="tag" transform="translate(0 ${ty})"><rect x="${-w / 2}" y="-17" width="${w}" height="30" rx="15"/><text y="6">${esc(p.label)}</text></g><text class="emo" y="${ty - 34}"></text>`;
+      return g;
+    }
+    function nextWave(first) {
+      [0, 1, 2].forEach((i) => { $("#lane" + i).innerHTML = ""; });
+      wave = [];
+      const n = Math.min(+S.cfg.wave || 20, pool.length);
+      for (let i = 0; i < n; i++) {
+        if (poolI >= pool.length) { poolI = 0; shuffle(pool); }
+        const p = pool[poolI++], lane = Math.floor(Math.random() * 3), el = mkRunner(p);
+        const x = first ? -W * 0.15 + Math.random() * W * 1.05 : -90 - Math.random() * W * 0.85;
+        const r = { p, lane, x, y: LANE_Y[lane], s: LANE_S[lane], vMul: 0.7 + Math.random() * 0.6, next: Math.random() * 4, ph: Math.random() * 6, el, body: el.querySelector(".body"), emo: el.querySelector(".emo"), emoT: 0, fallen: false };
+        $("#lane" + lane).appendChild(el); wave.push(r);
+      }
+      setBoss(bossOf());
+      bossX = Math.min(...wave.map((r) => r.x)) - 260;
+    }
+
+    /* ---------- the stages ---------- */
+    const P = {
+      idle: { v: 26, f: 1.5, a: 2, lean: 0, rate: 0.5 },
+      calm: { v: 36, f: 1.9, a: 2.5, lean: 2, rate: 0.7 },
+      focus: { v: 78, f: 3.1, a: 3.6, lean: 7, rate: 1.4 },
+      hurry: { v: 140, f: 4.6, a: 4.6, lean: 13, rate: 2.8 },
+      panic: { v: 235, f: 6.6, a: 5.6, lean: 19, rate: 4.8 },
+      end: { v: 0, f: 0, a: 0, lean: 0, rate: 0.3 }
+    };
+    const MSG = {
+      idle: ["Get ready… the examination will begin shortly.", "Name and matric number on every page, please.", "Put your phones away. Good luck! 🍀"],
+      calm: ["Relax. Read every question carefully. 😌", "Show your working. Units matter!", "Breathe in… breathe out… you've got this.", "Start with the question you know best."],
+      focus: ["Past half-way. Keep going! 💪", "Check your significant figures.", "Stay focused. Don't get stuck on one question."],
+      hurry: ["Keep going: answer what you know first. 💪", "Don't leave any question blank.", "Check your units and working."],
+      panic: ["Final minute: finish your last answer. ✍️", "Check your name and matric number."],
+      paused: ["⏸ Paused"],
+      end: ["✋ Time's up. Pens down."]
+    };
+    const EMO = { idle: ["🙂", "👋", "☕", "🎵"], calm: ["😎", "🎵", "☕", "😌", "👍", "🙂", "✍️"], focus: ["🤔", "✍️", "📐", "💡", "🧮"], hurry: ["😰", "💦", "😬", "🏃", "⏳"], panic: ["😱", "😭", "🔥", "💦", "🥵", "⏰"], end: ["😵"] };
+    function stageOf(rem) {
+      if (S.finished) return "end";
+      if (!S.running && rem >= S.dur) return "idle";
+      const f = rem / S.dur;
+      // the red "panic" look only in the last minute (a short test run: its last tenth)
+      if (S.dur >= 20 * 60000 ? rem <= 60000 : f <= 0.1) return "panic";
+      if (f <= 0.25) return "hurry";
+      if (f <= 0.5) return "focus";
+      return "calm";
+    }
+
+    /* ---------- sound (Web Audio: no files to load) ---------- */
+    let AC = null;
+    function ac(force) { if (S.cfg.sound === "off" && !force) return null; try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch (e) { return null; } return AC; }
+    function tone(f, t0, d, type = "sine", vol = 0.25) {
+      const a = ac(); if (!a) return;
+      const o = a.createOscillator(), g = a.createGain(), t = a.currentTime + t0;
+      o.type = type; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.05);
+    }
+    const all = () => S.cfg.sound === "all";
+    const chime = () => { if (!all()) return; tone(880, 0, 0.4); tone(1320, 0.2, 0.6); };
+    const tick = () => { if (all()) tone(1250, 0, 0.07, "square", 0.07); };
+    function alarm() {
+      if (S.cfg.sound === "off") return; for (let i = 0; i < 3; i++) for (let j = 0; j < 4; j++) tone(j % 2 ? 660 : 990, i * 1.1 + j * 0.18, 0.16, "square", 0.16); tone(196, 3.4, 2.2, "triangle", 0.4); tone(294, 3.4, 2.2, "triangle", 0.25); }
+
+    /* ---------- announcements ---------- */
+    function banner(t) { const b = $("#banner"); b.textContent = t; b.classList.remove("on"); void b.offsetWidth; b.classList.add("on"); chime(); }
+    const MILES = [30, 15, 10, 5, 1].map((m) => m * 60000);
+    let lastRem = null, lastSec = -1;
+    function checkMiles(rem) {
+      if (lastRem == null || !S.running) { lastRem = rem; return; }
+      const half = S.dur / 2;
+      if (S.dur >= 20 * 60000 && lastRem > half && rem <= half && !MILES.some((m) => Math.abs(m - half) < 1000)) banner("⌛ HALF TIME");
+      MILES.forEach((m) => { if (m < S.dur && lastRem > m && rem <= m) banner(m === 60000 ? "⏰ 1 MINUTE LEFT!" : `⏳ ${m / 60000} MINUTES LEFT`); });
+      if (rem <= 10000 && rem > 0) {
+        const s = Math.ceil(rem / 1000);
+        if (s !== lastSec) { lastSec = s; const b = $("#big10"); b.textContent = s; b.classList.remove("on"); void b.offsetWidth; b.classList.add("on"); tick(); }
+      }
+      lastRem = rem;
+    }
+
+    /* ---------- the finale ---------- */
+    function finale(withSound) {
+      const fin = $("#fin");
+      const e = ART.ENEMIES[bossKey] || ART.ENEMIES[BOSSES[0]];
+      $("#finBoss").innerHTML = e.svg;
+      $("#finSay").textContent = pick(FIN_SAY);
+      $("#finT").innerHTML = [..."TIME'S UP!"].map((c, i) => `<span style="--i:${i}">${c === " " ? "&nbsp;" : esc(c)}</span>`).join("");
+      const pack = wave.slice(0, 12);
+      $("#finPack").innerHTML = pack.map((r, i) => `<g transform="translate(${140 + i * 110} 52) scale(.62)"><g transform="rotate(-84 0 57)">${ART.heroSvg(r.p.hero, "", r.p.tier || 0)}</g><text x="-96" y="8" font-size="46" text-anchor="middle">😵</text></g>`).join("");
+      fin.hidden = false; fin.classList.remove("go"); void fin.offsetWidth; fin.classList.add("go");
+      document.body.classList.add("shake"); setTimeout(() => document.body.classList.remove("shake"), 1300);
+      wave.forEach((r) => { r.fallen = true; r.emo.textContent = "😵"; r.emo.classList.add("on"); });
+      confetti(); if (withSound) alarm();
+    }
+    $("#finX").addEventListener("click", () => { $("#fin").hidden = true; });
+
+    /* confetti */
+    const cv = $("#confetti"), cx = cv.getContext("2d");
+    let bits = [], confT = 0, confOn = false;
+    function confetti() {
+      cv.width = innerWidth; cv.height = innerHeight; bits = []; confT = performance.now();
+      if (!confOn) { confOn = true; requestAnimationFrame(confStep); }
+    }
+    function confStep(t) {
+      const age = t - confT, cols = ["#45c4ba", "#ffd34d", "#ff5252", "#ffffff", "#5ad1ff", "#f48fb1"];
+      if (age < 3000) for (let i = 0; i < 9; i++) bits.push({ x: Math.random() * cv.width, y: -20, vx: (Math.random() - 0.5) * 6, vy: 2 + Math.random() * 5, r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.3, w: 8 + Math.random() * 10, h: 5 + Math.random() * 7, c: pick(cols) });
+      cx.clearRect(0, 0, cv.width, cv.height);
+      bits = bits.filter((b) => b.y < cv.height + 30);
+      bits.forEach((b) => { b.x += b.vx; b.y += b.vy; b.vy += 0.06; b.r += b.vr; cx.save(); cx.translate(b.x, b.y); cx.rotate(b.r); cx.fillStyle = b.c; cx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h); cx.restore(); });
+      if (bits.length || age < 3000) requestAnimationFrame(confStep); else { confOn = false; cx.clearRect(0, 0, cv.width, cv.height); }
+    }
+
+    /* ---------- the main loop ---------- */
+    let cur = Object.assign({}, P.idle), stage = "", bossX = -400, bossPh = 0, bubbleT = 0, nextTaunt = 4, emoClock = 0, msgI = 0, msgT = 0, bgRate = -1, lastT = performance.now();
+    const bubble = $("#bossBubble");
+    function setStage(st) {
+      if (st === stage) return;
+      stage = st; document.body.dataset.stage = st; msgI = 0; msgT = 0; showMsg();
+    }
+    function showMsg() {
+      const list = !S.running && !S.finished && stage !== "idle" ? MSG.paused : MSG[stage] || MSG.calm;
+      $("#msg").innerHTML = `<span>${esc(list[msgI % list.length])}</span>`;
+    }
+    function frame(t) {
+      const dt = Math.min(0.1, (t - lastT) / 1000); lastT = t;
+      let rem = remaining();
+      if (S.running && rem <= 0) { S.running = false; S.finished = true; S.rem = 0; save(); setStage("end"); finale(true); paintButtons(); }
+      rem = remaining();
+      const st = stageOf(rem); setStage(st);
+      checkMiles(rem);
+
+      // the clock
+      const tEl = $("#timer"), txt = S.finished ? "00:00" : fmtLeft(rem);
+      if (tEl.textContent !== txt) tEl.textContent = txt;
+      tEl.classList.toggle("hot", S.running && rem <= 60000); tEl.classList.toggle("last", S.running && rem <= 10000);
+      tEl.classList.toggle("warn", st === "panic" || st === "end");
+      $("#tLabel").textContent = S.finished ? "TIME'S UP" : !S.running && st !== "idle" ? "PAUSED" : "TIME REMAINING";
+      $("#barFill").style.width = `${Math.max(0, Math.min(100, (rem / S.dur) * 100)).toFixed(2)}%`;
+      const now = clockOf(Date.now()); if ($("#now").textContent !== now) $("#now").textContent = now;
+      const ends = S.running ? clockOf(S.endAt) : S.finished ? "–" : clockOf(Date.now() + rem);
+      if ($("#ends").textContent !== ends) $("#ends").textContent = ends;
+      msgT += dt; if (msgT > 11) { msgT = 0; msgI++; showMsg(); }
+
+      // ease the motion towards the stage's values; a paused timer slows everyone right down
+      const tgt = P[st] || P.calm, slow = !S.running && !S.finished && st !== "idle" ? 0.15 : 1, k = Math.min(1, dt * 1.2);
+      ["v", "f", "a", "lean", "rate"].forEach((q) => { cur[q] += (tgt[q] * (q === "v" || q === "rate" ? slow : 1) - cur[q]) * k; });
+      if (Math.abs(cur.rate - bgRate) > 0.05) {
+        bgRate = cur.rate;
+        document.getAnimations().forEach((a) => { const el = a.effect && a.effect.target; if (el && el.closest && el.closest("#bgs")) a.playbackRate = Math.max(0.05, bgRate); });
+      }
+
+      // the runners
+      let minX = Infinity, allOut = wave.length > 0;
+      wave.forEach((r) => {
+        if (!r.fallen) {
+          r.next -= dt;
+          if (r.next <= 0) { r.next = 1.5 + Math.random() * 4; r.vMul = st === "calm" || st === "idle" ? (Math.random() < 0.15 ? 0.2 : 0.55 + Math.random() * 0.75) : 0.72 + Math.random() * 0.6; }
+          r.x += cur.v * r.vMul * dt; r.ph += dt * cur.f * Math.PI * Math.max(0.4, r.vMul);
+        }
+        const b = Math.abs(Math.sin(r.ph)) * cur.a;
+        r.el.setAttribute("transform", `translate(${r.x.toFixed(1)} ${(r.y - 57 * r.s).toFixed(1)}) scale(${r.s})`);
+        r.body.setAttribute("transform", r.fallen ? "translate(0 8) rotate(-84 0 57)" : `translate(0 ${(-b).toFixed(1)}) rotate(${(cur.lean * Math.min(1.3, r.vMul)).toFixed(1)} 0 57)`);
+        if (r.emoT > 0) { r.emoT -= dt; if (r.emoT <= 0 && !r.fallen) r.emo.classList.remove("on"); }
+        minX = Math.min(minX, r.x);
+        if (r.x < W + 90) allOut = false;
+      });
+      if (allOut && !S.finished) nextWave(false);
+      emoClock -= dt;
+      if (emoClock <= 0 && wave.length && !S.finished) {
+        emoClock = st === "panic" ? 0.5 : st === "hurry" ? 0.8 : 1.3;
+        const vis = wave.filter((r) => r.x > 40 && r.x < W - 40 && r.emoT <= 0);
+        if (vis.length) { const r = pick(vis); r.emo.textContent = pick(EMO[st] || EMO.calm); r.emo.classList.add("on"); r.emoT = 1.8; }
+      }
+
+      // the boss: behind the slowest runner, closer and closer as time runs out
+      const bossOn = (st === "hurry" || st === "panic" || st === "end") && wave.length;
+      document.body.classList.toggle("boss", !!bossOn);
+      if (bossOn && isFinite(minX)) {
+        const f = rem / S.dur, gap = st === "hurry" ? 230 : st === "panic" ? 40 + 140 * Math.min(1, f / 0.1) : 10;
+        if (!S.finished) bossX += (minX - gap - bossX) * Math.min(1, dt * 1.5);
+        bossPh += dt * cur.f * 0.8 * Math.PI;
+        const e = ART.ENEMIES[bossKey] || {}, bs = (e.scale || 1) * 0.62, by = 276 - Math.abs(Math.sin(bossPh)) * (S.finished ? 0 : 7);
+        $("#bossG").setAttribute("transform", `translate(${bossX.toFixed(1)} ${by.toFixed(1)}) scale(${bs.toFixed(3)})`);
+        // the taunt bubble
+        nextTaunt -= dt;
+        if (nextTaunt <= 0 && !S.finished && bossX > 30 && bossX < W - 60) {
+          nextTaunt = st === "panic" ? 10 : 14; bubbleT = 2.8;
+          bubble.textContent = pick(EXAM_TAUNTS); bubble.classList.remove("on"); void bubble.offsetWidth; bubble.classList.add("on");
+        }
+        if (bubbleT > 0) {
+          bubbleT -= dt; const kx = stageEl.clientWidth / W;
+          bubble.style.left = `${(bossX * kx).toFixed(0)}px`; bubble.style.top = `${((276 - 150 * bs) * kx).toFixed(0)}px`;
+          if (bubbleT <= 0) bubble.classList.remove("on");
+        }
+      } else { bubble.classList.remove("on"); }
+      requestAnimationFrame(frame);
+    }
+
+    /* ---------- controls ---------- */
+    const ctrl = $("#ctrl");
+    let hideT = 0, armT = 0;
+    function wake() { ctrl.classList.remove("hide"); clearTimeout(hideT); hideT = setTimeout(() => { if (S.running && !$("#dlg").open) ctrl.classList.add("hide"); }, 3500); }
+    ["mousemove", "touchstart", "keydown", "click"].forEach((ev) => addEventListener(ev, wake, { passive: true }));
+    function paintButtons() { $("#bStart").textContent = S.running ? "⏸ Pause" : S.finished ? "✔ Done" : S.rem < S.dur ? "▶ Resume" : "▶ Start"; }
+    function startPause() {
+      ac();
+      if (S.finished) return;
+      if (S.running) { S.rem = remaining(); S.running = false; }
+      else { S.endAt = Date.now() + S.rem; S.running = true; lastRem = S.rem; }
+      save(); paintButtons(); showMsg(); wake();
+    }
+    function adjust(ms) {
+      ac();
+      if (S.finished && ms > 0) {
+        // extra time after TIME'S UP: it runs at once (no need to press Resume), and the last-ten-seconds countdown plays again
+        S.finished = false; S.rem = 0; $("#fin").hidden = true; wave.forEach((r) => { r.fallen = false; r.emo.classList.remove("on"); });
+        S.running = true; S.endAt = Date.now(); lastSec = -1;
+      }
+      if (S.running) S.endAt = Math.max(Date.now(), S.endAt + ms); else S.rem = Math.max(0, S.rem + ms);
+      S.dur = Math.max(S.dur, remaining());
+      lastRem = remaining(); save(); paintButtons();
+    }
+    function reset() {
+      S.running = false; S.finished = false;
+      if (S.test) { S.test = false; }
+      S.dur = durOf(S.cfg); S.rem = S.dur; lastRem = null; lastSec = -1;
+      $("#fin").hidden = true; save(); paintHeader(); paintButtons(); nextWave(true); setStage(stageOf(S.rem)); showMsg();
+    }
+    $("#bStart").addEventListener("click", startPause);
+    $("#bPlus").addEventListener("click", () => adjust(60000));
+    $("#bMinus").addEventListener("click", () => adjust(-60000));
+    $("#bReset").addEventListener("click", () => {
+      const b = $("#bReset");
+      if (!b.classList.contains("armed")) { b.classList.add("armed"); b.textContent = "Tap again"; clearTimeout(armT); armT = setTimeout(() => { b.classList.remove("armed"); b.textContent = "↺ Reset"; }, 3000); return; }
+      clearTimeout(armT); b.classList.remove("armed"); b.textContent = "↺ Reset"; reset();
+    });
+    $("#bFull").addEventListener("click", () => {
+      const d = document, quiet = (x) => { if (x && x.catch) x.catch(() => {}); };
+      try { if (!d.fullscreenElement) quiet((d.documentElement.requestFullscreen || d.documentElement.webkitRequestFullscreen || (() => {})).call(d.documentElement)); else quiet((d.exitFullscreen || d.webkitExitFullscreen).call(d)); } catch (e) {}
+    });
+    // the sound button steps through: off → final alarm only → all sounds
+    $("#bSnd").addEventListener("click", () => {
+      S.cfg.sound = SOUNDS[(SOUNDS.indexOf(S.cfg.sound) + 1) % SOUNDS.length]; save(); paintHeader(); setWho(SND_ICON[S.cfg.sound] + " " + SND_NAME[S.cfg.sound]);
+      if (S.cfg.sound !== "off") { ac(); tone(880, 0, 0.25, "sine", 0.15); }
+    });
+    addEventListener("keydown", (e) => {
+      if ($("#dlg").open || /INPUT|SELECT|TEXTAREA/.test((e.target && e.target.tagName) || "")) return;
+      if (e.code === "Space") { e.preventDefault(); startPause(); } else if (e.key === "f" || e.key === "F") $("#bFull").click();
+    });
+
+    /* ---------- the settings dialog ---------- */
+    const dlg = $("#dlg"), form = $("#setForm");
+    $("#bossSel").innerHTML = `<option value="random">🎲 A different boss each wave</option>` + BOSSES.map((k) => `<option value="${k}">${esc(ART.ENEMIES[k].name)}</option>`).join("");
+    $("#bSet").addEventListener("click", () => {
+      const c = S.cfg; ["code", "name", "title", "venue", "date", "time", "h", "m", "boss", "wave"].forEach((n) => { form.elements[n].value = c[n]; });
+      form.elements.sound.value = SOUNDS.indexOf(c.sound) >= 0 ? c.sound : "off";
+      $("#durNote").textContent = S.running ? "The timer is running: pause and reset it to change the duration." : "Changing the duration resets the timer.";
+      form.elements.h.disabled = form.elements.m.disabled = S.running;
+      paintChars(); dlg.showModal();
+    });
+    $("#quick").addEventListener("click", (e) => { const b = e.target.closest("[data-q]"); if (!b || S.running) return; const q = +b.dataset.q; form.elements.h.value = Math.floor(q / 60); form.elements.m.value = q % 60; });
+    dlg.addEventListener("close", () => {
+      if (dlg.returnValue !== "ok") return;
+      const c = S.cfg, el = form.elements, oldDur = durOf(c), oldWave = c.wave;
+      ["code", "name", "title", "venue", "date", "time"].forEach((n) => { c[n] = el[n].value.trim() || DEF[n]; });
+      if (!S.running) { c.h = Math.max(0, Math.min(9, parseInt(el.h.value, 10) || 0)); c.m = Math.max(0, Math.min(59, parseInt(el.m.value, 10) || 0)); if (!c.h && !c.m) c.m = 1; }
+      c.boss = el.boss.value; c.wave = +el.wave.value || 20; c.sound = SOUNDS.indexOf(el.sound.value) >= 0 ? el.sound.value : "off";
+      if (!S.running && (durOf(c) !== oldDur || S.test)) { S.test = false; S.dur = durOf(c); S.rem = S.dur; S.finished = false; $("#fin").hidden = true; lastRem = null; }
+      save(); paintHeader(); paintButtons();
+      if (+oldWave !== +c.wave) nextWave(true); else setBoss(bossOf());
+    });
+    $("#bTest").addEventListener("click", () => {
+      S.test = true; S.dur = 90000; S.rem = 90000; S.finished = false; S.running = false; $("#fin").hidden = true; lastRem = null; lastSec = -1;
+      dlg.close("cancel"); paintHeader(); nextWave(true); startPause();
+    });
+    $("#bDemo").addEventListener("click", () => { pool = shuffle(demoPool()); poolI = 0; source = "demo"; setWho("🎲 Demo characters"); paintChars(); nextWave(true); });
+
+    /* ---------- the class's own characters (the progress board, readable by the lecturer once signed in) ---------- */
+    const FB = { apiKey: "AIzaSyBR3JguiBmsePqoOsnF-lefm5gyjJx89Z0", authDomain: "nmk42003-interactive-website.firebaseapp.com", projectId: "nmk42003-interactive-website",
+      storageBucket: "nmk42003-interactive-website.firebasestorage.app", messagingSenderId: "190874137761", appId: "1:190874137761:web:aea3c43df6ee60dfedece0" };
+    let auth = null, db = null, whoT = 0, classN = 0;
+    function setWho(t) { const w = $("#who"); w.textContent = t; w.classList.remove("fade"); clearTimeout(whoT); whoT = setTimeout(() => w.classList.add("fade"), 7000); }
+    function paintChars() {
+      const u = auth && auth.currentUser;
+      $("#charNote").textContent = source === "class" ? `Showing your class: ${classN} students' own INSTRUMENTA characters, with their hero names (or nicknames).`
+        : !auth ? "Demo characters (the class can only be loaded on the course website)." : u ? `Signed in as ${u.email}. Showing demo characters: press Reload class.` : "Demo characters. Sign in as lecturer to bring in your students' own characters.";
+      $("#bSignIn").hidden = !auth || !!u; $("#bReload").hidden = !auth || !u;
+    }
+    async function loadClass() {
+      if (!db) return;
+      setWho("⏳ Loading the class characters…");
+      try {
+        const sem = (typeof COURSE !== "undefined" && (COURSE.semesterId || COURSE.session)) || "2026/2027 Semester 1";
+        const id = String(sem).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        const d = await db.collection("boardsum").doc(id).get(), x = d.exists ? d.data() : null;
+        if (!x || !x.p) throw new Error("the progress board is empty");
+        let bans = {};
+        try { const b = await db.collection("meta").doc("heronames").get(); bans = (b.exists && b.data().bans) || {}; } catch (e) {}
+        const list = Object.entries(x.p).filter(([, v]) => v && v.role !== "lecturer").map(([uid, v]) => {
+          let h = null; try { h = v.game && v.game.hero ? JSON.parse(v.game.hero) : null; } catch (e) { h = null; }
+          const hero = h ? Object.assign({}, HERO0, h) : rndHero(rng(hash(uid)));
+          const hn = String((h && h.name) || "").trim(), ok = hn && String(bans[uid] || "").toLowerCase() !== hn.toLowerCase();
+          const g = v.game || {};
+          return { label: (ok ? hn : "") || v.nickname || "Player", hero, tier: (g.bosses || 0) > 0 ? 2 : (v.levelNo || 1) >= 3 ? 1 : 0 };
+        });
+        if (!list.length) throw new Error("no students yet");
+        pool = shuffle(list); poolI = 0; source = "class"; classN = list.length;
+        setWho(`🎮 ${list.length} class characters loaded`); nextWave(true);
+      } catch (e) { setWho(`Could not load the class (${e.code || e.message || e}). Showing demo characters.`); }
+      paintChars();
+    }
+    if (window.firebase && firebase.initializeApp) {
+      try {
+        if (!firebase.apps.length) firebase.initializeApp(FB);
+        auth = firebase.auth(); db = firebase.firestore();
+        auth.onAuthStateChanged((u) => { if (u) loadClass(); else setWho("🎲 Demo characters · open ⚙️ to sign in and load your class"); paintChars(); });
+        $("#bSignIn").addEventListener("click", () => { const p = new firebase.auth.GoogleAuthProvider(); p.setCustomParameters({ prompt: "select_account" }); auth.signInWithPopup(p).catch((e) => setWho(`Sign-in failed (${e.code || e.message})`)); });
+        $("#bReload").addEventListener("click", loadClass);
+      } catch (e) { auth = null; db = null; }
+    }
+    if (!auth) setWho("🎲 Demo characters");
+
+    /* ---------- go ---------- */
+    paintHeader(); fit(); buildBg(); nextWave(true); paintButtons(); setStage(stageOf(remaining()));
+    if (S.finished) setTimeout(() => finale(false), 300);
+    wake(); requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>
