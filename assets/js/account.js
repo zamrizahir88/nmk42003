@@ -273,7 +273,7 @@
     if (!state.profile || state.profile.status !== "approved") { loadBell(false); return; }   // waiting for approval: checked again on every page
     // is the game released, is a survey round open? (for the menu links)
     const [mi, sv] = await Promise.all([db.collection("meta").doc("missions").get(), db.collection("meta").doc("survey").get()].map((p) => p.catch(() => null)));
-    missionsOpen = !!(mi && mi.exists && mi.data().released); missionsBat = (mi && mi.exists && mi.data().bat && mi.data().bat.p) || []; surveyOpen = (sv && sv.exists && sv.data().open) || ""; navMine(); hubPing();
+    missionsOpen = !!(mi && mi.exists && mi.data().released); missionsBat = (mi && mi.exists && mi.data().bat && mi.data().bat.p) || []; surveyOpen = svList(sv).join(",");   // the open survey rounds, e.g. "pre,mid" (several can be open since 22 Nov 2026) navMine(); hubPing();
     const now = Date.now();
     vset({ uid: u.uid, start: now, seen: now, profile: state.profile, roster: state.roster, missions: missionsOpen, mbat: missionsBat, survey: surveyOpen, bell: null });
     loadBell(true);
@@ -380,6 +380,8 @@
 
   const STATUS = { approved: "Approved", pending: "Waiting for approval", rejected: "Not approved" };
   let missionsOpen = false, surveyOpen = "", missionsBat = [];
+  // the survey rounds open now, in order (meta/survey.rounds; an older single meta/survey.open still works)
+  const svList = (d) => { const x = (d && d.exists && d.data()) || {}; const l = Array.isArray(x.rounds) ? x.rounds : x.open ? [x.open] : []; return ["pre", "mid", "post"].filter((k) => l.indexOf(k) >= 0); };
   function paint() {
     const u = state.user, p = state.profile;
     if (!u) { btn.innerHTML = `${ICON}<span class="acc-t">Sign in</span>`; btn.setAttribute("aria-label", "Sign in with Google"); btn.className = "icon-btn acc-btn out"; }
@@ -545,12 +547,15 @@
           }
           if ((!g || g.status === "forming") && due && Date.now() < due) add({ todo: true, t: tms(pm.data().updatedAt) || Date.now(), href: "project.html", text: `${g ? "Submit your mini project title proposal" : "Join or create a mini project group"} by <strong>${noteDate(due)}</strong>` });
         }
-        // the course survey: a round is open and I haven't answered it yet
-        const sv = await db.collection("meta").doc("survey").get().catch(() => null), svr = sv && sv.exists && sv.data().open;
-        if (svr) {
+        // the course survey: the open rounds I haven't answered yet (one to-do line)
+        const sv = await db.collection("meta").doc("survey").get().catch(() => null), svl = svList(sv);
+        if (svl.length) {
           const skey = String(SEM).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-          const mineSv = await db.collection("survey").doc(`${skey}_${svr}_${u.uid}`).get().catch(() => null);
-          if (mineSv && !mineSv.exists) add({ todo: true, t: tms(sv.data().updatedAt) || Date.now(), href: "survey.html", text: "The <strong>course survey</strong> is open: a few minutes, no marks, and it helps improve the course" });
+          const got = await Promise.all(svl.map((r) => db.collection("survey").doc(`${skey}_${r}_${u.uid}`).get().catch(() => null)));
+          const todo = got.filter((d) => d && !d.exists).length;
+          if (todo) add({ todo: true, t: tms(sv.data().updatedAt) || Date.now(), href: "survey.html", text: svl.length === 1
+            ? "The <strong>course survey</strong> is open: a few minutes, no marks, and it helps improve the course"
+            : `<strong>${svl.length} course surveys</strong> are open (${todo} still to do): a few minutes each, no marks, and they help improve the course` });
         }
         // attendance warnings emailed to me and my RPS
         const wslug = String(SEM).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), WLV = { 1: "Attendance Warning 1", 2: "Attendance Warning 2", 3: "Barring Notification" };

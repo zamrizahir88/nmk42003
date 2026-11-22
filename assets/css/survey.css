@@ -36,3 +36,30 @@
 .sv-preview summary { cursor: pointer; font-weight: 600; color: var(--teal); }
 .sv-preview .sv-form { opacity: .85; }
 @media (max-width: 480px) { .sv-scale span { min-width: 40px; padding: 0 6px; } }
+
+/* several open rounds (22 Nov 2026): the "about" note, the count, one card per round, what to think about */
+.sv-about { max-width: 760px; margin: 0 0 16px; padding: 14px 16px; border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--teal); }
+.sv-about > strong { display: block; font-family: var(--serif); font-size: 1.05rem; margin-bottom: 4px; }
+.sv-about p { margin: 0; color: var(--ink-2); }
+.sv-count { max-width: 760px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 14px; margin: 0 0 12px; }
+.sv-cn { font-weight: 700; font-size: 1.05rem; }
+.sv-cd { font-size: .9rem; font-weight: 600; color: var(--teal); background: var(--teal-soft); border-radius: 999px; padding: 3px 12px; }
+.sv-alldone { max-width: 760px; padding: 10px 14px; border-radius: var(--r-md); background: var(--teal-soft); color: var(--ink); font-weight: 600; }
+.sv-cards { display: grid; gap: 12px; max-width: 760px; }
+.sv-card { display: grid; gap: 10px; padding: 14px 16px; border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--rule); }
+.sv-card.next { border-color: var(--teal); box-shadow: 0 0 0 2px color-mix(in srgb, var(--teal) 30%, transparent); }
+.sv-card.done { opacity: .95; }
+.sv-card .btn { justify-self: start; }
+.sv-ch { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.sv-ch h2 { margin: 0; }
+.sv-ch small { color: var(--ink-3); }
+.sv-no { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--teal); color: #fff; font-weight: 700; }
+[data-theme="dark"] .sv-no { color: #0e1720; }
+.sv-st { font-size: .82rem; font-weight: 700; border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+.sv-st.todo { background: var(--amber-soft); color: var(--amber); }
+.sv-st.ok { background: var(--teal-soft); color: var(--teal); }
+.sv-think { margin: 0; padding: 10px 12px; border-radius: var(--r-sm); background: color-mix(in srgb, #2f6fbf 10%, var(--surface)); border-left: 4px solid #2f6fbf; color: var(--ink); line-height: 1.5; }
+.sv-think.big { font-size: 1.02rem; margin: 10px 0 8px; }
+.sv-recheck { margin: 0; padding: 10px 12px; border-radius: var(--r-sm); background: var(--amber-soft); border-left: 4px solid var(--amber); color: var(--ink); line-height: 1.5; }
+.sv-intro .sv-recheck { margin-top: 8px; }
+@media (max-width: 480px) { .sv-ch { grid-template-columns: auto minmax(0, 1fr); } .sv-ch .sv-st { grid-column: 2; justify-self: start; } .sv-card .btn { justify-self: stretch; text-align: center; } }

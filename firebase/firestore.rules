@@ -410,7 +410,9 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid
         && id == request.resource.data.semKey + '_' + request.resource.data.round + '_' + request.auth.uid
         && exists(/databases/$(database)/documents/meta/survey)
-        && request.resource.data.round == get(/databases/$(database)/documents/meta/survey).data.get('open', '')
+        // the round must be one of the rounds open now (meta/survey.rounds; the older single meta/survey.open still counts)
+        && (request.resource.data.round in get(/databases/$(database)/documents/meta/survey).data.get('rounds', [])
+          || request.resource.data.round == get(/databases/$(database)/documents/meta/survey).data.get('open', ''))
         && request.resource.data.keys().hasOnly(['semKey', 'semester', 'round', 'uid', 'consent', 'a', 'at'])
         && request.resource.data.consent is bool && request.resource.data.a is map;
       allow delete: if isLecturer();

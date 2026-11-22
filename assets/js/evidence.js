@@ -244,12 +244,22 @@
         <p class="small-note">Lecture attendance of students who use the site: ${pct(mean(acc.map((s) => s.lec)))} (${acc.length}); of students without an account: ${non.length >= MIN_GROUP ? pct(mean(non.map((s) => s.lec))) : "too few to compare"} (${non.length}).</p>` : `<p class="adm-empty">No attendance records yet.</p>`}</section>`;
   }
 
+  // a Middle / End answer's "before" confidence for one CO: its own b_ rating, else the same student's Start answer (with consent)
+  function beforeOf(x, c) {
+    const b = x.a && x.a[`b_${c}`];
+    if (b >= 1) return b;
+    const pre = D.survey.find((y) => y.round === "pre" && y.uid === x.uid && y.consent);
+    return pre && pre.a ? pre.a[`n_${c}`] : null;
+  }
   function survey() {
     const R = Object.keys(SV.ROUNDS).map((k) => [k, D.survey.filter((x) => x.round === k && x.consent)]).filter(([, a]) => a.length);
     const all = D.survey.length, consent = D.survey.filter((x) => x.consent).length;
     if (!R.length) return `<section id="survey" class="ev-sec"><h2 class="h3">Course Survey</h2><p class="adm-empty">${all ? `${all} answers so far, none with consent for reports yet.` : "No answers yet."} Open a round on the <a href="survey.html">Course Survey</a> page.</p></section>`;
     const m = (a, k) => mean(a.map((x) => x.a[k]).filter((v) => v >= 1));
-    const conf = SV.COS.map((c) => [`<span class="ex-co">${c}</span>`].concat(R.flatMap(([k, a]) => SV.later(k) ? [`${num(m(a, `b_${c}`), 2)} → <strong>${num(m(a, `n_${c}`), 2)}</strong>`] : [`<strong>${num(m(a, `n_${c}`), 2)}</strong>`])));
+    // "before" for a Middle / End answer: its own "before this course" rating, or (when that round was answered while the Start
+    // round was open, so "before" was not asked) the same student's Start-of-semester rating
+    const mb = (a, c) => mean(a.map((x) => beforeOf(x, c)).filter((v) => v >= 1));
+    const conf = SV.COS.map((c) => [`<span class="ex-co">${c}</span>`].concat(R.flatMap(([k, a]) => SV.later(k) ? [`${num(mb(a, c), 2)} → <strong>${num(m(a, `n_${c}`), 2)}</strong>`] : [`<strong>${num(m(a, `n_${c}`), 2)}</strong>`])));
     const eng = SV.ENG.map(([k, t]) => [esc(t)].concat(R.map(([, a]) => num(m(a, k), 2))));
     const later = R.filter(([k]) => SV.later(k)), last = later[later.length - 1];
     const feat = last ? SV.FEAT.map(([k, t]) => { const a = last[1].map((x) => x.a[`f_${k}`]).filter((v) => v != null); const used = a.filter((v) => v >= 1); return { t, used: share(used.length, a.length), mean: mean(used) }; }).sort((x, y) => (y.mean || 0) - (x.mean || 0)) : [];
@@ -260,7 +270,7 @@
     return `<section id="survey" class="ev-sec"><h2 class="h3">Course Survey</h2>
       <p class="small-note">${all} answers, ${consent} with consent for reports (only these are shown). Scale 1 to 5.</p>
       ${table(["Round", "Answers (with consent)"], R.map(([k, a]) => [esc(SV.ROUNDS[k]), a.length]))}
-      <h3 class="bd-h">Confidence in Each Course Outcome</h3><p class="small-note">From the middle round on, students also rate how confident they were before the course (before → now).</p>
+      <h3 class="bd-h">Confidence in Each Course Outcome</h3><p class="small-note">From the middle round on: before → now. "Before" is the student's own "before this course" rating, or their Start-of-semester answer when the two rounds were open together.</p>
       ${table(["CO"].concat(R.map(([k]) => esc(SV.ROUNDS[k]))), conf)}
       <h3 class="bd-h">How Students Learn</h3>${table(["Statement"].concat(R.map(([k]) => esc(SV.ROUNDS[k]))), eng)}
       ${last ? `<h3 class="bd-h">Usefulness of Each Part (${esc(SV.ROUNDS[last[0]])})</h3>
@@ -338,7 +348,7 @@
     const rate = (k) => { const a = D.att.filter((x) => x.kind === k); return ok(a.length, r1(share(a.filter((x) => x.status === "P" || x.status === "L").length, a.length))); };
     const sv = D.survey.filter((x) => x.consent), later = Object.keys(SV.ROUNDS).filter((k) => SV.later(k) && sv.some((x) => x.round === k)).pop();
     const last = later ? sv.filter((x) => x.round === later) : [], sus = last.map((x) => SV.susScore(x.a)).filter((v) => v != null);
-    const conf = {}; if (later) SV.COS.forEach((c) => { const b = last.map((x) => x.a[`b_${c}`]).filter((v) => v >= 1), n = last.map((x) => x.a[`n_${c}`]).filter((v) => v >= 1); conf[c] = { before: ok(b.length, r1(mean(b))), now: ok(n.length, r1(mean(n))) }; });
+    const conf = {}; if (later) SV.COS.forEach((c) => { const b = last.map((x) => beforeOf(x, c)).filter((v) => v >= 1), n = last.map((x) => x.a[`n_${c}`]).filter((v) => v >= 1); conf[c] = { before: ok(b.length, r1(mean(b))), now: ok(n.length, r1(mean(n))) }; });
     const feat = later ? SV.FEAT.map(([k, t]) => { const u = last.map((x) => x.a[`f_${k}`]).filter((v) => v >= 1); return { t, mean: ok(u.length, r1(mean(u))), n: u.length }; }).filter((f) => f.mean != null).sort((a, b) => b.mean - a.mean) : [];
     const res = !withResults ? [] : Object.entries(D.ev.sets).map(([k, s]) => {
       const v = S.map((x) => x.marks[k]).filter((x) => x != null), g = groups(k), p = (D.ev.prev || {})[k] || {};
@@ -368,7 +378,7 @@
     const code = {}; D.students.slice().sort((a, b) => String(a.r.matric).localeCompare(String(b.r.matric))).forEach((s, i) => { code[s.r.id] = `S${String(i + 1).padStart(3, "0")}`; });
     if (kind === "survey") {
       const byUid = Object.fromEntries(D.users.map((u) => [u.uid, String(u.email || "").toLowerCase()]));
-      const keys = [...new Set(D.survey.flatMap((x) => Object.keys(x.a || {})))].sort();
+      const keys = [...new Set(D.survey.flatMap((x) => Object.keys(x.a || {})))].filter((k) => k !== "v").sort();   // v: the form version, not an answer
       head = ["Student", "Round", "Consent"].concat(keys, ["SUS score"]);
       lines = D.survey.map((x) => [code[byUid[x.uid]] || "–", SV.ROUNDS[x.round] || x.round, x.consent ? "yes" : "no"].concat(keys.map((k) => (x.a || {})[k] == null ? "" : x.a[k]), [SV.susScore(x.a) == null ? "" : SV.susScore(x.a)]));
     } else {

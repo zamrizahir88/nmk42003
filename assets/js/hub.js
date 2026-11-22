@@ -49,7 +49,7 @@
   function badge(card, o) {
     const [href, , , , match] = card;
     if (href === "missions.html" && o.lec && !o.missions) return `<span class="hub-b off">Not released</span>`;
-    if (href === "survey.html" && o.survey) return `<span class="hub-b">Open now${o.lec ? ` (${esc(o.survey)})` : ""}</span>`;
+    if (href === "survey.html" && o.survey) { const n = String(o.survey).split(",").filter(Boolean), nm = { pre: "Start", mid: "Middle", post: "End" }; return `<span class="hub-b">${n.length > 1 ? `${n.length} open` : "Open now"}${o.lec ? ` (${esc(n.map((k) => nm[k] || k).join(" + "))})` : ""}</span>`; }
     if (!match) return "";
     const items = match === "all" ? o.bell : o.bell.filter((x) => match.test(x.href || ""));
     const todo = items.filter((x) => x.todo).length, fresh = items.filter((x) => x.fresh && !x.todo).length;
