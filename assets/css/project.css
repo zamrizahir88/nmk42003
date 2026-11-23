@@ -238,3 +238,4 @@ textarea.pj-in { resize: vertical; }
 .pj-pick .pj-busy { display: grid; gap: 2px; padding: 8px 10px; border: 1px dashed var(--rule); border-radius: var(--r-sm); background: var(--amber-soft); color: var(--ink); }
 .pj-pick .pj-busy span { font-size: .85rem; color: var(--ink-2); }
 .pj-pick .pj-busy small { font-size: .82rem; line-height: 1.4; color: var(--ink-2); }
+.pj-hint { margin: 0 0 6px; font-size: .85rem; color: var(--ink-2); }

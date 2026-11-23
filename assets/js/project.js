@@ -90,8 +90,9 @@
   /* ---------- the parts list students choose from (they may type others) ---------- */
   const SENSORS = ["Ultrasonic sensor (HC-SR04)", "IR obstacle sensor", "LM35 temperature sensor", "Thermistor (NTC)", "DS18B20 temperature sensor", "DHT22 temperature and humidity", "DHT11 temperature and humidity",
     "ACS712 current sensor", "Voltage divider (to the ADC)", "LDR (light)", "BH1750 lux sensor", "PIR motion sensor", "MQ-2 gas sensor", "MQ-135 air quality sensor", "Vibration sensor (SW-420)",
-    "MPU6050 accelerometer", "Dust sensor (GP2Y1010)", "Capacitive soil moisture sensor", "Potentiometer (angle or position)", "Load cell with HX711", "Water flow sensor (YF-S201)", "Water level sensor", "Flame sensor", "BMP280 pressure sensor"];
-  const OUTS = ["Relay with fan", "Relay with pump", "Relay cuts the load", "Servo motor", "DC motor", "Buzzer", "LED", "RGB LED", "LCD 16x2 (I2C)", "OLED display", "PWM fan", "Solenoid valve", "Stepper motor"];
+    "MPU6050 accelerometer", "Dust sensor (GP2Y1010)", "Capacitive soil moisture sensor", "Potentiometer (angle or position)", "Load cell with HX711", "Water flow sensor (YF-S201)", "Water level sensor", "Flame sensor", "BMP280 pressure sensor",
+    "Turbidity sensor (analog)", "pH sensor (analog)", "TDS water quality sensor (analog)", "DS18B20 waterproof water temperature probe"];   // a suggestion list only: students may type any sensor
+  const OUTS = ["Relay with fan", "Relay with pump", "Relay cuts the load", "Servo motor", "DC motor", "Buzzer", "LED", "RGB LED", "LCD 16x2 (I2C)", "OLED display", "PWM fan", "Solenoid valve", "Stepper motor", "Relay with water pump", "Aerator (air pump)"];
   // the guideline's example titles (★ = the sensor to calibrate)
   const EXAMPLES = [
     ["a", [["Product sorting and jam detection on a conveyor", "★ Ultrasonic (product height); IR obstacle (counter)", "Undersize / OK / Oversize", "Servo reject arm; buzzer; relay stops the conveyor motor", "Ruler"],
@@ -404,11 +405,11 @@
         <div id="pjClash" aria-live="polite"></div>
         <fieldset class="pj-fs"><legend class="pj-l">Industry</legend>${Object.entries(IND).map(([k, l]) => `<label class="pj-radio"><input type="radio" name="ind" value="${k}"${p.industry === k ? " checked" : ""}> (${k}) ${l}</label>`).join("")}</fieldset>
         <label class="pj-l" for="pjS">Short synopsis <span>(what your system does, and for whom; up to ${WORDS} words)</span></label><textarea id="pjS" class="pj-in" rows="5" data-f="synopsis">${esc(p.synopsis)}</textarea><p class="small-note" id="pjWc"></p>
-        <fieldset class="pj-fs"><legend class="pj-l">Sensors <span>(at least 2; at least one analog sensor that you will calibrate ★)</span></legend><div id="pjSensors">${p.sensors.map((s, i) => sensorRow(s, i)).join("")}</div>
+        <fieldset class="pj-fs"><legend class="pj-l">Sensors <span>(at least 2; at least one analog sensor that you will calibrate ★)</span></legend><p class="pj-hint">Choose a suggestion or type your own sensor: the list only gives ideas.</p><div id="pjSensors">${p.sensors.map((s, i) => sensorRow(s, i)).join("")}</div>
           <button type="button" class="btn ghost small" data-addsens>+ Add a sensor</button></fieldset>
         <fieldset class="pj-fs"><legend class="pj-l">The three conditions <span>(of one sensor, e.g. Normal, Warning, Critical, and what the system does in each)</span></legend>
           ${p.conds.map((c, i) => `<div class="pj-cond"><input class="pj-in" data-cond="${i}" data-k="name" value="${esc(c.name)}" placeholder="Condition ${i + 1}" aria-label="Condition ${i + 1}"><input class="pj-in" data-cond="${i}" data-k="resp" value="${esc(c.resp)}" placeholder="System response" aria-label="Response to condition ${i + 1}"></div>`).join("")}</fieldset>
-        <fieldset class="pj-fs"><legend class="pj-l">Actuators and outputs <span>(at least 2 different types)</span></legend><div id="pjOutsBox">${p.outs.map((o, i) => outRow(o, i)).join("")}</div>
+        <fieldset class="pj-fs"><legend class="pj-l">Actuators and outputs <span>(at least 2 different types)</span></legend><p class="pj-hint">Choose a suggestion or type your own.</p><div id="pjOutsBox">${p.outs.map((o, i) => outRow(o, i)).join("")}</div>
           <button type="button" class="btn ghost small" data-addout>+ Add an output</button></fieldset>
         <label class="pj-l" for="pjP">IoT platform (WiFi dashboard with analytics)</label><select id="pjP" class="pj-in" data-f="platform"><option value="">Choose…</option>${PLAT.map((x) => `<option${p.platform === x ? " selected" : ""}>${x}</option>`).join("")}</select>
         <input class="pj-in" data-f="platformOther" value="${esc(p.platformOther)}" placeholder="Which platform?" aria-label="Other platform"${p.platform === "Other" ? "" : " hidden"}>
@@ -418,10 +419,10 @@
         <ul class="pj-checks" id="pjChecks"></ul>
         <div class="pj-row"><button class="btn" id="pjSubmit">${g.status === "approved" ? "Submit the title change" : g.status === "amend" ? "Submit again" : "Submit the proposal"}</button>${own ? `<button type="button" class="btn ghost pj-save" id="pjSave" hidden>Save</button>` : `<button type="button" class="btn ghost" data-cancel>Cancel</button>`}<span class="small-note" id="pjSaved" aria-live="polite"></span></div></form>`;
     }
-    const sensorRow = (s, i) => `<div class="pj-sens"><input class="pj-in" list="pjSens" data-sens="${i}" value="${esc(s.name)}" placeholder="Sensor ${i + 1}" aria-label="Sensor ${i + 1}">
+    const sensorRow = (s, i) => `<div class="pj-sens"><input class="pj-in" list="pjSens" data-sens="${i}" value="${esc(s.name)}" placeholder="Sensor ${i + 1}: choose or type" aria-label="Sensor ${i + 1}">
       <label class="pj-chk"><input type="checkbox" data-analog="${i}"${s.analog ? " checked" : ""}> Analog</label><label class="pj-chk"><input type="radio" name="cal" data-cal="${i}"${s.cal ? " checked" : ""}> ★ Calibrate</label>
       ${i > 1 ? `<button type="button" class="pj-x" data-delsens="${i}" aria-label="Remove sensor ${i + 1}">✕</button>` : ""}</div>`;
-    const outRow = (o, i) => `<div class="pj-sens"><input class="pj-in" list="pjOuts" data-out="${i}" value="${esc(o)}" placeholder="Output ${i + 1}" aria-label="Output ${i + 1}">${i > 1 ? `<button type="button" class="pj-x" data-delout="${i}" aria-label="Remove output ${i + 1}">✕</button>` : ""}</div>`;
+    const outRow = (o, i) => `<div class="pj-sens"><input class="pj-in" list="pjOuts" data-out="${i}" value="${esc(o)}" placeholder="Output ${i + 1}: choose or type" aria-label="Output ${i + 1}">${i > 1 ? `<button type="button" class="pj-x" data-delout="${i}" aria-label="Remove output ${i + 1}">✕</button>` : ""}</div>`;
     // the design requirements a proposal must meet before it can be submitted
     function problems(p, g) {
       const sens = p.sensors.filter((s) => s.name.trim()), outs = p.outs.map((o) => o.trim()).filter(Boolean);
