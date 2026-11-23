@@ -234,3 +234,7 @@ textarea.pj-in { resize: vertical; }
 /* the proposal's Save button (no autosave): amber while there are unsaved changes */
 .pj-save { border-color: var(--amber); color: var(--amber); }
 .pj-unsaved { color: var(--amber); font-weight: 600; }
+/* the invite search: a classmate who is already in another group (22 Nov 2026) */
+.pj-pick .pj-busy { display: grid; gap: 2px; padding: 8px 10px; border: 1px dashed var(--rule); border-radius: var(--r-sm); background: var(--amber-soft); color: var(--ink); }
+.pj-pick .pj-busy span { font-size: .85rem; color: var(--ink-2); }
+.pj-pick .pj-busy small { font-size: .82rem; line-height: 1.4; color: var(--ink-2); }

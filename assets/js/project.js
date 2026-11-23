@@ -575,9 +575,14 @@
       inp.addEventListener("input", async () => {
         if (!loadClaims.done) await loadClaims();
         const q = inp.value.trim().toLowerCase(), ws = q.split(/\s+/).filter(Boolean);
-        const hits = q.length < 2 ? [] : mates.filter((x) => String(x.m) !== me.m && !g.memberM.includes(String(x.m)) && !g.inviteM.includes(String(x.m)) && !claims[String(x.m)])
-          .filter((x) => (/^\d+$/.test(q) ? String(x.m).includes(q) : ws.every((w) => x.n.toLowerCase().split(/\s+/).some((p) => p.startsWith(w))))).slice(0, 8);
-        ul.innerHTML = hits.map((x) => `<li><button type="button" data-m="${esc(x.m)}"><strong>${esc(x.n)}</strong><span>${esc(x.m)}${x.s ? ` · ${SEC[x.s]} lab` : ""}</span></button></li>`).join("") || (q.length >= 2 ? `<li class="pj-none">No classmate found who is free to invite.</li>` : "");
+        const match = (x) => (/^\d+$/.test(q) ? String(x.m).includes(q) : ws.every((w) => x.n.toLowerCase().split(/\s+/).some((p) => p.startsWith(w))));
+        const others = q.length < 2 ? [] : mates.filter((x) => String(x.m) !== me.m && !g.memberM.includes(String(x.m)) && !g.inviteM.includes(String(x.m))).filter(match);
+        const hits = others.filter((x) => !claims[String(x.m)]).slice(0, 8);
+        // classmates who match but are already in another group (even a group they created alone): say so, instead of "not found"
+        const busy = others.filter((x) => claims[String(x.m)]).slice(0, 3);
+        ul.innerHTML = hits.map((x) => `<li><button type="button" data-m="${esc(x.m)}"><strong>${esc(x.n)}</strong><span>${esc(x.m)}${x.s ? ` · ${SEC[x.s]} lab` : ""}</span></button></li>`).join("")
+          + busy.map((x) => `<li class="pj-busy"><strong>${esc(x.n)}</strong><span>${esc(x.m)} · already in another group</span><small>A student can be in one group only. To join yours, they must first leave that group, or tap <b>Delete this group</b> if they created it and are its only member. Then invite them again.</small></li>`).join("")
+          || (q.length >= 2 ? `<li class="pj-none">No classmate found with that name or matric number.</li>` : "");
       });
       ul.addEventListener("click", (e) => {
         const b = e.target.closest("[data-m]"); if (!b) return;
