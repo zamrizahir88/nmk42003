@@ -37,3 +37,82 @@ table.cal-table { width: 100%; border-collapse: collapse; font-size: .92rem; fon
 .scene .water3 { fill: var(--water); opacity: .6; }
 .scene .wire-w { stroke: #f4f4f4; stroke-width: 3; filter: drop-shadow(0 0 1px #555); }
 .scene .wire-g { stroke: #2e9e4a; stroke-width: 3; }
+
+/* ---------- sensor calibration examples ---------- */
+.kinds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 12px 0 18px; }
+@media (max-width: 760px) { .kinds { grid-template-columns: minmax(0, 1fr); } .kind .plot { max-width: 300px; } }
+.kind { margin: 0; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 8px 12px 12px; }
+.kind .plot { display: block; width: 100%; height: auto; margin: 0 auto; }
+.kind figcaption { display: grid; gap: 2px; font-size: .92rem; color: var(--ink-2); }
+.kind figcaption strong { color: var(--teal); font-size: 1rem; }
+.kind figcaption span { color: var(--ink-3); font-size: .85rem; }
+.kinds-morph .plot { max-width: 560px; }
+.sx-name { margin-top: 4px; }
+.sx-h { font-family: var(--serif); font-size: 1.02rem; margin: 18px 0 6px; }
+.sx-defs { margin-top: 6px; }
+.sx-body .cal-table td { white-space: nowrap; }
+.sx-body .cal-table th { white-space: normal; vertical-align: bottom; }
+@media (max-width: 480px) { .sx-body .cal-table th, .sx-body .cal-table td { padding: 6px 7px; } }
+.sx-body .codeblock, .sx-body .code { margin-top: 12px; }
+.scene.calrig { display: block; width: 100%; height: auto; }
+.scene .beaker { fill: none; stroke: var(--glass, #8aa4b4); stroke-width: 3; }
+.scene .liq { opacity: .55; transition: fill .3s; }
+.scene .ice { fill: #e8f6ff; stroke: #8fc6e8; }
+.scene .steam { fill: none; stroke: var(--ink-3); stroke-width: 1.6; stroke-linecap: round; }
+.scene .cable { fill: none; stroke: var(--ink-2); stroke-width: 2.2; stroke-linecap: round; }
+.scene .cable.sig { stroke: var(--teal); stroke-dasharray: 5 4; }
+.scene .blk { fill: #22262b; }
+.scene .tprobe { fill: none; stroke: #9aa6b1; stroke-width: 4; stroke-linecap: round; }
+.scene .thandle { fill: #e6a23c; }
+.scene .pcbr { fill: #b8322b; }
+.scene .pcbb { fill: #2f6fb7; }
+.scene .usc { fill: #c9ced3; stroke: #5f6b75; stroke-width: 2; }
+.scene .wall { fill: var(--ink-3); }
+.scene .sonic { fill: none; stroke: var(--teal); stroke-width: 2.4; stroke-linecap: round; }
+.scene .rul { stroke: var(--ink-3); stroke-width: 1.4; }
+.scene .tick { stroke: var(--ink-3); stroke-width: 1.2; }
+.scene .edot { fill: var(--amber); }
+.scene .mmc { fill: var(--surface); stroke: var(--ink); stroke-width: 1.8; }
+.scene .divbox { fill: var(--surface); stroke: var(--teal); stroke-width: 1.5; }
+.scene .strip { fill: #b8322b; }
+.scene .stripl { stroke: #e9c46a; stroke-width: 1; }
+.scene .glow { fill: #ffd84d; }
+.scene .bulb { fill: #ffd84d; stroke: #b88a00; stroke-width: 1.5; }
+.scene .lampb { fill: var(--ink-3); }
+.scene .ray { stroke: #e0a800; stroke-width: 2; stroke-linecap: round; }
+.scene .ldrc { fill: #d9a066; stroke: var(--ink-2); stroke-width: 1.5; }
+.scene .ldrz { fill: none; stroke: #6b3d12; stroke-width: 1.6; }
+.scene .phone { fill: #2a2f36; }
+.scene .gbox { fill: none; stroke: var(--ink-3); stroke-width: 1.6; stroke-dasharray: 6 4; }
+.scene .puff { fill: #9aa6b1; opacity: .35; }
+.scene .mq { fill: #9aa6b1; stroke: #5f6b75; }
+.scene .mesh { stroke: #5f6b75; stroke-width: 1; }
+.scene .det { fill: #e6c229; stroke: #8a7210; }
+.scene .probe { fill: #3a434b; }
+.scene .bulbg { fill: #cfe8f3; stroke: #6f8fa0; stroke-width: 1.5; }
+.scene .bottle2 { opacity: .55; stroke: var(--ink-3); }
+.scene .bottle2.on { opacity: 1; stroke: var(--ink); stroke-width: 2; }
+.scene .refbox { fill: var(--lcd); }
+.scene .refbox + text { fill: var(--lcd-t); }
+.scene .lcd.flash, .scene .refbox.flash { stroke: var(--amber); stroke-width: 3; }
+.scene .prot { fill: color-mix(in srgb, var(--teal-soft) 60%, transparent); stroke: var(--ink-3); stroke-width: 1.2; }
+[data-theme="dark"] .scene .cable { stroke: var(--ink-3); }
+[data-theme="dark"] .scene .cable.sig { stroke: var(--teal); }
+
+/* exercise figures and tables */
+.ex-fig .plot.exfig { display: block; width: 100%; height: auto; max-width: none; }
+.ex-fig .scene-scroll + .scene-scroll { margin-top: 8px; }
+.ex-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+@media (max-width: 480px) { .ex-two { grid-template-columns: minmax(0, 1fr); } }
+.ex .q .tbl-wrap { margin: 6px 0 10px; }
+.ex-tbl td { min-width: 3.2em; }
+.plot .ring { fill: none; stroke: var(--danger); stroke-width: 2; }
+.ex-fig:has(.ex-two) { max-width: 700px; }
+.ex .q .ex-tbl th, .ex .q .ex-tbl td { padding: 4px 10px; text-align: center; }
+.ex .q .ex-tbl th { white-space: normal; min-width: 5.5em; text-align: left; }
+@media (max-width: 480px) {
+  .ex .q .ex-tbl { font-size: .82rem; }
+  .ex .q .ex-tbl th, .ex .q .ex-tbl td { padding: 4px 4px; }
+  .ex .q .ex-tbl td { min-width: 0; }
+  .ex .q .ex-tbl th { min-width: 4.4em; }
+}

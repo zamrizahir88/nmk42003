@@ -1,12 +1,13 @@
 /* NMK42003 Chapter 7: Transducer Calibration
    Animated notes: what calibration is and why, the five-step procedure, a virtual calibration lab
-   (potentiometer angle sensor and capacitive water-level sensor) and why the whole system is calibrated.
+   (potentiometer angle sensor and capacitive water-level sensor), why the whole system is calibrated, the three kinds of
+   calibration line and worked calibrations of nine common project sensors.
    The calculator, exercise and animation engine is in lab.js. */
 (function () {
   "use strict";
 
   const { esc, num, eng, D, step, stepsHtml, MINUS, reduceMotion, chips, wireChips, fold, codeBlock,
-    player, axes, poly, svg, curve, dot, label, pvCard, pick } = Lab;
+    player, axes, poly, svg, curve, dot, label, pvCard, pick, mixHex } = Lab;
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const lerp = (a, b, k) => a + (b - a) * k;
   const TAU = 2 * Math.PI;
@@ -315,6 +316,328 @@ void loop()
   }
 
   /* =====================================================================
+     5. Sensor calibration examples (nine common sensors) and the kinds of calibration line
+     All data are realistic examples made for teaching; the fits are worked out live.
+     ===================================================================== */
+  const lg = Math.log10;
+  const smooth = (k) => { k = clamp(k, 0, 1); return k * k * (3 - 2 * k); };
+  const fmtN = (x, dp) => (Math.abs(x) >= 1000 ? Math.round(x).toString() : x.toFixed(dp));
+  const tick10 = (v) => { const x = Number((10 ** v).toPrecision(3)); return x >= 1000 ? `${Number((x / 1000).toPrecision(3))}k` : String(x); };
+
+  /* ---- the drawings: each returns { s: svg body, port: [x, y] where the signal wire leaves } ---- */
+  const ART = {
+    lm35(T, t) {
+      const k = clamp(T / 70, 0, 1), col = mixHex("#5aa9e6", "#e5533d", k);
+      let s = `<rect class="beaker" x="30" y="66" width="124" height="100" rx="8"/><rect class="liq" x="33" y="88" width="118" height="75" rx="6" style="fill:${col}"/>`;
+      if (T < 8) s += `<rect class="ice" x="46" y="90" width="18" height="14" rx="3" transform="rotate(-12 55 97)"/><rect class="ice" x="118" y="92" width="16" height="13" rx="3" transform="rotate(10 126 98)"/>`;
+      if (T > 45) for (let i = 0; i < 3; i++) { const x = 60 + i * 28, y0 = 58 - ((t * 14 + i * 9) % 22); s += `<path class="steam" style="opacity:${(0.25 + k * 0.5).toFixed(2)}" d="M${x},${y0}q5,-6 0,-12q-5,-6 0,-12"/>`; }
+      s += `<path class="cable" d="M74,18V140"/><rect class="blk" x="67" y="138" width="14" height="18" rx="3"/>${T_(58, 186, "LM35", "middle", "small")}`;
+      s += `<path class="tprobe" d="M120,26V152"/><rect class="thandle" x="110" y="12" width="20" height="26" rx="4"/>${T_(134, 186, "thermometer", "middle", "small")}`;
+      return { s, port: [74, 18] };
+    },
+    acs(I, t) {
+      let s = `<rect class="psu" x="12" y="44" width="58" height="46" rx="6"/>${T_(41, 72, "DC", "middle", "tt inv")}`;
+      s += D.wire([70, 58], [110, 58]) + `<rect class="pcbr" x="110" y="44" width="50" height="28" rx="4"/>${T_(135, 63, "ACS712", "middle", "small inv")}` + D.wire([160, 58], [214, 58], [214, 104]);
+      s += D.res(214, 104, 214, 150) + T_(226, 132, "load", "start", "small") + D.wire([214, 150], [214, 162], [112, 162]);
+      s += `<circle class="mmc" cx="96" cy="162" r="15"/>${T_(96, 167, "A", "middle", "tt")}` + D.wire([81, 162], [41, 162], [41, 90]);
+      // current dots go round the loop, faster for more current
+      const loop = [[70, 58], [214, 58], [214, 162], [41, 162], [41, 90]], segs = [];
+      let L = 0; for (let i = 1; i < loop.length; i++) { const d = Math.hypot(loop[i][0] - loop[i - 1][0], loop[i][1] - loop[i - 1][1]); segs.push(d); L += d; }
+      for (let j = 0; j < 7; j++) {
+        let p = ((t * I * 55 + (j * L) / 7) % L + L) % L, i = 0;
+        while (p > segs[i]) { p -= segs[i]; i++; }
+        const a = loop[i], b = loop[i + 1], f = p / segs[i];
+        if (I > 0.02) s += `<circle class="edot" cx="${(a[0] + (b[0] - a[0]) * f).toFixed(1)}" cy="${(a[1] + (b[1] - a[1]) * f).toFixed(1)}" r="3.5"/>`;
+      }
+      s += `<rect class="divbox" x="168" y="12" width="40" height="18" rx="4"/>${T_(188, 25, "× 2/3", "middle", "small")}` + `<path class="cable" d="M135,44V21H168"/>`;
+      return { s, port: [208, 21] };
+    },
+    pot(a) {
+      const cx = 106, cy = 150, R = 72, q = (d) => (d * Math.PI) / 180;
+      let s = `<path class="prot" d="M${cx - R},${cy}A${R},${R} 0 0 1 ${cx + R},${cy}Z"/>`;
+      for (let d = 0; d <= 180; d += 10) { const r0 = d % 40 === 0 ? R - 12 : R - 6; s += `<line class="tick" x1="${(cx + r0 * Math.cos(q(d))).toFixed(1)}" y1="${(cy - r0 * Math.sin(q(d))).toFixed(1)}" x2="${(cx + R * Math.cos(q(d))).toFixed(1)}" y2="${(cy - R * Math.sin(q(d))).toFixed(1)}"/>`; }
+      [0, 40, 80, 120, 160].forEach((d) => { s += T_((cx + (R + 12) * Math.cos(q(d))).toFixed(1), (cy - (R + 12) * Math.sin(q(d)) + 4).toFixed(1), d, "middle", "small"); });
+      s += `<circle class="knob" cx="${cx}" cy="${cy}" r="15"/><line class="pointer" x1="${cx}" y1="${cy}" x2="${(cx + (R - 4) * Math.cos(q(a))).toFixed(1)}" y2="${(cy - (R - 4) * Math.sin(q(a))).toFixed(1)}"/>`;
+      s += T_(cx, 175, "potentiometer on a protractor", "middle", "small");
+      return { s, port: [cx + 15, cy] };
+    },
+    hcsr(d, t) {
+      const wx = 52 + d * 3.2;
+      let s = `<rect class="pcbb" x="12" y="78" width="40" height="56" rx="4"/><circle class="usc" cx="32" cy="94" r="10"/><circle class="usc" cx="32" cy="118" r="10"/>`;
+      s += `<rect class="wall" x="${wx}" y="62" width="9" height="88" rx="2"/>`;
+      for (let i = 0; i < 3; i++) { const k = (t * 0.9 + i / 3) % 1, x = 54 + k * (wx - 58); s += `<path class="sonic" style="opacity:${(1 - k).toFixed(2)}" d="M${x.toFixed(1)},90q6,16 0,32"/>`; }
+      s += `<line class="rul" x1="52" y1="160" x2="230" y2="160"/>`;
+      for (let c = 0; c <= 50; c += 5) { const x = 52 + c * 3.2; s += `<line class="tick" x1="${x}" x2="${x}" y1="160" y2="${c % 10 ? 165 : 169}"/>${c % 10 ? "" : T_(x, 180, c, "middle", "small")}`; }
+      s += T_(32, 150, "HC-SR04", "middle", "small");
+      return { s, port: [32, 78] };
+    },
+    level(h) {
+      const by = 168, sc = 26, wy = by - h * sc;
+      let s = `<rect class="beaker" x="40" y="40" width="104" height="${by - 40}" rx="6"/><rect class="liq" x="43" y="${wy.toFixed(1)}" width="98" height="${(by - 3 - wy).toFixed(1)}" rx="4" style="fill:var(--water)"/>`;
+      s += `<rect class="strip" x="72" y="44" width="20" height="120" rx="3"/>`;
+      for (let i = 0; i < 9; i++) s += `<line class="stripl" x1="${i % 2 ? 78 : 76}" x2="${i % 2 ? 78 : 76}" y1="54" y2="160" transform="translate(${i * 1.4} 0)"/>`;
+      for (let c = 0; c <= 4; c++) { const y = by - c * sc; s += `<line class="tick" x1="144" x2="152" y1="${y}" y2="${y}"/>${T_(156, y + 4, c, "start", "small")}`; }
+      s += T_(156, 32, "cm", "start", "small") + T_(82, 186, "level strip", "middle", "small");
+      return { s, port: [82, 44] };
+    },
+    ldr(E) {
+      const k = clamp((lg(E) - 1) / 2, 0, 1);
+      let s = `<circle class="glow" cx="92" cy="34" r="${(18 + k * 22).toFixed(1)}" style="opacity:${(0.15 + k * 0.6).toFixed(2)}"/><circle class="bulb" cx="92" cy="34" r="14" style="opacity:${(0.35 + k * 0.65).toFixed(2)}"/><rect class="lampb" x="84" y="8" width="16" height="12" rx="2"/>`;
+      for (let i = 0; i < 5; i++) { const ang = (-60 + i * 30) * Math.PI / 180, l = 8 + k * 26; s += `<line class="ray" style="opacity:${(0.2 + k * 0.8).toFixed(2)}" x1="${(92 + 20 * Math.sin(ang)).toFixed(1)}" y1="${(34 + 20 * Math.cos(ang)).toFixed(1)}" x2="${(92 + (20 + l) * Math.sin(ang)).toFixed(1)}" y2="${(34 + (20 + l) * Math.cos(ang)).toFixed(1)}"/>`; }
+      s += `<circle class="ldrc" cx="92" cy="140" r="13"/><path class="ldrz" d="M83,136h4v8h4v-8h4v8h4"/>${T_(92, 172, "LDR", "middle", "small")}`;
+      s += `<rect class="phone" x="150" y="106" width="36" height="62" rx="6"/><rect class="lcd" x="154" y="118" width="28" height="22" rx="2"/>${T_(168, 156, "lux", "middle", "small inv")}`;
+      return { s, port: [105, 140] };
+    },
+    gas(C, t) {
+      const n = Math.round(4 + (lg(C) - 2) * 7);
+      let s = `<rect class="gbox" x="18" y="34" width="170" height="134" rx="8"/>`;
+      for (let i = 0; i < n; i++) { const x = 30 + ((i * 53) % 146), y = 50 + ((i * 37 + t * 9 * (1 + (i % 3))) % 100); s += `<circle class="puff" cx="${x}" cy="${y.toFixed(1)}" r="${5 + (i % 3) * 2}"/>`; }
+      s += `<rect class="mq" x="52" y="118" width="38" height="30" rx="4"/>`;
+      for (let i = 0; i < 6; i++) s += `<line class="mesh" x1="${56 + i * 6}" x2="${56 + i * 6}" y1="120" y2="146"/>`;
+      s += T_(71, 162, "MQ-2", "middle", "small") + `<rect class="det" x="128" y="104" width="34" height="50" rx="5"/><rect class="lcd" x="132" y="110" width="26" height="16" rx="2"/>${T_(145, 146, "ppm", "middle", "small")}`;
+      return { s, port: [71, 118] };
+    },
+    ph(p) {
+      const col = p <= 7 ? mixHex("#e5533d", "#3fae5a", (p - 4) / 3) : mixHex("#3fae5a", "#3b6fd8", (p - 7) / 3);
+      let s = `<rect class="beaker" x="34" y="74" width="110" height="94" rx="8"/><rect class="liq" x="37" y="96" width="104" height="69" rx="6" style="fill:${col}"/>`;
+      s += `<rect class="probe" x="86" y="14" width="10" height="132" rx="4"/><circle class="bulbg" cx="91" cy="150" r="8"/>`;
+      [[4, "#e5533d"], [7, "#3fae5a"], [10, "#3b6fd8"]].forEach(([v, c], i) => { const x = 160 + i * 26, on = Math.abs(p - v) < 0.2; s += `<rect class="bottle2${on ? " on" : ""}" x="${x}" y="118" width="20" height="40" rx="4" style="fill:${c}"/>${T_(x + 10, 174, v, "middle", "small")}`; });
+      s += T_(186, 108, "buffers", "middle", "small");
+      return { s, port: [91, 14] };
+    },
+    div(V, t, src = "DC supply") {
+      let s = `<rect class="psu" x="12" y="50" width="62" height="56" rx="6"/>${T_(43, 82, src === "DC supply" ? "DC" : "☀", "middle", "tt inv")}${T_(43, 124, src, "middle", "small")}`;
+      s += D.wire([74, 62], [160, 62]) + D.res(160, 62, 160, 112) + D.res(160, 112, 160, 162) + D.wire([160, 162], [160, 170], [52, 170], [52, 106]) + D.dot(160, 112);
+      s += T_(172, 92, "30 kΩ", "start", "small") + T_(172, 142, "7.5 kΩ", "start", "small");
+      s += D.wire([110, 62], [110, 98]) + `<circle class="mmc" cx="110" cy="112" r="14"/>${T_(110, 117, "V", "middle", "tt")}` + D.wire([110, 126], [110, 170]);
+      s += D.wire([160, 112], [204, 112]);
+      return { s, port: [204, 112] };
+    }
+  };
+  const T_ = (x, y, t, a, c) => T(x, y, t, a, c);
+
+  /* the whole rig: the drawing, the reference display, wires and the ESP32 with what it reads */
+  function rig(o, v, t, refTxt, readTxt, flash, src) {
+    const a = ART[o.k](v, t, src);
+    let s = a.s;
+    s += `<path class="cable sig" d="M${a.port[0]},${a.port[1]}C${a.port[0] + 40},${Math.min(a.port[1], 60) - 20} 230,40 262,72"/>`;
+    s += `<rect class="esp" x="262" y="34" width="86" height="98" rx="8"/>${T_(305, 60, "ESP32", "middle", "tt inv")}${T_(305, 84, o.pinS, "middle", "small inv")}`;
+    s += `<rect class="lcd${flash ? " flash" : ""}" x="232" y="150" width="120" height="26" rx="4"/>${T_(292, 168, readTxt, "middle", "lcdt sm")}${T_(292, 194, o.readLab, "middle", "small")}`;
+    s += `<rect class="refbox${flash ? " flash" : ""}" x="8" y="200" width="196" height="28" rx="5"/>${T_(16, 219, `${o.refS}:`, "start", "small")}${T_(196, 220, refTxt, "end", "lcdt sm")}`;
+    return s;
+  }
+
+  const SENS = [
+    { k: "lm35", chip: "LM35 temperature", name: "LM35 Temperature Sensor", q: "Temperature", qs: "T", qu: " °C", rName: "ADC reading", rs: "ADC", ru: "", fit: "lin", qdp: 1, rdp: 0,
+      data: [[0, 22], [25, 326], [40, 515], [55, 694], [70, 880]], xr: [-4, 78], xt: [0, 20, 40, 60], yr: [0, 1000], yt: [0, 250, 500, 750, 1000],
+      pinS: "GPIO34", refS: "Thermometer", readLab: "ESP32 reads (ADC)",
+      out: "10 mV per °C, 0 V at 0 °C. At 70 °C it gives 0.70 V, well inside the ESP32's 0 to 3.3 V.", pin: "GPIO34 (an ADC1 pin)",
+      ref: "A <strong>reference thermometer</strong> (a calibrated digital probe thermometer) in the same water as the LM35.",
+      how: "Ice water (0 °C), room-temperature water, then warm water mixed to about 40, 55 and 70 °C. Stir, wait about a minute until both readings are steady, then record.",
+      why: "The LM35 is linear, so a straight line fits.",
+      bad: "A multimeter on the LM35's output only checks the <em>voltage</em>, not the temperature: the reference must measure the real quantity, here a thermometer. Waterproof the LM35's legs (heat-shrink tubing) before it goes into water.",
+      pre: "ADC = analogRead(34);", vr: "ADC", vq: "Temp" },
+    { k: "acs", chip: "ACS712 current", name: "ACS712 Current Sensor", q: "Current", qs: "I", qu: " A", rName: "ADC reading", rs: "ADC", ru: "", fit: "lin", qdp: 3, rdp: 0,
+      data: [[0, 2058], [0.5, 2139], [1, 2211], [1.5, 2291], [2, 2364]], xr: [-0.1, 2.2], xt: [0, 0.5, 1, 1.5, 2], yr: [2000, 2400], yt: [2000, 2100, 2200, 2300, 2400],
+      pinS: "GPIO35", refS: "Multimeter (series)", readLab: "ESP32 reads (ADC)",
+      out: "2.5 V at 0 A and 185 mV per amp (5 A version on a 5 V supply). A 10 kΩ / 20 kΩ divider scales it by 2/3: 1.67 V at 0 A and 123 mV per amp at the pin.", pin: "GPIO35, through the divider",
+      ref: "A <strong>digital multimeter in series</strong> with the load (on its 10 A range).",
+      how: "Change a DC load step by step (power resistors, a 12 V DC motor or a DC electronic load) from 0 A to about 2 A, and record the multimeter's current and the ESP32's reading at each step.",
+      why: "The ACS712 is linear, so a straight line fits. Its intercept is the 0 A reading, which is large because the output sits at half the supply.",
+      bad: "Without the divider the output reaches 3.43 V at 5 A: above 3.3 V the reading clips, and near 3.6 V the ESP32 pin can be damaged. Take a fresh 0 A reading each time you start, because the zero drifts a little.",
+      pre: "ADC = analogRead(35);", vr: "ADC", vq: "Current" },
+    { k: "pot", chip: "Potentiometer angle", name: "Potentiometer Angle Sensor", q: "Angle", qs: "θ", qu: "°", rName: "ADC reading", rs: "ADC", ru: "", fit: "lin", qdp: 1, rdp: 0,
+      data: [[0, 176], [40, 1090], [80, 1985], [120, 2868], [160, 3770]], xr: [-6, 170], xt: [0, 40, 80, 120, 160], yr: [0, 4095], yt: [0, 1000, 2000, 3000, 4000],
+      pinS: "GPIO36", refS: "Protractor", readLab: "ESP32 reads (ADC)",
+      out: "The wiper voltage, from near 0 V to near 3.3 V as the shaft turns.", pin: "GPIO36 (VP)",
+      ref: "A <strong>protractor</strong>, with a pointer fixed to the shaft.",
+      how: "Turn the shaft to 0°, 40°, 80°, 120° and 160° (the range your project uses) and record each reading. The virtual lab above lets you do this yourself.",
+      why: "A linear potentiometer gives a straight line.",
+      bad: "Near the ends of the track, and near 0 V and 3.3 V on the ESP32's ADC, the reading goes flat. Calibrate only the range you use and keep away from the ends.",
+      pre: "ADC = analogRead(36);", vr: "ADC", vq: "Angle" },
+    { k: "hcsr", chip: "HC-SR04 distance", name: "HC-SR04 Ultrasonic Distance Sensor", q: "Distance", qs: "d", qu: " cm", rName: "Echo time (µs)", rs: "t", ru: " µs", fit: "lin", qdp: 1, rdp: 0,
+      data: [[10, 596], [20, 1172], [30, 1761], [40, 2337], [50, 2925]], xr: [0, 55], xt: [0, 10, 20, 30, 40, 50], yr: [0, 3200], yt: [0, 1000, 2000, 3000],
+      pinS: "Echo GPIO18", refS: "Ruler", readLab: "ESP32 times the echo",
+      out: "A pulse on the Echo pin as long as the sound takes to reach the target and come back: about 58 µs per cm.", pin: "Trig on GPIO5; Echo on GPIO18 through a 1 kΩ / 2 kΩ divider (digital pins, not the ADC)",
+      ref: "A <strong>ruler or measuring tape</strong> from the sensor's face to a large, flat board.",
+      how: "Put the board at 10, 20, 30, 40 and 50 cm and average several readings at each distance.",
+      why: "Echo time rises in step with distance, so a straight line fits.",
+      bad: "The HC-SR04 is not an analog sensor: the ESP32 times a pulse with <code>pulseIn()</code> instead of reading the ADC. Its Echo pin gives 5 V, so it needs a divider, and the speed of sound changes with air temperature, so recalibrate if the room is much hotter or colder.",
+      pre: "t = pulseIn(18, HIGH);", vr: "t", vq: "Distance" },
+    { k: "level", chip: "Liquid level strip", name: "Analog Liquid Level Strip", q: "Depth", qs: "h", qu: " cm", rName: "ADC reading", rs: "ADC", ru: "", fit: "quad", qdp: 2, rdp: 0,
+      data: [[0.5, 820], [1, 1250], [2, 1720], [3, 2010], [4, 2200]], xr: [0, 4.5], xt: [0, 1, 2, 3, 4], yr: [0, 2500], yt: [0, 500, 1000, 1500, 2000, 2500],
+      pinS: "GPIO32", refS: "Ruler", readLab: "ESP32 reads (ADC)",
+      out: "The voltage rises as more of the strip is under water: quickly at first, then more slowly.", pin: "GPIO32, with the strip powered from GPIO25 only while reading",
+      ref: "A <strong>ruler</strong> fixed beside the container.",
+      how: "Add water in steps to 0.5, 1, 2, 3 and 4 cm and record the reading at each depth.",
+      why: "The points bend, so a straight line would miss them. Fit a curve, and fit it the other way round (depth from the reading) so the ESP32 can use it directly.",
+      bad: "Powered all the time, the strip corrodes within days: switch its power from a GPIO only while you read it. The reading also depends on the liquid (tap, rain or salty water), so calibrate in the liquid you will measure.",
+      pre: "digitalWrite(25, HIGH);\ndelay(10);\nADC = analogRead(32);\ndigitalWrite(25, LOW);", vr: "ADC", vq: "Depth" },
+    { k: "ldr", chip: "LDR light", name: "LDR Light Sensor", q: "Light", qs: "E", qu: " lux", rName: "ADC reading", rs: "ADC", ru: "", fit: "pow", qdp: 0, rdp: 0,
+      data: [[10, 385], [50, 820], [100, 1100], [300, 1840], [1000, 3150]], xr: [lg(6), lg(1600)], xt: [1, 2, 3], yr: [lg(250), lg(4000)], yt: [lg(300), lg(1000), lg(3000)],
+      pinS: "GPIO33", refS: "Lux meter", readLab: "ESP32 reads (ADC)",
+      out: "The LDR's resistance falls as the light rises, so the divider voltage rises, but not in a straight line.", pin: "GPIO33: LDR to 3.3 V, 10 kΩ to GND (the reading rises with light)",
+      ref: "A <strong>lux meter</strong>, or a phone lux meter app held where the LDR is (good enough for a project; say so in your report).",
+      how: "Dim a lamp or move it closer in steps: about 10, 50, 100, 300 and 1000 lux.",
+      why: "On normal axes the points bend strongly. On log axes they lie on a straight line (a power law), so fit log(ADC) against log(lux).",
+      bad: "Every LDR is different, even from the same bag, and it takes a few seconds to settle after the light changes. Calibrate your own LDR and wait before you record.",
+      pre: "ADC = analogRead(33);", vr: "ADC", vq: "Lux" },
+    { k: "gas", chip: "MQ-2 / MQ-135 gas", name: "MQ-2 or MQ-135 Gas Sensor", q: "Gas", qs: "C", qu: " ppm", rName: "R<tspan class='sb' dy='3'>s</tspan><tspan dy='-3'>/R</tspan><tspan class='sb' dy='3'>0</tspan>", rText: "Rs/R0", rs: "Rs/R0", ru: "", fit: "pow", qdp: 0, rdp: 3,
+      data: [[200, 1.62], [500, 1.11], [1000, 0.80], [2000, 0.57], [5000, 0.385]], xr: [lg(120), lg(8000)], xt: [lg(200), lg(500), lg(1000), lg(2000), lg(5000)], yr: [lg(0.3), lg(2.2)], yt: [lg(0.3), lg(0.5), lg(1), lg(2)],
+      pinS: "GPIO39", refS: "Gas detector", readLab: "ESP32 works out Rs/R0",
+      out: "The sensor's resistance R<sub>s</sub> falls as the gas rises. The ESP32 works out R<sub>s</sub> from the voltage, then divides it by R<sub>0</sub>, its resistance in clean air.", pin: "GPIO39 (VN), through a divider (the module's output can reach 5 V)",
+      ref: "A <strong>calibrated gas detector</strong> beside the sensor in a closed box; without one, the curve in the sensor's datasheet.",
+      how: "Heat a new sensor for 24 to 48 hours first (burn-in). In clean air find R<sub>0</sub> = R<sub>s</sub> ÷ the clean-air ratio on the datasheet chart (about 9.8 for the MQ-2). Then let in small, safe amounts of gas and record the detector's ppm and R<sub>s</sub>/R<sub>0</sub> at each step.",
+      why: "Gas sensors follow a power law: the straight line on the datasheet's log-log chart. Fit log(R<sub>s</sub>/R<sub>0</sub>) against log(ppm).",
+      bad: "The ADC number is not ppm: work out R<sub>s</sub>, then R<sub>s</sub>/R<sub>0</sub>, then ppm. MQ sensors also react to temperature, humidity and other gases, so treat the ppm as approximate. Do any gas test only with your lecturer present, away from flames.",
+      pre: "Vout = analogRead(39) * 3.3 / 4095 * 1.5;   // undo the divider\nRs = RL * (5.0 - Vout) / Vout;\nRatio = Rs / R0;", vr: "Ratio", vq: "PPM" },
+    { k: "ph", chip: "pH probe", name: "pH Probe", q: "pH", qs: "pH", qu: "", rName: "ADC reading", rs: "ADC", ru: "", fit: "lin", qdp: 2, rdp: 0,
+      data: [[4, 2482], [7, 1961], [10, 1430]], xr: [3, 11], xt: [4, 7, 10], yr: [1200, 2700], yt: [1200, 1600, 2000, 2400],
+      pinS: "GPIO34", refS: "Buffer solution", readLab: "ESP32 reads (ADC)",
+      out: "The probe gives a small voltage that falls as the pH rises; the module amplifies it to roughly 1 to 3 V.", pin: "GPIO34 (check the output stays below 3.3 V; add a divider if the module runs from 5 V)",
+      ref: "<strong>pH buffer solutions</strong> of pH 4.00, 7.00 and 10.00.",
+      how: "Dip the probe in each buffer, wait about a minute until the reading is steady and record it. Rinse the probe in distilled water and blot it dry before the next buffer. Three points are normal for pH.",
+      why: "Over pH 4 to 10 the probe is linear, so a straight line fits. The slope is negative: the reading falls as the pH rises.",
+      bad: "pH probes drift: recalibrate every week or two, at the temperature you will measure at. Never let the glass bulb dry out; keep it in its storage solution.",
+      pre: "ADC = analogRead(34);", vr: "ADC", vq: "pH" },
+    { k: "div", chip: "Voltage divider", name: "Voltage Divider (Battery or Solar Panel)", q: "Voltage", qs: "V", qu: " V", rName: "ADC reading", rs: "ADC", ru: "", fit: "lin", qdp: 2, rdp: 0,
+      data: [[2, 350], [4, 841], [6, 1343], [8, 1835], [10, 2336], [12, 2826]], xr: [0, 13], xt: [0, 4, 8, 12], yr: [0, 3200], yt: [0, 1000, 2000, 3000],
+      pinS: "GPIO35", refS: "Multimeter", readLab: "ESP32 reads (ADC)",
+      out: "The divider scales the voltage down: 12 V × 7.5 ÷ (30 + 7.5) = 2.4 V at the pin.", pin: "GPIO35, through 30 kΩ (top) and 7.5 kΩ (bottom)",
+      ref: "A <strong>digital multimeter</strong> across the input, with a DC supply set to each voltage.",
+      how: "Set 2, 4, 6, 8, 10 and 12 V (check each on the multimeter) and record the reading.",
+      why: "A divider is linear, so a straight line fits. The line reaches ADC = 0 a little above 0 V because the ESP32's ADC reads low near 0 V.",
+      bad: "Working it out from theory alone (V = ADC × 3.3 ÷ 4095 × 5) gives an answer about 0.6 V off, because the ESP32's ADC reads low (see Why Calibrate the Whole System above). Choose the divider so the largest input stays below about 3.1 V at the pin, where the ADC is still linear.",
+      pre: "ADC = analogRead(35);", vr: "ADC", vq: "Volts" }
+  ];
+
+  /* fit each sensor once: lin → reading = m q + c; quad → q = a r² + b r + c; pow → log r = m log q + c */
+  function fitOf(o) {
+    if (o._fit) return o._fit;
+    let f;
+    if (o.fit === "lin") { const L = linFit(o.data); f = { m: L.m, c: L.c, fwd: (q) => L.m * q + L.c, inv: (r) => (r - L.c) / L.m, R2: r2(o.data, L.f) }; }
+    else if (o.fit === "quad") { const Q = quadFit(o.data.map(([q, r]) => [r, q])); f = { a: Q.a, b: Q.b, c: Q.c, inv: Q.f, R2: r2(o.data.map(([q, r]) => [r, q]), Q.f) }; }
+    else { const L = linFit(o.data.map(([q, r]) => [lg(q), lg(r)])); f = { m: L.m, c: L.c, fwd: (q) => 10 ** (L.m * lg(q) + L.c), inv: (r) => 10 ** ((lg(r) - L.c) / L.m), R2: r2(o.data.map(([q, r]) => [lg(q), lg(r)]), L.f) }; }
+    o._fit = f; return f;
+  }
+  const pm = (x, d) => `${x < 0 ? MINUS : "+"} ${Math.abs(x).toFixed(d)}`;
+  const sig = (x, p = 4) => Number(x.toPrecision(p));
+  // a number for an equation shown on the page: 4 significant figures, small numbers as × 10^n
+  const sci = (x) => { if (x !== 0 && Math.abs(x) < 0.001) { const e = Math.floor(lg(Math.abs(x))), m = x / 10 ** e; return `${m.toFixed(3)} × 10<sup>${MINUS}${-e}</sup>`; } return String(sig(x)).replace("-", MINUS); };
+  const plusC = (c) => `${c < 0 ? MINUS : "+"} ${sci(Math.abs(c))}`;
+  function eqLines(o) {
+    const f = fitOf(o), R = o.rText || o.rs;
+    if (o.fit === "lin") return { fit: `${R} = ${sci(f.m)} × ${o.qs} ${plusC(f.c)}`, back: `${o.qs} = (${R} ${f.c < 0 ? "+" : MINUS} ${sci(Math.abs(f.c))}) ÷ ${f.m < 0 ? `(${sci(f.m)})` : sci(f.m)}`,
+      code: `${o.vq} = (${o.vr} - (${cnum(f.c, 5)})) / ${cnum(f.m, 4)};` };
+    if (o.fit === "quad") return { fit: `${o.qs} = ${sci(f.a)} × ${R}² ${plusC(f.b)} × ${R} ${plusC(f.c)}`, back: "",
+      code: `${o.vq} = (${cnum(f.a, 5)} * ${o.vr} * ${o.vr}) + (${cnum(f.b, 5)} * ${o.vr}) + (${cnum(f.c, 5)});` };
+    return { fit: `log(${R}) = ${sci(f.m)} × log(${o.qs}) ${plusC(f.c)}`, back: `${o.qs} = 10<sup>(log(${R}) ${f.c < 0 ? "+" : MINUS} ${sci(Math.abs(f.c))}) ÷ ${f.m < 0 ? `(${sci(f.m)})` : sci(f.m)}</sup>`,
+      code: `${o.vq} = pow(10, (log10(${o.vr}) - (${cnum(f.c, 5)})) / ${cnum(f.m, 4)});` };
+  }
+
+  /* the calibration graph, revealing n points and k (0..1) of the fitted line */
+  function calGraph(o, n, k, hi) {
+    const f = fitOf(o), lp = o.fit === "pow";
+    const A = axes({ x: o.xr, y: o.yr, xt: o.xt, yt: o.yt, fx: lp ? tick10 : undefined, fy: lp ? tick10 : undefined, l: 52,
+      xl: `${o.q}${o.qu ? ` (${o.qu.trim()})` : ""}${lp ? ", log scale" : ""}`, yl: `${o.rName}${lp ? ", log" : ""}` });
+    let g = A.s;
+    const P = ([q, r]) => [A.X(lp ? lg(q) : q), A.Y(lp ? lg(r) : r)];
+    if (k > 0) {
+      let pts = [];
+      if (o.fit === "quad") { const r0 = 650, r1 = 2350; for (let i = 0; i <= 60 * k; i++) { const r = r0 + ((r1 - r0) * i) / 60; pts.push([A.X(A.clipX(f.inv(r))), A.Y(r)]); } }
+      else { const x0 = o.xr[0], x1 = o.xr[1]; for (let i = 0; i <= 60 * k; i++) { const x = x0 + ((x1 - x0) * i) / 60; const y = lp ? f.m * x + f.c : f.fwd(x); pts.push([A.X(x), A.Y(A.clipY(y))]); } }
+      if (pts.length > 1) g += poly(pts, "trace-a");
+    }
+    o.data.slice(0, n).forEach((d, i) => { const [x, y] = P(d); g += `<circle class="${i === hi ? "pt" : "shot"}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${i === hi ? 6 : 5}"/>`; });
+    if (k >= 1) g += T(A.l + 8, A.t + 14, `R² = ${f.R2.toFixed(4)}`, "start", "mklab");
+    return svg(A.W, A.H, `Calibration graph for the ${o.name}`, g);
+  }
+
+  function sensorTable(o) {
+    const f = fitOf(o), span = o.data[o.data.length - 1][0] - o.data[0][0];
+    let worst = 0;
+    const rows = o.data.map(([q, r]) => { const b = f.inv(r), e = b - q; worst = Math.max(worst, Math.abs(e)); return `<tr><td>${fmtN(q, o.qdp === 0 ? 0 : Math.min(o.qdp, 2))}</td><td>${fmtN(r, o.rdp)}</td><td>${fmtN(b, o.qdp)}</td><td>${sgn(e, o.qdp)}</td></tr>`; }).join("");
+    return { html: `<div class="tbl-wrap"><table class="cal-table"><thead><tr><th>Reference ${o.q === "pH" ? "pH" : o.q.toLowerCase()}${o.qu ? ` (${o.qu.trim()})` : ""}</th><th>${o.rText || o.rName.replace(/<[^>]+>/g, "")}</th><th>From the fit</th><th>Error</th></tr></thead><tbody>${rows}</tbody></table></div>`, worst, span };
+  }
+
+  function mountSensors(el) {
+    el.innerHTML = `<div class="pv">${chips("Sensor", SENS.map((o) => [o.k, o.chip]), "lm35")}<h4 class="sub-h sx-name"></h4>
+      <div class="pv-grid"><div class="pv-scene"></div><div class="pv-graph"></div></div><div class="pv-pl"></div><p class="pv-read" aria-live="polite"></p><div class="sx-body"></div></div>`;
+    const q = (s) => el.querySelector(s);
+    let o = SENS[0];
+    const SEG = 2.2, FIT = 3, DUR = 14;           // the player runs 0..DUR; each sensor's own time is scaled into it
+    const N = () => o.data.length, own = () => N() * SEG + FIT;
+    const fmtR = (r) => `${fmtN(r, o.rdp)}${o.ru}`;
+    const qTxt = (v) => (o.k === "ph" ? `pH ${v.toFixed(2)}` : `${fmtN(v, o.qdp === 0 ? 0 : Math.min(o.qdp, 2))}${o.qu}`);
+    const draw = (T0) => {
+      const t = (T0 / DUR) * own(), n = N(), seg = Math.floor(t / SEG), inSeg = t - seg * SEG, lp = o.fit === "pow";
+      let v, r, shown, flash = false, k = 0, hi = -1;
+      if (seg < n) {
+        const a = o.data[Math.max(0, seg - 1)], m = smooth(inSeg / 1.2);
+        v = lp ? 10 ** lerp(lg(a[0]), lg(o.data[seg][0]), m) : lerp(a[0], o.data[seg][0], m);
+        r = lp ? 10 ** lerp(lg(a[1]), lg(o.data[seg][1]), m) : lerp(a[1], o.data[seg][1], m);
+        const done = inSeg >= 1.2; shown = done ? seg + 1 : seg; flash = done && inSeg < 1.7; hi = done ? seg : -1;
+      } else { [v, r] = o.data[n - 1]; shown = n; k = clamp((t - n * SEG) / (FIT * 0.8), 0, 1); }
+      q(".pv-scene").innerHTML = svg(360, 234, `${o.name} being calibrated: reference ${qTxt(v)}, reading ${fmtR(r)}`, rig(o, v, T0, qTxt(v), fmtR(r), flash), "scene calrig");
+      q(".pv-graph").innerHTML = calGraph(o, shown, k, hi);
+      q(".pv-read").innerHTML = seg < n
+        ? `<strong>Point ${seg + 1} of ${n}.</strong> Reference: <strong>${qTxt(v)}</strong>. The ESP32 ${o.k === "hcsr" ? "times" : o.k === "gas" ? "works out" : "reads"} <strong>${fmtR(r)}</strong>. ${inSeg >= 1.2 ? "Both are steady: <strong>record</strong> the pair, and the point goes on the graph." : "Wait until both readings are steady…"}`
+        : `<strong>${k < 1 ? "Fitting…" : "Fitted:"}</strong> ${eqLines(o).fit}${lp ? " (a straight line on log axes)" : ""}, R² = ${fitOf(o).R2.toFixed(4)}. The ${o.fit === "quad" ? "curve" : "line"} passes close to every point.`;
+    };
+    const body = () => {
+      q(".sx-name").textContent = o.name;
+      const e = eqLines(o), tb = sensorTable(o), dp = o.qdp === 0 ? 0 : o.qdp, lo = o.data[0][0], hi = o.data[N() - 1][0];
+      q(".sx-body").innerHTML = `<dl class="defs sx-defs"><div><dt>What it gives out</dt><dd>${o.out}</dd></div><div><dt>ESP32 pin</dt><dd>${o.pin}</dd></div><div><dt>Reference</dt><dd>${o.ref}</dd></div><div><dt>How to take the points</dt><dd>${o.how}</dd></div><div><dt>Which line?</dt><dd>${o.why}</dd></div></dl>
+        <h5 class="sx-h">Calibration Table (Example Data)</h5>${tb.html}
+        <h5 class="sx-h">The Equation</h5><p class="formula">${e.fit}</p>${e.back ? `<p>Used backwards, from the reading to the ${o.q === "pH" ? "pH" : o.q.toLowerCase()}:</p><p class="formula">${e.back}</p>` : `<p>It already gives the ${o.q.toLowerCase()} from the reading, so the ESP32 can use it as it is.</p>`}
+        <p>Largest error at the calibration points: <strong>${tb.worst.toFixed(dp)}${o.qu}</strong>, which is <strong>${((tb.worst / tb.span) * 100).toFixed(2)}%</strong> of the calibrated range (${qTxt(lo)} to ${qTxt(hi)}).</p>
+        ${codeBlock(`${o.pre}\n${e.code}`, "In the ESP32 sketch")}
+        <div class="callout warn"><strong>Common mistake</strong>${o.bad}</div>`;
+    };
+    const pl = player(q(".pv-pl"), el, { dur: DUR, hold: 3, draw, still: DUR, label: "Calibration position", clock: (T0) => { const t = (T0 / DUR) * own(); return t < N() * SEG ? `point ${Math.min(N(), Math.floor(t / SEG) + 1)} of ${N()}` : "fit"; } });
+    pick(el, (key) => { o = SENS.find((x) => x.k === key); body(); if (reduceMotion) pl.set(DUR); else pl.restart(); });
+    body();
+  }
+
+  /* three kinds of calibration line, and why log axes straighten a power law */
+  const LDRD = [[10, 390], [50, 810], [100, 1110], [300, 1830], [1000, 3162]];
+  function miniPlot(kind) {
+    const A = axes({ W: 220, H: 150, l: 30, b: 26, t: 10, r: 10, x: [0, 1], y: [0, 1], xt: [], yt: [], xl: kind === "pow" ? "log value" : "value", yl: kind === "pow" ? "log reading" : "reading" });
+    let g = A.s;
+    const P = kind === "lin" ? [[0.1, 0.16], [0.3, 0.37], [0.5, 0.53], [0.7, 0.74], [0.9, 0.9]] : kind === "quad" ? [[0.1, 0.25], [0.25, 0.52], [0.45, 0.72], [0.7, 0.86], [0.9, 0.92]] : [[0.1, 0.14], [0.3, 0.35], [0.5, 0.56], [0.7, 0.73], [0.9, 0.94]];
+    const fn = kind === "quad" ? (x) => 1.02 - 0.95 * Math.exp(-3.1 * x) : (x) => 0.04 + 0.97 * x;
+    g += poly(curve(A, fn, 0.04, 0.98, 40), "trace-a");
+    P.forEach(([x, y]) => { g += `<circle class="shot" cx="${A.X(x).toFixed(1)}" cy="${A.Y(y).toFixed(1)}" r="4"/>`; });
+    return svg(A.W, A.H, kind === "lin" ? "Points on a straight line" : kind === "quad" ? "Points on a curve" : "Points on a straight line on log axes", g);
+  }
+  function mountKinds(el) {
+    el.innerHTML = `<div class="kinds">
+        <figure class="kind">${miniPlot("lin")}<figcaption><strong>Straight line</strong>reading = m × value + c<span>LM35, ACS712, potentiometer, HC-SR04, pH probe, voltage divider</span></figcaption></figure>
+        <figure class="kind">${miniPlot("quad")}<figcaption><strong>Curve</strong>value = a × reading² + b × reading + c<span>liquid level strip, capacitive level sensor</span></figcaption></figure>
+        <figure class="kind">${miniPlot("pow")}<figcaption><strong>Power law</strong>log(reading) = m × log(value) + c<span>LDR, MQ gas sensors</span></figcaption></figure></div>
+      <div class="pv"><h4 class="sub-h">Why Log Axes? Watch an LDR's Points Straighten</h4><div class="pv-graph kinds-morph"></div><div class="pv-pl"></div><p class="pv-read"></p></div>`;
+    const box = el.querySelector(".kinds-morph"), read = el.querySelector(".pv-read");
+    const W = 380, H = 240, l = 58, r = 14, t0 = 14, b = 42, pw = W - l - r, ph = H - t0 - b;
+    const Xl = (v) => l + (v / 1100) * pw, Xg = (v) => l + ((lg(v) - lg(6)) / (lg(1600) - lg(6))) * pw;
+    const Yl = (v) => t0 + (1 - v / 3500) * ph, Yg = (v) => t0 + (1 - (lg(v) - lg(250)) / (lg(4000) - lg(250))) * ph;
+    const draw = (t) => {
+      const p = smooth((t - 2.5) / 2), X = (v) => lerp(Xl(v), Xg(v), p), Y = (v) => lerp(Yl(v), Yg(v), p);
+      let g = "";
+      [0, 250, 500, 750, 1000].forEach((v) => { g += `<g style="opacity:${(1 - p).toFixed(2)}"><line class="gl" x1="${Xl(v)}" x2="${Xl(v)}" y1="${t0}" y2="${t0 + ph}"/>${T(Xl(v), t0 + ph + 15, v, "middle", "axis")}</g>`; });
+      [10, 100, 1000].forEach((v) => { g += `<g style="opacity:${p.toFixed(2)}"><line class="gl" x1="${Xg(v)}" x2="${Xg(v)}" y1="${t0}" y2="${t0 + ph}"/>${T(Xg(v), t0 + ph + 15, v, "middle", "axis")}</g>`; });
+      [0, 1000, 2000, 3000].forEach((v) => { g += `<g style="opacity:${(1 - p).toFixed(2)}"><line class="gl" x1="${l}" x2="${l + pw}" y1="${Yl(v)}" y2="${Yl(v)}"/>${T(l - 5, Yl(v) + 4, v, "end", "axis")}</g>`; });
+      [300, 1000, 3000].forEach((v) => { g += `<g style="opacity:${p.toFixed(2)}"><line class="gl" x1="${l}" x2="${l + pw}" y1="${Yg(v)}" y2="${Yg(v)}"/>${T(l - 5, Yg(v) + 4, v, "end", "axis")}</g>`; });
+      g += `<path class="ax" d="M${l},${t0}V${t0 + ph}H${l + pw}"/>` + T(l + pw / 2, H - 6, p < 0.5 ? "Light (lux)" : "Light (lux), log scale", "middle", "axl") + `<text class="axl" transform="translate(13 ${t0 + ph / 2}) rotate(-90)" text-anchor="middle">${p < 0.5 ? "ADC reading" : "ADC reading, log scale"}</text>`;
+      const curvePts = []; for (let i = 0; i <= 50; i++) { const v = 10 * 100 ** (i / 50); curvePts.push([X(v), Y(10 ** ((lg(v) + 4.7) / 2.2))]); }
+      g += poly(curvePts, p > 0.98 ? "trace-a" : "trace-in");
+      LDRD.forEach(([v, a]) => { g += `<circle class="shot" cx="${X(v).toFixed(1)}" cy="${Y(a).toFixed(1)}" r="5"/>`; });
+      box.innerHTML = svg(W, H, p < 0.5 ? "LDR calibration points on normal axes: they bend" : "The same points on log axes: a straight line", g);
+      read.innerHTML = p < 0.05 ? "On <strong>normal axes</strong> the LDR's points bend: a straight line would be badly wrong in the middle." : p < 0.98 ? "Stretching both axes to <strong>log scales</strong>…" : "On <strong>log axes</strong> the same points lie on a <strong>straight line</strong>. Fit that line, log(ADC) = m × log(lux) + c, and the power law is found.";
+    };
+    player(el.querySelector(".pv-pl"), el, { dur: 8, hold: 2, draw, still: 8, label: "Axis change position" });
+  }
+
+  /* =====================================================================
      Sections
      ===================================================================== */
   const SECTIONS = [
@@ -337,48 +660,168 @@ void loop()
       intro: `<p>In theory the ESP32's 12-bit ADC turns 0 to 3.3 V into 0 to 4095, so V = 3.3 × ADC ÷ 4095. In practice, a 2.5 V supply may be shown as about 2.36 V, and the ADC is not linear near 0 V and near 3.3 V. The power supply itself may not be calibrated either.</p>
         <p>That is why the virtual lab calibrates the <strong>angle</strong> or the <strong>depth</strong> directly: one calibration corrects the sensor, the wiring and the ADC together.</p>`,
       mount: mountAdc,
-      after: `<div class="callout info"><strong>Good to know</strong>The ESP32 has 18 ADC channels. Use the ADC1 pins (GPIO32 to 39) for sensors: the ADC2 pins stop working while Wi-Fi is on. The curve above is a typical example; every chip is slightly different, which is exactly why each one is calibrated.</div>` }
+      after: `<div class="callout info"><strong>Good to know</strong>The ESP32 has 18 ADC channels. Use the ADC1 pins (GPIO32 to 39) for sensors: the ADC2 pins stop working while Wi-Fi is on. The curve above is a typical example; every chip is slightly different, which is exactly why each one is calibrated.</div>` },
+    { id: "kinds", group: "sensors", title: "Three Kinds of Calibration Line", toc: "Three Kinds of Line",
+      intro: `<p>Every calibration ends with an equation that links the sensor's reading to the real value. Plot the calibration points first: their shape tells you which kind of equation to fit.</p>
+        <ul class="tight"><li><strong>Straight line</strong>: the points lie along a line. Most sensors behave like this over the range a project uses.</li><li><strong>Curve</strong>: the points bend. Fit a second-order curve (a quadratic), as the virtual lab did for the capacitive level sensor.</li><li><strong>Power law</strong>: the points bend strongly, but lie on a straight line when <em>both</em> axes are logarithmic. LDRs and gas sensors behave like this.</li></ul>`,
+      mount: mountKinds },
+    { id: "sensors", group: "sensors", title: "Calibrating Nine Common Sensors", toc: "Nine Sensors",
+      intro: `<p>Choose a sensor. The animation takes each calibration point in turn: set the reference, wait until both readings are steady, record the pair, then fit the line. Below it are the reference to use, how to take the points, the table, the equation, the line for the ESP32 sketch and the mistake to avoid.</p>
+        <p>The numbers are realistic example data. Your own sensor will give slightly different numbers, which is exactly why each one is calibrated.</p>`,
+      mount: mountSensors }
   ];
 
   /* =====================================================================
-     Exercises
+     Exercise figures
      ===================================================================== */
+  const SX = (k) => SENS.find((o) => o.k === k);
+  const xfig = (inner, cls = "") => `<div class="scene-scroll">${inner}</div>`;
+  const rigFig = (k, v, refTxt, readTxt, lab, src) => xfig(svg(360, 234, lab, rig(SX(k), v, 0, refTxt, readTxt, false, src), "scene exfig calrig"));
+  const tbl = (head, rows) => `<div class="tbl-wrap"><table class="eg-tbl ex-tbl"><tr><th>${head[0]}</th>${head.slice(1).map((h) => `<td>${h}</td>`).join("")}</tr>${rows.map((r) => `<tr><th>${r[0]}</th>${r.slice(1).map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</table></div>`;
+  const FIG = {
+    lm35: () => rigFig("lm35", 40, "? °C", "ADC = ?", "An LM35 in a beaker of water beside a reference thermometer, wired to GPIO34 of an ESP32"),
+    acs: () => rigFig("acs", 1.5, "? A", "ADC = ?", "A DC supply, an ACS712 current sensor, a load and an ammeter in series; the ACS712 output goes through a two-thirds divider to GPIO35 of an ESP32"),
+    divGraph: () => {
+      const A = axes({ W: 380, H: 250, l: 54, x: [0, 11], y: [0, 2600], xt: [0, 2, 4, 6, 8, 10], yt: [0, 500, 1000, 1500, 2000, 2500], xl: "Voltage from the multimeter (V)", yl: "ADC reading" });
+      let g = A.s + poly([[A.X(0.8), A.Y(0)], [A.X(11), A.Y(2550)]], "trace-a");
+      [[2, 310], [4, 790], [6, 1300], [8, 1810], [10, 2290]].forEach(([x, y]) => { g += `<circle class="shot" cx="${A.X(x).toFixed(1)}" cy="${A.Y(y).toFixed(1)}" r="5"/>`; });
+      [[2, 300], [10, 2300]].forEach(([x, y]) => { g += `<circle class="ring" cx="${A.X(x).toFixed(1)}" cy="${A.Y(y).toFixed(1)}" r="9"/>${T(A.X(x) + (x < 5 ? 14 : -14), A.Y(y) + (x < 5 ? 22 : -12), `(${x}, ${y})`, x < 5 ? "start" : "end", "mklab")}`; });
+      return xfig(svg(A.W, A.H, "Calibration graph of a solar panel voltage divider: five points and a fitted straight line through the marked points (2, 300) and (10, 2300)", g, "plot exfig"));
+    },
+    divRig: () => rigFig("div", 8, "8.00 V", "ADC = ?", "A solar panel feeding a 30 kilo-ohm and 7.5 kilo-ohm divider into GPIO35, with a voltmeter across the panel", "solar panel"),
+    ldr: () => {
+      const one = (log) => {
+        const A = log ? axes({ W: 250, H: 210, l: 46, x: [lg(6), lg(1600)], y: [lg(250), lg(4000)], xt: [1, 2, 3], yt: [lg(300), lg(1000), lg(3000)], fx: tick10, fy: tick10, xl: "Light (lux), log", yl: "ADC, log" })
+          : axes({ W: 250, H: 210, l: 46, x: [0, 1100], y: [0, 3500], xt: [0, 500, 1000], yt: [0, 1000, 2000, 3000], xl: "Light (lux)", yl: "ADC reading" });
+        let g = A.s;
+        LDRD.forEach(([v, a]) => { g += `<circle class="shot" cx="${A.X(log ? lg(v) : v).toFixed(1)}" cy="${A.Y(log ? lg(a) : a).toFixed(1)}" r="4.5"/>`; });
+        if (!log) g += poly([[A.X(10), A.Y(390)], [A.X(1000), A.Y(3162)]], "trace-in");
+        return svg(A.W, A.H, log ? "The LDR points on log axes" : "The LDR points on normal axes, with a straight line through the first and last points", g, "plot exfig half");
+      };
+      return `<div class="ex-two">${xfig(one(false))}${xfig(one(true))}</div>`;
+    },
+    ph: () => {
+      let s = "";
+      [[4, 2420, "#e5533d"], [7, 1890, "#3fae5a"]].forEach(([p, a, c], i) => { const x = 20 + i * 170; s += `<rect class="beaker" x="${x}" y="54" width="110" height="84" rx="8"/><rect class="liq" x="${x + 3}" y="74" width="104" height="61" rx="6" style="fill:${c}"/><rect class="probe" x="${x + 50}" y="10" width="10" height="112" rx="4"/><circle class="bulbg" cx="${x + 55}" cy="124" r="7"/>${T(x + 55, 158, `buffer pH ${p}.00`, "middle", "tt")}<rect class="lcd" x="${x + 6}" y="170" width="98" height="24" rx="4"/>${T(x + 55, 187, `ADC = ${a}`, "middle", "lcdt sm")}`; });
+      return xfig(svg(320, 204, "A pH probe in pH 4.00 buffer reads ADC 2420, and in pH 7.00 buffer reads ADC 1890", s, "scene exfig"));
+    },
+    lsq: () => {
+      const A = axes({ W: 320, H: 220, x: [0, 5], y: [0, 9], xt: [0, 1, 2, 3, 4, 5], yt: [0, 2, 4, 6, 8], xl: "x", yl: "y" });
+      let g = A.s; [[1, 2.0], [2, 4.1], [3, 5.9], [4, 8.0]].forEach(([x, y]) => { g += `<circle class="shot" cx="${A.X(x)}" cy="${A.Y(y).toFixed(1)}" r="5"/>${T(A.X(x) + 8, A.Y(y) + 14, `(${x}, ${y.toFixed(1)})`, "start", "axis")}`; });
+      return xfig(svg(A.W, A.H, "Four calibration points that lie almost on a straight line", g, "plot exfig"));
+    },
+    sigf: () => {
+      const f = (x) => 3.8714e-8 * x * x - 0.002625 * x + 43.781;
+      const A = axes({ W: 340, H: 230, l: 46, x: [20000, 30000], y: [-0.5, 7.5], xt: [20000, 22500, 25000, 27500, 30000], yt: [0, 2, 4, 6], fx: (v) => `${v / 1000}k`, xl: "Frequency f (Hz)", yl: "Depth (cm)" });
+      let g = A.s + poly(curve(A, f, 20000, 30000, 60), "trace-a") + `<line class="mk" x1="${A.X(25000)}" x2="${A.X(25000)}" y1="${A.t}" y2="${A.t + A.ph}"/>${dot(A.X(25000), A.Y(f(25000)))}${T(A.X(25000) + 8, A.Y(f(25000)) - 10, "f = 25 000 Hz", "start", "mklab")}`;
+      return xfig(svg(A.W, A.H, "The water-level sensor's calibration curve, depth against frequency, with f = 25 000 Hz marked", g, "plot exfig"));
+    }
+  };
+
+  /* =====================================================================
+     Exercises: the calibration question pattern, with new sensors; then least squares and significant figures
+     ===================================================================== */
+  const X = (t, why, lines, r) => step(t, why ? `<span class="st-why">${why}</span>` : "", lines.join("<br>"), r || "");
   const W_ = (list) => `<div class="working"><h4>Working</h4><ol class="steps">${stepsHtml(list)}</ol></div>`;
+  const REFS = ["Reference thermometer", "Multimeter in series", "Ruler or measuring tape", "Calibrated gas detector", "pH buffer solutions"];
   const EXERCISES = [
-    { id: "c7-q1", title: "Exercise 1: A Line from Two Points",
-      q: `<p>A potentiometer angle sensor reads <strong>ADC = 2000 at 0°</strong> and <strong>ADC = 400 at 100°</strong>. Assume a straight line, angle = m × ADC + c.</p>`,
-      ans: [{ l: "Slope m", u: "° per count", v: -0.0625, tol: 0.0005 }, { l: "Intercept c", u: "°", v: 125 }, { l: "Angle when ADC = 1200", u: "°", v: 50 }],
-      hints: [`m = change in angle ÷ change in ADC = (100 − 0) ÷ (400 − 2000).`, `Then c = angle − m × ADC, using either point.`],
-      working: () => W_([step("Slope", "m = Δy ÷ Δx", "= 100 ÷ (400 − 2000)", "m = <strong>−0.0625</strong>"), step("Intercept", "c = y − mx", "= 0 − (−0.0625 × 2000)", "c = <strong>125</strong>"), step("At ADC 1200", "−0.0625 × 1200 + 125", "", "<strong>50°</strong>")]) },
-    { id: "c7-q2", title: "Exercise 2: Using a Calibration Equation",
-      q: `<p>A calibrated sensor uses <strong>angle = −0.05 × ADC + 110</strong>.</p>`,
-      ans: [{ l: "Angle when ADC = 900", u: "°", v: 65 }, { l: "ADC reading expected at 30°", u: "", v: 1600 }],
-      hints: [`Substitute the ADC value into the equation.`, `For the reverse, rearrange: ADC = (angle − 110) ÷ (−0.05).`],
-      working: () => W_([step("Angle", "−0.05 × 900 + 110", "", "<strong>65°</strong>"), step("ADC", "(30 − 110) ÷ (−0.05)", "", "<strong>1600</strong>")]) },
-    { id: "c7-q3", title: "Exercise 3: Checking the Accuracy",
-      q: `<p>After calibration, a sensor is checked at four reference angles.</p><table><thead><tr><th>True angle (°)</th><th>0</th><th>30</th><th>60</th><th>90</th></tr></thead><tbody><tr><th>Sensor shows (°)</th><td>1.2</td><td>29.1</td><td>61.5</td><td>89.4</td></tr></tbody></table>`,
-      ans: [{ l: "Largest error (size only)", u: "°", v: 1.5 }, { l: "As a percentage of the 90° full scale", u: "%", v: 1.667 }],
-      hints: [`Error = shown − true at each point; compare their sizes.`, `% of full scale = largest error ÷ 90 × 100.`],
-      working: () => W_([step("Errors", "shown − true", "+1.2, −0.9, +1.5, −0.6", "largest: <strong>1.5°</strong> at 60°"), step("% of full scale", "1.5 ÷ 90 × 100", "", "<strong>1.67%</strong>")]) },
-    { id: "c7-q4", title: "Exercise 4: Least-Squares Line",
-      q: `<p>Fit y = mx + c by least squares to these calibration points.</p><table><thead><tr><th>x</th><th>1</th><th>2</th><th>3</th><th>4</th></tr></thead><tbody><tr><th>y</th><td>2.0</td><td>4.1</td><td>5.9</td><td>8.0</td></tr></tbody></table>`,
+    { id: "c7-q7", title: "Exercise 1: An LM35 Thermometer",
+      q: `<p>An ESP32 reads an LM35 temperature sensor on GPIO34 through its <strong>12-bit</strong> ADC, with a reference voltage of <strong>3.3 V</strong>. The sensor was calibrated against a reference thermometer, and the results are in the table. The calibration equation obtained is <strong>ADC = 12.5T + 15</strong>, where T is the temperature in °C.</p>` +
+        tbl(["Temperature, T (°C)", 0, 20, 40, 60, 80], [["ADC reading", 12, 268, 520, 761, 1016]]),
+      fig: FIG.lm35,
+      ans: [{ l: "(i) The resolution of the ADC", u: "mV", v: 0.8059 }, { l: "(i) The input voltage when the ADC reading is 700", u: "V", v: 0.5641 },
+        { l: "(ii) The temperature when the ADC reading is 700", u: "°C", v: 54.8, tol: 0.1 }, { l: "(ii) The temperature when the ADC reading is 520", u: "°C", v: 40.4, tol: 0.05 },
+        { l: "(iii) The error at 40 °C as a percentage of the 80 °C full-scale range", u: "%", v: 0.5, tol: 0.02 },
+        { l: "(iii) Why does this error occur?", opts: ["The line is a best fit through all five points, so it cannot pass exactly through each one (small non-linearity and noise in the sensor and the ADC)", "The ADC does not have enough bits to read 40 °C", "The LM35 only works below 40 °C", "The thermometer is always 0.4 °C wrong"], v: 0 }],
+      hints: [`Resolution = V<sub>ref</sub> ÷ (2<sup>n</sup> − 1). For the temperature, rearrange the equation: T = (ADC − 15) ÷ 12.5.`, `The table says ADC 520 was measured at exactly 40 °C. Compare that with what the equation gives, then divide the difference by 80 °C.`],
+      working: () => W_([
+        X("(i) Resolution", "One step of the ADC's ruler.", ["R = V<sub>ref</sub> ÷ (2<sup>12</sup> − 1) = 3.3 ÷ 4095", "= 0.000805861 V"], "R = <strong>0.8059 mV</strong>"),
+        X("(i) Input voltage at ADC 700", "Number of steps × size of one step.", ["V<sub>in</sub> = 700 × 0.000805861 V", "= 700 × 3.3 ÷ 4095"], "V<sub>in</sub> = <strong>0.5641 V</strong>"),
+        X("(ii) Rearrange the equation", "The equation gives the ADC from the temperature; turn it round to get the temperature from the ADC.", ["ADC = 12.5T + 15", "ADC − 15 = 12.5T", "T = (ADC − 15) ÷ 12.5"], ""),
+        X("(ii) At ADC 700", "", ["T = (700 − 15) ÷ 12.5 = 685 ÷ 12.5"], "T = <strong>54.8 °C</strong>"),
+        X("(ii) At ADC 520", "", ["T = (520 − 15) ÷ 12.5 = 505 ÷ 12.5"], "T = <strong>40.4 °C</strong>"),
+        X("(iii) Error at 40 °C", "In the table, ADC 520 was recorded at a true 40 °C, but the equation says 40.4 °C.", ["error = 40.4 − 40 = 0.4 °C", "% of full scale = 0.4 ÷ 80 × 100"], "<strong>0.5%</strong> of the full-scale range"),
+        X("(iii) Why", "A straight line is fitted through all five points by least squares. Real readings have small non-linearity and noise (in the LM35 and the ESP32's ADC), so the line passes close to the points but not exactly through each one.", [], "The equation reads 0.4 °C high at 40 °C")]) },
+    { id: "c7-q8", title: "Exercise 2: An ACS712 Current Sensor",
+      q: `<p>An ACS712 current sensor (5 A version on a 5 V supply: <strong>2.5 V at 0 A</strong>, <strong>185 mV per amp</strong>) measures the current of a DC load. Its output goes to GPIO35 of an ESP32 through a <strong>10 kΩ / 20 kΩ divider</strong> (it scales the voltage by 2/3). It was calibrated against a multimeter in series with the load. The calibration equation obtained is <strong>ADC = 153I + 2050</strong>, where I is the current in amps.</p>` +
+        tbl(["Current, I (A)", 0, 1, 2, 3, 4], [["ADC reading", 2048, 2205, 2353, 2511, 2662]]),
+      fig: FIG.acs,
+      ans: [{ l: "(a) The ACS712's output voltage at 5 A", u: "V", v: 3.425, tol: 0.003 }, { l: "(a) The voltage at GPIO35 at 5 A, after the divider", u: "V", v: 2.283, tol: 0.003 },
+        { l: "(b) Why is the divider needed?", opts: ["Without it the output goes above 3.3 V: the reading clips and the pin can be damaged", "It makes the ACS712 more sensitive", "It removes the 2.5 V at 0 A", "The ESP32's ADC pins need exactly 5 V"], v: 0 },
+        { l: "(c) The current when the ADC reading is 2400", u: "A", v: 2.288, tol: 0.003 },
+        { l: "(d) The error at 2 A as a percentage of the 4 A full-scale range", u: "%", v: 0.49, tol: 0.02 }],
+      hints: [`Output = 2.5 V + 0.185 V × I. After the divider multiply by 20 ÷ (10 + 20).`, `I = (ADC − 2050) ÷ 153. At 2 A the table reading is 2353: work out what current the equation gives for it.`],
+      working: () => W_([
+        X("(a) Output at 5 A", "The output starts at 2.5 V and rises 0.185 V for every amp.", ["V = 2.5 + 0.185 × 5", "= 2.5 + 0.925"], "<strong>3.425 V</strong>"),
+        X("(a) After the divider", "The bottom resistor's share: 20 ÷ (10 + 20) = 2/3.", ["V<sub>pin</sub> = 3.425 × 20 ÷ 30"], "<strong>2.283 V</strong>, safely below 3.3 V"),
+        X("(b) Why the divider", "3.425 V is above the ADC's 3.3 V reference, so the reading would stick at 4095, and close to the pin's limit of about 3.6 V.", [], "It keeps the voltage inside 0 to 3.3 V"),
+        X("(c) Rearrange the equation", "", ["ADC = 153I + 2050", "I = (ADC − 2050) ÷ 153"], ""),
+        X("(c) At ADC 2400", "", ["I = (2400 − 2050) ÷ 153 = 350 ÷ 153"], "I = <strong>2.288 A</strong>"),
+        X("(d) Error at 2 A", "The table's reading at a true 2 A is 2353.", ["I = (2353 − 2050) ÷ 153 = 303 ÷ 153 = 1.980 A", "error = 1.980 − 2 = −0.020 A", "% of full scale = 0.0196 ÷ 4 × 100"], "<strong>0.49%</strong> of the full-scale range")]) },
+    { id: "c7-q9", title: "Exercise 3: Read the Line from a Graph",
+      q: `<p>An ESP32 measures a solar panel's voltage through a 30 kΩ / 7.5 kΩ voltage divider on GPIO35. It was calibrated against a multimeter. The graph shows the calibration points and the fitted straight line, ADC = mV + c, which passes through the two marked points.</p>` +
+        tbl(["Voltage, V (V)", 2, 4, 6, 8, 10], [["ADC reading", 310, 790, 1300, 1810, 2290]]),
+      fig: () => FIG.divGraph() + FIG.divRig(),
+      ans: [{ l: "(a) The slope m", u: "per V", v: 250, tol: 0.5 }, { l: "(a) The intercept c", u: "", v: -200, tol: 0.5 },
+        { l: "(b) The panel voltage when the ADC reading is 1550", u: "V", v: 7, tol: 0.01 },
+        { l: "(c) The error at 4 V as a percentage of the 10 V full-scale range", u: "%", v: 0.4, tol: 0.02 },
+        { l: "(d) The line reaches ADC = 0 at about 0.8 V, not at 0 V. Why?", opts: ["The ESP32's ADC reads low near 0 V, so small inputs give 0", "The solar panel gives no voltage below 0.8 V", "The multimeter adds 0.8 V", "The divider adds 0.8 V"], v: 0 }],
+      hints: [`Slope = change in ADC ÷ change in voltage between the two marked points. Then c = ADC − m × V at either point.`, `For the voltage, rearrange: V = (ADC − c) ÷ m. Watch the sign of c.`],
+      working: () => W_([
+        X("(a) Slope from the two marked points", "Rise over run between (2, 300) and (10, 2300).", ["m = (2300 − 300) ÷ (10 − 2)", "= 2000 ÷ 8"], "m = <strong>250</strong> counts per volt"),
+        X("(a) Intercept", "Put one marked point into ADC = mV + c.", ["300 = 250 × 2 + c", "c = 300 − 500"], "c = <strong>−200</strong>, so ADC = 250V − 200"),
+        X("(b) Rearrange and use it", "", ["V = (ADC − c) ÷ m = (ADC + 200) ÷ 250", "V = (1550 + 200) ÷ 250 = 1750 ÷ 250"], "V = <strong>7.0 V</strong>"),
+        X("(c) Error at 4 V", "The table's reading at a true 4 V is 790.", ["V = (790 + 200) ÷ 250 = 3.96 V", "error = 3.96 − 4 = −0.04 V", "% of full scale = 0.04 ÷ 10 × 100"], "<strong>0.4%</strong> of the full-scale range"),
+        X("(d) Why the line misses 0 V", "ADC = 0 when 250V = 200, so V = 0.8 V at the panel, which is 0.16 V at the pin. The ESP32's ADC has a dead zone near 0 V: it reads 0 until the pin is above about 0.1 to 0.15 V.", [], "The ADC reads low near 0 V")]) },
+    { id: "c7-q10", title: "Exercise 4: Straight Line or Power Law?",
+      q: `<p>An LDR in a voltage divider on GPIO33 was calibrated against a lux meter. The table and the two graphs show the same data. The power law fitted on log axes is <strong>log(E) = 2.2 log(ADC) − 4.70</strong>, where E is the light in lux.</p>` +
+        tbl(["Light, E (lux)", 10, 50, 100, 300, 1000], [["ADC reading", 390, 810, 1110, 1830, 3162]]),
+      fig: FIG.ldr,
+      ans: [{ l: "(a) Which calibration suits this sensor?", opts: ["A power law: a straight line on log axes", "A straight line on normal axes", "One point at 100 lux is enough", "None: the ADC number is already in lux"], v: 0 },
+        { l: "(b) The light when the ADC reading is 2000, from the power law", u: "lux", v: 365, tol: 5 },
+        { l: "(c) A straight line drawn through the first and last points (dashed): the light it gives at ADC 1110", u: "lux", v: 267, tol: 2 },
+        { l: "(d) That straight line's error at 100 lux, as a percentage of the 1000 lux full scale", u: "%", v: 16.7, tol: 0.3 }],
+      hints: [`On normal axes the points bend; on log axes they are straight. For (b) work out log(E), then E = 10 to that power.`, `The straight line goes through (390, 10 lux) and (3162, 1000 lux): find its slope in lux per count, then the lux at 1110.`],
+      working: () => W_([
+        X("(a) Which fit", "On normal axes the points bend strongly; on log axes they lie on a straight line. That is a power law.", [], "<strong>A power law</strong> (straight on log axes)"),
+        X("(b) log(E) at ADC 2000", "", ["log(2000) = 3.30103", "log(E) = 2.2 × 3.30103 − 4.70 = 7.26227 − 4.70", "= 2.56227"], ""),
+        X("(b) Undo the log", "E = 10<sup>log(E)</sup>. On the fx-570MS: SHIFT log (10<sup>x</sup>) 2.56227 =", ["E = 10<sup>2.56227</sup>"], "E = <strong>365 lux</strong>"),
+        X("(c) The straight line through the end points", "", ["slope = (1000 − 10) ÷ (3162 − 390) = 990 ÷ 2772", "= 0.35714 lux per count", "E = 10 + 0.35714 × (ADC − 390)"], ""),
+        X("(c) At ADC 1110", "", ["E = 10 + 0.35714 × (1110 − 390)", "= 10 + 0.35714 × 720 = 10 + 257.1"], "E = <strong>267 lux</strong>"),
+        X("(d) Its error", "The true light at ADC 1110 is 100 lux.", ["error = 267.1 − 100 = 167.1 lux", "% of full scale = 167.1 ÷ 1000 × 100"], "<strong>16.7%</strong>: far too big, so use the power law")]) },
+    { id: "c7-q11", title: "Exercise 5: The Right Reference, and a pH Probe",
+      q: `<p><strong>Part A.</strong> Choose the right reference instrument to calibrate each sensor.</p>` +
+        tbl(["Sensor", "Measures", "Reference"], [["LM35", "temperature", "?"], ["ACS712", "current", "?"], ["HC-SR04", "distance", "?"], ["MQ-2", "gas (ppm)", "?"]]) +
+        `<p><strong>Part B.</strong> A pH probe on GPIO34 is calibrated in two buffer solutions (figure). Use a straight line, pH = m × ADC + c.</p>`,
+      fig: FIG.ph,
+      ans: [{ l: "A: LM35", opts: REFS, v: 0 }, { l: "A: ACS712", opts: REFS, v: 1 }, { l: "A: HC-SR04", opts: REFS, v: 2 }, { l: "A: MQ-2", opts: REFS, v: 3 },
+        { l: "B: The slope m", u: "pH per count", v: -0.00566, tol: 0.00003 }, { l: "B: The pH when the ADC reading is 2100", u: "", v: 5.811, tol: 0.015 }],
+      hints: [`The reference must measure the same quantity as the sensor, and be trusted.`, `m = (7 − 4) ÷ (1890 − 2420). Then pH = 7 + m × (ADC − 1890).`],
+      working: () => W_([
+        X("A: References", "The reference must measure the same quantity, more accurately than the sensor.", ["LM35 → reference thermometer", "ACS712 → multimeter in series", "HC-SR04 → ruler or measuring tape", "MQ-2 → calibrated gas detector"], ""),
+        X("B: Slope", "Change in pH ÷ change in ADC between the two buffers.", ["m = (7 − 4) ÷ (1890 − 2420)", "= 3 ÷ (−530)"], "m = <strong>−0.005660</strong> pH per count (the reading falls as the pH rises)"),
+        X("B: Intercept", "Use the pH 7 point.", ["7 = −0.0056604 × 1890 + c", "c = 7 + 10.698 = 17.698"], "pH = −0.0056604 × ADC + 17.698"),
+        X("B: At ADC 2100", "", ["pH = −0.0056604 × 2100 + 17.698", "= −11.887 + 17.698"], "pH = <strong>5.81</strong>"),
+        X("Check", "2100 lies between 2420 (pH 4) and 1890 (pH 7), so the pH must be between 4 and 7.", [], "✓")]) },
+    { id: "c7-q4", title: "Exercise 6: Least-Squares Line",
+      q: `<p>Fit y = mx + c by least squares to these calibration points (also plotted below).</p>` + tbl(["x", 1, 2, 3, 4], [["y", "2.0", "4.1", "5.9", "8.0"]]),
+      fig: FIG.lsq,
       ans: [{ l: "Slope m", u: "", v: 1.98, tol: 0.005 }, { l: "Intercept c", u: "", v: 0.05, tol: 0.005 }],
       hints: [`n = 4, Σx = 10, Σy = 20, Σx² = 30. Work out Σxy.`, `m = (nΣxy − ΣxΣy) ÷ (nΣx² − (Σx)²) and c = (Σy − mΣx) ÷ n.`],
-      working: () => W_([step("Sums", "Σxy = 1×2.0 + 2×4.1 + 3×5.9 + 4×8.0", "", "Σxy = 59.9"), step("Slope", "(4 × 59.9 − 10 × 20) ÷ (4 × 30 − 10²)", "= 39.6 ÷ 20", "m = <strong>1.98</strong>"), step("Intercept", "(20 − 1.98 × 10) ÷ 4", "", "c = <strong>0.05</strong>")]) },
-    { id: "c7-q5", title: "Exercise 5: Keep Enough Significant Figures",
-      q: `<p>A water-level sensor was calibrated as <strong>depth = 3.8714 × 10<sup>−8</sup> f² − 0.002625 f + 43.781</strong> (depth in cm, f in Hz).</p>`,
+      working: () => W_([
+        X("The sums", "Make a column for each: x, y, xy and x².", ["n = 4", "Σx = 1 + 2 + 3 + 4 = 10", "Σy = 2.0 + 4.1 + 5.9 + 8.0 = 20.0", "Σxy = 1×2.0 + 2×4.1 + 3×5.9 + 4×8.0 = 2 + 8.2 + 17.7 + 32 = 59.9", "Σx² = 1 + 4 + 9 + 16 = 30"], ""),
+        X("Slope", "", ["m = (nΣxy − ΣxΣy) ÷ (nΣx² − (Σx)²)", "= (4 × 59.9 − 10 × 20) ÷ (4 × 30 − 10²)", "= (239.6 − 200) ÷ (120 − 100) = 39.6 ÷ 20"], "m = <strong>1.98</strong>"),
+        X("Intercept", "", ["c = (Σy − mΣx) ÷ n", "= (20 − 1.98 × 10) ÷ 4 = 0.2 ÷ 4"], "c = <strong>0.05</strong>, so y = 1.98x + 0.05")]) },
+    { id: "c7-q5", title: "Exercise 7: Keep Enough Significant Figures",
+      q: `<p>A water-level sensor was calibrated as <strong>depth = 3.8714 × 10<sup>−8</sup> f² − 0.002625 f + 43.781</strong> (depth in cm, f in Hz). Its curve is shown below.</p>`,
+      fig: FIG.sigf,
       ans: [{ l: "Depth when f = 25 000 Hz", u: "cm", v: 2.352, tol: 0.01 }, { l: "Depth if a is rounded to 4 × 10<sup>−8</sup>", u: "cm", v: 3.156, tol: 0.01 }, { l: "Error caused by the rounding", u: "cm", v: 0.804, tol: 0.01 }],
       hints: [`f² = 6.25 × 10<sup>8</sup>. Work out each term, then add.`, `Only the first term changes when a is rounded.`],
-      working: () => W_([step("Exact", "3.8714×10<sup>−8</sup> × 6.25×10<sup>8</sup> − 0.002625 × 25 000 + 43.781", "= 24.196 − 65.625 + 43.781", "<strong>2.352 cm</strong>"), step("Rounded a", "4×10<sup>−8</sup> × 6.25×10<sup>8</sup> − 65.625 + 43.781", "= 25.000 − 65.625 + 43.781", "<strong>3.156 cm</strong>"), step("Error", "3.156 − 2.352", "", "<strong>0.80 cm</strong>: round the coefficients too much and the sensor is wrong")]) },
-    { id: "c7-q6", title: "Exercise 6: Calibration Ideas",
-      q: `<p>Choose the best answer.</p>`,
-      ans: [{ l: "In the potentiometer lab, the reference is", opts: ["the protractor", "the ESP32's ADC", "the Serial Monitor"], v: 0 },
-        { l: "A sensor must be recalibrated because", opts: ["it ages and conditions change", "the ADC has 12 bits", "the line has a negative slope"], v: 0 },
-        { l: "R² = 0.999 means", opts: ["the points lie very close to the fitted line", "the sensor is 99.9% accurate", "the slope is 0.999"], v: 0 },
-        { l: "Use a curve instead of a straight line when", opts: ["the calibration points bend", "there are more than 5 points", "the slope is negative"], v: 0 },
-        { l: "Calibrating the angle directly (not the voltage) corrects", opts: ["the sensor, wiring and ADC together", "only the ADC", "only the potentiometer"], v: 0 }],
-      hints: [`A reference is the trusted instrument you compare against.`, `R² measures how well the fitted line matches the points, not the accuracy of the reference.`],
-      working: () => W_([step("Reference", "", "", "The protractor sets the known angle"), step("Recalibrate", "", "", "Ageing and changes in temperature, humidity and wiring shift the readings"), step("R²", "", "", "Close to 1: the points lie very near the fitted line"), step("Curve", "", "", "When the data bends, as with the capacitive level sensor"), step("Whole system", "", "", "One calibration corrects the sensor, wiring and ADC together")]) }
+      working: () => W_([
+        X("f²", "", ["f² = 25 000² = 6.25 × 10<sup>8</sup>"], ""),
+        X("Exact coefficients", "Work out each term, then add them.", ["3.8714 × 10<sup>−8</sup> × 6.25 × 10<sup>8</sup> = 24.196", "0.002625 × 25 000 = 65.625", "24.196 − 65.625 + 43.781"], "depth = <strong>2.352 cm</strong>"),
+        X("Rounded a", "Only the first term changes.", ["4 × 10<sup>−8</sup> × 6.25 × 10<sup>8</sup> = 25.000", "25.000 − 65.625 + 43.781"], "depth = <strong>3.156 cm</strong>"),
+        X("Error", "", ["3.156 − 2.352"], "<strong>0.80 cm</strong>: round the coefficients too much and the sensor is wrong")]) }
   ];
 
   Lab.page({
@@ -389,7 +832,8 @@ void loop()
     groups: [
       { key: "intro", list: "#introList", toc: "#introToc" },
       { key: "lab", list: "#vlabList" },
-      { key: "whole", list: "#wholeList" }
+      { key: "whole", list: "#wholeList" },
+      { key: "sensors", list: "#sensList", toc: "#sensToc" }
     ],
     exercises: EXERCISES
   });

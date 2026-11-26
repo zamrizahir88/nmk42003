@@ -852,7 +852,7 @@
     // Arrows and dots change the exercise at once (no slide), and swipe tracking is paused meanwhile, so the counter,
     // the height and the exercise shown never fall out of step (a smooth slide could be interrupted halfway).
     let lock = 0;
-    const go = (i) => { cur = Math.max(0, Math.min(items.length - 1, i)); lock = Date.now() + 400; track.scrollTo({ left: items[cur].offsetLeft - track.offsetLeft, behavior: "instant" }); paint(); };
+    const go = (i) => { cur = Math.max(0, Math.min(items.length - 1, i)); lock = Date.now() + 400; const sb = track.style.scrollBehavior; track.style.scrollBehavior = "auto"; track.scrollLeft = items[cur].offsetLeft - track.offsetLeft; track.style.scrollBehavior = sb; paint(); };
     const nearest = () => { let best = 0, d = Infinity; items.forEach((x, k) => { const dd = Math.abs(x.offsetLeft - track.offsetLeft - track.scrollLeft); if (dd < d) { d = dd; best = k; } }); return best; };
     nav.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; go(b.dataset.i !== undefined ? +b.dataset.i : cur + +b.dataset.d); });
     let t;
