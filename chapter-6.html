@@ -8,12 +8,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=2611141">
-  <link rel="stylesheet" href="assets/css/assistant.css?v=2611141">
-  <link rel="stylesheet" href="assets/css/account.css?v=2611141">
-  <link rel="stylesheet" href="assets/css/game.css?v=2611141">
-  <link rel="stylesheet" href="assets/css/lab.css?v=2611141">
-  <link rel="stylesheet" href="assets/css/chapter6.css?v=2611141">
+  <link rel="stylesheet" href="assets/css/style.css?v=2611260">
+  <link rel="stylesheet" href="assets/css/assistant.css?v=2611260">
+  <link rel="stylesheet" href="assets/css/account.css?v=2611260">
+  <link rel="stylesheet" href="assets/css/game.css?v=2611260">
+  <link rel="stylesheet" href="assets/css/lab.css?v=2611260">
+  <link rel="stylesheet" href="assets/css/chapter6.css?v=2611260">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0b6e6e">
   <link rel="apple-touch-icon" href="assets/img/icon-180.png">
@@ -66,9 +66,10 @@
         <h2>By the End of This Chapter You Can</h2>
         <ul>
           <li>explain why signals are converted between analog and digital, and write numbers in binary, hexadecimal and BCD</li>
+          <li>explain what V<sub>ref</sub> means to an ADC, and calculate its resolution, its digital output for an input voltage and the input voltage for a reading</li>
+          <li>convert between decimal, binary and hexadecimal with the fx-570MS calculator</li>
           <li>design a binary-weighted resistor DAC and calculate its output, and explain the R-2R ladder</li>
           <li>explain how counter and successive-approximation ADCs work</li>
-          <li>calculate an ADC's resolution and its digital output for a given input voltage</li>
         </ul>
       </div>
       <p class="lab-how">The pictures on this page move. Press <strong>play</strong> on any animation, tap the bits and switches, and watch the output. Tap <strong>Show</strong> on any panel to see the step-by-step working. The exercises at the end check what you have learnt.</p>
@@ -79,8 +80,10 @@
       <div class="wrap">
         <a href="#intro">Introduction</a>
         <a href="#codes">Digital Codes</a>
-        <a href="#dac">DAC</a>
+        <a href="#esp">ESP32</a>
         <a href="#adc">ADC</a>
+        <a href="#dac">DAC</a>
+        <a href="#inside">Inside an ADC</a>
         <a href="#exercises">Exercises</a>
       </div>
     </nav>
@@ -105,14 +108,13 @@
       </div>
     </section>
 
-    <section class="lab-group" id="dac" aria-labelledby="dac-h">
+    <section class="lab-group" id="esp" aria-labelledby="esp-h">
       <div class="wrap">
         <div class="group-head">
-          <h2 id="dac-h">Digital to Analog Converter (DAC)</h2>
-          <p>A DAC turns a binary number into an analog voltage. There are two types: the binary-weighted resistor DAC and the R-2R ladder.</p>
-          <ul class="toc-chips" id="dacToc"></ul>
+          <h2 id="esp-h">The ESP32's Converters</h2>
+          <p>The board you use in the labs has an ADC and a DAC inside.</p>
         </div>
-        <div id="dacList"></div>
+        <div id="espList"></div>
       </div>
     </section>
 
@@ -127,6 +129,27 @@
       </div>
     </section>
 
+    <section class="lab-group" id="dac" aria-labelledby="dac-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="dac-h">Digital to Analog Converter (DAC)</h2>
+          <p>A DAC turns a binary number into an analog voltage. There are two types: the binary-weighted resistor DAC and the R-2R ladder.</p>
+          <ul class="toc-chips" id="dacToc"></ul>
+        </div>
+        <div id="dacList"></div>
+      </div>
+    </section>
+
+    <section class="lab-group" id="inside" aria-labelledby="inside-h">
+      <div class="wrap">
+        <div class="group-head">
+          <h2 id="inside-h">How an ADC Works Inside</h2>
+          <p>Many ADCs find the number by guessing with a DAC.</p>
+        </div>
+        <div id="insideList"></div>
+      </div>
+    </section>
+
     <section class="lab-group" id="exercises" aria-labelledby="exercises-h">
       <div class="wrap">
         <div class="group-head">
@@ -135,21 +158,6 @@
         </div>
         <div id="exList"></div>
 
-        <div class="home-ex" id="home-exercise">
-          <h3>Home Exercise: Submit on URLearn</h3>
-          <p>We will try some of these in class. Work them all out using the methods on this page, then submit your answers on URLearn after class. The answers are not given here.</p>
-          <ol>
-            <li>DAC: the 5-bit binary-weighted DAC below has inputs D<sub>0</sub> to D<sub>4</sub>, with logic HIGH = 5 V.
-              <ul><li>(a) Determine the relationship between R<sub>0</sub>, R<sub>1</sub>, R<sub>2</sub>, R<sub>3</sub> and R<sub>4</sub>, given that R<sub>0</sub> is 640 kΩ.</li>
-              <li>(b) Given that the maximum output voltage is 8 V, calculate R<sub>f</sub>.</li>
-              <li>(c) Determine V<sub>out</sub> if inputs D<sub>0</sub>, D<sub>1</sub> and D<sub>3</sub> are connected to 5 V while the other inputs are connected to ground.</li></ul>
-              <figure class="home-fig" id="homeFigDac"></figure></li>
-            <li>ADC: a microcontroller receives an analog voltage from a sensor and uses a 15-bit ADC with a 10 V reference to convert it into digital form.
-              <ul><li>(i) How small is the voltage change that the ADC can detect?</li>
-              <li>(ii) If the sensor produces 7.94 V, what digital value will the ADC output?</li></ul></li>
-          </ol>
-        </div>
-
         <nav class="pager" aria-label="Chapters" id="chPager"></nav>
       </div>
     </section>
@@ -157,18 +165,18 @@
 
   <footer class="site-footer" id="footer"></footer>
 
-  <script src="assets/js/data.js?v=2611141"></script>
+  <script src="assets/js/data.js?v=2611260"></script>
 
-  <script src="assets/js/schedule.js?v=2611141"></script>
-  <script src="assets/js/main.js?v=2611141"></script>
+  <script src="assets/js/schedule.js?v=2611260"></script>
+  <script src="assets/js/main.js?v=2611260"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
-  <script src="assets/js/game.js?v=2611141" defer></script>
-  <script src="assets/js/account.js?v=2611141" defer></script>
-  <script src="assets/js/assistant.js?v=2611141" defer></script>
-  <script src="assets/js/ink.js?v=2611141" defer></script>
-  <script src="assets/js/lab.js?v=2611141"></script>
-  <script src="assets/js/chapter6.js?v=2611141"></script>
+  <script src="assets/js/game.js?v=2611260" defer></script>
+  <script src="assets/js/account.js?v=2611260" defer></script>
+  <script src="assets/js/assistant.js?v=2611260" defer></script>
+  <script src="assets/js/ink.js?v=2611260" defer></script>
+  <script src="assets/js/lab.js?v=2611260"></script>
+  <script src="assets/js/chapter6.js?v=2611260"></script>
 </body>
 </html>

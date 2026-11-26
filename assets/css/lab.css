@@ -488,3 +488,29 @@ details.fold[open] .fold-h::after { content: "Hide ▴"; }
 .plot-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 @media (max-width: 560px) { .plot-pair { grid-template-columns: minmax(0, 1fr); } }
 .c-grid.has-side .plot-pair .plot-box svg { max-height: 230px; }
+
+/* ---------- Readable notes (Chapter 6 on): worked examples, "where" lists, formulas that never run off a phone ---------- */
+.formula { max-width: 100%; box-sizing: border-box; overflow-x: auto; overflow-wrap: break-word; line-height: 1.5; }
+.explain .eg { background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--teal); border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: 10px 14px; margin: 10px 0 14px; line-height: 1.6; }
+.explain .eg-h { display: block; font-size: .78rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--teal); margin-bottom: 2px; }
+.explain ul.where { list-style: none; padding: 0 0 0 4px; margin: -2px 0 14px; font-size: .93rem; }
+.explain ul.where::before { content: "where"; display: block; font-style: italic; color: var(--ink-3); margin-bottom: 2px; }
+.explain ul.where li { margin: 2px 0; }
+ul.tight, ol.tight { margin: 4px 0 12px; padding-left: 1.3em; }
+ul.tight li, ol.tight li { margin: 3px 0; }
+.tbl-wrap { overflow-x: auto; max-width: 100%; }
+.eg-tbl { border-collapse: collapse; margin: 6px 0; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.eg-tbl th, .eg-tbl td { padding: 4px 10px; border-bottom: 1px solid var(--grid); text-align: center; white-space: nowrap; }
+.eg-tbl th { text-align: left; color: var(--ink-3); font-weight: 500; }
+/* a figure under an exercise question */
+.ex-fig { margin: 8px 0 14px; max-width: 480px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 6px; }
+.ex-fig .scene.exfig { display: block; width: 100%; height: auto; }
+.ex-fig .scene.exfig.wide { min-width: 420px; }
+.ex-fig .xcell { fill: var(--grid); stroke: var(--ink-3); }
+.ex-fig .xq { fill: var(--amber-soft); stroke: var(--amber); stroke-dasharray: 4 3; }
+/* the "Home Exercise: Submit on URLearn" box, shared by every chapter */
+.home-ex { background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--amber); border-radius: 0 var(--r-md) var(--r-md) 0; padding: 18px 22px; margin-top: 36px; }
+.home-ex h3 { font-size: 1.2rem; margin-bottom: 6px; }
+.home-ex ol { padding-left: 1.3em; color: var(--ink-2); }
+.home-ex li { margin-bottom: 10px; }
+.home-ex ul { margin: 4px 0 0; padding-left: 1.2em; }

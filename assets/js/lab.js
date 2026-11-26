@@ -470,7 +470,7 @@
     const hints = ex.hints || [];
     el.innerHTML = `
       <div class="ex-head"><h3 id="${ex.id}-h">${ex.title}</h3>${coTag(ex.id)}<span class="ex-badge" hidden>✓ Solved</span></div>
-      <div class="q">${ex.q}</div>
+      <div class="q">${ex.q}</div>${ex.fig ? `<figure class="ex-fig">${typeof ex.fig === "function" ? ex.fig() : ex.fig}</figure>` : ""}
       <form class="ex-answers" novalidate>
         ${ex.ans.map((a, i) => `<div class="ans">
           <label for="${ex.id}-a${i}">${a.l}</label>
