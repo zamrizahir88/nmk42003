@@ -26,7 +26,40 @@
   const xfig = (w, h, lab, body, cls = "") => `<div class="scene-scroll"><svg class="scene exfig${cls ? " " + cls : ""}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(lab)}">${body}</svg></div>`;
 
   /* =====================================================================
-     Introduction: the whole journey in 7 stages (sense → sample → quantise → encode → store → DAC → smooth)
+     Introduction 1: the big picture, a song from the microphone to the speaker
+     ===================================================================== */
+  const song = (x) => 0.6 * Math.sin(TAU * x) + 0.3 * Math.sin(TAU * 2.3 * x + 1);
+  function mountSong(el) {
+    el.innerHTML = `<div class="pv"><figure class="scene-box"><div class="scene-scroll"><svg class="scene song" viewBox="0 0 600 260" role="img" aria-label="Animated: a microphone's analog signal is sampled by an ADC into binary words and stored on a pendrive or in the cloud; later a DAC turns the words back into a stepped analog signal for a speaker."></svg></div></figure><div class="pv-pl"></div><p class="pv-read"></p></div>`;
+    const sv = el.querySelector("svg"), read = el.querySelector(".pv-read");
+    const draw = (t) => {
+      const ph = t * 0.35;
+      let s = `<rect class="bx" x="6" y="44" width="30" height="46" rx="15"/><line class="w" x1="21" y1="90" x2="21" y2="106"/>${T(21, 124, "mic", "middle", "small")}`;
+      // analog wave with samples
+      const wv = []; for (let i = 0; i <= 80; i++) { const x = i / 80; wv.push([50 + x * 190, 70 - 32 * song(x * 1.5 + ph)]); }
+      s += poly(wv, "trace-a");
+      for (let i = 0; i <= 12; i++) { const x = i / 12, y = 70 - 32 * song(x * 1.5 + ph); s += `<line class="samp" x1="${50 + x * 190}" y1="70" x2="${50 + x * 190}" y2="${y}"/><circle class="sdot" cx="${50 + x * 190}" cy="${y}" r="3"/>`; }
+      s += T(145, 22, "analog: smooth, any value", "middle", "small");
+      s += `<rect class="adc" x="256" y="46" width="56" height="48" rx="6"/>${T(284, 75, "ADC", "middle", "tt inv")}`;
+      // words moving to storage
+      for (let i = 0; i < 1; i++) { const k = (t * 0.25) % 1, x = 316 + k * 84; const code = Math.round((song((i + Math.floor(t * 0.75)) * 0.37) + 1) * 127); s += T(x, 76, bin(clamp(code, 0, 255), 8), "start", "word"); }
+      s += `<rect class="store" x="470" y="40" width="54" height="60" rx="8"/><rect class="store-cap" x="484" y="30" width="26" height="12" rx="2"/>${T(497, 75, "0101", "middle", "small inv")}${T(497, 118, "pendrive / cloud", "middle", "small")}`;
+      // return path
+      s += `<path class="flow-l" d="M497,130V150H90V168"/>`;
+      for (let i = 0; i < 3; i++) { const k = ((t * 0.25 + i / 3) % 1), x = 440 - k * 300; s += T(x, 146, "10110010", "middle", "word dim"); }
+      s += `<rect class="dac" x="62" y="170" width="56" height="48" rx="6"/>${T(90, 199, "DAC", "middle", "tt inv")}`;
+      const st = []; for (let i = 0; i <= 12; i++) { const x = i / 12, lv = Math.round((song(x * 1.5 + ph) + 1) * 3.5) / 3.5 - 1, y = 200 - 32 * lv; st.push([134 + x * 330, y], [134 + (x + 1 / 12) * 330 - (i === 12 ? 330 / 12 : 0), y]); }
+      s += poly(st, "trace-d") + T(300, 250, "stepped analog again (8 levels here, far more in practice)", "middle", "small");
+      const cone = Math.sin(t * 20) * 2;
+      s += `<rect class="mspk" x="${478}" y="190" width="12" height="20"/><path class="mspk" d="M${490 + cone},190L${508 + cone},176V224L${490 + cone},210Z"/>${T(500, 244, "speaker", "middle", "small")}`;
+      sv.innerHTML = s;
+    };
+    read.innerHTML = "An <strong>ADC</strong> (analog-to-digital converter) measures the sound wave many times a second and stores each measurement as a binary word. A <strong>DAC</strong> (digital-to-analog converter) later turns the words back into a voltage for the speaker.";
+    player(el.querySelector(".pv-pl"), el, { dur: 12, hold: 0, draw, still: 2, label: "Song animation position" });
+  }
+
+  /* =====================================================================
+     Introduction 2: the whole journey in 7 stages (sense → sample → quantise → encode → store → DAC → smooth)
      ===================================================================== */
   const JST = [
     ["Sense", "sense"], ["Sample", "adc"], ["Quantise", "adc"], ["Encode", "adc"], ["Store / send", "store"], ["DAC", "dac"], ["Smooth", "smooth"]];
@@ -244,8 +277,9 @@
     return { sum: `Resolution = ${eng(R, "V")}, digital output = ${code} (${bin(code, n)})`, R, code, notes, steps: [
       step("Number of steps", "2<sup>n</sup> − 1", `= 2<sup>${n}</sup> − 1`, `= ${steps.toLocaleString("en")}`),
       step("Resolution (step size)", "R = V<sub>ref</sub> ÷ (2<sup>n</sup> − 1)", `= ${num(v.Vref)} V ÷ ${steps.toLocaleString("en")}`, `R = ${eng(R, "V")}`),
-      step("Digital output", "code = V<sub>in</sub> ÷ R", `= ${num(v.Vin)} V ÷ ${eng(R, "V")} = ${num(raw, 6)}`, `code = <strong>${code}</strong> (to the nearest whole number)`),
+      step("Digital output", "code = V<sub>in</sub> ÷ R = (V<sub>in</sub> ÷ V<sub>ref</sub>) × (2<sup>n</sup> − 1)", `= ${num(v.Vin)} V ÷ ${eng(R, "V")} = ${num(raw, 6)}`, `code = <strong>${code}</strong> (to the nearest whole number)`),
       step("In binary and hexadecimal", "", "", `${bin(code, n)} = ${hex(code, n)} hex`),
+      step("Back to voltage", "V = code × R", `= ${code} × ${eng(R, "V")}`, `= ${eng(code * R, "V")}`),
       step("Quantisation error", "V<sub>in</sub> − code × R", `= ${num(v.Vin)} − ${code} × ${eng(R, "V")}`, `= ${eng(err, "V")} (always within ±½ step)`)] };
   }
   function adcRender(extra, res, v) {
@@ -558,11 +592,14 @@ void loop()
      Sections
      ===================================================================== */
   const SECTIONS = [
-    { id: "journey", group: "intro", title: "Analog to Digital and Back Again", toc: "The Journey",
+    { id: "overview", group: "intro", title: "Analog to Digital and Back Again", toc: "The Big Picture",
       intro: `<p>Electronic data conversion lets an analog signal be kept in digital form, and the digital data later rebuild the analog signal.</p>
         <p>For example, a song from a microphone is turned into numbers and kept on a pendrive, a phone or the cloud. Later the numbers are turned back into a voltage, and a speaker plays the song again.</p>
-        <ul class="tight"><li><strong>ADC</strong> (analog-to-digital converter): voltage → numbers.</li><li><strong>DAC</strong> (digital-to-analog converter): numbers → voltage.</li><li><strong>Data acquisition</strong>: gathering information about a system or process. In modern instruments that means measuring with an ADC.</li></ul>
-        <p>Follow one sound through all 7 steps: press play, or use <strong>Next step</strong>.</p>`,
+        <ul class="tight"><li><strong>ADC</strong> (analog-to-digital converter): voltage → numbers.</li><li><strong>DAC</strong> (digital-to-analog converter): numbers → voltage.</li><li><strong>Data acquisition</strong>: gathering information about a system or process. In modern instruments that means measuring with an ADC.</li></ul>`,
+      mount: mountSong },
+    { id: "journey", group: "intro", title: "Step by Step: One Reading's Journey", toc: "Step by Step",
+      intro: `<p>The picture above is the whole system. Now zoom in: follow <strong>one reading</strong> through all 7 steps, from the microphone's voltage to the number and back to a voltage for the speaker.</p>
+        <p>Press play, or use <strong>Next step</strong>.</p>`,
       mount: mountJourney },
     { id: "bits", group: "codes", title: "Bits, Words and Codes", toc: "Digital Codes",
       intro: `<p>A digital code has two states, sent as <strong>logic 0</strong> (0 V) and <strong>logic 1</strong> (3.3 V or 5 V).</p>
@@ -577,23 +614,28 @@ void loop()
       mount: mountMeet },
     { id: "vref", group: "adc", title: "V<sub>ref</sub>: The ADC's Ruler", toc: "What Vref Means",
       intro: `<p>An ADC doesn't measure volts by itself. It compares the input V<sub>in</sub> with a known voltage, the <strong>reference voltage V<sub>ref</sub></strong>, and tells you what fraction of V<sub>ref</sub> the input is.</p>
-        <p>Think of V<sub>ref</sub> as the <strong>length of a ruler</strong> marked with 2<sup>n</sup> − 1 equal steps. V<sub>in</sub> is the thing being measured against it:</p>
-        <p class="formula">code = (V<sub>in</sub> ÷ V<sub>ref</sub>) × (2<sup>n</sup> − 1)</p>
-        <ul class="where"><li>V<sub>in</sub>: the sensor's voltage (it changes)</li><li>V<sub>ref</sub>: the full length of the ruler (fixed: 3.3 V on the ESP32)</li><li>n: the number of bits (12 on the ESP32, so 2<sup>12</sup> − 1 = 4095)</li></ul>
+        <p>Think of V<sub>ref</sub> as the <strong>length of a ruler</strong>. The ruler is marked with 2<sup>n</sup> − 1 equal steps (4095 steps on the ESP32's 12-bit ADC, where V<sub>ref</sub> = 3.3 V), and V<sub>in</sub> is the thing being measured against it. The size of one step is the <strong>resolution</strong>, worked out in the next section.</p>
         <h4 class="sub-h">Why V<sub>in</sub> Must Not Go Above V<sub>ref</sub></h4>
         <ol class="tight"><li><strong>There is no code left.</strong> V<sub>in</sub> = V<sub>ref</sub> already gives the largest code (4095, all 1s). Anything higher also reads 4095, so 3.3 V and 4 V look the same: the reading <em>clips</em>, like an op-amp saturating in Chapter 5.</li>
         <li><strong>It can damage the chip.</strong> Above the pin's limit (about 3.6 V on the ESP32) the input's protection conducts and the pin can be destroyed. A 5 V sensor needs a voltage divider (Chapter 4) first.</li></ol>
         <p>Move V<sub>in</sub> past V<sub>ref</sub> below and watch the code.</p>`,
       mount: mountVref },
     { id: "adccalc", group: "adc", title: "ADC Resolution and Output Code", toc: "Resolution and Code",
-      intro: `<p>The <strong>resolution</strong> (step size) is the smallest voltage change the ADC can detect: one step of the ruler.</p>
+      intro: `<h4 class="sub-h">Step 1: Resolution</h4>
+        <p>The <strong>resolution</strong> (step size) is the smallest voltage change the ADC can detect: one step of the ruler. Divide the ruler's length by its number of steps:</p>
         <p class="formula">R = V<sub>ref</sub> ÷ (2<sup>n</sup> − 1)</p>
-        <div class="eg"><span class="eg-h">Example</span>A 5 V, 8-bit ADC:<br>R = 5 ÷ 255 = <strong>19.6 mV</strong>.<br>Every 19.6 mV adds 1 to the output number.</div>
-        <p>The digital output is the input divided by one step, rounded to a whole number:</p>
+        <ul class="where"><li>R: volts per step (per code)</li><li>V<sub>ref</sub>: the reference voltage</li><li>n: the number of bits</li></ul>
+        <div class="eg"><span class="eg-h">Example</span>A 5 V, 8-bit ADC:<br>2<sup>8</sup> − 1 = 255 steps<br>R = 5 ÷ 255 = <strong>19.6 mV per step</strong><br>Turned the other way up: 255 ÷ 5 = <strong>51 codes per volt</strong>. Every 19.6 mV adds 1 to the output number.</div>
+        <h4 class="sub-h">Step 2: Voltage → Code</h4>
+        <p>The output code is how many steps fit into V<sub>in</sub>, rounded to a whole number:</p>
         <p class="formula">code = V<sub>in</sub> ÷ R</p>
-        <div class="eg"><span class="eg-h">Example</span>The same ADC with V<sub>in</sub> = 2.94 V:<br>code = 2.94 V ÷ 19.6 mV = <strong>150</strong>.</div>
-        <p>Going the other way, from a reading back to the voltage:</p>
-        <p class="formula">V<sub>in</sub> = code × R</p>`,
+        <p>Put R = V<sub>ref</sub> ÷ (2<sup>n</sup> − 1) into it and you get the same thing as a fraction of the ruler:</p>
+        <p class="formula">code = (V<sub>in</sub> ÷ V<sub>ref</sub>) × (2<sup>n</sup> − 1)</p>
+        <div class="eg"><span class="eg-h">Example</span>The same ADC with V<sub>in</sub> = 2.94 V:<br>code = 2.94 V ÷ 19.6 mV = <strong>150</strong><br>or (2.94 ÷ 5) × 255 = 0.588 × 255 = <strong>150</strong>, the same answer.</div>
+        <h4 class="sub-h">Step 3: Code → Voltage</h4>
+        <p>Going back, from a reading to the voltage, multiply the number of steps by the size of one step:</p>
+        <p class="formula">V<sub>in</sub> = code × R = code × V<sub>ref</sub> ÷ (2<sup>n</sup> − 1)</p>
+        <div class="eg"><span class="eg-h">Example</span>The same ADC reads 100:<br>V<sub>in</sub> = 100 × 19.6 mV = <strong>1.96 V</strong></div>`,
       inputs: [F("n", "num", 12, "8 to 16 is typical", { unit: "bits", positive: true, label: "Number of bits n", name: "n", validate: (x) => (x !== Math.round(x) || x > 24 ? "Enter a whole number up to 24." : "") }),
         F("Vref", "num", 3.3, null, { unit: "V", positive: true, label: "Reference V<sub>ref</sub>", name: "Vref" }),
         F("Vin", "num", 2, null, { unit: "V", positive: false, label: "Input V<sub>in</sub>", name: "Vin", validate: (x) => (x < 0 ? "Enter 0 or more." : "") })],
@@ -669,71 +711,115 @@ void loop()
   /* =====================================================================
      Exercises: codes, ADC (most), DAC, then how an ADC works inside
      ===================================================================== */
+  // a working step: title, a short "why" line, the formula and numbers line by line, then the result
+  const X = (t, why, lines, r) => step(t, why ? `<span class="st-why">${why}</span>` : "", lines.join("<br>"), r || "");
   const W_ = (list) => `<div class="working"><h4>Working</h4><ol class="steps">${stepsHtml(list)}</ol></div>`;
   const EXERCISES = [
     { id: "c6-q1", title: "Exercise 1: Binary, Hex and BCD",
       q: `<p>Write the decimal number <strong>45</strong> in other codes.</p>`, fig: FIG.bits8,
       ans: [{ l: "Straight binary", u: "", v: 101101, tol: 0 }, { l: "Hexadecimal", opts: ["2D", "45", "D2", "2B"], v: 0 }, { l: "BCD", opts: ["0100 0101", "0010 1101", "0101 0100", "0100 1011"], v: 0 }],
       hints: [`45 = 32 + 8 + 4 + 1. Write a 1 for each power of 2 used.`, `For hex split the binary into groups of 4 from the right; for BCD code each decimal digit (4 and 5) separately.`],
-      working: () => W_([step("Binary", "45 = 32 + 8 + 4 + 1", "", "<strong>101101</strong>"), step("Hex", "0010 1101 → 2 and D (13)", "", "<strong>2D</strong>"), step("BCD", "4 → 0100, 5 → 0101", "", "<strong>0100 0101</strong>")]) },
+      working: () => W_([
+        X("Binary: take away the biggest powers of 2", "List the weights 32, 16, 8, 4, 2, 1. Starting from the biggest that fits, take each weight away from what is left.", ["45 − 32 = 13 → 32 used", "13 − 16? too big → 16 not used", "13 − 8 = 5 → 8 used", "5 − 4 = 1 → 4 used", "1 − 2? too big → 2 not used", "1 − 1 = 0 → 1 used"], ""),
+        X("Write a 1 for each weight used", "", ["weights: 32, 16, 8, 4, 2, 1", "bits: 1, 0, 1, 1, 0, 1"], "45 = <strong>101101</strong>"),
+        X("Hex: groups of 4 bits from the right", "Add 0s on the left to make full groups of 4, then turn each group into one hex digit (10 to 15 are A to F).", ["101101 → 0010 1101", "0010 = 2", "1101 = 8 + 4 + 1 = 13 = D"], "45 = <strong>2D</strong> (check: 2 × 16 + 13 = 45)"),
+        X("BCD: each decimal digit on its own", "Do not convert 45 as a whole: write the digit 4 and the digit 5 as 4 bits each.", ["4 → 0100", "5 → 0101"], "45 = <strong>0100 0101</strong> in BCD (not the same as the binary 0010 1101)")]) },
     { id: "c6-q2", title: "Exercise 2: Word Length",
       q: `<p>An ADC produces <strong>10-bit</strong> words.</p>`, fig: () => FIG.adc(10, "5 V", "V<tspan class='sb' dy='3'>in</tspan>", "10 bits: D0 to D9"),
       ans: [{ l: "Number of different codes", u: "", v: 1024, tol: 0 }, { l: "Largest code (decimal)", u: "", v: 1023, tol: 0 }],
       hints: [`n bits give 2<sup>n</sup> combinations.`, `Counting starts at 0.`],
-      working: () => W_([step("Combinations", "2<sup>10</sup>", "", "<strong>1024</strong>"), step("Largest", "2<sup>10</sup> − 1", "", "<strong>1023</strong> (11 1111 1111)")]) },
+      working: () => W_([
+        X("Number of different codes", "Each bit can be 0 or 1, so every extra bit doubles the number of combinations.", ["combinations = 2<sup>n</sup>", "= 2<sup>10</sup> = 1024"], "<strong>1024</strong> codes"),
+        X("Largest code", "Counting starts at 0 (all bits 0), so 1024 codes run from 0 to 1023.", ["largest = 2<sup>n</sup> − 1", "= 1024 − 1"], "<strong>1023</strong> = 11 1111 1111 (all ten bits 1)")]) },
     { id: "c6-q13", title: "Exercise 3: Big Numbers on the fx-570MS",
       q: `<p>An ESP32 reads <strong>2748</strong>. You type 2748 in BASE mode (decimal), press <strong>=</strong>, then <strong>BIN</strong>, and the calculator shows Math ERROR.</p>`, fig: FIG.casioErr,
       ans: [{ l: "Why Math ERROR?", opts: ["In BASE mode the fx-570MS shows binary only up to 0111111111 (511)", "The calculator cannot do binary at all", "2748 is not a whole number", "BASE mode needs the number in hex first"], v: 0 },
         { l: "2748 in hexadecimal", opts: ["ABC", "CBA", "AB4", "10BC"], v: 0 },
         { l: "2748 in binary (no spaces)", u: "", v: 101010111100, tol: 0 }],
       hints: [`What is the biggest number that fits in 10 binary digits, with the first one 0?`, `Press HEX instead of BIN, then write each hex digit as 4 bits (A = 10, B = 11, C = 12).`],
-      working: () => W_([step("Why the error", "10 binary digits, first one 0 for positive", "0111111111 = 511", "2748 > 511, so <strong>Math ERROR</strong>"), step("Hex on the calculator", "2748 = then HEX", "", "<strong>ABC</strong>"), step("Hex → binary by hand", "A → 1010, B → 1011, C → 1100", "", "<strong>1010 1011 1100</strong>")]) },
+      working: () => W_([
+        X("Why Math ERROR?", "In BASE mode the fx-570MS shows at most 10 binary digits, and the first digit is kept 0 for a positive number.", ["largest positive binary = 0111111111", "= 256 + 128 + 64 + 32 + 16 + 8 + 4 + 2 + 1 = 511", "2748 &gt; 511"], "The answer does not fit, so the calculator shows <strong>Math ERROR</strong>"),
+        X("Hex on the calculator", "Press AC, then DEC, type 2748, press =, then HEX.", ["the screen shows ABC (h)"], "2748 = <strong>ABC</strong> in hex"),
+        X("Check the hex by hand", "Divide by 16 again and again; the remainders are the hex digits, read from the bottom up.", ["2748 ÷ 16 = 171 remainder 12 → C", "171 ÷ 16 = 10 remainder 11 → B", "10 ÷ 16 = 0 remainder 10 → A"], "read upwards: <strong>ABC</strong> ✓ (10 × 256 + 11 × 16 + 12 = 2748)"),
+        X("Hex → binary by hand", "Each hex digit is exactly 4 bits.", ["A = 10 → 1010", "B = 11 → 1011", "C = 12 → 1100"], "2748 = <strong>1010 1011 1100</strong> = 101010111100")]) },
     { id: "c6-q7", title: "Exercise 4: A 15-Bit ADC",
       q: `<p>A microcontroller reads a sensor with a <strong>15-bit</strong> ADC whose reference is <strong>V<sub>ref</sub> = 10 V</strong>.</p>`, fig: () => FIG.adc(15, "10 V", "sensor V<tspan class='sb' dy='3'>in</tspan>", "15-bit code"),
       ans: [{ l: "(i) The smallest voltage change it can detect (resolution)", u: "mV", v: 0.3052 }, { l: "(ii) The digital output when the sensor gives 7.94 V", u: "", v: 26017, tol: 1 }, { l: "(iii) The input voltage when the ADC reading is 2000", u: "V", v: 0.6104 }],
       hints: [`Resolution R = V<sub>ref</sub> ÷ (2<sup>n</sup> − 1), with 2<sup>15</sup> = 32768.`, `code = V<sub>in</sub> ÷ R, rounded; going back, V<sub>in</sub> = reading × R.`],
-      working: () => W_([step("(i) Resolution", "R = 10 ÷ (2<sup>15</sup> − 1)", "= 10 ÷ 32767", "<strong>0.305 mV</strong>"), step("(ii) Digital output", "7.94 V ÷ 0.305185 mV", "= 26017.0", "<strong>26017</strong>"), step("(iii) Input voltage", "2000 × 0.305185 mV", "", "<strong>0.610 V</strong>")]) },
+      working: () => W_([
+        X("Number of steps", "A 15-bit ADC has 2<sup>15</sup> codes, from 0 to 2<sup>15</sup> − 1, so its ruler has 2<sup>15</sup> − 1 steps.", ["2<sup>15</sup> = 32768", "2<sup>15</sup> − 1 = 32767 steps"], "32767 steps"),
+        X("(i) Resolution", "One step = the reference voltage ÷ the number of steps.", ["R = V<sub>ref</sub> ÷ (2<sup>n</sup> − 1)", "= 10 V ÷ 32767", "= 0.000305185 V"], "R = <strong>0.3052 mV</strong> per step"),
+        X("(ii) Voltage → code", "How many steps fit into 7.94 V? Use either form of the formula; they give the same number.", ["code = V<sub>in</sub> ÷ R = 7.94 V ÷ 0.000305185 V", "or code = (V<sub>in</sub> ÷ V<sub>ref</sub>) × (2<sup>n</sup> − 1) = (7.94 ÷ 10) × 32767", "= 0.794 × 32767 = 26016.998"], "rounded to a whole number: code = <strong>26017</strong>"),
+        X("(iii) Code → voltage", "Going back: number of steps × size of one step.", ["V<sub>in</sub> = code × R", "= 2000 × 0.000305185 V", "or 2000 × 10 ÷ 32767 = 20000 ÷ 32767"], "V<sub>in</sub> = <strong>0.6104 V</strong>"),
+        X("Check", "A reading of 2000 out of 32767 is about 6.1 % of the full scale, and 6.1 % of 10 V is about 0.61 V.", [], "✓")]) },
     { id: "c6-q14", title: "Exercise 5: Input Above V<sub>ref</sub>",
       q: `<p>A sensor that gives <strong>0 to 5 V</strong> is wired straight to an ESP32 ADC pin (12-bit, V<sub>ref</sub> = 3.3 V).</p>`, fig: FIG.above,
       ans: [{ l: "The reading when the sensor gives 2.0 V", u: "", v: 2482, tol: 1 }, { l: "The reading at 4.2 V (if the pin survives)", u: "", v: 4095, tol: 0 },
         { l: "The safe fix", opts: ["Add a voltage divider so 5 V becomes 3.3 V or less", "Change Vref to 5 V in the code", "Use a longer wire", "Read the pin twice as fast"], v: 0 }],
       hints: [`code = (V<sub>in</sub> ÷ V<sub>ref</sub>) × 4095, but only while V<sub>in</sub> ≤ V<sub>ref</sub>.`, `Above V<sub>ref</sub> there are no codes left. The pin itself can only take about 3.6 V.`],
-      working: () => W_([step("At 2.0 V", "2.0 ÷ 3.3 × 4095", "= 2481.8", "<strong>2482</strong>"), step("At 4.2 V", "4.2 V > V<sub>ref</sub>: no code left", "", "<strong>4095</strong> (clipped), and above about 3.6 V the pin can be damaged"), step("Fix", "", "", "A <strong>voltage divider</strong> scales 0 to 5 V down to 0 to 3.3 V")]) },
+      working: () => W_([
+        X("The ESP32's ruler", "12 bits and V<sub>ref</sub> = 3.3 V.", ["2<sup>12</sup> − 1 = 4095 steps", "R = 3.3 ÷ 4095 = 0.806 mV per step"], ""),
+        X("Reading at 2.0 V", "2.0 V is below V<sub>ref</sub>, so the normal formula works.", ["code = (V<sub>in</sub> ÷ V<sub>ref</sub>) × 4095", "= (2.0 ÷ 3.3) × 4095", "= 0.60606 × 4095 = 2481.8"], "code = <strong>2482</strong>"),
+        X("Reading at 4.2 V", "4.2 V is above V<sub>ref</sub> = 3.3 V. The formula would give more than the largest code.", ["(4.2 ÷ 3.3) × 4095 = 5212 &gt; 4095", "no code is left above 4095 (all 1s)"], "the reading is stuck at <strong>4095</strong> (clipped), and above about 3.6 V the pin itself can be damaged"),
+        X("The safe fix", "Scale the sensor down before the pin with a voltage divider (Chapter 4), so 5 V becomes 3.3 V or less.", ["e.g. 10 kΩ on top, 18 kΩ below:", "5 V × 18 ÷ (10 + 18) = 3.21 V ≤ 3.3 V ✓"], "<strong>Add a voltage divider</strong>; changing V<sub>ref</sub> in the code does not protect the pin")]) },
     { id: "c6-q10", title: "Exercise 6: How Many Bits?",
       q: `<p>A 5 V sensor must be read with a resolution of <strong>1 mV or better</strong>.</p>`, fig: () => FIG.adc("?", "5 V", "sensor 0 to 5 V", "? bits"),
       ans: [{ l: "Smallest number of bits", u: "bits", v: 13, tol: 0 }, { l: "Its resolution", u: "mV", v: 0.6104 }],
       hints: [`You need 5 V ÷ (2<sup>n</sup> − 1) ≤ 1 mV, so 2<sup>n</sup> − 1 ≥ 5000.`, `2<sup>12</sup> = 4096 is not enough.`],
-      working: () => W_([step("Condition", "2<sup>n</sup> − 1 ≥ 5000", "12 bits → 4095 (too few); 13 bits → 8191", "<strong>13 bits</strong>"), step("Resolution", "5 ÷ 8191", "", "<strong>0.610 mV</strong>")]) },
+      working: () => W_([
+        X("Write the condition", "The resolution must be 1 mV (0.001 V) or smaller.", ["R = V<sub>ref</sub> ÷ (2<sup>n</sup> − 1) ≤ 0.001 V", "5 ÷ (2<sup>n</sup> − 1) ≤ 0.001"], ""),
+        X("Make 2<sup>n</sup> the subject", "Multiply both sides by (2<sup>n</sup> − 1) and divide by 0.001, then add 1 to both sides.", ["2<sup>n</sup> − 1 ≥ 5 ÷ 0.001 = 5000", "2<sup>n</sup> ≥ 5001"], ""),
+        X("Take log of both sides", "n is a power, so use logarithms to bring it down: log(2<sup>n</sup>) = n × log 2.", ["log(2<sup>n</sup>) ≥ log(5001)", "n × log 2 ≥ log 5001", "n ≥ log 5001 ÷ log 2", "= 3.69906 ÷ 0.30103 = 12.29"], "n ≥ 12.29"),
+        X("On the fx-570MS", "In COMP mode:", ["log 5001 ) ÷ log 2 ) =", "→ 12.288…", "(ln 5001 ÷ ln 2 gives the same answer)"], ""),
+        X("Round UP to a whole number of bits", "Bits come in whole numbers. Rounding down to 12 would give too few, so always round up.", ["12 bits: 5 ÷ 4095 = 1.221 mV &gt; 1 mV ✗", "13 bits: 5 ÷ 8191 = 0.610 mV ≤ 1 mV ✓"], "<strong>13 bits</strong>"),
+        X("Its resolution", "", ["R = 5 ÷ (2<sup>13</sup> − 1) = 5 ÷ 8191"], "R = <strong>0.6104 mV</strong>")]) },
     { id: "c6-q8", title: "Exercise 7: ESP32 Thermometer",
       q: `<p>An ESP32 (12-bit ADC, V<sub>ref</sub> = 3.3 V) reads an LM35 (10 mV/°C).</p>`, fig: FIG.lm,
       ans: [{ l: "ADC code at 30 °C", u: "", v: 372, tol: 1 }, { l: "Temperature when the code is 620", u: "°C", v: 49.96 }],
       hints: [`Resolution = 3.3 ÷ 4095 = 0.806 mV.`, `30 °C → 0.30 V. For the reverse, V = code × resolution, then ÷ 10 mV.`],
-      working: () => W_([step("Code at 30 °C", "0.30 V ÷ 0.806 mV", "= 372.3", "<strong>372</strong>"), step("Temperature", "620 × 3.3 ÷ 4095 = 0.4996 V", "0.4996 ÷ 0.010", "<strong>50.0 °C</strong>")]) },
+      working: () => W_([
+        X("The ESP32's resolution", "", ["R = 3.3 ÷ (2<sup>12</sup> − 1) = 3.3 ÷ 4095", "= 0.000805861 V"], "R = 0.806 mV per step"),
+        X("Temperature → voltage", "The LM35 gives 10 mV for every °C.", ["V = 30 °C × 10 mV/°C", "= 300 mV = 0.300 V"], "0.300 V"),
+        X("Voltage → code", "", ["code = V ÷ R = 0.300 ÷ 0.000805861", "or (0.300 ÷ 3.3) × 4095", "= 372.27"], "code = <strong>372</strong>"),
+        X("Code → voltage (the reverse)", "", ["V = code × R = 620 × 3.3 ÷ 4095", "= 2046 ÷ 4095 = 0.49963 V"], "0.4996 V"),
+        X("Voltage → temperature", "Divide by 10 mV per °C.", ["T = 0.49963 V ÷ 0.010 V/°C"], "T = <strong>49.96 °C</strong> (about 50 °C)")]) },
     { id: "c6-q3", title: "Exercise 8: A 5-Bit Binary-Weighted DAC",
       q: `<p>The 5-bit binary-weighted DAC below has inputs D<sub>0</sub> to D<sub>4</sub>, logic HIGH = <strong>5 V</strong>, and R<sub>0</sub> = <strong>640 kΩ</strong>.</p>`, fig: FIG.dac5,
       ans: [{ l: "(a) R<sub>4</sub> (the MSB resistor)", u: "kΩ", v: 40 }, { l: "(a) R<sub>2</sub>", u: "kΩ", v: 160 },
         { l: "(b) R<sub>f</sub> for a maximum output of 8 V", u: "kΩ", v: 33.03 }, { l: "(c) V<sub>out</sub> when D<sub>0</sub>, D<sub>1</sub> and D<sub>3</sub> are HIGH", u: "V", v: 2.839 }],
       hints: [`Each resistor is half the one before it: R<sub>1</sub> = R<sub>0</sub> ÷ 2, and so on up to the MSB.`, `Maximum output = all 5 bits HIGH: R<sub>f</sub> = 8 V ÷ ΣI. For (c) add only the currents of D0, D1 and D3.`],
-      working: () => W_([step("(a) Resistors", "R<sub>n</sub> halves towards the MSB", "R<sub>1</sub> = 320, R<sub>2</sub> = 160, R<sub>3</sub> = 80 kΩ", "<strong>R<sub>4</sub> = 40 kΩ</strong>"),
-        step("(b) Full-scale current", "5 × (1/640k + 1/320k + 1/160k + 1/80k + 1/40k)", "= 5 × 31/640k", "= 0.2422 mA"),
-        step("(b) R<sub>f</sub>", "8 V ÷ 0.2422 mA", "", "<strong>33.0 kΩ</strong>"),
-        step("(c) Current for D0, D1, D3", "5 × (1/640k + 1/320k + 1/80k)", "= 5 × 11/640k", "= 0.0859 mA"),
-        step("(c) V<sub>out</sub>", "33.03 kΩ × 0.0859 mA", "(check: 8 V × 11/31)", "<strong>2.84 V</strong>")]) },
+      working: () => W_([
+        X("(a) The resistors", "In a binary-weighted DAC each bit's resistor is half the one before it, so R<sub>n</sub> = R<sub>0</sub> ÷ 2<sup>n</sup>. D0 (the LSB) has the largest resistor.", ["R<sub>0</sub> = 640 kΩ", "R<sub>1</sub> = 640 ÷ 2 = 320 kΩ", "R<sub>2</sub> = 640 ÷ 4 = 160 kΩ", "R<sub>3</sub> = 640 ÷ 8 = 80 kΩ", "R<sub>4</sub> = 640 ÷ 16 = 40 kΩ"], "<strong>R<sub>4</sub> = 40 kΩ</strong>, <strong>R<sub>2</sub> = 160 kΩ</strong>"),
+        X("(b) Current of each bit when HIGH", "I = 5 V ÷ R (point A is a virtual ground, 0 V).", ["D0: 5 ÷ 640 kΩ = 7.8125 µA", "D1: 5 ÷ 320 kΩ = 15.625 µA", "D2: 5 ÷ 160 kΩ = 31.25 µA", "D3: 5 ÷ 80 kΩ = 62.5 µA", "D4: 5 ÷ 40 kΩ = 125 µA"], ""),
+        X("(b) Total current at maximum output", "The maximum output is when all 5 bits are HIGH (11111).", ["ΣI = 7.8125 + 15.625 + 31.25 + 62.5 + 125", "= 242.1875 µA"], "ΣI = 242.19 µA"),
+        X("(b) R<sub>f</sub>", "All of ΣI flows through R<sub>f</sub>, and V<sub>out</sub> = R<sub>f</sub> × ΣI.", ["R<sub>f</sub> = V<sub>out,max</sub> ÷ ΣI", "= 8 V ÷ 242.1875 µA = 33 032 Ω"], "<strong>R<sub>f</sub> = 33.03 kΩ</strong>"),
+        X("(c) Current with D0, D1 and D3 HIGH", "Input 01011 (decimal 11). Only the HIGH bits send current.", ["ΣI = 7.8125 + 15.625 + 62.5", "= 85.9375 µA"], ""),
+        X("(c) V<sub>out</sub>", "", ["V<sub>out</sub> = R<sub>f</sub> × ΣI", "= 33 032 Ω × 85.9375 µA", "check: 8 V × 11 ÷ 31 = 2.839 V"], "<strong>V<sub>out</sub> = 2.839 V</strong>")]) },
     { id: "c6-q6", title: "Exercise 9: R-2R Ladder",
       q: `<p>The buffered 4-bit R-2R ladder DAC below runs from V<sub>H</sub> = <strong>5 V</strong>. Its switches are set to <strong>1010</strong>.</p>`, fig: FIG.r2r,
       ans: [{ l: "V<sub>out</sub> for 1010", u: "V", v: 3.125 }, { l: "Step size (1 LSB)", u: "V", v: 0.3125 }, { l: "Number of different resistor values needed", u: "", v: 2, tol: 0 }],
       hints: [`V<sub>out</sub> = V<sub>H</sub> × code ÷ 2<sup>N</sup>.`, `1010 is decimal 10; 2<sup>4</sup> = 16.`],
-      working: () => W_([step("V<sub>out</sub>", "5 × 10 ÷ 16", "", "<strong>3.125 V</strong>"), step("Step", "5 ÷ 16", "", "<strong>0.3125 V</strong>"), step("Resistors", "", "", "Only <strong>2</strong>: R and 2R")]) },
+      working: () => W_([
+        X("Switches → decimal code", "Read 1010 with the weights 8, 4, 2, 1.", ["1010 = 8 + 0 + 2 + 0 = 10"], "code = 10"),
+        X("V<sub>out</sub>", "An N-bit R-2R ladder divides by 2<sup>N</sup>.", ["V<sub>out</sub> = V<sub>H</sub> × code ÷ 2<sup>N</sup>", "= 5 × 10 ÷ 2<sup>4</sup> = 50 ÷ 16"], "<strong>V<sub>out</sub> = 3.125 V</strong>"),
+        X("Check bit by bit", "The MSB counts ½ of V<sub>H</sub>, the next bit ¼, then ⅛, then 1/16.", ["MSB (1): 5 × ½ = 2.5 V", "bit 2 (0): 0", "bit 1 (1): 5 × ⅛ = 0.625 V", "LSB (0): 0", "2.5 + 0.625 = 3.125 V ✓"], ""),
+        X("Step size (1 LSB)", "One step is the output for code 1.", ["5 × 1 ÷ 16"], "<strong>0.3125 V</strong>"),
+        X("Resistor values", "However many bits, the ladder uses only R and 2R.", [], "<strong>2</strong> values")]) },
     { id: "c6-q11", title: "Exercise 10: ESP32 DAC",
       q: `<p>The ESP32's DAC is 8-bit with a 3.3 V range (codes 0 to 255).</p>`, fig: FIG.espdac,
       ans: [{ l: "Output for <code>dacWrite(25, 200)</code>", u: "V", v: 2.588 }, { l: "Step size", u: "mV", v: 12.94 }],
       hints: [`V = code × 3.3 ÷ 255.`, `Step = 3.3 ÷ 255.`],
-      working: () => W_([step("Output", "200 × 3.3 ÷ 255", "", "<strong>2.588 V</strong>"), step("Step", "3.3 ÷ 255", "", "<strong>12.94 mV</strong>")]) },
+      working: () => W_([
+        X("The ESP32 DAC's step", "8 bits: codes 0 to 255, so 255 steps cover 3.3 V.", ["step = 3.3 V ÷ 255", "= 0.012941 V"], "<strong>12.94 mV</strong> per step"),
+        X("Output for code 200", "dacWrite(25, 200) sends code 200 to GPIO25.", ["V<sub>out</sub> = 3.3 V × code ÷ 255", "= 3.3 × 200 ÷ 255 = 660 ÷ 255", "(or 200 steps × 12.941 mV)"], "<strong>V<sub>out</sub> = 2.588 V</strong>")]) },
     { id: "c6-q9", title: "Exercise 11: Counter vs SAR",
       q: `<p>Compare an <strong>8-bit</strong> counter ADC with an 8-bit SAR ADC, both with a <strong>1 MHz</strong> clock (one step per microsecond).</p>`, fig: FIG.race,
       ans: [{ l: "Worst-case steps for the counter ADC", u: "", v: 255, tol: 1 }, { l: "Steps for the SAR ADC", u: "", v: 8, tol: 0 }, { l: "Worst-case counter conversion time", u: "µs", v: 255, tol: 1 }],
       hints: [`The counter may need to climb through every code up to 2<sup>n</sup> − 1.`, `SAR decides one bit per step.`],
-      working: () => W_([step("Counter", "up to 2<sup>8</sup> − 1 steps", "", "<strong>255 steps → 255 µs</strong>"), step("SAR", "one step per bit", "", "<strong>8 steps → 8 µs</strong>")]) },
+      working: () => W_([
+        X("Counter ADC, worst case", "The counter starts at 0 and adds 1 per clock tick until the DAC passes the input. The worst case is an input near full scale: it must climb through every code.", ["steps = 2<sup>n</sup> − 1 = 2<sup>8</sup> − 1", "= 255 steps"], "<strong>255 steps</strong>"),
+        X("Counter conversion time", "One step per tick, and a 1 MHz clock ticks every 1 µs.", ["255 × 1 µs"], "<strong>255 µs</strong>"),
+        X("SAR ADC", "It tests one bit per tick, from the MSB down, whatever the input.", ["steps = n = 8", "time = 8 × 1 µs = 8 µs"], "<strong>8 steps</strong> (8 µs), about 32 times faster")]) },
     { id: "c6-q12", title: "Exercise 12: DAC or ADC?",
       q: `<p>Choose the right answer for each. The first two are the boxes marked ? in the chain below.</p>`, fig: FIG.chain,
       ans: [{ l: "Turns a microphone signal into numbers", opts: ["ADC", "DAC"], v: 0 },
@@ -742,7 +828,12 @@ void loop()
         { l: "Needs only two resistor values", opts: ["Binary-weighted DAC", "R-2R ladder DAC"], v: 1 },
         { l: "Faster for 12 bits", opts: ["Counter (ramp) ADC", "Successive-approximation ADC"], v: 1 }],
       hints: [`Analog in, digital out is an ADC.`, `The LSB has the smallest weight, so the smallest current and the largest resistor.`],
-      working: () => W_([step("Microphone to numbers", "", "", "ADC"), step("Numbers to speaker", "", "", "DAC"), step("Largest resistor", "", "", "LSB (D0): 2<sup>N−1</sup>R"), step("Two values", "", "", "R-2R ladder"), step("Faster", "", "", "SAR: 12 steps instead of up to 4095")]) }
+      working: () => W_([
+        X("Microphone → numbers", "Analog in, digital out.", [], "<strong>ADC</strong>"),
+        X("Pendrive → speaker", "Digital in (the stored numbers), analog out (a voltage for the speaker).", [], "<strong>DAC</strong>"),
+        X("Largest resistor", "The LSB has the smallest weight, so it needs the smallest current and therefore the largest resistor (2<sup>N−1</sup> R).", [], "<strong>the LSB (D0)</strong>"),
+        X("Two resistor values", "", [], "<strong>R-2R ladder</strong>: only R and 2R"),
+        X("Faster for 12 bits", "", ["SAR: 12 steps", "counter: up to 2<sup>12</sup> − 1 = 4095 steps"], "<strong>Successive approximation</strong>")]) }
   ];
 
   Lab.page({

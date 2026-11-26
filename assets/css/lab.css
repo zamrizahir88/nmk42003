@@ -514,3 +514,6 @@ ul.tight li, ol.tight li { margin: 3px 0; }
 .home-ex ol { padding-left: 1.3em; color: var(--ink-2); }
 .home-ex li { margin-bottom: 10px; }
 .home-ex ul { margin: 4px 0 0; padding-left: 1.2em; }
+/* a short "why" line in a working step */
+.st-f .st-why { display: block; font-family: var(--sans); font-size: .93rem; color: var(--ink-2); }
+.st-r:empty { display: none; }

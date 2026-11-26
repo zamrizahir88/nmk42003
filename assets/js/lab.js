@@ -849,15 +849,18 @@
     // The track takes the height of the exercise in view, so a short exercise leaves no empty gap.
     const fit = () => { track.style.height = items[cur].offsetHeight + "px"; };
     if (window.ResizeObserver) { const ro = new ResizeObserver(fit); items.forEach((x) => ro.observe(x)); }
-    const go = (i) => { cur = Math.max(0, Math.min(items.length - 1, i)); track.scrollLeft = items[cur].offsetLeft - track.offsetLeft; paint(); }; // CSS scroll-behavior animates this
+    // Arrows and dots change the exercise at once (no slide), and swipe tracking is paused meanwhile, so the counter,
+    // the height and the exercise shown never fall out of step (a smooth slide could be interrupted halfway).
+    let lock = 0;
+    const go = (i) => { cur = Math.max(0, Math.min(items.length - 1, i)); lock = Date.now() + 400; track.scrollTo({ left: items[cur].offsetLeft - track.offsetLeft, behavior: "instant" }); paint(); };
     const nearest = () => { let best = 0, d = Infinity; items.forEach((x, k) => { const dd = Math.abs(x.offsetLeft - track.offsetLeft - track.scrollLeft); if (dd < d) { d = dd; best = k; } }); return best; };
     nav.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; go(b.dataset.i !== undefined ? +b.dataset.i : cur + +b.dataset.d); });
     let t;
-    const settle = () => { const i = nearest(); if (i !== cur) { cur = i; paint(); } };
+    const settle = () => { if (Date.now() < lock) return; const i = nearest(); if (i !== cur) { cur = i; paint(); } };
     track.addEventListener("scroll", () => { clearTimeout(t); t = setTimeout(settle, 80); }, { passive: true });
     track.addEventListener("scrollend", settle);
     if (window.IntersectionObserver) { // also notice swipes through visibility, in case scroll events are throttled
-      const io = new IntersectionObserver((es) => es.forEach((en) => { if (en.isIntersecting && en.intersectionRatio > 0.6) { const i = items.indexOf(en.target); if (i !== cur) { cur = i; paint(); } } }), { root: track, threshold: [0.6] });
+      const io = new IntersectionObserver((es) => es.forEach((en) => { if (Date.now() >= lock && en.isIntersecting && en.intersectionRatio > 0.6) { const i = items.indexOf(en.target); if (i !== cur) { cur = i; paint(); } } }), { root: track, threshold: [0.6] });
       items.forEach((x) => io.observe(x));
     }
     track.addEventListener("submit", () => setTimeout(paint, 50));
