@@ -211,6 +211,55 @@ void loop()
   }
 
   /* =====================================================================
+     2b. Checking the calibration: error at each point and percent of full scale (animated)
+     An analog pressure sensor, 0 to 10 kPa; the rounded equation ADC = 310P + 120.
+     ===================================================================== */
+  const CHK = { data: [[0, 118], [2.5, 912], [5, 1655], [7.5, 2460], [10, 3212]], m: 310, c: 120, fs: 10, mag: 10 };
+  const chkP = (r) => (r - CHK.c) / CHK.m;
+  function mountCheck(el) {
+    el.innerHTML = `<div class="pv"><div class="pv-grid"><div class="pv-graph ck-graph"></div><div class="ck-side"><div class="ck-work" aria-live="polite"></div><div class="ck-fs"></div></div></div><div class="pv-pl"></div><p class="pv-read"></p></div>`;
+    const q = (s) => el.querySelector(s), N = CHK.data.length, SEG = 2.6, DUR = N * SEG + 2.5;
+    const errs = CHK.data.map(([p, r]) => chkP(r) - p), worst = errs.reduce((b, e, i) => (Math.abs(e) > Math.abs(errs[b]) ? i : b), 0);
+    const f3 = (x) => (x < 0 ? MINUS : "+") + Math.abs(x).toFixed(3);
+    const graph = (k, show) => {
+      const A = axes({ W: 380, H: 260, l: 54, x: [-0.4, 10.6], y: [0, 3500], xt: [0, 2.5, 5, 7.5, 10], yt: [0, 1000, 2000, 3000], xl: "Pressure from the reference gauge, P (kPa)", yl: "ADC reading" });
+      let g = A.s + poly([[A.X(-0.4), A.Y(CHK.m * -0.4 + CHK.c)], [A.X(10.6), A.Y(CHK.m * 10.6 + CHK.c)]], "trace-a");
+      g += T(A.X(0.2), A.Y(3330), "ADC = 310P + 120", "start", "mklab");
+      CHK.data.forEach(([p, r], i) => {
+        const e = errs[i], on = i === k, yLine = A.Y(CHK.m * p + CHK.c), yPt = yLine - (A.Y(0) - A.Y(CHK.m * e * CHK.mag));
+        if (i <= show) g += `<line class="ck-bar${on ? " on" : ""}" x1="${A.X(p)}" x2="${A.X(p)}" y1="${yLine.toFixed(1)}" y2="${yPt.toFixed(1)}"/>`;
+        g += `<circle class="${on ? "pt" : "shot"} ck-pt" data-i="${i}" cx="${A.X(p).toFixed(1)}" cy="${(i <= show ? yPt : A.Y(r)).toFixed(1)}" r="${on ? 7 : 5.5}" tabindex="0" role="button" aria-label="Show the working for ${p} kPa"/>`;
+      });
+      g += T(A.l + A.pw - 4, A.t + A.ph - 8, `gaps drawn ${CHK.mag}× larger`, "end", "axis");
+      return svg(A.W, A.H, "Calibration points of a pressure sensor, the fitted line and the gap from each point to the line", g);
+    };
+    const fsBar = (e, p) => {
+      const W = 330, x0 = 14, w = W - 28, ew = Math.max(2, (Math.abs(e) / CHK.fs) * w);
+      return svg(W, 74, `Full-scale bar: an error of ${Math.abs(e).toFixed(3)} kPa out of ${CHK.fs} kPa`,
+        `<rect class="fsb" x="${x0}" y="18" width="${w}" height="18" rx="4"/><rect class="fse" x="${x0}" y="18" width="${ew.toFixed(1)}" height="18" rx="2"/>` +
+        T(x0, 12, "0", "start", "small") + T(x0 + w, 12, `${CHK.fs} kPa (full scale)`, "end", "small") +
+        T(x0, 56, `error ${Math.abs(e).toFixed(3)} kPa = ${((Math.abs(e) / CHK.fs) * 100).toFixed(2)}% of the bar`, "start", "small"), "scene ck-fsbar");
+    };
+    const draw = (t) => {
+      const k = Math.min(N - 1, Math.floor(t / SEG)), fin = t >= N * SEG, i = fin ? worst : k, [p, r] = CHK.data[i], v = chkP(r), e = errs[i], vs = (v < 0 ? MINUS : "") + Math.abs(v).toFixed(3);
+      q(".ck-graph").innerHTML = graph(i, fin ? N - 1 : k);
+      q(".ck-work").innerHTML = `<div class="ck-h">${fin ? "Largest error" : `Point ${k + 1} of ${N}`}: reference ${p} kPa, ADC ${r}</div><ol class="ck-steps">
+        <li><span>Equation used backwards</span>P = (ADC − 120) ÷ 310</li>
+        <li><span>Value it gives</span>P = (${r} − 120) ÷ 310 = <strong>${vs} kPa</strong></li>
+        <li><span>Error = from the equation − true</span>${vs} − ${p} = <strong>${f3(e)} kPa</strong> (${e >= 0 ? "reads high" : "reads low"})</li>
+        <li><span>% of full scale</span>${Math.abs(e).toFixed(3)} ÷ ${CHK.fs} × 100 = <strong>${((Math.abs(e) / CHK.fs) * 100).toFixed(2)}%</strong></li></ol>`;
+      q(".ck-fs").innerHTML = fsBar(e, p);
+      q(".pv-read").innerHTML = fin
+        ? `The largest gap is at <strong>${p} kPa</strong>: ${Math.abs(e).toFixed(3)} kPa, which is <strong>${((Math.abs(e) / CHK.fs) * 100).toFixed(2)}% of full scale</strong>. The line is a best fit through all five points, so it passes close to each one but not exactly through any of them. Tap a point to see its working.`
+        : `The point sits ${e >= 0 ? "above" : "below"} the line, so the equation gives a little ${e >= 0 ? "more" : "less"} than the true ${p} kPa. Tap any point to see its working.`;
+    };
+    const pl = player(q(".pv-pl"), el, { dur: DUR, hold: 3, draw, still: DUR, label: "Checking position", clock: (t) => (t < N * SEG ? `point ${Math.min(N, Math.floor(t / SEG) + 1)} of ${N}` : "largest") });
+    const pickPt = (e) => { const c = e.target.closest(".ck-pt"); if (!c) return; if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return; e.preventDefault(); pl.pause(); pl.set(+c.dataset.i * SEG + 1); };
+    el.addEventListener("click", pickPt);
+    el.addEventListener("keydown", pickPt);
+  }
+
+  /* =====================================================================
      3. Virtual calibration lab (two tabs)
      ===================================================================== */
   function mountLab(el, sec) {
@@ -590,7 +639,7 @@ void loop()
       q(".sx-body").innerHTML = `<dl class="defs sx-defs"><div><dt>What it gives out</dt><dd>${o.out}</dd></div><div><dt>ESP32 pin</dt><dd>${o.pin}</dd></div><div><dt>Reference</dt><dd>${o.ref}</dd></div><div><dt>How to take the points</dt><dd>${o.how}</dd></div><div><dt>Which line?</dt><dd>${o.why}</dd></div></dl>
         <h5 class="sx-h">Calibration Table (Example Data)</h5>${tb.html}
         <h5 class="sx-h">The Equation</h5><p class="formula">${e.fit}</p>${e.back ? `<p>Used backwards, from the reading to the ${o.q === "pH" ? "pH" : o.q.toLowerCase()}:</p><p class="formula">${e.back}</p>` : `<p>It already gives the ${o.q.toLowerCase()} from the reading, so the ESP32 can use it as it is.</p>`}
-        <p>Largest error at the calibration points: <strong>${tb.worst.toFixed(dp)}${o.qu}</strong>, which is <strong>${((tb.worst / tb.span) * 100).toFixed(2)}%</strong> of the calibrated range (${qTxt(lo)} to ${qTxt(hi)}).</p>
+        <p>Largest error at the calibration points: <strong>${tb.worst.toFixed(dp)}${o.qu}</strong>, which is <strong>${((tb.worst / tb.span) * 100).toFixed(2)}% of full scale</strong> (the calibrated range, ${qTxt(lo)} to ${qTxt(hi)}; see <a href="#check">Checking the Calibration</a>).</p>
         ${codeBlock(`${o.pre}\n${e.code}`, "In the ESP32 sketch")}
         <div class="callout warn"><strong>Common mistake</strong>${o.bad}</div>`;
     };
@@ -652,9 +701,35 @@ void loop()
     { id: "steps", group: "intro", title: "Calibration in Five Steps", toc: "Five Steps",
       intro: `<p>Every calibration follows the same pattern. Press play to walk through it; the virtual lab below uses exactly these steps.</p>`,
       mount: mountSteps },
+    { id: "check", group: "intro", title: "Checking the Calibration: Error and Percent of Full Scale", toc: "Error and % Full Scale",
+      intro: `<p>Step 5 of a calibration is to <strong>check</strong> it: how far is the equation from the truth? You already have everything you need in the calibration table.</p>
+        <h4 class="sub-h">1. The Error at a Calibration Point</h4>
+        <p>At each point you know the <strong>true value</strong> (from the reference) and the <strong>reading</strong> taken at that moment. Put the reading into the calibration equation, used backwards, and compare:</p>
+        <p class="formula">error = value from the equation − true value</p>
+        <ul class="where"><li>a <strong>positive</strong> error: the system reads high</li><li>a <strong>negative</strong> error: it reads low</li></ul>
+        <h4 class="sub-h">2. Percent of Full Scale</h4>
+        <p>To judge whether an error is big or small, compare it with the <strong>full-scale range</strong>, the whole range the instrument is calibrated to measure:</p>
+        <p class="formula">% FS error = |error| ÷ full-scale range × 100</p>
+        <ul class="where"><li>|error|: the size of the error, without its sign</li><li>full-scale range: for example 0 to 80 °C gives 80 °C, and 0 to 10 kPa gives 10 kPa</li></ul>
+        <div class="callout info"><strong>Why full scale, not % of the reading?</strong>The same 0.4 °C error is 1% of a 40 °C reading but 40% of a 1 °C reading, and at 0 °C it cannot be worked out at all. Full scale gives one fixed yardstick for the whole range. It is also how manufacturers state accuracy (Chapter 1: "accurate to ±1% of full scale").</div>
+        <div class="eg"><span class="eg-h">Worked example</span>A pressure sensor is calibrated from 0 to 10 kPa against a reference gauge. The equation obtained is ADC = 310P + 120. At a true 2.5 kPa the ESP32 read 912.<br>
+          Used backwards: P = (ADC − 120) ÷ 310 = (912 − 120) ÷ 310 = <strong>2.555 kPa</strong><br>
+          Error = 2.555 − 2.5 = <strong>+0.055 kPa</strong> (it reads a little high)<br>
+          % FS = 0.055 ÷ 10 × 100 = <strong>0.55% of full scale</strong></div>
+        <p>Press play to check every point of this sensor. The gap from each point to the line is its error (drawn larger so you can see it), and the bar shows how small it is against the full scale.</p>`,
+      mount: mountCheck,
+      after: `<h4 class="sub-h">3. Why Does the Error Occur?</h4>
+        <ol class="tight"><li><strong>The line is a best fit.</strong> Least squares draws one straight line through all the points together, so it passes close to each point but not exactly through every one. This is the main reason, and the gap at each point is its error.</li>
+          <li><strong>The sensor is not perfectly linear:</strong> its real response bends a little.</li>
+          <li><strong>The ESP32's ADC</strong> has its own offset and non-linearity (see Why Calibrate the Whole System, below).</li>
+          <li><strong>Noise</strong>, or a reading recorded before it was steady.</li>
+          <li><strong>The reference</strong> has its own accuracy limit: the calibration can never be better than the reference.</li>
+          <li><strong>Rounding</strong> the equation's coefficients (see Exercise 8).</li>
+          <li><strong>Drift</strong>: temperature and ageing move the readings over time, which is why sensors are recalibrated.</li></ol>
+        <div class="callout tip"><strong>How to write it</strong>Name the cause, say what it does to the points, and link it to the line. For the pressure sensor: "The equation is a least-squares straight line fitted through all five points. Because of small non-linearity and noise in the sensor and the ADC, the points do not lie exactly on the line, so at 2.5 kPa the equation reads 0.055 kPa high."</div>` },
     { id: "vlab", group: "lab", title: "Calibrate a Sensor, Step by Step", toc: "Virtual Lab",
       intro: `<p>Two sensors from the textbook. On the <strong>potentiometer</strong> tab, a pointer on the shaft turns over a protractor (the reference) and the wiper voltage goes to the ESP32's ADC on GPIO36. On the <strong>water level</strong> tab, a two-wire capacitive sensor stands in a bottle with a ruler (the reference); the 555 timer's frequency goes to GPIO14.</p>
-        <p>Set a known value, <strong>record</strong> the reading, repeat, then <strong>fit</strong> and watch the ESP32 show real units. This is also good practice before the potentiometer lab: the full version is the <a href="lab-2.html">Lab 2 virtual lab</a>.</p>`,
+        <p>Set a known value, <strong>record</strong> the reading, repeat, then <strong>fit</strong> and watch the ESP32 show real units. The Error column is worked out as in Checking the Calibration above. This is also good practice before the potentiometer lab: the full version is the <a href="lab-2.html">Lab 2 virtual lab</a>.</p>`,
       mount: mountLab },
     { id: "system", group: "whole", title: "Why Calibrate the Whole System?", toc: "The ESP32's ADC",
       intro: `<p>In theory the ESP32's 12-bit ADC turns 0 to 3.3 V into 0 to 4095, so V = 3.3 × ADC ÷ 4095. In practice, a 2.5 V supply may be shown as about 2.36 V, and the ADC is not linear near 0 V and near 3.3 V. The power supply itself may not be calibrated either.</p>
@@ -679,6 +754,15 @@ void loop()
   const rigFig = (k, v, refTxt, readTxt, lab, src) => xfig(svg(360, 234, lab, rig(SX(k), v, 0, refTxt, readTxt, false, src), "scene exfig calrig"));
   const tbl = (head, rows) => `<div class="tbl-wrap"><table class="eg-tbl ex-tbl"><tr><th>${head[0]}</th>${head.slice(1).map((h) => `<td>${h}</td>`).join("")}</tr>${rows.map((r) => `<tr><th>${r[0]}</th>${r.slice(1).map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</table></div>`;
   const FIG = {
+    load: () => {
+      let s = `<rect class="lplat" x="30" y="56" width="150" height="10" rx="3"/><rect class="lweight" x="78" y="20" width="54" height="36" rx="5"/>${T(105, 43, "300 g", "middle", "tt inv")}`;
+      s += `<rect class="lbar" x="40" y="74" width="130" height="18" rx="3"/><rect class="lfoot" x="150" y="92" width="34" height="40" rx="3"/><rect class="lfoot" x="26" y="66" width="18" height="8"/>`;
+      s += `<line class="lbase" x1="10" y1="132" x2="200" y2="132"/>${T(105, 152, "load cell", "middle", "small")}`;
+      s += `<path class="cable" d="M170,83C200,83 200,60 214,60"/><rect class="pcbr" x="214" y="44" width="52" height="32" rx="4"/>${T(240, 64, "HX711", "middle", "small inv")}`;
+      s += `<path class="cable sig" d="M266,60H290"/><rect class="esp" x="290" y="26" width="80" height="80" rx="8"/>${T(330, 56, "ESP32", "middle", "tt inv")}${T(330, 78, "GPIO16, 4", "middle", "small inv")}`;
+      s += `<rect class="lcd" x="250" y="120" width="120" height="26" rx="4"/>${T(310, 138, "reading = ?", "middle", "lcdt sm")}`;
+      return xfig(svg(380, 160, "A load cell under a platform with a 300 g weight, connected to an HX711 amplifier and an ESP32", s, "scene exfig"));
+    },
     lm35: () => rigFig("lm35", 40, "? °C", "ADC = ?", "An LM35 in a beaker of water beside a reference thermometer, wired to GPIO34 of an ESP32"),
     acs: () => rigFig("acs", 1.5, "? A", "ADC = ?", "A DC supply, an ACS712 current sensor, a load and an ammeter in series; the ACS712 output goes through a two-thirds divider to GPIO35 of an ESP32"),
     divGraph: () => {
@@ -725,7 +809,26 @@ void loop()
   const W_ = (list) => `<div class="working"><h4>Working</h4><ol class="steps">${stepsHtml(list)}</ol></div>`;
   const REFS = ["Reference thermometer", "Multimeter in series", "Ruler or measuring tape", "Calibrated gas detector", "pH buffer solutions"];
   const EXERCISES = [
-    { id: "c7-q7", title: "Exercise 1: An LM35 Thermometer",
+    { id: "c7-q12", title: "Exercise 1: Error and Percent of Full Scale",
+      q: `<p>A load cell with an HX711 amplifier is calibrated from <strong>0 to 500 g</strong> with standard weights. The calibration equation obtained is <strong>R = 42m + 8150</strong>, where R is the HX711 reading and m is the mass in grams.</p>` +
+        `<div class="tbl-wrap"><table class="eg-tbl ex-tbl ex-tblv"><thead><tr><th>Standard mass, m (g)</th><th>HX711 reading, R</th></tr></thead><tbody>${[[0, 8140], [100, 12360], [200, 16540], [300, 20790], [400, 24930], [500, 29170]].map(([m, r]) => `<tr><td>${m}</td><td>${r}</td></tr>`).join("")}</tbody></table></div>`,
+      fig: () => FIG.load(),
+      ans: [{ l: "(a) The mass the equation gives for the reading at 300 g", u: "g", v: 300.95, tol: 0.02 },
+        { l: "(b) The error at 300 g", u: "g", v: 0.95, tol: 0.02 },
+        { l: "(c) That error as a percentage of the 500 g full-scale range", u: "%", v: 0.19, tol: 0.005 },
+        { l: "(d) Which point has the largest error?", opts: ["0 g", "100 g", "200 g", "300 g", "400 g", "500 g"], v: 3 },
+        { l: "(e) Why is the error given as % of full scale, not % of the reading?", opts: ["Near 0 g the % of the reading becomes huge (and at 0 g it cannot be worked out), so full scale gives one fixed yardstick", "% of the reading is always larger, so it looks worse", "The full scale is easier to read on the HX711", "% of full scale removes the error"], v: 0 },
+        { l: "(f) Why does the equation not give exactly 300 g?", opts: ["It is a best-fit line through all six points, which do not lie exactly on a straight line (non-linearity and noise)", "The standard weights are always wrong", "The HX711 can only read even numbers", "300 g is outside the calibrated range"], v: 0 }],
+      hints: [`Use the equation backwards: m = (R − 8150) ÷ 42. Error = the mass it gives − the true mass.`, `% FS = |error| ÷ 500 g × 100. Work out the error at every point to find the largest.`],
+      working: () => W_([
+        X("Use the equation backwards", "The equation gives the reading from the mass; turn it round.", ["R = 42m + 8150", "m = (R − 8150) ÷ 42"], ""),
+        X("(a) The reading at 300 g", "The table says R = 20790 at a true 300 g.", ["m = (20790 − 8150) ÷ 42 = 12640 ÷ 42"], "m = <strong>300.95 g</strong>"),
+        X("(b) Error", "Value from the equation − true value.", ["error = 300.95 − 300"], "<strong>+0.95 g</strong> (it reads high)"),
+        X("(c) Percent of full scale", "Compare the size of the error with the 0 to 500 g range.", ["% FS = 0.952 ÷ 500 × 100"], "<strong>0.19%</strong> of full scale"),
+        X("(d) Every point", "Do the same at each point and compare the sizes.", ["0 g: (8140 − 8150) ÷ 42 = −0.24 g", "100 g: 100.24 → +0.24 g", "200 g: 199.76 → −0.24 g", "300 g: 300.95 → +0.95 g", "400 g: 399.52 → −0.48 g", "500 g: 500.48 → +0.48 g"], "largest at <strong>300 g</strong>"),
+        X("(e) Why full scale", "At 100 g, 0.24 g is 0.24% of the reading, but at 0 g a % of the reading cannot be worked out at all. Full scale gives one fixed yardstick.", [], "One yardstick for the whole range"),
+        X("(f) Why the error occurs", "The equation is a least-squares line through all six points. Small non-linearity and noise in the load cell and HX711 put the points slightly off the line, so it cannot pass exactly through each one.", [], "A best fit, not an exact fit")]) },
+    { id: "c7-q7", title: "Exercise 2: An LM35 Thermometer",
       q: `<p>An ESP32 reads an LM35 temperature sensor on GPIO34 through its <strong>12-bit</strong> ADC, with a reference voltage of <strong>3.3 V</strong>. The sensor was calibrated against a reference thermometer, and the results are in the table. The calibration equation obtained is <strong>ADC = 12.5T + 15</strong>, where T is the temperature in °C.</p>` +
         tbl(["Temperature, T (°C)", 0, 20, 40, 60, 80], [["ADC reading", 12, 268, 520, 761, 1016]]),
       fig: FIG.lm35,
@@ -733,7 +836,7 @@ void loop()
         { l: "(ii) The temperature when the ADC reading is 700", u: "°C", v: 54.8, tol: 0.1 }, { l: "(ii) The temperature when the ADC reading is 520", u: "°C", v: 40.4, tol: 0.05 },
         { l: "(iii) The error at 40 °C as a percentage of the 80 °C full-scale range", u: "%", v: 0.5, tol: 0.02 },
         { l: "(iii) Why does this error occur?", opts: ["The line is a best fit through all five points, so it cannot pass exactly through each one (small non-linearity and noise in the sensor and the ADC)", "The ADC does not have enough bits to read 40 °C", "The LM35 only works below 40 °C", "The thermometer is always 0.4 °C wrong"], v: 0 }],
-      hints: [`Resolution = V<sub>ref</sub> ÷ (2<sup>n</sup> − 1). For the temperature, rearrange the equation: T = (ADC − 15) ÷ 12.5.`, `The table says ADC 520 was measured at exactly 40 °C. Compare that with what the equation gives, then divide the difference by 80 °C.`],
+      hints: [`Resolution = V<sub>ref</sub> ÷ (2<sup>n</sup> − 1). For the temperature, rearrange the equation: T = (ADC − 15) ÷ 12.5.`, `The table says ADC 520 was measured at exactly 40 °C. Compare that with what the equation gives, then divide the difference by 80 °C (see Checking the Calibration).`],
       working: () => W_([
         X("(i) Resolution", "One step of the ADC's ruler.", ["R = V<sub>ref</sub> ÷ (2<sup>12</sup> − 1) = 3.3 ÷ 4095", "= 0.000805861 V"], "R = <strong>0.8059 mV</strong>"),
         X("(i) Input voltage at ADC 700", "Number of steps × size of one step.", ["V<sub>in</sub> = 700 × 0.000805861 V", "= 700 × 3.3 ÷ 4095"], "V<sub>in</sub> = <strong>0.5641 V</strong>"),
@@ -742,7 +845,7 @@ void loop()
         X("(ii) At ADC 520", "", ["T = (520 − 15) ÷ 12.5 = 505 ÷ 12.5"], "T = <strong>40.4 °C</strong>"),
         X("(iii) Error at 40 °C", "In the table, ADC 520 was recorded at a true 40 °C, but the equation says 40.4 °C.", ["error = 40.4 − 40 = 0.4 °C", "% of full scale = 0.4 ÷ 80 × 100"], "<strong>0.5%</strong> of the full-scale range"),
         X("(iii) Why", "A straight line is fitted through all five points by least squares. Real readings have small non-linearity and noise (in the LM35 and the ESP32's ADC), so the line passes close to the points but not exactly through each one.", [], "The equation reads 0.4 °C high at 40 °C")]) },
-    { id: "c7-q8", title: "Exercise 2: An ACS712 Current Sensor",
+    { id: "c7-q8", title: "Exercise 3: An ACS712 Current Sensor",
       q: `<p>An ACS712 current sensor (5 A version on a 5 V supply: <strong>2.5 V at 0 A</strong>, <strong>185 mV per amp</strong>) measures the current of a DC load. Its output goes to GPIO35 of an ESP32 through a <strong>10 kΩ / 20 kΩ divider</strong> (it scales the voltage by 2/3). It was calibrated against a multimeter in series with the load. The calibration equation obtained is <strong>ADC = 153I + 2050</strong>, where I is the current in amps.</p>` +
         tbl(["Current, I (A)", 0, 1, 2, 3, 4], [["ADC reading", 2048, 2205, 2353, 2511, 2662]]),
       fig: FIG.acs,
@@ -758,7 +861,7 @@ void loop()
         X("(c) Rearrange the equation", "", ["ADC = 153I + 2050", "I = (ADC − 2050) ÷ 153"], ""),
         X("(c) At ADC 2400", "", ["I = (2400 − 2050) ÷ 153 = 350 ÷ 153"], "I = <strong>2.288 A</strong>"),
         X("(d) Error at 2 A", "The table's reading at a true 2 A is 2353.", ["I = (2353 − 2050) ÷ 153 = 303 ÷ 153 = 1.980 A", "error = 1.980 − 2 = −0.020 A", "% of full scale = 0.0196 ÷ 4 × 100"], "<strong>0.49%</strong> of the full-scale range")]) },
-    { id: "c7-q9", title: "Exercise 3: Read the Line from a Graph",
+    { id: "c7-q9", title: "Exercise 4: Read the Line from a Graph",
       q: `<p>An ESP32 measures a solar panel's voltage through a 30 kΩ / 7.5 kΩ voltage divider on GPIO35. It was calibrated against a multimeter. The graph shows the calibration points and the fitted straight line, ADC = mV + c, which passes through the two marked points.</p>` +
         tbl(["Voltage, V (V)", 2, 4, 6, 8, 10], [["ADC reading", 310, 790, 1300, 1810, 2290]]),
       fig: () => FIG.divGraph() + FIG.divRig(),
@@ -773,7 +876,7 @@ void loop()
         X("(b) Rearrange and use it", "", ["V = (ADC − c) ÷ m = (ADC + 200) ÷ 250", "V = (1550 + 200) ÷ 250 = 1750 ÷ 250"], "V = <strong>7.0 V</strong>"),
         X("(c) Error at 4 V", "The table's reading at a true 4 V is 790.", ["V = (790 + 200) ÷ 250 = 3.96 V", "error = 3.96 − 4 = −0.04 V", "% of full scale = 0.04 ÷ 10 × 100"], "<strong>0.4%</strong> of the full-scale range"),
         X("(d) Why the line misses 0 V", "ADC = 0 when 250V = 200, so V = 0.8 V at the panel, which is 0.16 V at the pin. The ESP32's ADC has a dead zone near 0 V: it reads 0 until the pin is above about 0.1 to 0.15 V.", [], "The ADC reads low near 0 V")]) },
-    { id: "c7-q10", title: "Exercise 4: Straight Line or Power Law?",
+    { id: "c7-q10", title: "Exercise 5: Straight Line or Power Law?",
       q: `<p>An LDR in a voltage divider on GPIO33 was calibrated against a lux meter. The table and the two graphs show the same data. The power law fitted on log axes is <strong>log(E) = 2.2 log(ADC) − 4.70</strong>, where E is the light in lux.</p>` +
         tbl(["Light, E (lux)", 10, 50, 100, 300, 1000], [["ADC reading", 390, 810, 1110, 1830, 3162]]),
       fig: FIG.ldr,
@@ -789,7 +892,7 @@ void loop()
         X("(c) The straight line through the end points", "", ["slope = (1000 − 10) ÷ (3162 − 390) = 990 ÷ 2772", "= 0.35714 lux per count", "E = 10 + 0.35714 × (ADC − 390)"], ""),
         X("(c) At ADC 1110", "", ["E = 10 + 0.35714 × (1110 − 390)", "= 10 + 0.35714 × 720 = 10 + 257.1"], "E = <strong>267 lux</strong>"),
         X("(d) Its error", "The true light at ADC 1110 is 100 lux.", ["error = 267.1 − 100 = 167.1 lux", "% of full scale = 167.1 ÷ 1000 × 100"], "<strong>16.7%</strong>: far too big, so use the power law")]) },
-    { id: "c7-q11", title: "Exercise 5: The Right Reference, and a pH Probe",
+    { id: "c7-q11", title: "Exercise 6: The Right Reference, and a pH Probe",
       q: `<p><strong>Part A.</strong> Choose the right reference instrument to calibrate each sensor.</p>` +
         tbl(["Sensor", "Measures", "Reference"], [["LM35", "temperature", "?"], ["ACS712", "current", "?"], ["HC-SR04", "distance", "?"], ["MQ-2", "gas (ppm)", "?"]]) +
         `<p><strong>Part B.</strong> A pH probe on GPIO34 is calibrated in two buffer solutions (figure). Use a straight line, pH = m × ADC + c.</p>`,
@@ -803,7 +906,7 @@ void loop()
         X("B: Intercept", "Use the pH 7 point.", ["7 = −0.0056604 × 1890 + c", "c = 7 + 10.698 = 17.698"], "pH = −0.0056604 × ADC + 17.698"),
         X("B: At ADC 2100", "", ["pH = −0.0056604 × 2100 + 17.698", "= −11.887 + 17.698"], "pH = <strong>5.81</strong>"),
         X("Check", "2100 lies between 2420 (pH 4) and 1890 (pH 7), so the pH must be between 4 and 7.", [], "✓")]) },
-    { id: "c7-q4", title: "Exercise 6: Least-Squares Line",
+    { id: "c7-q4", title: "Exercise 7: Least-Squares Line",
       q: `<p>Fit y = mx + c by least squares to these calibration points (also plotted below).</p>` + tbl(["x", 1, 2, 3, 4], [["y", "2.0", "4.1", "5.9", "8.0"]]),
       fig: FIG.lsq,
       ans: [{ l: "Slope m", u: "", v: 1.98, tol: 0.005 }, { l: "Intercept c", u: "", v: 0.05, tol: 0.005 }],
@@ -812,7 +915,7 @@ void loop()
         X("The sums", "Make a column for each: x, y, xy and x².", ["n = 4", "Σx = 1 + 2 + 3 + 4 = 10", "Σy = 2.0 + 4.1 + 5.9 + 8.0 = 20.0", "Σxy = 1×2.0 + 2×4.1 + 3×5.9 + 4×8.0 = 2 + 8.2 + 17.7 + 32 = 59.9", "Σx² = 1 + 4 + 9 + 16 = 30"], ""),
         X("Slope", "", ["m = (nΣxy − ΣxΣy) ÷ (nΣx² − (Σx)²)", "= (4 × 59.9 − 10 × 20) ÷ (4 × 30 − 10²)", "= (239.6 − 200) ÷ (120 − 100) = 39.6 ÷ 20"], "m = <strong>1.98</strong>"),
         X("Intercept", "", ["c = (Σy − mΣx) ÷ n", "= (20 − 1.98 × 10) ÷ 4 = 0.2 ÷ 4"], "c = <strong>0.05</strong>, so y = 1.98x + 0.05")]) },
-    { id: "c7-q5", title: "Exercise 7: Keep Enough Significant Figures",
+    { id: "c7-q5", title: "Exercise 8: Keep Enough Significant Figures",
       q: `<p>A water-level sensor was calibrated as <strong>depth = 3.8714 × 10<sup>−8</sup> f² − 0.002625 f + 43.781</strong> (depth in cm, f in Hz). Its curve is shown below.</p>`,
       fig: FIG.sigf,
       ans: [{ l: "Depth when f = 25 000 Hz", u: "cm", v: 2.352, tol: 0.01 }, { l: "Depth if a is rounded to 4 × 10<sup>−8</sup>", u: "cm", v: 3.156, tol: 0.01 }, { l: "Error caused by the rounding", u: "cm", v: 0.804, tol: 0.01 }],

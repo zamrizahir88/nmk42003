@@ -116,3 +116,26 @@ table.cal-table { width: 100%; border-collapse: collapse; font-size: .92rem; fon
   .ex .q .ex-tbl td { min-width: 0; }
   .ex .q .ex-tbl th { min-width: 4.4em; }
 }
+
+/* ---------- checking the calibration ---------- */
+.ck-graph .plot { max-width: 560px; }
+.ck-graph .ck-pt { cursor: pointer; }
+.ck-graph .ck-pt:focus-visible { outline: none; stroke: var(--focus); stroke-width: 3; }
+.plot .ck-bar { stroke: var(--amber); stroke-width: 2.5; stroke-dasharray: 3 2; }
+.plot .ck-bar.on { stroke: var(--danger); stroke-width: 3.5; stroke-dasharray: none; }
+.ck-side { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.ck-work { background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--teal); border-radius: 0 var(--r-md) var(--r-md) 0; padding: 10px 14px; min-height: 13.5em; }
+.ck-h { font-weight: 600; color: var(--teal); margin-bottom: 6px; }
+.ck-steps { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; font-variant-numeric: tabular-nums; }
+.ck-steps li span { display: block; font-size: .8rem; color: var(--ink-3); }
+.ck-fs { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); padding: 6px 8px; }
+.scene.ck-fsbar { display: block; width: 100%; height: auto; max-width: 420px; }
+.scene .fsb { fill: var(--grid); stroke: var(--ink-3); }
+.scene .fse { fill: var(--danger); }
+.scene .lplat { fill: var(--ink-3); }
+.scene .lweight { fill: #5f6b75; }
+.scene .lbar { fill: #c9ced3; stroke: #5f6b75; }
+.scene .lfoot { fill: #9aa6b1; }
+.scene .lbase { stroke: var(--ink-3); stroke-width: 2; }
+.ex .q .ex-tblv th { text-align: center; vertical-align: bottom; }
+.ex .q .ex-tblv td { min-width: 7em; }
