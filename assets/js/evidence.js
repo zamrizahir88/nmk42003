@@ -245,40 +245,209 @@
   }
 
   // a Middle / End answer's "before" confidence for one CO: its own b_ rating, else the same student's Start answer (with consent)
+  /* ---------- Course Survey: tabs (Overview, Confidence, Learning, Website Parts, Usability, Comments) ---------- */
   function beforeOf(x, c) {
     const b = x.a && x.a[`b_${c}`];
     if (b >= 1) return b;
     const pre = D.survey.find((y) => y.round === "pre" && y.uid === x.uid && y.consent);
     return pre && pre.a ? pre.a[`n_${c}`] : null;
   }
-  function survey() {
+  const SVT = [["over", "Overview", "📊"], ["conf", "Confidence", "🎯"], ["learn", "How Students Learn", "📚"], ["parts", "Website Parts", "🧩"], ["sus", "Usability", "⭐"], ["say", "Comments", "💬"]];
+  const SVQ = { o0: ["Expect to Find Hardest", "Start of semester"], o1: ["Helped Most", "Middle and end"], o2: ["To Improve", "Middle and end"] };
+  // comment topics: whole-word starts, English and Malay
+  const TOPICS = [
+    ["labs", "Labs", /\b(lab|labs|pre-lab|prelab|makmal|practical|amali|hands-on)/i],
+    ["calc", "Calculations", /\b(calculat|formula|kira|math|equation|bode|filter|amplifier|op-amp|opamp|adc|dac|bridge|circuit|litar)/i],
+    ["ex", "Exercises and Hints", /\b(exercise|hint|working|try|latihan|soalan|question|quiz|practi[cs]e|tutorial)/i],
+    ["game", "INSTRUMENTA", /\b(game|instrumenta|battle|boss|coin|permainan|legend)/i],
+    ["ai", "Ask Dr. Zamri", /\b(ai|ask dr|chatbot|bot|assistant)\b/i],
+    ["notes", "Notes and Lectures", /\b(lecture|note|slide|explain|kuliah|nota|animation|animasi|diagram|video|class)/i],
+    ["sens", "Sensors", /\b(sensor|sensing|penderia|transducer|calibrat)/i],
+    ["proj", "Mini Project", /\b(project|projek|proposal|logbook|group)/i],
+    ["code", "Coding", /\b(code|coding|program|tuniot|arduino|block|sketch|esp32)/i],
+    ["web", "Website and Phone", /\b(website|web|page|phone|mobile|slow|load|laman|button|design|interface|ui|login|sign)/i],
+    ["att", "Attendance", /\b(attendance|kehadiran|swap|absence|absent)/i],
+    ["time", "Time and Workload", /\b(time|busy|masa|deadline|workload|too many|banyak|rush)/i]
+  ];
+  const NONE = /^\s*(-+|\.+|no|none|nothing|nil|n\/?a|na|tiada|takde|tak ada|nope|no comment)?\s*\.?\s*$/i;   // blank, "-", "none"…
+  const SVS = { tab: "over", round: null, q: null, topic: "all", find: "" };
+  try { Object.assign(SVS, JSON.parse(sessionStorage.getItem("ev-sv") || "{}"), { find: "" }); } catch (e) { /* private window */ }
+  const svSave = () => { try { sessionStorage.setItem("ev-sv", JSON.stringify({ tab: SVS.tab, round: SVS.round, q: SVS.q, topic: SVS.topic })); } catch (e) { /* ignore */ } };
+  const short = (t) => t.replace(/\s*\(.*\)\s*$/, "");
+
+  function svData() {
     const R = Object.keys(SV.ROUNDS).map((k) => [k, D.survey.filter((x) => x.round === k && x.consent)]).filter(([, a]) => a.length);
     const all = D.survey.length, consent = D.survey.filter((x) => x.consent).length;
-    if (!R.length) return `<section id="survey" class="ev-sec"><h2 class="h3">Course Survey</h2><p class="adm-empty">${all ? `${all} answers so far, none with consent for reports yet.` : "No answers yet."} Open a round on the <a href="survey.html">Course Survey</a> page.</p></section>`;
     const m = (a, k) => mean(a.map((x) => x.a[k]).filter((v) => v >= 1));
-    // "before" for a Middle / End answer: its own "before this course" rating, or (when that round was answered while the Start
-    // round was open, so "before" was not asked) the same student's Start-of-semester rating
     const mb = (a, c) => mean(a.map((x) => beforeOf(x, c)).filter((v) => v >= 1));
-    const conf = SV.COS.map((c) => [`<span class="ex-co">${c}</span>`].concat(R.flatMap(([k, a]) => SV.later(k) ? [`${num(mb(a, c), 2)} → <strong>${num(m(a, `n_${c}`), 2)}</strong>`] : [`<strong>${num(m(a, `n_${c}`), 2)}</strong>`])));
-    const eng = SV.ENG.map(([k, t]) => [esc(t)].concat(R.map(([, a]) => num(m(a, k), 2))));
     const later = R.filter(([k]) => SV.later(k)), last = later[later.length - 1];
-    const feat = last ? SV.FEAT.map(([k, t]) => { const a = last[1].map((x) => x.a[`f_${k}`]).filter((v) => v != null); const used = a.filter((v) => v >= 1); return { t, used: share(used.length, a.length), mean: mean(used) }; }).sort((x, y) => (y.mean || 0) - (x.mean || 0)) : [];
-    const sus = last ? last[1].map((x) => SV.susScore(x.a)).filter((v) => v != null) : [];
-    const grade = (s) => (s >= 85.5 ? "excellent" : s >= 71.4 ? "good" : s >= 50.9 ? "OK" : "poor");
-    const quotes = D.survey.filter((x) => x.consent).flatMap((x) => ["o0", "o1", "o2"].filter((k) => x.a[k]).map((k) => ({ k, t: x.a[k], r: x.round })));
-    const Q = { o0: "Expect to find hardest", o1: "Helped most", o2: "To improve" };
-    return `<section id="survey" class="ev-sec"><h2 class="h3">Course Survey</h2>
-      <p class="small-note">${all} answers, ${consent} with consent for reports (only these are shown). Scale 1 to 5.</p>
-      ${table(["Round", "Answers (with consent)"], R.map(([k, a]) => [esc(SV.ROUNDS[k]), a.length]))}
-      <h3 class="bd-h">Confidence in Each Course Outcome</h3><p class="small-note">From the middle round on: before → now. "Before" is the student's own "before this course" rating, or their Start-of-semester answer when the two rounds were open together.</p>
-      ${table(["CO"].concat(R.map(([k]) => esc(SV.ROUNDS[k]))), conf)}
-      <h3 class="bd-h">How Students Learn</h3>${table(["Statement"].concat(R.map(([k]) => esc(SV.ROUNDS[k]))), eng)}
-      ${last ? `<h3 class="bd-h">Usefulness of Each Part (${esc(SV.ROUNDS[last[0]])})</h3>
-        ${table(["Part of the website", "Used it", "Usefulness (1–5, users only)"], feat.map((f) => [esc(f.t), pct(f.used), `${bar(f.mean ? (f.mean / 5) * 100 : 0)}${num(f.mean, 2)}`]))}
-        <h3 class="bd-h">System Usability Scale</h3>
-        <div class="ev-tiles">${tile(num(mean(sus), 1), `SUS score out of 100 (${sus.length} students)`)}${tile(sus.length ? grade(mean(sus)) : "–", "rating (68 is the usual average)")}${tile(num(sd(sus), 1), "standard deviation")}</div>` : ""}
-      ${quotes.length ? `<h3 class="bd-h">In Their Own Words</h3><div class="ev-quotes">${Object.keys(Q).map((k) => { const q = quotes.filter((x) => x.k === k); return q.length ? `<h4>${Q[k]} (${q.length})</h4><ul>${q.map((x) => `<li>${esc(x.t)}</li>`).join("")}</ul>` : ""; }).join("")}</div>` : ""}</section>`;
+    const conf = (a, k) => SV.COS.map((c) => ({ c, now: m(a, `n_${c}`), before: SV.later(k) ? mb(a, c) : null }));
+    const feat = (a) => SV.FEAT.map(([k, t]) => { const v = a.map((x) => x.a[`f_${k}`]).filter((y) => y != null), used = v.filter((y) => y >= 1); return { k, t, used: share(used.length, v.length), mean: mean(used), n: used.length }; }).sort((x, y) => (y.mean || 0) - (x.mean || 0));
+    const sus = (a) => a.map((x) => SV.susScore(x.a)).filter((v) => v != null);
+    const quotes = D.survey.filter((x) => x.consent).flatMap((x) => ["o0", "o1", "o2"].filter((k) => x.a[k] != null && String(x.a[k]).trim()).map((k) => ({ k, t: String(x.a[k]).trim(), r: x.round })));
+    return { R, all, consent, m, later, last, conf, feat, sus, quotes };
   }
+  const grade = (s) => (s == null ? "–" : s >= 85.5 ? "Excellent" : s >= 71.4 ? "Good" : s >= 50.9 ? "OK" : "Poor");
+
+  /* small charts */
+  function dumbbell(rows) {   // rows: {c, before, now}
+    const W = 560, l = 64, r = 70, top = 26, rh = 46, H = top + rows.length * rh + 26, X = (v) => l + ((v - 1) / 4) * (W - l - r);
+    let s = "";
+    [1, 2, 3, 4, 5].forEach((v) => { s += `<line class="sv-gl" x1="${X(v)}" x2="${X(v)}" y1="${top - 8}" y2="${H - 22}"/><text class="sv-ax" x="${X(v)}" y="${H - 6}" text-anchor="middle">${v}</text>`; });
+    s += `<text class="sv-ax" x="${l}" y="12">1 = not at all confident</text><text class="sv-ax" x="${W - r}" y="12" text-anchor="end">5 = very confident</text>`;
+    rows.forEach((o, i) => {
+      const y = top + i * rh + rh / 2;
+      s += `<text class="sv-co" x="4" y="${y + 5}">${o.c}</text>`;
+      if (o.before != null) s += `<line class="sv-db" x1="${X(o.before)}" x2="${X(o.now)}" y1="${y}" y2="${y}"/><circle class="sv-b" cx="${X(o.before)}" cy="${y}" r="7"><title>Before: ${num(o.before, 2)}</title></circle>`;
+      s += `<circle class="sv-n" cx="${X(o.now)}" cy="${y}" r="8"><title>Now: ${num(o.now, 2)}</title></circle>`;
+      s += `<text class="sv-val" x="${W - r + 10}" y="${y + 5}">${o.before != null ? `${o.now - o.before >= 0 ? "+" : "−"}${num(Math.abs(o.now - o.before), 2)}` : num(o.now, 2)}</text>`;
+    });
+    return `<div class="sv-chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Confidence in each course outcome${rows[0] && rows[0].before != null ? ", before and now" : ""}: ${rows.map((o) => `${o.c} ${o.before != null ? num(o.before, 2) + " to " : ""}${num(o.now, 2)}`).join("; ")}">${s}</svg></div>`;
+  }
+  function likert(a, k) {   // % disagree (1–2), neutral (3), agree (4–5)
+    const v = a.map((x) => x.a[k]).filter((y) => y >= 1), n = v.length || 1;
+    const d = v.filter((y) => y <= 2).length / n * 100, u = v.filter((y) => y === 3).length / n * 100, g = 100 - d - u;
+    const seg = (p, cls, t) => (p >= 0.5 ? `<span class="${cls}" style="width:${p.toFixed(1)}%" title="${t}: ${p.toFixed(0)}%">${p >= 9 ? `${p.toFixed(0)}%` : ""}</span>` : "");
+    return { g, html: `<div class="sv-lk">${seg(d, "d", "Disagree")}${seg(u, "u", "Neutral")}${seg(g, "g", "Agree")}</div>` };
+  }
+  function gauge(score) {
+    const cx = 150, cy = 140, R0 = 110, w = 22, A = (v) => Math.PI * (1 - v / 100), P = (v, r) => [cx + r * Math.cos(A(v)), cy - r * Math.sin(A(v))];
+    const arc = (a, b, cls) => { const [x1, y1] = P(a, R0), [x2, y2] = P(b, R0), [x3, y3] = P(b, R0 - w), [x4, y4] = P(a, R0 - w); return `<path class="${cls}" d="M${x1.toFixed(1)},${y1.toFixed(1)}A${R0},${R0} 0 0 1 ${x2.toFixed(1)},${y2.toFixed(1)}L${x3.toFixed(1)},${y3.toFixed(1)}A${R0 - w},${R0 - w} 0 0 0 ${x4.toFixed(1)},${y4.toFixed(1)}Z"/>`; };
+    let s = arc(0, 50.9, "sv-gp") + arc(50.9, 71.4, "sv-go") + arc(71.4, 85.5, "sv-gg") + arc(85.5, 100, "sv-ge");
+    const [mx1, my1] = P(68, R0 + 6), [mx2, my2] = P(68, R0 - w - 6), [tx, ty] = P(68, R0 + 18);
+    s += `<line class="sv-g68" x1="${mx1.toFixed(1)}" y1="${my1.toFixed(1)}" x2="${mx2.toFixed(1)}" y2="${my2.toFixed(1)}"/><text class="sv-ax" x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="middle">68 average</text>`;
+    if (score != null) { const [nx, ny] = P(score, R0 - w - 14); s += `<line class="sv-needle" x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}"/><circle class="sv-hub" cx="${cx}" cy="${cy}" r="7"/>`; }
+    s += `<text class="sv-ax" x="${cx - R0 + w / 2}" y="${cy + 18}" text-anchor="middle">0</text><text class="sv-ax" x="${cx + R0 - w / 2}" y="${cy + 18}" text-anchor="middle">100</text>`;
+    return `<svg class="sv-gauge" viewBox="0 0 300 170" role="img" aria-label="Usability score ${num(score, 1)} out of 100, ${grade(score)}">${s}</svg>`;
+  }
+  function hist(vals) {
+    const bins = Array(10).fill(0); vals.forEach((v) => { bins[Math.min(9, Math.floor(v / 10))]++; });
+    const W = 420, H = 150, max = Math.max(1, ...bins), bw = (W - 40) / 10;
+    return `<div class="sv-chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="How the students' usability scores spread: ${bins.map((b, i) => `${i * 10} to ${i * 10 + 10}: ${b}`).join(", ")}">
+      <line class="sv-gl" x1="30" x2="${W - 6}" y1="${H - 24}" y2="${H - 24}"/>
+      ${bins.map((b, i) => { const h = (b / max) * (H - 50), x = 32 + i * bw; return `<rect class="sv-hb${i >= 7 ? " hi" : ""}" x="${x.toFixed(1)}" y="${(H - 24 - h).toFixed(1)}" width="${(bw - 4).toFixed(1)}" height="${h.toFixed(1)}" rx="3"><title>${i * 10} to ${i * 10 + 10}: ${b} students</title></rect>${b ? `<text class="sv-ax n" x="${(x + bw / 2 - 2).toFixed(1)}" y="${(H - 28 - h).toFixed(1)}" text-anchor="middle">${b}</text>` : ""}<text class="sv-ax" x="${(x + bw / 2 - 2).toFixed(1)}" y="${H - 8}" text-anchor="middle">${i * 10}</text>`; }).join("")}
+      <text class="sv-ax" x="4" y="12">students</text></svg></div>`;
+  }
+
+  function svPanel(S) {
+    const rk = SVS.round, ra = (S.R.find(([k]) => k === rk) || S.R[S.R.length - 1])[1], isLater = SV.later(rk);
+    const lt = isLater ? [rk, ra] : S.last, lname = lt ? SV.ROUNDS[lt[0]] : "";
+    const askedLater = `<p class="adm-empty">This part is asked from the Middle of semester round. ${S.last ? `Choose <strong>${esc(SV.ROUNDS[S.last[0]])}</strong> above.` : "No answers yet."}</p>`;
+    if (SVS.tab === "over") {
+      const c = S.conf(ra, rk), gains = c.filter((o) => o.before != null).map((o) => o.now - o.before), f = lt ? S.feat(lt[1]) : [], su = lt ? S.sus(lt[1]) : [];
+      const best = c.filter((o) => o.before != null).sort((x, y) => (y.now - y.before) - (x.now - x.before))[0];
+      const lk = SV.ENG.map(([k, t]) => ({ t, g: likert(ra, k).g })).sort((x, y) => y.g - x.g)[0];
+      const find = [best ? `Confidence in <strong>${best.c}</strong> rose the most: ${num(best.before, 1)} → ${num(best.now, 1)} out of 5.` : `Average confidence across the course outcomes is <strong>${num(mean(c.map((o) => o.now).filter((v) => v != null)), 1)}</strong> out of 5.`,
+        f[0] && f[0].mean ? `The most useful part of the website: <strong>${esc(short(f[0].t))}</strong>, ${num(f[0].mean, 2)} out of 5.` : "",
+        su.length ? `Usability is <strong>${grade(mean(su)).toLowerCase()}</strong>: ${num(mean(su), 1)} out of 100, against a usual average of 68.` : "",
+        lk ? `<strong>${lk.g.toFixed(0)}%</strong> agree: “${esc(lk.t)}”` : ""].filter(Boolean);
+      return `<div class="ev-tiles sv-kpi">
+          ${tile(`${S.consent}<small> of ${S.all}</small>`, `answers with consent (only these are shown)`)}
+          ${tile(gains.length ? `${mean(gains) >= 0 ? "+" : "−"}${num(Math.abs(mean(gains)), 1)}` : "–", gains.length ? `average confidence gain per CO, before → now (${esc(SV.ROUNDS[rk])})` : "confidence gain: shown from the Middle round")}
+          ${tile(su.length ? `${num(mean(su), 0)}<small> / 100</small>` : "–", su.length ? `usability (SUS): <b class="sv-badge ${grade(mean(su)).toLowerCase()}">${grade(mean(su))}</b>` : "usability: asked from the Middle round")}
+          ${tile(f[0] && f[0].mean ? `${num(f[0].mean, 2)}<small> / 5</small>` : "–", f[0] && f[0].mean ? `top-rated part: ${esc(short(f[0].t))}` : "website parts: asked from the Middle round")}</div>
+        <div class="sv-card"><h4>Key Findings${lname ? ` <span>${esc(isLater ? SV.ROUNDS[rk] : lname)}</span>` : ""}</h4><ul class="sv-find">${find.map((t) => `<li>${t}</li>`).join("")}</ul></div>
+        <div class="sv-card"><h4>Answers in Each Round</h4><div class="sv-rounds">${S.R.map(([k, a]) => `<div><span>${esc(SV.ROUNDS[k])}</span><b>${a.length}</b><i style="width:${share(a.length, Math.max(...S.R.map((x) => x[1].length))).toFixed(0)}%"></i></div>`).join("")}</div></div>`;
+    }
+    if (SVS.tab === "conf") {
+      const c = S.conf(ra, rk);
+      return `<div class="sv-card"><h4>Confidence in Each Course Outcome <span>${esc(SV.ROUNDS[rk])}</span></h4>
+          ${isLater ? `<p class="sv-key"><i class="sv-kb"></i> before this course <i class="sv-kn"></i> now</p>` : ""}${dumbbell(c)}
+          <dl class="sv-cos">${SV.COS.map((co) => `<div><dt><span class="ex-co">${co}</span></dt><dd>${esc(SV.CO_TEXT[co])}</dd></div>`).join("")}</dl>
+          <p class="small-note">${isLater ? "“Before” is the student's own “before this course” rating, or their Start-of-semester answer when the two rounds were open together." : "The Start round asks how confident students are now; from the Middle round, before and now."}</p></div>`;
+    }
+    if (SVS.tab === "learn") {
+      const prev = S.R[S.R.findIndex(([k]) => k === rk) - 1];
+      return `<div class="sv-card"><h4>How Students Learn <span>${esc(SV.ROUNDS[rk])}</span></h4>
+          <p class="sv-key"><i class="sv-kd"></i> disagree (1–2) <i class="sv-ku"></i> neutral (3) <i class="sv-kg"></i> agree (4–5)</p>
+          <div class="sv-lks">${SV.ENG.map(([k, t]) => { const L = likert(ra, k), mn = S.m(ra, k), pm = prev ? S.m(prev[1], k) : null;
+            return `<div class="sv-lrow"><p>${esc(t)}</p>${L.html}<span class="sv-mean">${num(mn, 2)}${pm != null && mn != null ? `<small class="${mn - pm >= 0 ? "up" : "down"}">${mn - pm >= 0 ? "▲" : "▼"} ${num(Math.abs(mn - pm), 2)} since ${esc(SV.ROUNDS[prev[0]].replace(" of semester", ""))}</small>` : ""}</span></div>`; }).join("")}</div>
+          <p class="small-note">The number on the right is the average (1 to 5).</p></div>`;
+    }
+    if (SVS.tab === "parts") {
+      if (!lt) return askedLater;
+      const f = S.feat(lt[1]);
+      return `<div class="sv-card"><h4>Usefulness of Each Part of the Website <span>${esc(lname)}</span></h4>
+          <div class="sv-bars">${f.map((o, i) => `<div class="sv-bar${i < 3 && o.mean ? " top" : ""}"><div class="sv-bl"><b>${i < 3 && o.mean ? ["🥇", "🥈", "🥉"][i] + " " : ""}${esc(short(o.t))}</b><small>${esc((o.t.match(/\((.*)\)/) || [])[1] || "")}</small></div>
+            <div class="sv-bt"><i style="width:${o.mean ? ((o.mean / 5) * 100).toFixed(1) : 0}%"></i></div><span class="sv-bv">${num(o.mean, 2)}</span><span class="sv-used">used by ${pct(o.used)}</span></div>`).join("")}</div>
+          <p class="small-note">Usefulness 1 to 5, from the students who used that part (${lt[1].length} answers).</p></div>`;
+    }
+    if (SVS.tab === "sus") {
+      if (!lt) return askedLater;
+      const su = S.sus(lt[1]), mu = mean(su);
+      return `<div class="sv-two"><div class="sv-card sv-gcard"><h4>System Usability Scale <span>${esc(lname)}</span></h4>${gauge(mu)}
+            <p class="sv-big">${num(mu, 1)}<small> / 100</small> <b class="sv-badge ${grade(mu).toLowerCase()}">${grade(mu)}</b></p>
+            <p class="small-note">${su.length} students · SD ${num(sd(su), 1)} · bands: poor below 51, OK 51 to 71, good 71 to 86, excellent above 86.</p></div>
+          <div class="sv-card"><h4>How the Scores Spread</h4>${hist(su)}<p class="small-note">Each student's own SUS score (10 statements, worked out the standard way). 70 and above is shaded.</p></div></div>`;
+    }
+    return svComments(S);
+  }
+
+  function svComments(S) {
+    const groups = Object.keys(SVQ).filter((k) => S.quotes.some((x) => x.k === k));
+    if (!groups.length) return `<p class="adm-empty">No written comments yet.</p>`;
+    if (!groups.includes(SVS.q)) SVS.q = groups[0];
+    const inQ = S.quotes.filter((x) => x.k === SVS.q), real = inQ.filter((x) => !NONE.test(x.t)), blank = inQ.length - real.length;
+    const tagged = real.map((x) => Object.assign({ tags: TOPICS.filter(([, , re]) => re.test(x.t)).map(([k]) => k) }, x));
+    const counts = TOPICS.map(([k, t]) => [k, t, tagged.filter((x) => x.tags.includes(k)).length]).filter(([, , n]) => n).sort((a, b) => b[2] - a[2]);
+    const other = tagged.filter((x) => !x.tags.length).length;
+    if (SVS.topic !== "all" && SVS.topic !== "other" && !counts.some(([k]) => k === SVS.topic)) SVS.topic = "all";
+    return `<div class="sv-qtabs" role="tablist" aria-label="Question">${groups.map((k) => `<button type="button" role="tab" class="sv-qt${k === SVS.q ? " on" : ""}" aria-selected="${k === SVS.q}" data-svq="${k}"><b>${SVQ[k][0]}</b><span>${S.quotes.filter((x) => x.k === k && !NONE.test(x.t)).length} comments · ${SVQ[k][1]}</span></button>`).join("")}</div>
+      <div class="sv-filter"><div class="sv-topics" role="group" aria-label="Topics"><button type="button" class="sv-tc${SVS.topic === "all" ? " on" : ""}" data-svtopic="all" aria-pressed="${SVS.topic === "all"}">All <b>${tagged.length}</b></button>${counts.map(([k, t, n]) => `<button type="button" class="sv-tc t-${k}${SVS.topic === k ? " on" : ""}" data-svtopic="${k}" aria-pressed="${SVS.topic === k}">${t} <b>${n}</b></button>`).join("")}${other ? `<button type="button" class="sv-tc${SVS.topic === "other" ? " on" : ""}" data-svtopic="other" aria-pressed="${SVS.topic === "other"}">Other <b>${other}</b></button>` : ""}</div>
+        <label class="sv-find-in"><span class="sr-only">Search the comments</span><input type="search" data-svsearch placeholder="🔍 Search the comments" value="${esc(SVS.find)}"></label></div>
+      <div class="sv-quotes" data-svlist>${svCards(tagged)}</div>
+      ${blank ? `<p class="small-note">${blank} ${blank === 1 ? "answer was" : "answers were"} left blank or just “-”, “none” or “ok”, and ${blank === 1 ? "is" : "are"} not shown.</p>` : ""}`;
+  }
+  function svCards(tagged) {
+    const f = SVS.find.trim().toLowerCase();
+    const list = tagged.filter((x) => (SVS.topic === "all" || (SVS.topic === "other" ? !x.tags.length : x.tags.includes(SVS.topic))) && (!f || x.t.toLowerCase().includes(f)));
+    if (!list.length) return `<p class="adm-empty">No comments match.</p>`;
+    const name = (k) => (TOPICS.find((t) => t[0] === k) || [])[1];
+    const mark = (t) => { let h = esc(t); if (f) h = h.replace(new RegExp(`(${f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi"), "<mark>$1</mark>"); return h; };
+    return `<p class="sv-shown">Showing ${list.length} of ${tagged.length}</p>` + list.map((x) => `<figure class="sv-q${x.t.length > 160 ? " long" : ""}"><blockquote>${mark(x.t)}</blockquote><figcaption><span class="sv-r">${esc(SV.ROUNDS[x.r].replace(" of semester", ""))}</span>${x.tags.map((k) => `<span class="sv-tag t-${k}">${esc(name(k))}</span>`).join("")}</figcaption></figure>`).join("");
+  }
+
+  function survey() {
+    const S = svData();
+    if (!S.R.length) return `<section id="survey" class="ev-sec"><h2 class="h3">Course Survey</h2><p class="adm-empty">${S.all ? `${S.all} answers so far, none with consent for reports yet.` : "No answers yet."} Open a round on the <a href="survey.html">Course Survey</a> page.</p></section>`;
+    if (!S.R.some(([k]) => k === SVS.round)) SVS.round = S.R[S.R.length - 1][0];
+    if (!SVT.some(([k]) => k === SVS.tab)) SVS.tab = "over";
+    return `<section id="survey" class="ev-sec sv">${svInner(S)}</section>`;
+  }
+  function svInner(S) {
+    S = S || svData();
+    return `<div class="sv-head"><div><h2 class="h3">Course Survey</h2><p class="small-note">Scale 1 to 5 unless stated. Only answers with consent are shown.</p></div>
+        <div class="sv-round" role="group" aria-label="Survey round">${S.R.map(([k, a]) => `<button type="button" class="${k === SVS.round ? "on" : ""}" aria-pressed="${k === SVS.round}" data-svround="${k}">${esc(SV.ROUNDS[k].replace(" of semester", ""))} <small>${a.length}</small></button>`).join("")}</div></div>
+      <div class="sv-tabs" role="tablist" aria-label="Survey results">${SVT.map(([k, t, ic]) => `<button type="button" role="tab" id="svt-${k}" class="sv-tab${k === SVS.tab ? " on" : ""}" aria-selected="${k === SVS.tab}" tabindex="${k === SVS.tab ? 0 : -1}" data-svtab="${k}"><span aria-hidden="true">${ic}</span>${t}</button>`).join("")}</div>
+      <div class="sv-panel" role="tabpanel" aria-labelledby="svt-${SVS.tab}">${svPanel(S)}</div>
+      <div class="sv-print">${SVT.map(([k, t]) => { const keep = SVS.tab; SVS.tab = k; const h = `<h3 class="bd-h">${t}</h3>${k === "say" ? svAllComments(S) : svPanel(S)}`; SVS.tab = keep; return h; }).join("")}</div>`;
+  }
+  // for print: every comment group in full
+  function svAllComments(S) {
+    return Object.keys(SVQ).map((k) => { const q = S.quotes.filter((x) => x.k === k && !NONE.test(x.t)); return q.length ? `<h4>${SVQ[k][0]} (${q.length})</h4><div class="sv-quotes">${q.map((x) => `<figure class="sv-q"><blockquote>${esc(x.t)}</blockquote></figure>`).join("")}</div>` : ""; }).join("");
+  }
+  const svRedraw = (focusSel) => { const sec = document.getElementById("survey"); if (!sec) return; sec.innerHTML = svInner(); svSave(); if (focusSel) { const b = sec.querySelector(focusSel); if (b) b.focus(); } };
+  host.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-svtab],[data-svround],[data-svq],[data-svtopic]");
+    if (!b || !b.closest("#survey")) return;
+    const kb = e.detail === 0;   // keyboard: keep the focus on the same button after the redraw
+    if (b.dataset.svtab) { SVS.tab = b.dataset.svtab; svRedraw(kb && `[data-svtab="${SVS.tab}"]`); }
+    else if (b.dataset.svround) { SVS.round = b.dataset.svround; svRedraw(kb && `[data-svround="${SVS.round}"]`); }
+    else if (b.dataset.svq) { SVS.q = b.dataset.svq; SVS.topic = "all"; SVS.find = ""; svRedraw(kb && `[data-svq="${SVS.q}"]`); }
+    else if (b.dataset.svtopic) { SVS.topic = b.dataset.svtopic; svRedraw(kb && `[data-svtopic="${SVS.topic}"]`); }
+  });
+  host.addEventListener("keydown", (e) => {   // arrow keys move between the tabs
+    const b = e.target.closest("[data-svtab]"); if (!b || (e.key !== "ArrowRight" && e.key !== "ArrowLeft")) return;
+    const i = SVT.findIndex(([k]) => k === b.dataset.svtab), n = SVT[(i + (e.key === "ArrowRight" ? 1 : SVT.length - 1)) % SVT.length][0];
+    e.preventDefault(); SVS.tab = n; svRedraw(`[data-svtab="${n}"]`);
+  });
+  host.addEventListener("input", (e) => {
+    if (!e.target.matches("[data-svsearch]")) return;
+    SVS.find = e.target.value;
+    const S = svData(), list = document.querySelector("[data-svlist]"); if (!list) return;
+    const real = S.quotes.filter((x) => x.k === SVS.q && !NONE.test(x.t)).map((x) => Object.assign({ tags: TOPICS.filter(([, , re]) => re.test(x.t)).map(([k]) => k) }, x));
+    list.innerHTML = svCards(real);
+  });
 
   function sharing() {
     const p = D.ev.published;
