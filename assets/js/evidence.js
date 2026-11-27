@@ -396,7 +396,7 @@
       <div class="sv-filter"><div class="sv-topics" role="group" aria-label="Topics"><button type="button" class="sv-tc${SVS.topic === "all" ? " on" : ""}" data-svtopic="all" aria-pressed="${SVS.topic === "all"}">All <b>${tagged.length}</b></button>${counts.map(([k, t, n]) => `<button type="button" class="sv-tc t-${k}${SVS.topic === k ? " on" : ""}" data-svtopic="${k}" aria-pressed="${SVS.topic === k}">${t} <b>${n}</b></button>`).join("")}${other ? `<button type="button" class="sv-tc${SVS.topic === "other" ? " on" : ""}" data-svtopic="other" aria-pressed="${SVS.topic === "other"}">Other <b>${other}</b></button>` : ""}</div>
         <label class="sv-find-in"><span class="sr-only">Search the comments</span><input type="search" data-svsearch placeholder="🔍 Search the comments" value="${esc(SVS.find)}"></label></div>
       <div class="sv-quotes" data-svlist>${svCards(tagged)}</div>
-      ${blank ? `<p class="small-note">${blank} ${blank === 1 ? "answer was" : "answers were"} left blank or just “-”, “none” or “ok”, and ${blank === 1 ? "is" : "are"} not shown.</p>` : ""}`;
+      ${blank ? `<p class="small-note">${blank} ${blank === 1 ? "answer was" : "answers were"} left blank or just “-” or “none”, and ${blank === 1 ? "is" : "are"} not shown.</p>` : ""}`;
   }
   function svCards(tagged) {
     const f = SVS.find.trim().toLowerCase();
